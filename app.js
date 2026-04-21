@@ -258,6 +258,7 @@ function bindEvents() {
   els.deleteBookBtn.addEventListener('click', () => deleteBook().catch(handleError));
   els.noteSearch.addEventListener('input', () => { state.noteSearch = els.noteSearch.value.trim().toLowerCase(); renderNotes(); });
   els.noteScripture.addEventListener('input', handleScriptureInput);
+  els.noteScripture.addEventListener('blur', () => fetchAndRenderScriptures({ force: true }).catch(handleError));
   els.fetchScriptureBtn.addEventListener('click', () => fetchAndRenderScriptures({ force: true }).catch(handleError));
   els.scriptureAppendToContent.addEventListener('change', () => {
     if (els.scriptureAppendToContent.checked && els.scripturePreview.dataset.serialized) {
@@ -478,9 +479,14 @@ async function fetchScriptureReference(reference, signal) {
   if (!response.ok || data.error) {
     throw new Error(`找不到經文：${reference}`);
   }
+  const verses = (data.verses || []).map(v => ({
+    verse: v.verse,
+    text: String(v.text || '').replace(/\s+/g, ' ').trim(),
+  }));
   const result = {
     query: data.reference || reference,
-    text: (data.verses || []).map(v => `${v.book_name || ''}${v.chapter}:${v.verse} ${String(v.text || '').trim()}`).join('\n') || String(data.text || '').trim(),
+    verses,
+    text: verses.map(v => `${v.verse}${v.text}`).join(' ') || String(data.text || '').replace(/\s+/g, ' ').trim(),
   };
   state.scriptureCache.set(reference, result);
   return result;
