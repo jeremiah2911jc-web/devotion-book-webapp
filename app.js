@@ -45,6 +45,10 @@ const els = {
   noteId: document.getElementById('note-id'),
   noteTitle: document.getElementById('note-title'),
   noteScripture: document.getElementById('note-scripture'),
+  fetchScriptureBtn: document.getElementById('fetch-scripture-btn'),
+  scriptureAppendToContent: document.getElementById('scripture-append-to-content'),
+  scriptureFetchStatus: document.getElementById('scripture-fetch-status'),
+  scripturePreview: document.getElementById('scripture-preview'),
   noteCategory: document.getElementById('note-category'),
   noteTags: document.getElementById('note-tags'),
   noteSummary: document.getElementById('note-summary'),
@@ -97,6 +101,9 @@ const state = {
   snapshots: [],
   selectedBookId: null,
   noteSearch: '',
+  scriptureCache: new Map(),
+  scriptureFetchTimer: null,
+  scriptureAbortController: null,
 };
 
 function loadJson(key, fallback) {
@@ -250,6 +257,13 @@ function bindEvents() {
   els.deleteNoteBtn.addEventListener('click', () => deleteNote().catch(handleError));
   els.deleteBookBtn.addEventListener('click', () => deleteBook().catch(handleError));
   els.noteSearch.addEventListener('input', () => { state.noteSearch = els.noteSearch.value.trim().toLowerCase(); renderNotes(); });
+  els.noteScripture.addEventListener('input', handleScriptureInput);
+  els.fetchScriptureBtn.addEventListener('click', () => fetchAndRenderScriptures({ force: true }).catch(handleError));
+  els.scriptureAppendToContent.addEventListener('change', () => {
+    if (els.scriptureAppendToContent.checked && els.scripturePreview.dataset.serialized) {
+      applyScriptureBlockToNoteContent(JSON.parse(els.scripturePreview.dataset.serialized));
+    }
+  });
   els.addChapterBtn.addEventListener('click', () => addChapterFromSelectedNote().catch(handleError));
   els.createSnapshotBtn.addEventListener('click', () => createSnapshotForSelectedBook().catch(handleError));
   els.exportEpubBtn.addEventListener('click', () => exportSelectedBookEpub().catch(handleError));
@@ -413,6 +427,118 @@ function renderCardList(container, items, renderer) {
   container.innerHTML = items.map(renderer).join('');
 }
 
+
+function normalizeScriptureReferences(raw = '') {
+  return raw
+    .split(/[;；]+/)
+    .map(item => item.trim())
+    .filter(Boolean);
+}
+
+function handleScriptureInput() {
+  clearTimeout(state.scriptureFetchTimer);
+  const refs = normalizeScriptureReferences(els.noteScripture.value);
+  if (!refs.length) {
+    resetScripturePreview();
+    return;
+  }
+  state.scriptureFetchTimer = setTimeout(() => {
+    fetchAndRenderScriptures().catch(handleError);
+  }, 650);
+}
+
+function setScriptureStatus(message = '', isError = false) {
+  if (!message) {
+    els.scriptureFetchStatus.textContent = '';
+    els.scriptureFetchStatus.classList.add('hidden');
+    els.scriptureFetchStatus.classList.remove('error-text');
+    return;
+  }
+  els.scriptureFetchStatus.textContent = message;
+  els.scriptureFetchStatus.classList.remove('hidden');
+  els.scriptureFetchStatus.classList.toggle('error-text', !!isError);
+}
+
+function resetScripturePreview() {
+  if (state.scriptureAbortController) {
+    state.scriptureAbortController.abort();
+    state.scriptureAbortController = null;
+  }
+  els.scripturePreview.innerHTML = '';
+  els.scripturePreview.classList.add('hidden');
+  delete els.scripturePreview.dataset.serialized;
+  setScriptureStatus('');
+}
+
+async function fetchScriptureReference(reference, signal) {
+  if (state.scriptureCache.has(reference)) return state.scriptureCache.get(reference);
+  const url = `https://bible-api.com/${encodeURIComponent(reference)}?translation=cuv`;
+  const response = await fetch(url, { signal });
+  const data = await response.json();
+  if (!response.ok || data.error) {
+    throw new Error(`找不到經文：${reference}`);
+  }
+  const result = {
+    query: data.reference || reference,
+    text: (data.verses || []).map(v => `${v.book_name || ''}${v.chapter}:${v.verse} ${String(v.text || '').trim()}`).join('\n') || String(data.text || '').trim(),
+  };
+  state.scriptureCache.set(reference, result);
+  return result;
+}
+
+async function fetchAndRenderScriptures({ force = false } = {}) {
+  const references = normalizeScriptureReferences(els.noteScripture.value);
+  if (!references.length) {
+    resetScripturePreview();
+    return;
+  }
+  if (!force && els.scripturePreview.dataset.lastRefs === references.join('|')) return;
+  if (state.scriptureAbortController) state.scriptureAbortController.abort();
+  const controller = new AbortController();
+  state.scriptureAbortController = controller;
+  setScriptureStatus('正在抓取經文…');
+  const fetched = [];
+  try {
+    for (const reference of references) {
+      fetched.push(await fetchScriptureReference(reference, controller.signal));
+    }
+    els.scripturePreview.dataset.lastRefs = references.join('|');
+    els.scripturePreview.dataset.serialized = JSON.stringify(fetched);
+    els.scripturePreview.classList.remove('hidden');
+    els.scripturePreview.innerHTML = fetched.map(item => `
+      <article class="scripture-card">
+        <h4>${escapeHtml(item.query)}</h4>
+        <pre>${escapeHtml(item.text)}</pre>
+      </article>
+    `).join('');
+    setScriptureStatus(`已帶出 ${fetched.length} 處經文。`);
+    if (els.scriptureAppendToContent.checked) {
+      applyScriptureBlockToNoteContent(fetched);
+    }
+  } catch (error) {
+    if (error.name === 'AbortError') return;
+    resetScripturePreview();
+    setScriptureStatus(error.message || '抓取經文失敗。', true);
+    throw error;
+  } finally {
+    if (state.scriptureAbortController === controller) state.scriptureAbortController = null;
+  }
+}
+
+function buildScriptureBlock(items) {
+  const body = items.map(item => `${item.query}\n${item.text}`).join('\n\n');
+  return `【經文引用開始】\n${body}\n【經文引用結束】`;
+}
+
+function applyScriptureBlockToNoteContent(items) {
+  const content = els.noteContent.value || '';
+  const scriptureBlock = buildScriptureBlock(items);
+  const blockPattern = /【經文引用開始】[\s\S]*?【經文引用結束】\n*/;
+  let next = content.replace(blockPattern, '').trimStart();
+  next = next ? `${scriptureBlock}\n\n${next}` : scriptureBlock;
+  els.noteContent.value = next;
+}
+
 function renderNotes() {
   const query = state.noteSearch;
   const filtered = !query ? state.notes : state.notes.filter(note => [note.title, note.scripture_reference, note.summary, note.content].join(' ').toLowerCase().includes(query));
@@ -453,12 +579,19 @@ function populateNoteForm(noteId) {
   els.noteSummary.value = note.summary || '';
   els.noteContent.value = note.content || '';
   els.deleteNoteBtn.classList.remove('hidden');
+  if (note.scripture_reference) {
+    fetchAndRenderScriptures({ force: true }).catch(() => setScriptureStatus('經文預覽暫時無法載入。', true));
+  } else {
+    resetScripturePreview();
+  }
 }
 
 function clearNoteForm() {
   els.noteForm.reset();
   els.noteId.value = '';
   els.deleteNoteBtn.classList.add('hidden');
+  resetScripturePreview();
+  els.scriptureAppendToContent.checked = true;
 }
 
 async function saveNote() {

@@ -156,8 +156,18 @@
                 <input id="note-title" required placeholder="例：詩篇 103 的恩典與憐憫" />
               </label>
               <label>經文
-                <input id="note-scripture" placeholder="例：詩篇 103:1-11" />
+                <input id="note-scripture" placeholder="例：詩篇 103:1-11；約翰福音 3:16-18" />
               </label>
+              <p class="caption scripture-hint">可輸入多處經文，請用分號「；」或「;」分隔。輸入後會自動抓取和預覽經文。</p>
+              <div class="row gap-sm wrap scripture-tools">
+                <button type="button" id="fetch-scripture-btn" class="ghost-btn small">抓取經文</button>
+                <label class="checkbox-inline">
+                  <input id="scripture-append-to-content" type="checkbox" checked />
+                  <span>抓取後同步放入札記全文</span>
+                </label>
+              </div>
+              <p id="scripture-fetch-status" class="caption hidden"></p>
+              <div id="scripture-preview" class="scripture-preview hidden"></div>
               <label>分類
                 <input id="note-category" placeholder="例：詩篇靈修、主日筆記" />
               </label>
