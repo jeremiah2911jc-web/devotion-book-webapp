@@ -207,4 +207,16 @@ input:focus, textarea:focus, select:focus {
 .scripture-card pre { margin: 0; white-space: pre-wrap; line-height: 1.75; color: #31484d; font-family: inherit; }
 .error-text { color: var(--danger); }
 
-.verse-no{display:inline-block;margin-right:.2em;font-weight:700;color:var(--ink);} .scripture-inline-text span+span{margin-left:.15em;}
+
+.scripture-inline-text {
+  line-height: 1.9;
+  color: #344b54;
+  white-space: normal;
+}
+
+.scripture-inline-text .verse-no {
+  display: inline-block;
+  margin-right: 0.2rem;
+  color: #8b5e73;
+  font-weight: 700;
+}

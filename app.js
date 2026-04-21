@@ -514,7 +514,7 @@ async function fetchAndRenderScriptures({ force = false } = {}) {
     els.scripturePreview.innerHTML = fetched.map(item => `
       <article class="scripture-card">
         <h4>${escapeHtml(item.query)}</h4>
-        <pre>${escapeHtml(item.text)}</pre>
+        <div class="scripture-inline-text">${(item.verses?.length ? item.verses : [{ verse: '', text: item.text }]).map(v => `${v.verse ? `<span class="verse-no">${escapeHtml(String(v.verse))}</span>` : ''}<span>${escapeHtml(v.text)}</span>`).join(' ')}</div>
       </article>
     `).join('');
     setScriptureStatus(`已帶出 ${fetched.length} 處經文。`);
