@@ -258,7 +258,6 @@ function bindEvents() {
   els.deleteBookBtn.addEventListener('click', () => deleteBook().catch(handleError));
   els.noteSearch.addEventListener('input', () => { state.noteSearch = els.noteSearch.value.trim().toLowerCase(); renderNotes(); });
   els.noteScripture.addEventListener('input', handleScriptureInput);
-  els.noteScripture.addEventListener('blur', () => fetchAndRenderScriptures({ force: true }).catch(handleError));
   els.fetchScriptureBtn.addEventListener('click', () => fetchAndRenderScriptures({ force: true }).catch(handleError));
   els.scriptureAppendToContent.addEventListener('change', () => {
     if (els.scriptureAppendToContent.checked && els.scripturePreview.dataset.serialized) {
@@ -471,6 +470,25 @@ function resetScripturePreview() {
   setScriptureStatus('');
 }
 
+function normalizeScriptureText(text = '') {
+  return String(text || '').replace(/\s+/g, ' ').trim();
+}
+
+function formatFetchedVerses(verses = []) {
+  if (!Array.isArray(verses) || !verses.length) return '';
+  return verses.map((verse, index) => {
+    const previous = verses[index - 1];
+    const chapter = verse.chapter ?? '';
+    const verseNo = verse.verse ?? '';
+    const prefix = index === 0
+      ? `${verse.book_name || ''}${chapter}:${verseNo}`
+      : previous && previous.chapter === chapter
+        ? `${verseNo}`
+        : `${chapter}:${verseNo}`;
+    return `${prefix} ${normalizeScriptureText(verse.text)}`.trim();
+  }).join(' ');
+}
+
 async function fetchScriptureReference(reference, signal) {
   if (state.scriptureCache.has(reference)) return state.scriptureCache.get(reference);
   const url = `https://bible-api.com/${encodeURIComponent(reference)}?translation=cuv`;
@@ -479,14 +497,9 @@ async function fetchScriptureReference(reference, signal) {
   if (!response.ok || data.error) {
     throw new Error(`找不到經文：${reference}`);
   }
-  const verses = (data.verses || []).map(v => ({
-    verse: v.verse,
-    text: String(v.text || '').replace(/\s+/g, ' ').trim(),
-  }));
   const result = {
     query: data.reference || reference,
-    verses,
-    text: verses.map(v => `${v.verse}${v.text}`).join(' ') || String(data.text || '').replace(/\s+/g, ' ').trim(),
+    text: formatFetchedVerses(data.verses) || normalizeScriptureText(data.text),
   };
   state.scriptureCache.set(reference, result);
   return result;
@@ -514,7 +527,7 @@ async function fetchAndRenderScriptures({ force = false } = {}) {
     els.scripturePreview.innerHTML = fetched.map(item => `
       <article class="scripture-card">
         <h4>${escapeHtml(item.query)}</h4>
-        <div class="scripture-inline-text">${(item.verses?.length ? item.verses : [{ verse: '', text: item.text }]).map(v => `${v.verse ? `<span class="verse-no">${escapeHtml(String(v.verse))}</span>` : ''}<span>${escapeHtml(v.text)}</span>`).join(' ')}</div>
+        <div class="scripture-text">${escapeHtml(item.text)}</div>
       </article>
     `).join('');
     setScriptureStatus(`已帶出 ${fetched.length} 處經文。`);
