@@ -206,20 +206,3 @@ input:focus, textarea:focus, select:focus {
 .scripture-card h4 { margin: 0 0 8px; color: #35585d; font-size: 15px; }
 .scripture-card pre { margin: 0; white-space: pre-wrap; line-height: 1.75; color: #31484d; font-family: inherit; }
 .error-text { color: var(--danger); }
-
-
-.scripture-inline-text {
-  line-height: 1.9;
-  color: var(--ink);
-}
-
-.verse-no {
-  display: inline-block;
-  margin-right: 0.2rem;
-  color: var(--accent-strong);
-  font-weight: 700;
-}
-
-.scripture-card pre {
-  white-space: pre-wrap;
-}

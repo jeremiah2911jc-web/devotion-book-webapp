@@ -258,7 +258,6 @@ function bindEvents() {
   els.deleteBookBtn.addEventListener('click', () => deleteBook().catch(handleError));
   els.noteSearch.addEventListener('input', () => { state.noteSearch = els.noteSearch.value.trim().toLowerCase(); renderNotes(); });
   els.noteScripture.addEventListener('input', handleScriptureInput);
-  els.noteScripture.addEventListener('blur', () => fetchAndRenderScriptures({ force: true }).catch(handleError));
   els.fetchScriptureBtn.addEventListener('click', () => fetchAndRenderScriptures({ force: true }).catch(handleError));
   els.scriptureAppendToContent.addEventListener('change', () => {
     if (els.scriptureAppendToContent.checked && els.scripturePreview.dataset.serialized) {
@@ -429,91 +428,10 @@ function renderCardList(container, items, renderer) {
 }
 
 
-const SCRIPTURE_BOOK_ALIASES = {
-  '創世記': 'Genesis', '創': 'Genesis',
-  '出埃及記': 'Exodus', '出': 'Exodus',
-  '利未記': 'Leviticus', '利': 'Leviticus',
-  '民數記': 'Numbers', '民': 'Numbers',
-  '申命記': 'Deuteronomy', '申': 'Deuteronomy',
-  '約書亞記': 'Joshua', '書': 'Joshua',
-  '士師記': 'Judges', '士': 'Judges',
-  '路得記': 'Ruth', '得': 'Ruth',
-  '撒母耳記上': '1 Samuel', '撒上': '1 Samuel',
-  '撒母耳記下': '2 Samuel', '撒下': '2 Samuel',
-  '列王紀上': '1 Kings', '王上': '1 Kings',
-  '列王紀下': '2 Kings', '王下': '2 Kings',
-  '歷代志上': '1 Chronicles', '代上': '1 Chronicles',
-  '歷代志下': '2 Chronicles', '代下': '2 Chronicles',
-  '以斯拉記': 'Ezra', '拉': 'Ezra',
-  '尼希米記': 'Nehemiah', '尼': 'Nehemiah',
-  '以斯帖記': 'Esther', '斯': 'Esther',
-  '約伯記': 'Job', '伯': 'Job',
-  '詩篇': 'Psalms', '詩': 'Psalms',
-  '箴言': 'Proverbs', '箴': 'Proverbs',
-  '傳道書': 'Ecclesiastes', '傳': 'Ecclesiastes',
-  '雅歌': 'Song of Solomon',
-  '以賽亞書': 'Isaiah', '賽': 'Isaiah',
-  '耶利米書': 'Jeremiah', '耶': 'Jeremiah',
-  '耶利米哀歌': 'Lamentations', '哀': 'Lamentations',
-  '以西結書': 'Ezekiel', '結': 'Ezekiel',
-  '但以理書': 'Daniel', '但': 'Daniel',
-  '何西阿書': 'Hosea', '何': 'Hosea',
-  '約珥書': 'Joel', '珥': 'Joel',
-  '阿摩司書': 'Amos', '摩': 'Amos',
-  '俄巴底亞書': 'Obadiah', '俄': 'Obadiah',
-  '約拿書': 'Jonah', '拿': 'Jonah',
-  '彌迦書': 'Micah', '彌': 'Micah',
-  '那鴻書': 'Nahum', '鴻': 'Nahum',
-  '哈巴谷書': 'Habakkuk', '哈': 'Habakkuk',
-  '西番雅書': 'Zephaniah', '番': 'Zephaniah',
-  '哈該書': 'Haggai', '該': 'Haggai',
-  '撒迦利亞書': 'Zechariah', '亞': 'Zechariah',
-  '瑪拉基書': 'Malachi', '瑪': 'Malachi',
-  '馬太福音': 'Matthew', '太': 'Matthew',
-  '馬可福音': 'Mark', '可': 'Mark',
-  '路加福音': 'Luke', '路': 'Luke',
-  '約翰福音': 'John', '約': 'John',
-  '使徒行傳': 'Acts', '徒': 'Acts',
-  '羅馬書': 'Romans', '羅': 'Romans',
-  '哥林多前書': '1 Corinthians', '林前': '1 Corinthians',
-  '哥林多後書': '2 Corinthians', '林後': '2 Corinthians',
-  '加拉太書': 'Galatians', '加': 'Galatians',
-  '以弗所書': 'Ephesians', '弗': 'Ephesians',
-  '腓立比書': 'Philippians', '腓': 'Philippians',
-  '歌羅西書': 'Colossians', '西': 'Colossians',
-  '帖撒羅尼迦前書': '1 Thessalonians', '帖前': '1 Thessalonians',
-  '帖撒羅尼迦後書': '2 Thessalonians', '帖後': '2 Thessalonians',
-  '提摩太前書': '1 Timothy', '提前': '1 Timothy',
-  '提摩太後書': '2 Timothy', '提後': '2 Timothy',
-  '提多書': 'Titus', '多': 'Titus',
-  '腓利門書': 'Philemon', '門': 'Philemon',
-  '希伯來書': 'Hebrews', '來': 'Hebrews',
-  '雅各書': 'James', '雅': 'James',
-  '彼得前書': '1 Peter', '彼前': '1 Peter',
-  '彼得後書': '2 Peter', '彼後': '2 Peter',
-  '約翰一書': '1 John', '約一': '1 John',
-  '約翰二書': '2 John', '約二': '2 John',
-  '約翰三書': '3 John', '約三': '3 John',
-  '猶大書': 'Jude', '猶': 'Jude',
-  '啟示錄': 'Revelation', '啟': 'Revelation'
-};
-
-function canonicalizeScriptureReference(reference = '') {
-  let ref = String(reference || '').trim();
-  if (!ref) return '';
-  ref = ref.replace(/[：﹕]/g, ':').replace(/[，、]/g, ',').replace(/\s+/g, ' ');
-  const match = ref.match(/^([\u4e00-\u9fffA-Za-z0-9一二三上下前後]+)\s*(\d.*)$/);
-  if (!match) return ref;
-  const rawBook = match[1].trim();
-  const remainder = match[2].trim();
-  const mappedBook = SCRIPTURE_BOOK_ALIASES[rawBook] || rawBook;
-  return `${mappedBook} ${remainder}`.trim();
-}
-
 function normalizeScriptureReferences(raw = '') {
   return raw
     .split(/[;；]+/)
-    .map(item => canonicalizeScriptureReference(item))
+    .map(item => item.trim())
     .filter(Boolean);
 }
 
@@ -560,14 +478,9 @@ async function fetchScriptureReference(reference, signal) {
   if (!response.ok || data.error) {
     throw new Error(`找不到經文：${reference}`);
   }
-  const verses = (data.verses || []).map(v => ({
-    verse: v.verse,
-    text: String(v.text || '').replace(/\s+/g, ' ').trim(),
-  }));
   const result = {
     query: data.reference || reference,
-    verses,
-    text: verses.map(v => `${v.verse}${v.text}`).join(' ') || String(data.text || '').replace(/\s+/g, ' ').trim(),
+    text: (data.verses || []).map(v => `${v.book_name || ''}${v.chapter}:${v.verse} ${String(v.text || '').trim()}`).join('\n') || String(data.text || '').trim(),
   };
   state.scriptureCache.set(reference, result);
   return result;
@@ -595,7 +508,7 @@ async function fetchAndRenderScriptures({ force = false } = {}) {
     els.scripturePreview.innerHTML = fetched.map(item => `
       <article class="scripture-card">
         <h4>${escapeHtml(item.query)}</h4>
-        <div class="scripture-inline-text">${(item.verses?.length ? item.verses : [{ verse: '', text: item.text }]).map(v => `${v.verse ? `<span class="verse-no">${escapeHtml(String(v.verse))}</span>` : ''}<span>${escapeHtml(v.text)}</span>`).join(' ')}</div>
+        <pre>${escapeHtml(item.text)}</pre>
       </article>
     `).join('');
     setScriptureStatus(`已帶出 ${fetched.length} 處經文。`);
