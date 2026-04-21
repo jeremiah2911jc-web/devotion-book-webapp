@@ -1,0 +1,71 @@
+-- Supabase SQL setup for devotion-book-webapp-full
+
+create extension if not exists pgcrypto;
+
+create table if not exists public.devotion_notes (
+  id text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null,
+  scripture_reference text,
+  category text,
+  tags jsonb not null default '[]'::jsonb,
+  summary text,
+  content text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.book_projects (
+  id text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null,
+  subtitle text,
+  author_name text,
+  description text,
+  template_code text not null default 'devotion',
+  language text not null default 'zh-Hant',
+  cover_data_url text,
+  preface text,
+  afterword text,
+  toc_enabled boolean not null default true,
+  chapters jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.book_snapshots (
+  id text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  book_project_id text not null references public.book_projects(id) on delete cascade,
+  snapshot_json jsonb not null,
+  created_at timestamptz not null default now()
+);
+
+alter table public.devotion_notes enable row level security;
+alter table public.book_projects enable row level security;
+alter table public.book_snapshots enable row level security;
+
+drop policy if exists "notes_select_own" on public.devotion_notes;
+create policy "notes_select_own" on public.devotion_notes for select using (auth.uid() = user_id);
+drop policy if exists "notes_insert_own" on public.devotion_notes;
+create policy "notes_insert_own" on public.devotion_notes for insert with check (auth.uid() = user_id);
+drop policy if exists "notes_update_own" on public.devotion_notes;
+create policy "notes_update_own" on public.devotion_notes for update using (auth.uid() = user_id);
+drop policy if exists "notes_delete_own" on public.devotion_notes;
+create policy "notes_delete_own" on public.devotion_notes for delete using (auth.uid() = user_id);
+
+drop policy if exists "books_select_own" on public.book_projects;
+create policy "books_select_own" on public.book_projects for select using (auth.uid() = user_id);
+drop policy if exists "books_insert_own" on public.book_projects;
+create policy "books_insert_own" on public.book_projects for insert with check (auth.uid() = user_id);
+drop policy if exists "books_update_own" on public.book_projects;
+create policy "books_update_own" on public.book_projects for update using (auth.uid() = user_id);
+drop policy if exists "books_delete_own" on public.book_projects;
+create policy "books_delete_own" on public.book_projects for delete using (auth.uid() = user_id);
+
+drop policy if exists "snapshots_select_own" on public.book_snapshots;
+create policy "snapshots_select_own" on public.book_snapshots for select using (auth.uid() = user_id);
+drop policy if exists "snapshots_insert_own" on public.book_snapshots;
+create policy "snapshots_insert_own" on public.book_snapshots for insert with check (auth.uid() = user_id);
+drop policy if exists "snapshots_delete_own" on public.book_snapshots;
+create policy "snapshots_delete_own" on public.book_snapshots for delete using (auth.uid() = user_id);

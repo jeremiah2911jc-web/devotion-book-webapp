@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>靈修札記成書系統</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div>
+        <h1>靈修札記成書系統</h1>
+        <p class="muted">登入、雲端同步、章節編排、EPUB 匯出</p>
+      </div>
+
+      <section class="panel compact">
+        <div class="panel-header">
+          <h2>連線設定</h2>
+          <button id="toggle-config-btn" class="ghost-btn small">展開</button>
+        </div>
+        <div id="config-panel" class="hidden">
+          <label>Supabase URL
+            <input id="supabase-url" placeholder="https://xxxx.supabase.co" />
+          </label>
+          <label>Supabase Anon Key
+            <textarea id="supabase-anon-key" rows="4" placeholder="貼上 anon key"></textarea>
+          </label>
+          <div class="row gap-sm wrap">
+            <button id="save-config-btn" class="secondary-btn">儲存設定</button>
+            <button id="clear-config-btn" class="ghost-btn">清除設定</button>
+          </div>
+          <p class="caption">未設定時，系統會以本機模式運作，方便先測流程。</p>
+        </div>
+      </section>
+
+      <section class="panel compact" id="auth-card">
+        <div class="panel-header">
+          <h2>帳號</h2>
+          <span id="auth-mode-badge" class="badge">本機模式</span>
+        </div>
+        <div id="auth-forms">
+          <label>Email
+            <input id="auth-email" type="email" placeholder="name@example.com" />
+          </label>
+          <label>Password
+            <input id="auth-password" type="password" placeholder="至少 6 碼" />
+          </label>
+          <div class="row wrap gap-sm">
+            <button id="register-btn" class="primary-btn">註冊</button>
+            <button id="login-btn" class="secondary-btn">登入</button>
+            <button id="magic-link-btn" class="ghost-btn">Magic Link</button>
+          </div>
+          <p class="caption">本機模式會以 Email 建立測試帳號；雲端模式會走 Supabase Auth。</p>
+        </div>
+        <div id="auth-user" class="hidden">
+          <p id="current-user-text"></p>
+          <div class="row wrap gap-sm">
+            <button id="signout-btn" class="ghost-btn">登出</button>
+            <button id="refresh-btn" class="secondary-btn">重新整理資料</button>
+          </div>
+        </div>
+      </section>
+
+      <nav class="nav-links">
+        <button class="nav-link active" data-view="dashboard">總覽</button>
+        <button class="nav-link" data-view="notes">札記庫</button>
+        <button class="nav-link" data-view="books">書籍專案</button>
+        <button class="nav-link" data-view="snapshots">快照備份</button>
+      </nav>
+
+      <section class="panel compact">
+        <h2>系統狀態</h2>
+        <ul class="status-list">
+          <li><span>資料模式</span><strong id="status-storage">本機</strong></li>
+          <li><span>目前書籍</span><strong id="status-current-book">未選取</strong></li>
+          <li><span>章節數</span><strong id="status-chapter-count">0</strong></li>
+        </ul>
+      </section>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h2 id="view-title">總覽</h2>
+          <p id="view-subtitle" class="muted">先登入，再建立札記與書籍專案。</p>
+        </div>
+        <div class="row gap-sm wrap">
+          <button id="quick-new-note" class="secondary-btn">新增札記</button>
+          <button id="quick-new-book" class="primary-btn">新增書籍</button>
+        </div>
+      </header>
+
+      <section id="view-dashboard" class="view active">
+        <div class="grid two-col">
+          <section class="panel">
+            <div class="panel-header">
+              <h2>使用流程</h2>
+            </div>
+            <ol class="steps">
+              <li>登入或使用本機模式測試。</li>
+              <li>在札記庫建立靈修內容。</li>
+              <li>新增一本書，設定書名、作者、前言、後記與模板。</li>
+              <li>把札記加入書中，拖曳排序並調整章名。</li>
+              <li>建立快照，再匯出 EPUB。</li>
+            </ol>
+          </section>
+          <section class="panel">
+            <div class="panel-header">
+              <h2>快速摘要</h2>
+            </div>
+            <div class="summary-cards">
+              <div class="summary-card">
+                <span>札記數</span>
+                <strong id="summary-notes-count">0</strong>
+              </div>
+              <div class="summary-card">
+                <span>書籍數</span>
+                <strong id="summary-books-count">0</strong>
+              </div>
+              <div class="summary-card">
+                <span>快照數</span>
+                <strong id="summary-snapshots-count">0</strong>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="grid two-col mt-lg">
+          <section class="panel">
+            <div class="panel-header">
+              <h2>最近札記</h2>
+            </div>
+            <div id="recent-notes" class="list-stack empty-state">還沒有札記。</div>
+          </section>
+          <section class="panel">
+            <div class="panel-header">
+              <h2>最近書籍</h2>
+            </div>
+            <div id="recent-books" class="list-stack empty-state">還沒有書籍專案。</div>
+          </section>
+        </div>
+      </section>
+
+      <section id="view-notes" class="view">
+        <div class="grid two-col align-start">
+          <section class="panel">
+            <div class="panel-header">
+              <h2>札記編輯</h2>
+              <button id="new-note-btn" class="ghost-btn">清空重填</button>
+            </div>
+            <form id="note-form" class="form-stack">
+              <input type="hidden" id="note-id" />
+              <label>標題
+                <input id="note-title" required placeholder="例：詩篇 103 的恩典與憐憫" />
+              </label>
+              <label>經文
+                <input id="note-scripture" placeholder="例：詩篇 103:1-11" />
+              </label>
+              <label>分類
+                <input id="note-category" placeholder="例：詩篇靈修、主日筆記" />
+              </label>
+              <label>標籤（以逗號分隔）
+                <input id="note-tags" placeholder="例：恩典, 悔改, 盼望" />
+              </label>
+              <label>摘要
+                <textarea id="note-summary" rows="3" placeholder="這篇內容的重點摘要"></textarea>
+              </label>
+              <label>內容
+                <textarea id="note-content" rows="14" required placeholder="輸入靈修札記全文"></textarea>
+              </label>
+              <div class="row gap-sm wrap">
+                <button type="submit" class="primary-btn">儲存札記</button>
+                <button type="button" id="delete-note-btn" class="danger-btn hidden">刪除札記</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <h2>札記列表</h2>
+              <input id="note-search" class="search" placeholder="搜尋標題、經文、內容" />
+            </div>
+            <div id="notes-list" class="list-stack empty-state">還沒有札記。</div>
+          </section>
+        </div>
+      </section>
+
+      <section id="view-books" class="view">
+        <div class="grid layout-books align-start">
+          <section class="panel">
+            <div class="panel-header">
+              <h2>書籍設定</h2>
+              <button id="new-book-btn" class="ghost-btn">清空重填</button>
+            </div>
+            <form id="book-form" class="form-stack">
+              <input type="hidden" id="book-id" />
+              <label>書名
+                <input id="book-title" required placeholder="例：一顆仍然願意信靠的心" />
+              </label>
+              <label>副標
+                <input id="book-subtitle" placeholder="例：靈修札記選集" />
+              </label>
+              <label>作者
+                <input id="book-author" placeholder="例：Jeremiah" />
+              </label>
+              <label>書籍簡介
+                <textarea id="book-description" rows="3" placeholder="介紹這本書的主題與方向"></textarea>
+              </label>
+              <label>模板
+                <select id="book-template">
+                  <option value="devotion">靈修札記版</option>
+                  <option value="sermon">講章整理版</option>
+                  <option value="testimony">見證合集版</option>
+                </select>
+              </label>
+              <label>語言
+                <input id="book-language" value="zh-Hant" />
+              </label>
+              <label>封面圖片
+                <input id="book-cover" type="file" accept="image/*" />
+              </label>
+              <label>前言
+                <textarea id="book-preface" rows="4" placeholder="輸入前言"></textarea>
+              </label>
+              <label>後記
+                <textarea id="book-afterword" rows="4" placeholder="輸入後記"></textarea>
+              </label>
+              <label class="checkbox-row">
+                <input id="book-toc-enabled" type="checkbox" checked />
+                <span>匯出時包含目錄</span>
+              </label>
+              <div class="row gap-sm wrap">
+                <button type="submit" class="primary-btn">儲存書籍</button>
+                <button type="button" id="delete-book-btn" class="danger-btn hidden">刪除書籍</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <h2>書籍列表</h2>
+            </div>
+            <div id="books-list" class="list-stack empty-state">還沒有書籍專案。</div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <h2>章節編排與匯出</h2>
+            </div>
+            <div id="selected-book-empty" class="empty-state">請先選取一本書。</div>
+            <div id="selected-book-panel" class="hidden">
+              <div id="book-cover-preview" class="cover-preview"></div>
+              <div class="row gap-sm wrap mt-md">
+                <select id="chapter-source-note"></select>
+                <button id="add-chapter-btn" class="secondary-btn">加入章節</button>
+              </div>
+              <div id="chapters-list" class="list-stack mt-md empty-state">尚未加入任何章節。</div>
+              <div class="row gap-sm wrap mt-lg">
+                <button id="create-snapshot-btn" class="secondary-btn">建立快照</button>
+                <button id="export-epub-btn" class="primary-btn">匯出 EPUB</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="view-snapshots" class="view">
+        <section class="panel">
+          <div class="panel-header">
+            <h2>快照備份</h2>
+          </div>
+          <div id="snapshots-list" class="list-stack empty-state">還沒有快照。</div>
+        </section>
+      </section>
+      <footer class="site-footer">
+        <button id="support-btn" class="support-btn" type="button">支持平台／支持事工</button>
+        <p class="footer-copyright">© 2026 <a href="https://sanzepm.com.tw" target="_blank" rel="noopener noreferrer">三策專案管理顧問有限公司</a>. All rights reserved.</p>
+      </footer>
+
+    </main>
+  </div>
+
+  
+  <div id="support-modal" class="modal hidden" aria-hidden="true">
+    <div id="support-modal-backdrop" class="modal-backdrop"></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="support-modal-title">
+      <div class="panel-header">
+        <h2 id="support-modal-title">支持平台／支持事工</h2>
+        <button id="close-support-modal" class="ghost-btn small" type="button">關閉</button>
+      </div>
+      <p class="modal-intro">您所提供之支持款項，將用於內容製作、系統開發、雲端維護與出版功能優化。</p>
+      <div class="support-info">
+        <p><strong>匯款銀行：</strong>台北富邦銀行</p>
+        <p><strong>銀行代碼：</strong>000</p>
+        <p><strong>戶名：</strong>三策專案管理顧問有限公司</p>
+        <p><strong>匯款帳號：</strong>0000000000</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
