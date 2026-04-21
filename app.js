@@ -104,6 +104,7 @@ const state = {
   scriptureCache: new Map(),
   scriptureFetchTimer: null,
   scriptureAbortController: null,
+  scriptureLastAppliedBlock: '',
 };
 
 function loadJson(key, fallback) {
@@ -464,10 +465,19 @@ function resetScripturePreview() {
     state.scriptureAbortController.abort();
     state.scriptureAbortController = null;
   }
+  state.scriptureLastAppliedBlock = '';
   els.scripturePreview.innerHTML = '';
   els.scripturePreview.classList.add('hidden');
   delete els.scripturePreview.dataset.serialized;
   setScriptureStatus('');
+}
+
+function stripScriptureMarkers(text = '') {
+  return String(text || '')
+    .replace(/【經文引用開始】\s*\n?/g, '')
+    .replace(/\n?\s*【經文引用結束】/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 function normalizeScriptureText(text = '') {
@@ -545,16 +555,33 @@ async function fetchAndRenderScriptures({ force = false } = {}) {
 }
 
 function buildScriptureBlock(items) {
-  const body = items.map(item => `${item.query}\n${item.text}`).join('\n\n');
-  return `【經文引用開始】\n${body}\n【經文引用結束】`;
+  return items.map(item => `${item.query}\n${item.text}`).join('\n\n');
 }
 
 function applyScriptureBlockToNoteContent(items) {
-  const content = els.noteContent.value || '';
+  let content = stripScriptureMarkers(els.noteContent.value || '');
   const scriptureBlock = buildScriptureBlock(items);
-  const blockPattern = /【經文引用開始】[\s\S]*?【經文引用結束】\n*/;
-  let next = content.replace(blockPattern, '').trimStart();
-  next = next ? `${scriptureBlock}\n\n${next}` : scriptureBlock;
+  const oldMarkedBlockPattern = /【經文引用開始】[\s\S]*?【經文引用結束】\n*/;
+  content = content.replace(oldMarkedBlockPattern, '').trimStart();
+
+  if (state.scriptureLastAppliedBlock) {
+    const lastAppliedWithSpacing = `${state.scriptureLastAppliedBlock}\n\n`;
+    if (content.startsWith(lastAppliedWithSpacing)) {
+      content = content.slice(lastAppliedWithSpacing.length).trimStart();
+    } else if (content === state.scriptureLastAppliedBlock) {
+      content = '';
+    }
+  }
+
+  const sameBlockWithSpacing = `${scriptureBlock}\n\n`;
+  if (content.startsWith(sameBlockWithSpacing)) {
+    content = content.slice(sameBlockWithSpacing.length).trimStart();
+  } else if (content === scriptureBlock) {
+    content = '';
+  }
+
+  const next = content ? `${scriptureBlock}\n\n${content}` : scriptureBlock;
+  state.scriptureLastAppliedBlock = scriptureBlock;
   els.noteContent.value = next;
 }
 
@@ -596,7 +623,7 @@ function populateNoteForm(noteId) {
   els.noteCategory.value = note.category || '';
   els.noteTags.value = (note.tags || []).join(', ');
   els.noteSummary.value = note.summary || '';
-  els.noteContent.value = note.content || '';
+  els.noteContent.value = stripScriptureMarkers(note.content || '');
   els.deleteNoteBtn.classList.remove('hidden');
   if (note.scripture_reference) {
     fetchAndRenderScriptures({ force: true }).catch(() => setScriptureStatus('經文預覽暫時無法載入。', true));
@@ -623,7 +650,7 @@ async function saveNote() {
     category: els.noteCategory.value.trim(),
     tags: els.noteTags.value.split(',').map(v => v.trim()).filter(Boolean),
     summary: els.noteSummary.value.trim(),
-    content: els.noteContent.value.trim(),
+    content: stripScriptureMarkers(els.noteContent.value.trim()),
     updated_at: nowIso(),
     created_at: els.noteId.value ? (state.notes.find(n => n.id === els.noteId.value)?.created_at || nowIso()) : nowIso(),
   };

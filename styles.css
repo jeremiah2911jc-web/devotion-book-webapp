@@ -206,3 +206,8 @@ input:focus, textarea:focus, select:focus {
 .scripture-card h4 { margin: 0 0 8px; color: #35585d; font-size: 15px; }
 .scripture-text { margin: 0; line-height: 1.75; color: #31484d; }
 .error-text { color: var(--danger); }
+
+
+#auth-forms > .row {
+  margin-top: 8px;
+}
