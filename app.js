@@ -1303,11 +1303,13 @@ function renderChaptersList(book) {
   els.chaptersList.className = 'list-stack';
   els.chaptersList.innerHTML = chapters.map((chapter, index) => `
     <div class="chapter-item">
-      <div class="chapter-title-row">
+      <div class="chapter-main">
+        <div class="chapter-title-row">
         <input value="${escapeHtml(chapter.chapter_title || '')}" data-chapter-title="${chapter.id}" />
         <label class="checkbox-row"><input type="checkbox" data-chapter-toc="${chapter.id}" ${chapter.include_in_toc ? 'checked' : ''} /><span>列入目錄</span></label>
       </div>
       <div class="caption">來源札記：${escapeHtml(getNoteById(chapter.source_note_id)?.title || '手動章節')}</div>
+      </div>
       <div class="chapter-controls">
         <button class="ghost-btn small" data-move-up="${chapter.id}" ${index === 0 ? 'disabled' : ''}>上移</button>
         <button class="ghost-btn small" data-move-down="${chapter.id}" ${index === chapters.length - 1 ? 'disabled' : ''}>下移</button>
