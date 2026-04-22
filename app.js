@@ -101,6 +101,7 @@ const els = {
   authInlineTitle: document.getElementById('auth-inline-title'),
   authInlineHint: document.getElementById('auth-inline-hint'),
   closeAuthInlineBtn: document.getElementById('close-auth-inline-btn'),
+  authInlineBackdrop: document.getElementById('auth-inline-backdrop'),
   gateAuthEmail: document.getElementById('gate-auth-email'),
   gateAuthPassword: document.getElementById('gate-auth-password'),
   gateSubmitBtn: document.getElementById('gate-submit-btn'),
@@ -256,7 +257,12 @@ function openAuthInline(mode = 'register') {
   state.authInlineMode = mode;
   const isRegister = mode === 'register';
   els.authInlinePanel?.classList.remove('hidden');
+  els.authInlinePanel?.setAttribute('aria-hidden', 'false');
   if (els.authInlineTitle) els.authInlineTitle.textContent = isRegister ? '建立帳戶' : '登入';
+  const intro = document.getElementById('auth-inline-intro');
+  if (intro) intro.textContent = isRegister
+    ? '輸入 Email 與密碼後即可建立帳戶。'
+    : '輸入 Email 與密碼後即可登入。';
   if (els.gateSubmitBtn) {
     els.gateSubmitBtn.textContent = isRegister ? '建立帳戶' : '登入';
     els.gateSubmitBtn.classList.toggle('secondary-btn', !isRegister);
@@ -266,6 +272,7 @@ function openAuthInline(mode = 'register') {
 }
 function closeAuthInline() {
   els.authInlinePanel?.classList.add('hidden');
+  els.authInlinePanel?.setAttribute('aria-hidden', 'true');
 }
 function toggleAuthFeatures() {
   els.authFeatureSheet?.classList.toggle('hidden');
@@ -335,6 +342,7 @@ function bindEvents() {
   els.openRegisterBtn?.addEventListener('click', () => openAuthInline('register'));
   els.openLoginBtn?.addEventListener('click', () => openAuthInline('login'));
   els.closeAuthInlineBtn?.addEventListener('click', closeAuthInline);
+  els.authInlineBackdrop?.addEventListener('click', closeAuthInline);
   els.gateSubmitBtn?.addEventListener('click', () => (state.authInlineMode === 'register' ? handleRegister() : handleLogin()).catch(handleError));
   els.gateMagicLinkBtn?.addEventListener('click', () => handleMagicLink().catch(handleError));
   els.gateSaveConfigBtn?.addEventListener('click', () => applyConnectionSettings({

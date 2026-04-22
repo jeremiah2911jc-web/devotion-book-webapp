@@ -141,18 +141,23 @@ body.auth-locked .app-shell { display: none; }
   background: #d8d4d5;
   color: #111618;
 }
-.auth-inline-panel,
 .auth-settings-card,
 .auth-feature-sheet {
   margin-top: 18px;
   text-align: left;
 }
-.auth-inline-panel {
-  padding: 18px;
-  border-radius: 22px;
-  background: rgba(255,255,255,0.92);
-  border: 1px solid rgba(191,211,208,0.84);
-  box-shadow: 0 20px 40px rgba(47, 61, 64, 0.08);
+.auth-input-modal {
+  z-index: 1400;
+}
+.auth-input-modal-card {
+  width: min(92vw, 520px);
+  text-align: left;
+}
+.auth-modal-header {
+  margin-bottom: 8px;
+}
+.auth-modal-actions {
+  margin-top: 2px;
 }
 .auth-settings-sheet {
   margin-top: 18px;

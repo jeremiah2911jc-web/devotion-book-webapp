@@ -30,25 +30,29 @@
           <button id="open-login-btn" class="auth-cta auth-cta-secondary" type="button">登入</button>
         </div>
 
-        <section id="auth-inline-panel" class="auth-inline-panel hidden" aria-live="polite">
-          <div class="panel-header">
-            <h3 id="auth-inline-title">建立帳戶</h3>
-            <button id="close-auth-inline-btn" class="ghost-btn small" type="button">收合</button>
-          </div>
-          <div class="form-stack">
-            <label>Email
-              <input id="gate-auth-email" type="email" placeholder="name@example.com" />
-            </label>
-            <label>Password
-              <input id="gate-auth-password" type="password" placeholder="至少 6 碼" />
-            </label>
-            <div class="row wrap gap-sm">
-              <button id="gate-submit-btn" class="primary-btn" type="button">建立帳戶</button>
-              <button id="gate-magic-link-btn" class="ghost-btn" type="button">Magic Link</button>
+        <div id="auth-inline-panel" class="modal auth-input-modal hidden" aria-hidden="true" aria-live="polite">
+          <div id="auth-inline-backdrop" class="modal-backdrop"></div>
+          <div class="modal-card auth-input-modal-card">
+            <div class="panel-header auth-modal-header">
+              <h3 id="auth-inline-title">建立帳戶</h3>
+              <button id="close-auth-inline-btn" class="ghost-btn small" type="button">關閉</button>
             </div>
-            <p id="auth-inline-hint" class="caption">尚未設定 Supabase 時，會先使用本機模式建立或登入帳號。</p>
+            <p id="auth-inline-intro" class="modal-intro">輸入 Email 與密碼後即可建立帳戶或登入。</p>
+            <div class="form-stack">
+              <label>Email
+                <input id="gate-auth-email" type="email" placeholder="name@example.com" />
+              </label>
+              <label>Password
+                <input id="gate-auth-password" type="password" placeholder="至少 6 碼" />
+              </label>
+              <div class="row wrap gap-sm auth-modal-actions">
+                <button id="gate-submit-btn" class="primary-btn" type="button">建立帳戶</button>
+                <button id="gate-magic-link-btn" class="ghost-btn" type="button">Magic Link</button>
+              </div>
+              <p id="auth-inline-hint" class="caption">尚未設定 Supabase 時，會先使用本機模式建立或登入帳號。</p>
+            </div>
           </div>
-        </section>
+        </div>
 
         <section id="auth-feature-sheet" class="auth-feature-sheet hidden">
           <div class="auth-feature-item"><strong>雲端同步</strong><span>登入後可跨裝置同步札記、書籍與快照。</span></div>
