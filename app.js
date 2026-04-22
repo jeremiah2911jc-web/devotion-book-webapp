@@ -92,7 +92,9 @@ const els = {
   selectedBookPanel: document.getElementById('selected-book-panel'),
   bookCoverPreview: document.getElementById('book-cover-preview'),
   chapterSourceNote: document.getElementById('chapter-source-note'),
+  selectedNotePreview: document.getElementById('selected-note-preview'),
   addChapterBtn: document.getElementById('add-chapter-btn'),
+  tocPreviewList: document.getElementById('toc-preview-list'),
   chaptersList: document.getElementById('chapters-list'),
   createSnapshotBtn: document.getElementById('create-snapshot-btn'),
   exportEpubBtn: document.getElementById('export-epub-btn'),
@@ -594,6 +596,7 @@ function bindEvents() {
     }
   });
   els.addChapterBtn.addEventListener('click', () => addChapterFromSelectedNote().catch(handleError));
+  els.chapterSourceNote.addEventListener('change', renderSelectedNotePreview);
   els.createSnapshotBtn.addEventListener('click', () => createSnapshotForSelectedBook().catch(handleError));
   els.exportEpubBtn.addEventListener('click', () => exportSelectedBookEpub().catch(handleError));
   els.supportBtn?.addEventListener('click', openSupportModal);
@@ -1217,7 +1220,53 @@ async function deleteBook() {
 }
 
 function updateChapterSourceOptions() {
-  els.chapterSourceNote.innerHTML = state.notes.map(note => `<option value="${note.id}">${escapeHtml(note.title)}</option>`).join('') || '<option value="">請先建立札記</option>';
+  const selectedNoteId = els.chapterSourceNote.value;
+  els.chapterSourceNote.innerHTML = [
+    '<option value="">請先選擇一篇札記</option>',
+    ...state.notes.map(note => `<option value="${note.id}">${escapeHtml(note.title)}</option>`),
+  ].join('');
+  if (state.notes.some(note => note.id === selectedNoteId)) {
+    els.chapterSourceNote.value = selectedNoteId;
+  }
+  renderSelectedNotePreview();
+}
+
+function previewText(text = '', maxLength = 100) {
+  const normalized = String(text || '').replace(/\s+/g, ' ').trim();
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength)}...` : normalized;
+}
+
+function renderSelectedNotePreview() {
+  if (!els.selectedNotePreview) return;
+  const note = getNoteById(els.chapterSourceNote.value);
+  if (!note) {
+    els.selectedNotePreview.className = 'selected-note-preview empty-note-preview';
+    els.selectedNotePreview.textContent = '請先選擇一篇札記';
+    return;
+  }
+  const excerpt = previewText(note.summary || note.content || '', 100);
+  els.selectedNotePreview.className = 'selected-note-preview';
+  els.selectedNotePreview.innerHTML = `
+    <h4>${escapeHtml(note.title || '未命名札記')}</h4>
+    <div class="card-meta"><span>${escapeHtml(note.scripture_reference || '未填經文')}</span></div>
+    <p>${escapeHtml(excerpt || '這篇札記尚未填寫摘要。')}</p>
+  `;
+}
+
+function renderTocPreview(book) {
+  if (!els.tocPreviewList) return;
+  const tocChapters = (book.chapters || [])
+    .map((chapter, index) => ({ chapter, index }))
+    .filter(item => item.chapter.include_in_toc);
+  if (!tocChapters.length) {
+    els.tocPreviewList.className = 'toc-preview-list empty-state';
+    els.tocPreviewList.textContent = '尚未有列入目錄的章節。';
+    return;
+  }
+  els.tocPreviewList.className = 'toc-preview-list';
+  els.tocPreviewList.innerHTML = `<ol>${tocChapters.map(({ chapter, index }) => `
+    <li><span>第 ${index + 1} 章</span><strong>${escapeHtml(chapter.chapter_title || '未命名章節')}</strong></li>
+  `).join('')}</ol>`;
 }
 
 function getSelectedBook() {
@@ -1242,6 +1291,8 @@ function renderSelectedBookPanel() {
       <div class="caption">${escapeHtml(book.author_name || '')}</div>
     </div>
   `;
+  renderSelectedNotePreview();
+  renderTocPreview(book);
   renderChaptersList(book);
 }
 

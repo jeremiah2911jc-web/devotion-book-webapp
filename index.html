@@ -347,9 +347,18 @@
             <div id="selected-book-empty" class="empty-state">請先選取一本書。</div>
             <div id="selected-book-panel" class="hidden">
               <div id="book-cover-preview" class="cover-preview"></div>
-              <div class="row gap-sm wrap mt-md">
+              <div class="chapter-picker mt-md">
+                <label for="chapter-source-note">選擇一篇札記作為新章節</label>
                 <select id="chapter-source-note"></select>
-                <button id="add-chapter-btn" class="secondary-btn">加入章節</button>
+                <div id="selected-note-preview" class="selected-note-preview">請先選擇一篇札記</div>
+                <button id="add-chapter-btn" class="secondary-btn">加入這篇札記到書中</button>
+              </div>
+              <section class="toc-preview mt-md">
+                <h3>目錄預覽</h3>
+                <div id="toc-preview-list" class="toc-preview-list empty-state">尚未有列入目錄的章節。</div>
+              </section>
+              <div class="chapter-list-heading mt-md">
+                <h3>目前章節順序</h3>
               </div>
               <div id="chapters-list" class="list-stack mt-md empty-state">尚未加入任何章節。</div>
               <div class="row gap-sm wrap mt-lg">

@@ -314,6 +314,53 @@ input:focus, textarea:focus, select:focus {
 }
 .cover-preview img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .cover-overlay { position: relative; z-index: 1; background: rgba(57, 92, 96, 0.44); color: #fff; padding: 14px; border-radius: 14px; width: 100%; backdrop-filter: blur(3px); }
+.chapter-picker { display: grid; gap: 10px; }
+.chapter-picker .secondary-btn { justify-self: start; }
+.selected-note-preview {
+  border: 1px solid rgba(191,211,208,0.78);
+  border-radius: 16px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(246,251,251,0.88));
+}
+.selected-note-preview h4 {
+  margin: 0 0 8px;
+  color: #31545a;
+  font-size: 15px;
+}
+.selected-note-preview p {
+  margin: 0;
+  color: #31484d;
+  line-height: 1.65;
+}
+.empty-note-preview { color: var(--muted); border-style: dashed; background: rgba(255,255,255,0.45); }
+.toc-preview {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgba(191,211,208,0.78);
+  border-radius: 16px;
+  background: rgba(255,255,255,0.58);
+}
+.toc-preview h3,
+.chapter-list-heading h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #31545a;
+}
+.toc-preview-list ol {
+  margin: 0;
+  padding-left: 22px;
+  display: grid;
+  gap: 8px;
+}
+.toc-preview-list li {
+  line-height: 1.55;
+  color: #31484d;
+}
+.toc-preview-list li span {
+  color: var(--muted);
+  margin-right: 8px;
+}
 .chapter-item { display: grid; gap: 10px; border: 1px solid rgba(191,211,208,0.85); border-radius: 16px; padding: 14px; background: rgba(255,255,255,0.84); }
 .chapter-title-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
 .chapter-controls { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -360,6 +407,8 @@ input:focus, textarea:focus, select:focus {
   .main { padding: 18px; }
   .topbar { flex-direction: column; align-items: flex-start; }
   .summary-cards { grid-template-columns: 1fr; }
+  .chapter-picker .secondary-btn { width: 100%; }
+  .chapter-title-row { grid-template-columns: 1fr; }
   .site-footer { padding-bottom: 34px; }
   .auth-gate { padding-inline: 20px; }
   .auth-gate-topbar { gap: 12px; }
