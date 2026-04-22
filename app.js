@@ -1468,7 +1468,7 @@ function renderSnapshots() {
 
 function setView(viewName) {
   const titleMap = {
-    dashboard: ['總覽', '先登入，再建立札記與書籍專案。'],
+    dashboard: ['總覽', ''],
     notes: ['札記庫', '建立、編輯並整理靈修札記。'],
     books: ['書籍專案', '設定書籍並編排章節與匯出。'],
     snapshots: ['快照備份', '查看每次建立的書籍快照。'],
@@ -1477,6 +1477,7 @@ function setView(viewName) {
   els.views.forEach(view => view.classList.toggle('active', view.id === `view-${viewName}`));
   els.viewTitle.textContent = titleMap[viewName][0];
   els.viewSubtitle.textContent = titleMap[viewName][1];
+  els.viewSubtitle.classList.toggle('hidden', viewName === 'dashboard');
 }
 
 function formatDate(value) {

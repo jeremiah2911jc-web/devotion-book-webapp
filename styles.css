@@ -279,9 +279,9 @@ input:focus, textarea:focus, select:focus {
 .card-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
 .empty-state { color: var(--muted); border: 1px dashed rgba(191,211,208,0.9); border-radius: 16px; padding: 24px; text-align: center; background: rgba(255,255,255,0.45); }
 .summary-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.summary-card { border: 1px solid rgba(191,211,208,0.8); border-radius: 16px; padding: 18px; background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(246,251,251,0.85)); }
-.summary-card span { display: block; color: var(--muted); margin-bottom: 8px; }
-.summary-card strong { font-size: 28px; color: #2b6266; }
+.summary-card { border: 1px solid rgba(191,211,208,0.8); border-radius: 16px; padding: 14px 16px; background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(246,251,251,0.85)); display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.summary-card span { color: var(--muted); }
+.summary-card strong { font-size: 22px; color: #2b6266; }
 .steps { margin: 0; padding-left: 18px; line-height: 1.9; }
 .status-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
 .status-list li { display: flex; justify-content: space-between; gap: 10px; }
