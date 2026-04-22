@@ -491,7 +491,7 @@ function formatFetchedVerses(verses = []) {
     const chapter = verse.chapter ?? '';
     const verseNo = verse.verse ?? '';
     const prefix = index === 0
-      ? `${verse.book_name || ''}${chapter}:${verseNo}`
+      ? `${verseNo}`
       : previous && previous.chapter === chapter
         ? `${verseNo}`
         : `${chapter}:${verseNo}`;
