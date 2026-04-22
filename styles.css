@@ -28,6 +28,10 @@ html, body {
 body { min-height: 100vh; }
 
 body.auth-locked .app-shell { display: none; }
+body:not(.auth-settings-visible) #auth-settings-btn,
+body:not(.auth-settings-visible) #auth-settings-sheet {
+  display: none !important;
+}
 .auth-gate {
   min-height: 100vh;
   padding: 18px 18px 40px;
