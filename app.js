@@ -105,6 +105,7 @@ const state = {
   scriptureFetchTimer: null,
   scriptureAbortController: null,
   scriptureLastAppliedBlock: '',
+  scriptureAppliedBlocks: [],
 };
 
 function loadJson(key, fallback) {
@@ -460,15 +461,17 @@ function setScriptureStatus(message = '', isError = false) {
   els.scriptureFetchStatus.classList.toggle('error-text', !!isError);
 }
 
-function resetScripturePreview() {
+function resetScripturePreview({ clearApplied = false } = {}) {
   if (state.scriptureAbortController) {
     state.scriptureAbortController.abort();
     state.scriptureAbortController = null;
   }
   state.scriptureLastAppliedBlock = '';
+  if (clearApplied) state.scriptureAppliedBlocks = [];
   els.scripturePreview.innerHTML = '';
   els.scripturePreview.classList.add('hidden');
   delete els.scripturePreview.dataset.serialized;
+  delete els.scripturePreview.dataset.lastRefs;
   setScriptureStatus('');
 }
 
@@ -558,20 +561,40 @@ function buildScriptureBlock(items) {
   return items.map(item => `${item.query}\n${item.text}`).join('\n\n');
 }
 
+function removeKnownScriptureBlocksFromTop(content = '') {
+  let next = String(content || '').trimStart();
+  const knownBlocks = [...new Set([
+    ...(Array.isArray(state.scriptureAppliedBlocks) ? state.scriptureAppliedBlocks : []),
+    state.scriptureLastAppliedBlock,
+  ].filter(Boolean))].sort((a, b) => b.length - a.length);
+
+  let removed = false;
+  do {
+    removed = false;
+    for (const block of knownBlocks) {
+      const withSpacing = `${block}\n\n`;
+      if (next.startsWith(withSpacing)) {
+        next = next.slice(withSpacing.length).trimStart();
+        removed = true;
+        break;
+      }
+      if (next === block) {
+        next = '';
+        removed = true;
+        break;
+      }
+    }
+  } while (removed);
+
+  return next;
+}
+
 function applyScriptureBlockToNoteContent(items) {
   let content = stripScriptureMarkers(els.noteContent.value || '');
   const scriptureBlock = buildScriptureBlock(items);
   const oldMarkedBlockPattern = /【經文引用開始】[\s\S]*?【經文引用結束】\n*/;
   content = content.replace(oldMarkedBlockPattern, '').trimStart();
-
-  if (state.scriptureLastAppliedBlock) {
-    const lastAppliedWithSpacing = `${state.scriptureLastAppliedBlock}\n\n`;
-    if (content.startsWith(lastAppliedWithSpacing)) {
-      content = content.slice(lastAppliedWithSpacing.length).trimStart();
-    } else if (content === state.scriptureLastAppliedBlock) {
-      content = '';
-    }
-  }
+  content = removeKnownScriptureBlocksFromTop(content);
 
   const sameBlockWithSpacing = `${scriptureBlock}\n\n`;
   if (content.startsWith(sameBlockWithSpacing)) {
@@ -582,6 +605,10 @@ function applyScriptureBlockToNoteContent(items) {
 
   const next = content ? `${scriptureBlock}\n\n${content}` : scriptureBlock;
   state.scriptureLastAppliedBlock = scriptureBlock;
+  state.scriptureAppliedBlocks = [
+    scriptureBlock,
+    ...(Array.isArray(state.scriptureAppliedBlocks) ? state.scriptureAppliedBlocks : []).filter(block => block && block !== scriptureBlock),
+  ].slice(0, 12);
   els.noteContent.value = next;
 }
 
@@ -623,6 +650,8 @@ function populateNoteForm(noteId) {
   els.noteCategory.value = note.category || '';
   els.noteTags.value = (note.tags || []).join(', ');
   els.noteSummary.value = note.summary || '';
+  state.scriptureAppliedBlocks = [];
+  state.scriptureLastAppliedBlock = '';
   els.noteContent.value = stripScriptureMarkers(note.content || '');
   els.deleteNoteBtn.classList.remove('hidden');
   if (note.scripture_reference) {
@@ -636,7 +665,7 @@ function clearNoteForm() {
   els.noteForm.reset();
   els.noteId.value = '';
   els.deleteNoteBtn.classList.add('hidden');
-  resetScripturePreview();
+  resetScripturePreview({ clearApplied: true });
   els.scriptureAppendToContent.checked = true;
 }
 
