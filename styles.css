@@ -280,6 +280,24 @@ input:focus, textarea:focus, select:focus {
 .steps { margin: 0; padding-left: 18px; line-height: 1.9; }
 .status-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
 .status-list li { display: flex; justify-content: space-between; gap: 10px; }
+.sync-panel {
+  margin: 12px 0 14px;
+  padding: 12px;
+  border: 1px solid rgba(191,211,208,0.82);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(248,252,252,0.96), rgba(255,255,255,0.9));
+  display: grid;
+  gap: 8px;
+}
+.sync-meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  font-size: 14px;
+}
+.sync-meta-row strong { color: #2f676b; }
+.sync-panel .caption { margin: 2px 0 4px; }
 .view { display: none; }
 .view.active { display: block; }
 .hidden { display: none !important; }

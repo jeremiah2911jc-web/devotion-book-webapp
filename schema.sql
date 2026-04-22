@@ -23,7 +23,7 @@ create table if not exists public.book_projects (
   author_name text,
   description text,
   template_code text not null default 'devotion',
-  language text not null default 'zh-Hant',
+  language text not null default 'mul',
   cover_data_url text,
   preface text,
   afterword text,
@@ -69,3 +69,43 @@ drop policy if exists "snapshots_insert_own" on public.book_snapshots;
 create policy "snapshots_insert_own" on public.book_snapshots for insert with check (auth.uid() = user_id);
 drop policy if exists "snapshots_delete_own" on public.book_snapshots;
 create policy "snapshots_delete_own" on public.book_snapshots for delete using (auth.uid() = user_id);
+
+
+create index if not exists devotion_notes_user_updated_idx on public.devotion_notes(user_id, updated_at desc);
+create index if not exists book_projects_user_updated_idx on public.book_projects(user_id, updated_at desc);
+create index if not exists book_snapshots_user_created_idx on public.book_snapshots(user_id, created_at desc);
+
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists devotion_notes_set_updated_at on public.devotion_notes;
+create trigger devotion_notes_set_updated_at
+before update on public.devotion_notes
+for each row execute function public.set_updated_at();
+
+drop trigger if exists book_projects_set_updated_at on public.book_projects;
+create trigger book_projects_set_updated_at
+before update on public.book_projects
+for each row execute function public.set_updated_at();
+
+do $$ begin
+  alter publication supabase_realtime add table public.devotion_notes;
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  alter publication supabase_realtime add table public.book_projects;
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  alter publication supabase_realtime add table public.book_snapshots;
+exception when duplicate_object then null;
+end $$;

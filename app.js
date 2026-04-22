@@ -5,6 +5,7 @@ const STORAGE_KEYS = {
   books: 'devotion-app-books',
   snapshots: 'devotion-app-snapshots',
   accounts: 'devotion-app-local-accounts',
+  deviceId: 'devotion-app-device-id',
 };
 
 const TEMPLATE_LABELS = {
@@ -85,8 +86,16 @@ const els = {
   exportEpubBtn: document.getElementById('export-epub-btn'),
   snapshotsList: document.getElementById('snapshots-list'),
   statusStorage: document.getElementById('status-storage'),
+  statusSync: document.getElementById('status-sync'),
   statusCurrentBook: document.getElementById('status-current-book'),
   statusChapterCount: document.getElementById('status-chapter-count'),
+  cloudSyncPanel: document.getElementById('cloud-sync-panel'),
+  syncStatusText: document.getElementById('sync-status-text'),
+  syncLastTime: document.getElementById('sync-last-time'),
+  syncDetailText: document.getElementById('sync-detail-text'),
+  forceSyncBtn: document.getElementById('force-sync-btn'),
+  pushLocalToCloudBtn: document.getElementById('push-local-to-cloud-btn'),
+  downloadBackupBtn: document.getElementById('download-backup-btn'),
   toast: document.getElementById('toast'),
   supportBtn: document.getElementById('support-btn'),
   supportModal: document.getElementById('support-modal'),
@@ -131,6 +140,12 @@ const state = {
   scriptureLastAppliedBlock: '',
   scriptureAppliedBlocks: [],
   authInlineMode: 'register',
+  deviceId: getOrCreateDeviceId(),
+  realtimeChannel: null,
+  syncStatus: '本機模式',
+  syncDetail: '目前資料只保存在這台裝置。',
+  lastSyncAt: '',
+  syncReloadTimer: null,
 };
 
 function loadJson(key, fallback) {
@@ -149,6 +164,152 @@ function uid(prefix = 'id') {
 }
 function nowIso() {
   return new Date().toISOString();
+}
+function getOrCreateDeviceId() {
+  let deviceId = localStorage.getItem(STORAGE_KEYS.deviceId);
+  if (!deviceId) {
+    deviceId = uid('device');
+    localStorage.setItem(STORAGE_KEYS.deviceId, deviceId);
+  }
+  return deviceId;
+}
+function shortDeviceId() {
+  return state.deviceId?.split('_').slice(-1)[0] || 'local';
+}
+function setSyncState({ status, detail, at } = {}) {
+  if (typeof status === 'string') state.syncStatus = status;
+  if (typeof detail === 'string') state.syncDetail = detail;
+  if (typeof at === 'string') state.lastSyncAt = at;
+}
+function markCloudSynced(detail = '雲端資料已同步。') {
+  setSyncState({ status: '已同步', detail: `${detail} 裝置代號：${shortDeviceId()}`, at: nowIso() });
+}
+function teardownCloudRealtime() {
+  if (!state.realtimeChannel || !state.supabase) {
+    state.realtimeChannel = null;
+    return;
+  }
+  try {
+    state.supabase.removeChannel(state.realtimeChannel);
+  } catch (error) {
+    console.warn('removeChannel failed', error);
+  }
+  state.realtimeChannel = null;
+}
+function scheduleCloudReload(reason = '雲端更新') {
+  clearTimeout(state.syncReloadTimer);
+  state.syncReloadTimer = setTimeout(() => {
+    loadAllData({ silent: true, syncReason: reason }).catch(handleError);
+  }, 450);
+}
+function setupCloudRealtime() {
+  teardownCloudRealtime();
+  if (!(state.supabase && state.currentUser)) return;
+  const userId = state.currentUser.id;
+  const channel = state.supabase.channel(`devotion-sync-${userId}`);
+  ['devotion_notes', 'book_projects', 'book_snapshots'].forEach((table) => {
+    channel.on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table,
+      filter: `user_id=eq.${userId}`,
+    }, () => scheduleCloudReload('其他裝置有更新，已重新同步。'));
+  });
+  channel.subscribe((status) => {
+    if (status === 'SUBSCRIBED') {
+      setSyncState({ status: '即時同步中', detail: `已連線雲端，即時監看其他裝置變更。裝置代號：${shortDeviceId()}` });
+      refreshUi();
+    }
+    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+      setSyncState({ status: '同步異常', detail: '雲端即時同步通道異常，仍可手動重新整理資料。' });
+      refreshUi();
+    }
+  });
+  state.realtimeChannel = channel;
+}
+function collectMatchingLocalDataForCloudUser() {
+  const email = String(state.currentUser?.email || '').trim().toLowerCase();
+  if (!email) return { notes: [], books: [], snapshots: [], localUserId: null };
+  const localAccount = findLocalAccountByEmail(email);
+  const localUserId = localAccount?.id || null;
+  if (!localUserId) return { notes: [], books: [], snapshots: [], localUserId: null };
+  return {
+    localUserId,
+    notes: loadJson(STORAGE_KEYS.notes, []).filter(item => item.user_id === localUserId),
+    books: loadJson(STORAGE_KEYS.books, []).filter(item => item.user_id === localUserId),
+    snapshots: loadJson(STORAGE_KEYS.snapshots, []).filter(item => item.user_id === localUserId),
+  };
+}
+function isIncomingNewer(localItem, remoteItem, timeField = 'updated_at') {
+  if (!remoteItem) return true;
+  const localTime = new Date(localItem?.[timeField] || localItem?.created_at || 0).getTime();
+  const remoteTime = new Date(remoteItem?.[timeField] || remoteItem?.created_at || 0).getTime();
+  return localTime >= remoteTime;
+}
+async function uploadLocalDataToCloud() {
+  requireUser();
+  if (!state.supabase) throw new Error('請先完成 Supabase 設定並登入同一個雲端帳號。');
+  const localPack = collectMatchingLocalDataForCloudUser();
+  if (!localPack.localUserId) throw new Error('這台裝置找不到同 Email 的本機資料可上傳。');
+
+  const remoteNotes = new Map(state.notes.map(item => [item.id, item]));
+  const remoteBooks = new Map(state.books.map(item => [item.id, item]));
+  const remoteSnapshots = new Map(state.snapshots.map(item => [item.id, item]));
+
+  const notesToUpload = localPack.notes
+    .filter(item => isIncomingNewer(item, remoteNotes.get(item.id)))
+    .map(item => ({ ...item, user_id: state.currentUser.id }));
+  const booksToUpload = localPack.books
+    .filter(item => isIncomingNewer(item, remoteBooks.get(item.id)))
+    .map(item => ({
+      ...item,
+      user_id: state.currentUser.id,
+      language: resolveBookLanguage(item.language),
+      chapters: JSON.stringify(item.chapters || []),
+    }));
+  const snapshotsToUpload = localPack.snapshots
+    .filter(item => !remoteSnapshots.has(item.id))
+    .map(item => ({
+      ...item,
+      user_id: state.currentUser.id,
+      snapshot_json: JSON.stringify(item.snapshot_json || null),
+    }));
+
+  if (!notesToUpload.length && !booksToUpload.length && !snapshotsToUpload.length) {
+    throw new Error('本機沒有比雲端更新的資料可上傳。');
+  }
+
+  setSyncState({ status: '同步中', detail: '正在把本機資料上傳到雲端…' });
+  refreshUi();
+  if (notesToUpload.length) {
+    const { error } = await state.supabase.from('devotion_notes').upsert(notesToUpload);
+    if (error) throw error;
+  }
+  if (booksToUpload.length) {
+    const { error } = await state.supabase.from('book_projects').upsert(booksToUpload);
+    if (error) throw error;
+  }
+  if (snapshotsToUpload.length) {
+    const { error } = await state.supabase.from('book_snapshots').upsert(snapshotsToUpload);
+    if (error) throw error;
+  }
+  await loadAllData({ silent: true, syncReason: '本機資料已上傳到雲端。' });
+  showToast(`已上傳：札記 ${notesToUpload.length}、書籍 ${booksToUpload.length}、快照 ${snapshotsToUpload.length}`);
+}
+function downloadBackupJson() {
+  requireUser();
+  const payload = {
+    exported_at: nowIso(),
+    device_id: state.deviceId,
+    user: { id: state.currentUser?.id, email: state.currentUser?.email || '' },
+    notes: state.notes,
+    books: state.books,
+    snapshots: state.snapshots,
+  };
+  const stamp = nowIso().slice(0, 19).replace(/[T:]/g, '-');
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+  downloadBlob(`devotion-backup-${stamp}.json`, blob);
+  showToast('備份 JSON 已下載。');
 }
 function escapeHtml(input = '') {
   return input
@@ -285,6 +446,7 @@ function closeAuthSettings() {
   els.authSettingsSheet?.classList.add('hidden');
 }
 async function applyConnectionSettings({ supabaseUrl = '', supabaseAnonKey = '' } = {}, successMessage = '') {
+  teardownCloudRealtime();
   state.config = { supabaseUrl: supabaseUrl.trim(), supabaseAnonKey: supabaseAnonKey.trim() };
   saveJson(STORAGE_KEYS.config, state.config);
   syncConfigInputs();
@@ -292,10 +454,12 @@ async function applyConnectionSettings({ supabaseUrl = '', supabaseAnonKey = '' 
   if (state.supabase) {
     const { data } = await state.supabase.auth.getSession();
     state.currentUser = data.session?.user || null;
+    if (state.currentUser) setupCloudRealtime();
   } else {
     state.currentUser = getLocalUser();
+    setSyncState({ status: '本機模式', detail: '目前資料只保存在這台裝置。', at: '' });
   }
-  await loadAllData();
+  await loadAllData({ silent: true, syncReason: state.supabase ? '雲端設定已更新。' : '已切回本機模式。' });
   refreshUi();
   if (successMessage) showToast(successMessage);
 }
@@ -310,15 +474,23 @@ async function bootstrap() {
   if (state.supabase) {
     const { data } = await state.supabase.auth.getSession();
     state.currentUser = data.session?.user || null;
+    if (state.currentUser) setupCloudRealtime();
     state.supabase.auth.onAuthStateChange((_event, session) => {
       state.currentUser = session?.user || null;
+      teardownCloudRealtime();
+      if (state.currentUser) {
+        setupCloudRealtime();
+      } else if (state.supabase) {
+        setSyncState({ status: '尚未登入', detail: '已設定雲端，但目前還沒有登入帳號。', at: '' });
+      }
       refreshUi();
-      loadAllData().catch(console.error);
+      loadAllData({ silent: true, syncReason: session?.user ? '已連線到雲端帳號。' : '已登出雲端帳號。' }).catch(console.error);
     });
   } else {
     state.currentUser = getLocalUser();
+    setSyncState({ status: '本機模式', detail: '目前資料只保存在這台裝置。', at: '' });
   }
-  await loadAllData();
+  await loadAllData({ silent: true });
   refreshUi();
 }
 
@@ -351,7 +523,10 @@ function bindEvents() {
   }, (els.gateSupabaseUrl.value.trim() && els.gateSupabaseAnonKey.value.trim()) ? 'Supabase 設定已儲存。' : '已切回本機模式。').then(closeAuthSettings).catch(handleError));
   els.gateClearConfigBtn?.addEventListener('click', () => clearConnectionSettings().then(closeAuthSettings).catch(handleError));
   els.signoutBtn.addEventListener('click', () => handleSignOut().catch(handleError));
-  els.refreshBtn.addEventListener('click', () => loadAllData().then(refreshUi).then(() => showToast('資料已重新整理。')).catch(handleError));
+  els.refreshBtn.addEventListener('click', () => loadAllData({ syncReason: '已手動重新整理雲端資料。' }).then(refreshUi).then(() => showToast('資料已重新整理。')).catch(handleError));
+  els.forceSyncBtn?.addEventListener('click', () => loadAllData({ syncReason: '已手動同步雲端資料。' }).then(() => showToast('同步完成。')).catch(handleError));
+  els.pushLocalToCloudBtn?.addEventListener('click', () => uploadLocalDataToCloud().catch(handleError));
+  els.downloadBackupBtn?.addEventListener('click', () => { try { downloadBackupJson(); } catch (error) { handleError(error); } });
 
   els.navLinks.forEach(btn => btn.addEventListener('click', () => setView(btn.dataset.view)));
   els.quickNewNote.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
@@ -381,6 +556,16 @@ function bindEvents() {
     if (event.key === 'Escape' && !els.authSettingsSheet?.classList.contains('hidden')) closeAuthSettings();
     if (event.key === 'Escape' && !els.authInlinePanel?.classList.contains('hidden')) closeAuthInline();
   });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && state.supabase && state.currentUser) {
+      loadAllData({ silent: true, syncReason: '已重新連線並同步最新資料。' }).catch(console.error);
+    }
+  });
+  window.addEventListener('online', () => {
+    if (state.supabase && state.currentUser) {
+      loadAllData({ silent: true, syncReason: '網路恢復後已重新同步。' }).catch(console.error);
+    }
+  });
 }
 
 
@@ -399,7 +584,11 @@ async function handleRegister() {
   if (!email) throw new Error('請輸入 Email。');
   if (!password || password.length < 6) throw new Error('密碼至少需要 6 碼。');
   if (state.supabase) {
-    const { error } = await state.supabase.auth.signUp({ email, password });
+    const { error } = await state.supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: window.location.origin + window.location.pathname },
+    });
     if (error) throw error;
     showToast('註冊完成，請依 Supabase 設定確認信箱。');
     return;
@@ -442,12 +631,16 @@ async function handleMagicLink() {
   const { email } = getAuthCredentials();
   if (!email) throw new Error('請先輸入 Email。');
   if (!state.supabase) throw new Error('Magic Link 需要先設定 Supabase。');
-  const { error } = await state.supabase.auth.signInWithOtp({ email });
+  const { error } = await state.supabase.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: window.location.origin + window.location.pathname },
+  });
   if (error) throw error;
   showToast('Magic Link 已寄出。');
 }
 
 async function handleSignOut() {
+  teardownCloudRealtime();
   if (state.supabase) {
     const { error } = await state.supabase.auth.signOut();
     if (error) throw error;
@@ -455,8 +648,9 @@ async function handleSignOut() {
     clearLocalUser();
     state.currentUser = null;
   }
+  setSyncState({ status: state.supabase ? '尚未登入' : '本機模式', detail: state.supabase ? '雲端設定仍在，但目前尚未登入帳號。' : '目前資料只保存在這台裝置。', at: '' });
   state.selectedBookId = null;
-  await loadAllData();
+  await loadAllData({ silent: true });
   setView('dashboard');
   refreshUi();
   showToast('已登出。');
@@ -469,9 +663,11 @@ function requireUser() {
   if (!state.currentUser) throw new Error('請先登入或以本機模式建立測試帳號。');
 }
 
-async function loadAllData() {
+async function loadAllData({ silent = false, syncReason = '' } = {}) {
   if (state.supabase && state.currentUser) {
     const userId = state.currentUser.id;
+    setSyncState({ status: '同步中', detail: '正在從雲端讀取資料…' });
+    if (!silent) refreshUi();
     const [notesRes, booksRes, snapshotsRes] = await Promise.all([
       state.supabase.from('devotion_notes').select('*').eq('user_id', userId).order('updated_at', { ascending: false }),
       state.supabase.from('book_projects').select('*').eq('user_id', userId).order('updated_at', { ascending: false }),
@@ -485,13 +681,20 @@ async function loadAllData() {
       ...book,
       chapters: parseMaybeJson(book.chapters, []),
       cover_data_url: book.cover_data_url || '',
+      language: resolveBookLanguage(book.language),
     }));
     state.snapshots = (snapshotsRes.data || []).map(s => ({ ...s, snapshot_json: parseMaybeJson(s.snapshot_json, null) }));
+    markCloudSynced(syncReason || '雲端資料已讀取完成。');
   } else {
     const userId = getUserId();
     state.notes = loadJson(STORAGE_KEYS.notes, []).filter(item => item.user_id === userId);
-    state.books = loadJson(STORAGE_KEYS.books, []).filter(item => item.user_id === userId);
+    state.books = loadJson(STORAGE_KEYS.books, []).filter(item => item.user_id === userId).map(book => ({ ...book, language: resolveBookLanguage(book.language) }));
     state.snapshots = loadJson(STORAGE_KEYS.snapshots, []).filter(item => item.user_id === userId);
+    setSyncState({
+      status: state.supabase ? '尚未登入' : '本機模式',
+      detail: state.supabase ? '已設定雲端，但目前還沒有登入帳號。' : '目前資料只保存在這台裝置。',
+      at: state.supabase ? state.lastSyncAt : '',
+    });
   }
   if (!state.books.find(b => b.id === state.selectedBookId)) {
     state.selectedBookId = state.books[0]?.id || null;
@@ -512,6 +715,7 @@ function resolveBookLanguage(value = '') {
 function refreshUi() {
   els.authModeBadge.textContent = state.supabase ? '雲端模式' : '本機模式';
   els.statusStorage.textContent = state.supabase ? 'Supabase' : 'Local';
+  if (els.statusSync) els.statusSync.textContent = state.syncStatus || '未啟用';
   els.authForms.classList.toggle('hidden', !!state.currentUser);
   els.authUser.classList.toggle('hidden', !state.currentUser);
   els.currentUserText.textContent = state.currentUser ? `目前使用者：${state.currentUser.email || state.currentUser.id}` : '尚未登入';
@@ -524,6 +728,11 @@ function refreshUi() {
       : '尚未設定 Supabase，現在會先使用本機模式建立或登入帳號。';
   }
   if (els.gateSupabaseUrl && document.activeElement !== els.gateSupabaseUrl && document.activeElement !== els.gateSupabaseAnonKey) syncConfigInputs();
+  const showCloudSyncTools = !!(state.supabase && state.currentUser);
+  els.cloudSyncPanel?.classList.toggle('hidden', !showCloudSyncTools);
+  if (els.syncStatusText) els.syncStatusText.textContent = state.syncStatus || '未啟用';
+  if (els.syncLastTime) els.syncLastTime.textContent = state.lastSyncAt ? formatDate(state.lastSyncAt) : '尚未同步';
+  if (els.syncDetailText) els.syncDetailText.textContent = state.syncDetail || '登入同一個雲端帳號後，可在多裝置同步。';
   if (state.currentUser) {
     closeAuthInline();
     closeAuthSettings();
@@ -829,7 +1038,7 @@ async function saveNote() {
     saveJson(STORAGE_KEYS.notes, notes);
   }
   clearNoteForm();
-  await loadAllData();
+  await loadAllData({ silent: true, syncReason: state.supabase ? '札記已同步到雲端。' : '' });
   setView('notes');
   showToast('札記已儲存。');
 }
@@ -847,7 +1056,7 @@ async function deleteNote() {
     saveJson(STORAGE_KEYS.notes, notes);
   }
   clearNoteForm();
-  await loadAllData();
+  await loadAllData({ silent: true, syncReason: state.supabase ? '札記已從雲端刪除。' : '' });
   showToast('札記已刪除。');
 }
 
@@ -939,7 +1148,7 @@ async function saveBook() {
   }
   clearBookForm();
   state.selectedBookId = payload.id;
-  await loadAllData();
+  await loadAllData({ silent: true, syncReason: state.supabase ? '書籍已同步到雲端。' : '' });
   setView('books');
   showToast('書籍已儲存。');
 }
@@ -958,7 +1167,7 @@ async function deleteBook() {
   }
   clearBookForm();
   if (state.selectedBookId === bookId) state.selectedBookId = null;
-  await loadAllData();
+  await loadAllData({ silent: true, syncReason: state.supabase ? '書籍已從雲端刪除。' : '' });
   showToast('書籍已刪除。');
 }
 
@@ -1087,7 +1296,7 @@ async function persistBookChanges(bookId, changes) {
     if (idx >= 0) books[idx] = payload;
     saveJson(STORAGE_KEYS.books, books);
   }
-  await loadAllData();
+  await loadAllData({ silent: true, syncReason: state.supabase ? '章節編排已同步到雲端。' : '' });
 }
 
 async function createSnapshotForSelectedBook() {
@@ -1110,7 +1319,7 @@ async function createSnapshotForSelectedBook() {
     snapshots.unshift(record);
     saveJson(STORAGE_KEYS.snapshots, snapshots);
   }
-  await loadAllData();
+  await loadAllData({ silent: true, syncReason: state.supabase ? '快照已同步到雲端。' : '' });
   showToast('快照已建立。');
 }
 
