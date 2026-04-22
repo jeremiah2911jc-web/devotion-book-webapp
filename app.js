@@ -1262,7 +1262,7 @@ function renderChaptersList(book) {
       <div class="caption">來源札記：${escapeHtml(getNoteById(chapter.source_note_id)?.title || '手動章節')}</div>
       <div class="chapter-controls">
         <button class="ghost-btn small" data-move-up="${chapter.id}" ${index === 0 ? 'disabled' : ''}>上移</button>
-        <button class="ghost-btn small" data-move-down="${chapter.id}" ${index === chapters.length - 1 ? 'disabled' : ''}>上移</button>
+        <button class="ghost-btn small" data-move-down="${chapter.id}" ${index === chapters.length - 1 ? 'disabled' : ''}>下移</button>
         <button class="danger-btn small" data-remove-chapter="${chapter.id}">移除</button>
       </div>
     </div>
