@@ -16,6 +16,18 @@ const TEMPLATE_LABELS = {
 
 const DEFAULT_BOOK_LANGUAGE = 'mul';
 
+const DEFAULT_CONFIG = {
+  supabaseUrl: 'https://kknyldzvgvuewkpwkwyj.supabase.co',
+  supabaseAnonKey: 'sb_publishable_7dOBDTLOfsppsElw5tTIrQ_luCT8vVh',
+};
+
+function buildMergedConfig(raw = {}) {
+  return {
+    supabaseUrl: String(raw.supabaseUrl || DEFAULT_CONFIG.supabaseUrl || '').trim(),
+    supabaseAnonKey: String(raw.supabaseAnonKey || DEFAULT_CONFIG.supabaseAnonKey || '').trim(),
+  };
+}
+
 const els = {
   toggleConfigBtn: document.getElementById('toggle-config-btn'),
   configPanel: document.getElementById('config-panel'),
@@ -125,7 +137,7 @@ const els = {
 };
 
 const state = {
-  config: loadJson(STORAGE_KEYS.config, { supabaseUrl: '', supabaseAnonKey: '' }),
+  config: buildMergedConfig(loadJson(STORAGE_KEYS.config, {})),
   supabase: null,
   currentUser: null,
   storageMode: 'local',
@@ -447,24 +459,60 @@ function closeAuthSettings() {
 }
 async function applyConnectionSettings({ supabaseUrl = '', supabaseAnonKey = '' } = {}, successMessage = '') {
   teardownCloudRealtime();
-  state.config = { supabaseUrl: supabaseUrl.trim(), supabaseAnonKey: supabaseAnonKey.trim() };
-  saveJson(STORAGE_KEYS.config, state.config);
+
+  const overrideConfig = {
+    supabaseUrl: supabaseUrl.trim(),
+    supabaseAnonKey: supabaseAnonKey.trim(),
+  };
+
+  saveJson(STORAGE_KEYS.config, overrideConfig);
+  state.config = buildMergedConfig(overrideConfig);
+
   syncConfigInputs();
   initSupabase();
+
   if (state.supabase) {
     const { data } = await state.supabase.auth.getSession();
     state.currentUser = data.session?.user || null;
     if (state.currentUser) setupCloudRealtime();
+    if (!state.currentUser) {
+      setSyncState({ status: '尚未登入', detail: '雲端已啟用，但目前還沒有登入帳號。', at: '' });
+    }
   } else {
     state.currentUser = getLocalUser();
     setSyncState({ status: '本機模式', detail: '目前資料只保存在這台裝置。', at: '' });
   }
+
   await loadAllData({ silent: true, syncReason: state.supabase ? '雲端設定已更新。' : '已切回本機模式。' });
   refreshUi();
   if (successMessage) showToast(successMessage);
 }
 async function clearConnectionSettings() {
-  await applyConnectionSettings({ supabaseUrl: '', supabaseAnonKey: '' }, 'Supabase 設定已清除。');
+  teardownCloudRealtime();
+
+  localStorage.removeItem(STORAGE_KEYS.config);
+  state.config = buildMergedConfig({});
+  syncConfigInputs();
+  initSupabase();
+
+  if (state.supabase) {
+    const { data } = await state.supabase.auth.getSession();
+    state.currentUser = data.session?.user || null;
+    if (state.currentUser) setupCloudRealtime();
+    if (!state.currentUser) {
+      setSyncState({ status: '尚未登入', detail: '已恢復預設雲端設定，請登入帳號。', at: '' });
+    }
+    await loadAllData({ silent: true, syncReason: '已恢復預設雲端設定。' });
+    refreshUi();
+    showToast('已恢復預設雲端設定。');
+    return;
+  }
+
+  state.currentUser = getLocalUser();
+  setSyncState({ status: '本機模式', detail: '目前資料只保存在這台裝置。', at: '' });
+  await loadAllData({ silent: true, syncReason: '已切回本機模式。' });
+  refreshUi();
+  showToast('已切回本機模式。');
 }
 
 async function bootstrap() {
@@ -502,7 +550,7 @@ function bindEvents() {
   els.saveConfigBtn.addEventListener('click', () => applyConnectionSettings({
     supabaseUrl: els.supabaseUrl.value,
     supabaseAnonKey: els.supabaseAnonKey.value,
-  }, (els.supabaseUrl.value.trim() && els.supabaseAnonKey.value.trim()) ? 'Supabase 設定已儲存。' : '已切回本機模式。').catch(handleError));
+  }, 'Supabase 設定已儲存。').catch(handleError));
   els.clearConfigBtn.addEventListener('click', () => clearConnectionSettings().catch(handleError));
 
   els.registerBtn.addEventListener('click', () => handleRegister().catch(handleError));
@@ -520,7 +568,7 @@ function bindEvents() {
   els.gateSaveConfigBtn?.addEventListener('click', () => applyConnectionSettings({
     supabaseUrl: els.gateSupabaseUrl.value,
     supabaseAnonKey: els.gateSupabaseAnonKey.value,
-  }, (els.gateSupabaseUrl.value.trim() && els.gateSupabaseAnonKey.value.trim()) ? 'Supabase 設定已儲存。' : '已切回本機模式。').then(closeAuthSettings).catch(handleError));
+  }, 'Supabase 設定已儲存。').then(closeAuthSettings).catch(handleError));
   els.gateClearConfigBtn?.addEventListener('click', () => clearConnectionSettings().then(closeAuthSettings).catch(handleError));
   els.signoutBtn.addEventListener('click', () => handleSignOut().catch(handleError));
   els.refreshBtn.addEventListener('click', () => loadAllData({ syncReason: '已手動重新整理雲端資料。' }).then(refreshUi).then(() => showToast('資料已重新整理。')).catch(handleError));
@@ -567,8 +615,6 @@ function bindEvents() {
     }
   });
 }
-
-
 
 function openSupportModal() {
   els.supportModal?.classList.remove('hidden');
@@ -772,7 +818,6 @@ function renderCardList(container, items, renderer) {
   container.className = 'list-stack';
   container.innerHTML = items.map(renderer).join('');
 }
-
 
 function normalizeScriptureReferences(raw = '') {
   return raw
@@ -1217,7 +1262,7 @@ function renderChaptersList(book) {
       <div class="caption">來源札記：${escapeHtml(getNoteById(chapter.source_note_id)?.title || '手動章節')}</div>
       <div class="chapter-controls">
         <button class="ghost-btn small" data-move-up="${chapter.id}" ${index === 0 ? 'disabled' : ''}>上移</button>
-        <button class="ghost-btn small" data-move-down="${chapter.id}" ${index === chapters.length - 1 ? 'disabled' : ''}>下移</button>
+        <button class="ghost-btn small" data-move-down="${chapter.id}" ${index === chapters.length - 1 ? 'disabled' : ''}>上移</button>
         <button class="danger-btn small" data-remove-chapter="${chapter.id}">移除</button>
       </div>
     </div>
