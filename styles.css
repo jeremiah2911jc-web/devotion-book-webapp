@@ -26,6 +26,160 @@ html, body {
   color: var(--text);
 }
 body { min-height: 100vh; }
+
+body.auth-locked .app-shell { display: none; }
+.auth-gate {
+  min-height: 100vh;
+  padding: 18px 18px 40px;
+  background: linear-gradient(180deg, #fbfbfb 0%, #f4f4f4 100%);
+}
+.auth-gate.hidden { display: none; }
+.auth-gate-shell {
+  width: min(100%, 540px);
+  margin: 0 auto;
+  position: relative;
+}
+.auth-gate-topbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  padding-top: 6px;
+}
+.auth-icon-btn {
+  width: 56px;
+  height: 56px;
+  border: none;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.88);
+  box-shadow: 0 14px 30px rgba(47, 61, 64, 0.08);
+  font-size: 28px;
+  color: #20292b;
+}
+.auth-gate-body {
+  padding: 56px 6px 0;
+  text-align: center;
+}
+.auth-hero-stack {
+  position: relative;
+  width: min(100%, 340px);
+  height: 260px;
+  margin: 0 auto 22px;
+}
+.auth-hero-card {
+  position: absolute;
+  top: 16px;
+  width: 150px;
+  height: 210px;
+  border-radius: 22px;
+  box-shadow: 0 20px 36px rgba(45, 55, 58, 0.18);
+  overflow: hidden;
+  display: flex;
+  align-items: end;
+  justify-content: center;
+  padding: 18px;
+}
+.auth-hero-card span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.88);
+  color: #223234;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.auth-hero-card-left {
+  left: 22px;
+  transform: rotate(-8deg);
+  background: linear-gradient(180deg, #9b7b68 0%, #4b352e 100%);
+}
+.auth-hero-card-center {
+  left: 95px;
+  z-index: 2;
+  background: linear-gradient(180deg, #bcc5cb 0%, #41484d 100%);
+}
+.auth-hero-card-right {
+  right: 18px;
+  transform: rotate(8deg);
+  background: linear-gradient(180deg, #e4c79a 0%, #6488a2 100%);
+}
+.auth-gate-title {
+  margin: 0;
+  font-size: clamp(34px, 8vw, 54px);
+  line-height: 1.12;
+  color: #101417;
+  letter-spacing: 0.02em;
+}
+.auth-gate-copy {
+  margin: 26px auto 0;
+  max-width: 430px;
+  font-size: clamp(17px, 4.6vw, 26px);
+  line-height: 1.8;
+  color: #2d3336;
+}
+.auth-gate-actions {
+  display: grid;
+  gap: 16px;
+  margin-top: 48px;
+}
+.auth-cta {
+  width: 100%;
+  border: none;
+  border-radius: 999px;
+  padding: 18px 24px;
+  font-size: clamp(20px, 5vw, 30px);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.auth-cta-primary {
+  background: linear-gradient(180deg, #ff4d66 0%, #ff3350 100%);
+  color: #fff;
+}
+.auth-cta-secondary {
+  background: #d8d4d5;
+  color: #111618;
+}
+.auth-inline-panel,
+.auth-settings-card,
+.auth-feature-sheet {
+  margin-top: 18px;
+  text-align: left;
+}
+.auth-inline-panel {
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(191,211,208,0.84);
+  box-shadow: 0 20px 40px rgba(47, 61, 64, 0.08);
+}
+.auth-settings-sheet {
+  margin-top: 18px;
+}
+.auth-feature-sheet {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255,255,255,0.88);
+  border: 1px solid rgba(191,211,208,0.72);
+}
+.auth-feature-item {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(247, 251, 251, 0.9);
+  border: 1px solid rgba(191,211,208,0.66);
+}
+.auth-feature-item strong {
+  color: #21373b;
+}
+.auth-feature-item span {
+  color: var(--muted);
+  line-height: 1.6;
+}
 button, input, textarea, select { font: inherit; }
 button { cursor: pointer; }
 textarea { resize: vertical; }
@@ -180,6 +334,14 @@ input:focus, textarea:focus, select:focus {
   .topbar { flex-direction: column; align-items: flex-start; }
   .summary-cards { grid-template-columns: 1fr; }
   .site-footer { padding-bottom: 34px; }
+  .auth-gate { padding-inline: 20px; }
+  .auth-gate-topbar { gap: 12px; }
+  .auth-icon-btn { width: 52px; height: 52px; }
+  .auth-hero-stack { width: 310px; height: 230px; }
+  .auth-hero-card { width: 136px; height: 194px; }
+  .auth-hero-card-left { left: 8px; }
+  .auth-hero-card-center { left: 86px; }
+  .auth-hero-card-right { right: 8px; }
 }
 
 .footer-copyright a {
@@ -211,3 +373,5 @@ input:focus, textarea:focus, select:focus {
 #auth-forms > .row {
   margin-top: 8px;
 }
+
+.auth-settings-card textarea { min-height: 110px; }

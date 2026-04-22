@@ -4,6 +4,7 @@ const STORAGE_KEYS = {
   notes: 'devotion-app-notes',
   books: 'devotion-app-books',
   snapshots: 'devotion-app-snapshots',
+  accounts: 'devotion-app-local-accounts',
 };
 
 const TEMPLATE_LABELS = {
@@ -11,6 +12,8 @@ const TEMPLATE_LABELS = {
   sermon: '講章整理版',
   testimony: '見證合集版',
 };
+
+const DEFAULT_BOOK_LANGUAGE = 'mul';
 
 const els = {
   toggleConfigBtn: document.getElementById('toggle-config-btn'),
@@ -89,6 +92,26 @@ const els = {
   supportModal: document.getElementById('support-modal'),
   supportModalBackdrop: document.getElementById('support-modal-backdrop'),
   closeSupportModal: document.getElementById('close-support-modal'),
+  authGate: document.getElementById('auth-gate'),
+  authSettingsBtn: document.getElementById('auth-settings-btn'),
+  authMenuBtn: document.getElementById('auth-menu-btn'),
+  openRegisterBtn: document.getElementById('open-register-btn'),
+  openLoginBtn: document.getElementById('open-login-btn'),
+  authInlinePanel: document.getElementById('auth-inline-panel'),
+  authInlineTitle: document.getElementById('auth-inline-title'),
+  authInlineHint: document.getElementById('auth-inline-hint'),
+  closeAuthInlineBtn: document.getElementById('close-auth-inline-btn'),
+  gateAuthEmail: document.getElementById('gate-auth-email'),
+  gateAuthPassword: document.getElementById('gate-auth-password'),
+  gateSubmitBtn: document.getElementById('gate-submit-btn'),
+  gateMagicLinkBtn: document.getElementById('gate-magic-link-btn'),
+  authFeatureSheet: document.getElementById('auth-feature-sheet'),
+  authSettingsSheet: document.getElementById('auth-settings-sheet'),
+  closeAuthSettingsBtn: document.getElementById('close-auth-settings-btn'),
+  gateSupabaseUrl: document.getElementById('gate-supabase-url'),
+  gateSupabaseAnonKey: document.getElementById('gate-supabase-anon-key'),
+  gateSaveConfigBtn: document.getElementById('gate-save-config-btn'),
+  gateClearConfigBtn: document.getElementById('gate-clear-config-btn'),
 };
 
 const state = {
@@ -106,6 +129,7 @@ const state = {
   scriptureAbortController: null,
   scriptureLastAppliedBlock: '',
   scriptureAppliedBlocks: [],
+  authInlineMode: 'register',
 };
 
 function loadJson(key, fallback) {
@@ -187,10 +211,93 @@ function setLocalUser(user) {
 function clearLocalUser() {
   localStorage.removeItem(STORAGE_KEYS.user);
 }
+function loadLocalAccounts() {
+  return loadJson(STORAGE_KEYS.accounts, []);
+}
+function saveLocalAccounts(accounts) {
+  saveJson(STORAGE_KEYS.accounts, accounts);
+}
+function findLocalAccountByEmail(email = '') {
+  const normalized = email.trim().toLowerCase();
+  return loadLocalAccounts().find(account => String(account.email || '').trim().toLowerCase() === normalized) || null;
+}
+function sanitizeLocalUser(account) {
+  if (!account) return null;
+  return { id: account.id, email: account.email, mode: 'local' };
+}
+function syncConfigInputs() {
+  const { supabaseUrl = '', supabaseAnonKey = '' } = state.config || {};
+  if (els.supabaseUrl) els.supabaseUrl.value = supabaseUrl;
+  if (els.supabaseAnonKey) els.supabaseAnonKey.value = supabaseAnonKey;
+  if (els.gateSupabaseUrl) els.gateSupabaseUrl.value = supabaseUrl;
+  if (els.gateSupabaseAnonKey) els.gateSupabaseAnonKey.value = supabaseAnonKey;
+}
+function syncAuthInputs({ email = '', password = '' } = {}) {
+  if (typeof email === 'string') {
+    if (els.authEmail) els.authEmail.value = email;
+    if (els.gateAuthEmail) els.gateAuthEmail.value = email;
+  }
+  if (typeof password === 'string') {
+    if (els.authPassword) els.authPassword.value = password;
+    if (els.gateAuthPassword) els.gateAuthPassword.value = password;
+  }
+}
+function getAuthCredentials() {
+  const gateEmail = els.gateAuthEmail?.value?.trim() || '';
+  const gatePassword = els.gateAuthPassword?.value?.trim() || '';
+  const sidebarEmail = els.authEmail?.value?.trim() || '';
+  const sidebarPassword = els.authPassword?.value?.trim() || '';
+  const email = gateEmail || sidebarEmail;
+  const password = gatePassword || sidebarPassword;
+  syncAuthInputs({ email, password });
+  return { email, password };
+}
+function openAuthInline(mode = 'register') {
+  state.authInlineMode = mode;
+  const isRegister = mode === 'register';
+  els.authInlinePanel?.classList.remove('hidden');
+  if (els.authInlineTitle) els.authInlineTitle.textContent = isRegister ? '建立帳戶' : '登入';
+  if (els.gateSubmitBtn) {
+    els.gateSubmitBtn.textContent = isRegister ? '建立帳戶' : '登入';
+    els.gateSubmitBtn.classList.toggle('secondary-btn', !isRegister);
+    els.gateSubmitBtn.classList.toggle('primary-btn', isRegister);
+  }
+  els.gateAuthEmail?.focus();
+}
+function closeAuthInline() {
+  els.authInlinePanel?.classList.add('hidden');
+}
+function toggleAuthFeatures() {
+  els.authFeatureSheet?.classList.toggle('hidden');
+}
+function openAuthSettings() {
+  syncConfigInputs();
+  els.authSettingsSheet?.classList.remove('hidden');
+}
+function closeAuthSettings() {
+  els.authSettingsSheet?.classList.add('hidden');
+}
+async function applyConnectionSettings({ supabaseUrl = '', supabaseAnonKey = '' } = {}, successMessage = '') {
+  state.config = { supabaseUrl: supabaseUrl.trim(), supabaseAnonKey: supabaseAnonKey.trim() };
+  saveJson(STORAGE_KEYS.config, state.config);
+  syncConfigInputs();
+  initSupabase();
+  if (state.supabase) {
+    const { data } = await state.supabase.auth.getSession();
+    state.currentUser = data.session?.user || null;
+  } else {
+    state.currentUser = getLocalUser();
+  }
+  await loadAllData();
+  refreshUi();
+  if (successMessage) showToast(successMessage);
+}
+async function clearConnectionSettings() {
+  await applyConnectionSettings({ supabaseUrl: '', supabaseAnonKey: '' }, 'Supabase 設定已清除。');
+}
 
 async function bootstrap() {
-  els.supabaseUrl.value = state.config.supabaseUrl || '';
-  els.supabaseAnonKey.value = state.config.supabaseAnonKey || '';
+  syncConfigInputs();
   initSupabase();
   bindEvents();
   if (state.supabase) {
@@ -213,39 +320,28 @@ function bindEvents() {
     els.configPanel.classList.toggle('hidden');
     els.toggleConfigBtn.textContent = els.configPanel.classList.contains('hidden') ? '展開' : '收合';
   });
-  els.saveConfigBtn.addEventListener('click', async () => {
-    state.config = {
-      supabaseUrl: els.supabaseUrl.value.trim(),
-      supabaseAnonKey: els.supabaseAnonKey.value.trim(),
-    };
-    saveJson(STORAGE_KEYS.config, state.config);
-    initSupabase();
-    if (state.supabase) {
-      const { data } = await state.supabase.auth.getSession();
-      state.currentUser = data.session?.user || null;
-      showToast('Supabase 設定已儲存。');
-    } else {
-      state.currentUser = getLocalUser();
-      showToast('已切回本機模式。');
-    }
-    await loadAllData();
-    refreshUi();
-  });
-  els.clearConfigBtn.addEventListener('click', async () => {
-    state.config = { supabaseUrl: '', supabaseAnonKey: '' };
-    saveJson(STORAGE_KEYS.config, state.config);
-    els.supabaseUrl.value = '';
-    els.supabaseAnonKey.value = '';
-    initSupabase();
-    state.currentUser = getLocalUser();
-    await loadAllData();
-    refreshUi();
-    showToast('Supabase 設定已清除。');
-  });
+  els.saveConfigBtn.addEventListener('click', () => applyConnectionSettings({
+    supabaseUrl: els.supabaseUrl.value,
+    supabaseAnonKey: els.supabaseAnonKey.value,
+  }, (els.supabaseUrl.value.trim() && els.supabaseAnonKey.value.trim()) ? 'Supabase 設定已儲存。' : '已切回本機模式。').catch(handleError));
+  els.clearConfigBtn.addEventListener('click', () => clearConnectionSettings().catch(handleError));
 
   els.registerBtn.addEventListener('click', () => handleRegister().catch(handleError));
   els.loginBtn.addEventListener('click', () => handleLogin().catch(handleError));
   els.magicLinkBtn.addEventListener('click', () => handleMagicLink().catch(handleError));
+  els.authSettingsBtn?.addEventListener('click', openAuthSettings);
+  els.closeAuthSettingsBtn?.addEventListener('click', closeAuthSettings);
+  els.authMenuBtn?.addEventListener('click', toggleAuthFeatures);
+  els.openRegisterBtn?.addEventListener('click', () => openAuthInline('register'));
+  els.openLoginBtn?.addEventListener('click', () => openAuthInline('login'));
+  els.closeAuthInlineBtn?.addEventListener('click', closeAuthInline);
+  els.gateSubmitBtn?.addEventListener('click', () => (state.authInlineMode === 'register' ? handleRegister() : handleLogin()).catch(handleError));
+  els.gateMagicLinkBtn?.addEventListener('click', () => handleMagicLink().catch(handleError));
+  els.gateSaveConfigBtn?.addEventListener('click', () => applyConnectionSettings({
+    supabaseUrl: els.gateSupabaseUrl.value,
+    supabaseAnonKey: els.gateSupabaseAnonKey.value,
+  }, (els.gateSupabaseUrl.value.trim() && els.gateSupabaseAnonKey.value.trim()) ? 'Supabase 設定已儲存。' : '已切回本機模式。').then(closeAuthSettings).catch(handleError));
+  els.gateClearConfigBtn?.addEventListener('click', () => clearConnectionSettings().then(closeAuthSettings).catch(handleError));
   els.signoutBtn.addEventListener('click', () => handleSignOut().catch(handleError));
   els.refreshBtn.addEventListener('click', () => loadAllData().then(refreshUi).then(() => showToast('資料已重新整理。')).catch(handleError));
 
@@ -274,8 +370,11 @@ function bindEvents() {
   els.supportModalBackdrop?.addEventListener('click', closeSupportModal);
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && !els.supportModal?.classList.contains('hidden')) closeSupportModal();
+    if (event.key === 'Escape' && !els.authSettingsSheet?.classList.contains('hidden')) closeAuthSettings();
+    if (event.key === 'Escape' && !els.authInlinePanel?.classList.contains('hidden')) closeAuthInline();
   });
 }
+
 
 
 function openSupportModal() {
@@ -288,26 +387,31 @@ function closeSupportModal() {
 }
 
 async function handleRegister() {
-  const email = els.authEmail.value.trim();
-  const password = els.authPassword.value.trim();
+  const { email, password } = getAuthCredentials();
   if (!email) throw new Error('請輸入 Email。');
+  if (!password || password.length < 6) throw new Error('密碼至少需要 6 碼。');
   if (state.supabase) {
     const { error } = await state.supabase.auth.signUp({ email, password });
     if (error) throw error;
     showToast('註冊完成，請依 Supabase 設定確認信箱。');
     return;
   }
-  const user = { id: uid('local_user'), email };
+  if (findLocalAccountByEmail(email)) throw new Error('這個 Email 已經註冊過。');
+  const account = { id: uid('local_user'), email, password, created_at: nowIso() };
+  const accounts = loadLocalAccounts();
+  accounts.unshift(account);
+  saveLocalAccounts(accounts);
+  const user = sanitizeLocalUser(account);
   setLocalUser(user);
   state.currentUser = user;
   await loadAllData();
   refreshUi();
-  showToast('本機測試帳號已建立。');
+  setView('dashboard');
+  showToast('本機帳號已建立，已為你登入。');
 }
 
 async function handleLogin() {
-  const email = els.authEmail.value.trim();
-  const password = els.authPassword.value.trim();
+  const { email, password } = getAuthCredentials();
   if (!email) throw new Error('請輸入 Email。');
   if (state.supabase) {
     const { error } = await state.supabase.auth.signInWithPassword({ email, password });
@@ -315,16 +419,19 @@ async function handleLogin() {
     showToast('登入成功。');
     return;
   }
-  const user = { id: uid('local_user'), email };
+  const account = findLocalAccountByEmail(email);
+  if (!account || account.password !== password) throw new Error('Email 或密碼不正確。');
+  const user = sanitizeLocalUser(account);
   setLocalUser(user);
   state.currentUser = user;
   await loadAllData();
   refreshUi();
-  showToast('已進入本機模式。');
+  setView('dashboard');
+  showToast('登入成功。');
 }
 
 async function handleMagicLink() {
-  const email = els.authEmail.value.trim();
+  const { email } = getAuthCredentials();
   if (!email) throw new Error('請先輸入 Email。');
   if (!state.supabase) throw new Error('Magic Link 需要先設定 Supabase。');
   const { error } = await state.supabase.auth.signInWithOtp({ email });
@@ -342,6 +449,7 @@ async function handleSignOut() {
   }
   state.selectedBookId = null;
   await loadAllData();
+  setView('dashboard');
   refreshUi();
   showToast('已登出。');
 }
@@ -388,6 +496,10 @@ function parseMaybeJson(value, fallback) {
   if (typeof value === 'object') return value;
   try { return JSON.parse(value); } catch { return fallback; }
 }
+function resolveBookLanguage(value = '') {
+  const lang = String(value || '').trim();
+  return lang || DEFAULT_BOOK_LANGUAGE;
+}
 
 function refreshUi() {
   els.authModeBadge.textContent = state.supabase ? '雲端模式' : '本機模式';
@@ -395,6 +507,21 @@ function refreshUi() {
   els.authForms.classList.toggle('hidden', !!state.currentUser);
   els.authUser.classList.toggle('hidden', !state.currentUser);
   els.currentUserText.textContent = state.currentUser ? `目前使用者：${state.currentUser.email || state.currentUser.id}` : '尚未登入';
+  document.body.classList.toggle('auth-locked', !state.currentUser);
+  els.authGate?.classList.toggle('hidden', !!state.currentUser);
+  els.authGate?.setAttribute('aria-hidden', state.currentUser ? 'true' : 'false');
+  if (els.authInlineHint) {
+    els.authInlineHint.textContent = state.supabase
+      ? '目前已啟用 Supabase Auth，建立帳戶與登入都會走雲端驗證。'
+      : '尚未設定 Supabase，現在會先使用本機模式建立或登入帳號。';
+  }
+  if (els.gateSupabaseUrl && document.activeElement !== els.gateSupabaseUrl && document.activeElement !== els.gateSupabaseAnonKey) syncConfigInputs();
+  if (state.currentUser) {
+    closeAuthInline();
+    closeAuthSettings();
+    els.authFeatureSheet?.classList.add('hidden');
+    syncAuthInputs({ email: state.currentUser.email || '', password: '' });
+  }
   els.summaryNotesCount.textContent = state.notes.length;
   els.summaryBooksCount.textContent = state.books.length;
   els.summarySnapshotsCount.textContent = state.snapshots.length;
@@ -753,7 +880,7 @@ function populateBookForm(bookId) {
   els.bookAuthor.value = book.author_name || '';
   els.bookDescription.value = book.description || '';
   els.bookTemplate.value = book.template_code || 'devotion';
-  els.bookLanguage.value = book.language || 'zh-Hant';
+  els.bookLanguage.value = resolveBookLanguage(book.language);
   els.bookPreface.value = book.preface || '';
   els.bookAfterword.value = book.afterword || '';
   els.bookTocEnabled.checked = !!book.toc_enabled;
@@ -764,7 +891,7 @@ function populateBookForm(bookId) {
 function clearBookForm() {
   els.bookForm.reset();
   els.bookId.value = '';
-  els.bookLanguage.value = 'zh-Hant';
+  els.bookLanguage.value = DEFAULT_BOOK_LANGUAGE;
   els.bookTemplate.value = 'devotion';
   els.bookTocEnabled.checked = true;
   els.deleteBookBtn.classList.add('hidden');
@@ -782,7 +909,7 @@ async function saveBook() {
     author_name: els.bookAuthor.value.trim(),
     description: els.bookDescription.value.trim(),
     template_code: els.bookTemplate.value,
-    language: els.bookLanguage.value.trim() || 'zh-Hant',
+    language: resolveBookLanguage(els.bookLanguage.value),
     cover_data_url: coverDataUrl,
     preface: els.bookPreface.value.trim(),
     afterword: els.bookAfterword.value.trim(),
@@ -988,7 +1115,7 @@ function buildBookSnapshot(book) {
       author_name: book.author_name,
       description: book.description,
       template_code: book.template_code,
-      language: book.language,
+      language: resolveBookLanguage(book.language),
       preface: book.preface,
       afterword: book.afterword,
       toc_enabled: book.toc_enabled,
@@ -1079,11 +1206,11 @@ async function buildEpub(snapshot) {
   files.push({ name: 'OEBPS/nav.xhtml', content: encoder.encode(navXhtml(book, chapters)) });
   files.push({ name: 'OEBPS/toc.ncx', content: encoder.encode(tocNcx(book, chapters, uidValue)) });
   files.push({ name: 'OEBPS/text/title.xhtml', content: encoder.encode(titlePage(book)) });
-  if (book.preface) files.push({ name: 'OEBPS/text/preface.xhtml', content: encoder.encode(simpleSection('前言', book.preface)) });
+  if (book.preface) files.push({ name: 'OEBPS/text/preface.xhtml', content: encoder.encode(simpleSection('前言', book.preface, book.language)) });
   chapters.forEach((chapter, index) => {
-    files.push({ name: `OEBPS/text/chapter-${index + 1}.xhtml`, content: encoder.encode(chapterXhtml(chapter, index + 1)) });
+    files.push({ name: `OEBPS/text/chapter-${index + 1}.xhtml`, content: encoder.encode(chapterXhtml(chapter, index + 1, book.language)) });
   });
-  if (book.afterword) files.push({ name: 'OEBPS/text/afterword.xhtml', content: encoder.encode(simpleSection('後記', book.afterword)) });
+  if (book.afterword) files.push({ name: 'OEBPS/text/afterword.xhtml', content: encoder.encode(simpleSection('後記', book.afterword, book.language)) });
   if (coverImage) files.push({ name: `OEBPS/images/cover.${coverExt}`, content: coverImage.bytes });
   files.push({ name: 'OEBPS/content.opf', content: encoder.encode(contentOpf(book, chapters, uidValue, !!coverImage, coverExt)) });
   return zipStore(files);
@@ -1119,19 +1246,19 @@ function titlePage(book) {
         ${book.description ? `<p>${paragraphs(book.description)}</p>` : ''}
       </div>
     </main>
-  `);
+  `, false, "../styles/book.css", resolveBookLanguage(book.language));
 }
-function simpleSection(title, content) {
-  return xhtmlWrap(title, `<main><h1>${escapeHtml(title)}</h1>${paragraphs(content)}</main>`);
+function simpleSection(title, content, language = DEFAULT_BOOK_LANGUAGE) {
+  return xhtmlWrap(title, `<main><h1>${escapeHtml(title)}</h1>${paragraphs(content)}</main>`, false, "../styles/book.css", resolveBookLanguage(language));
 }
-function chapterXhtml(chapter, order) {
+function chapterXhtml(chapter, order, language = DEFAULT_BOOK_LANGUAGE) {
   return xhtmlWrap(chapter.chapter_title, `
     <main>
       <h1>第 ${order} 章　${escapeHtml(chapter.chapter_title)}</h1>
       ${chapter.scripture_reference ? `<p class="scripture">${escapeHtml(chapter.scripture_reference)}</p>` : ''}
       ${paragraphs(chapter.content || '')}
     </main>
-  `);
+  `, false, "../styles/book.css", resolveBookLanguage(language));
 }
 function navXhtml(book, chapters) {
   const items = [];
@@ -1139,7 +1266,7 @@ function navXhtml(book, chapters) {
   if (book.preface) items.push(`<li><a href="text/preface.xhtml">前言</a></li>`);
   chapters.filter(ch => ch.include_in_toc).forEach((chapter, index) => items.push(`<li><a href="text/chapter-${index + 1}.xhtml">${escapeHtml(chapter.chapter_title)}</a></li>`));
   if (book.afterword) items.push(`<li><a href="text/afterword.xhtml">後記</a></li>`);
-  return xhtmlWrap('目錄', `<main><nav epub:type="toc" id="toc"><h1>目錄</h1><ol>${items.join('')}</ol></nav></main>`, true, 'styles/book.css');
+  return xhtmlWrap('目錄', `<main><nav epub:type="toc" id="toc"><h1>目錄</h1><ol>${items.join('')}</ol></nav></main>`, true, 'styles/book.css', resolveBookLanguage(book.language));
 }
 function tocNcx(book, chapters, uidValue) {
   const points = [];
@@ -1177,7 +1304,7 @@ function contentOpf(book, chapters, uidValue, hasCover, coverExt) {
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
     <dc:identifier id="bookid">${uidValue}</dc:identifier>
     <dc:title>${escapeHtml(book.title)}</dc:title>
-    <dc:language>${escapeHtml(book.language || 'zh-Hant')}</dc:language>
+    <dc:language>${escapeHtml(resolveBookLanguage(book.language))}</dc:language>
     <dc:creator>${escapeHtml(book.author_name || 'Unknown')}</dc:creator>
     <meta property="dcterms:modified">${new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')}</meta>
   </metadata>
@@ -1185,10 +1312,11 @@ function contentOpf(book, chapters, uidValue, hasCover, coverExt) {
   <spine toc="ncx">${spine.join('')}</spine>
 </package>`;
 }
-function xhtmlWrap(title, body, includeEpubNs = false, cssPath = "../styles/book.css") {
+function xhtmlWrap(title, body, includeEpubNs = false, cssPath = "../styles/book.css", language = DEFAULT_BOOK_LANGUAGE) {
+  const lang = resolveBookLanguage(language);
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" ${includeEpubNs ? 'xmlns:epub="http://www.idpf.org/2007/ops"' : ''} lang="zh-Hant" xml:lang="zh-Hant">
+<html xmlns="http://www.w3.org/1999/xhtml" ${includeEpubNs ? 'xmlns:epub="http://www.idpf.org/2007/ops"' : ''} lang="${escapeHtml(lang)}" xml:lang="${escapeHtml(lang)}">
   <head>
     <meta charset="utf-8"/>
     <title>${escapeHtml(title)}</title>

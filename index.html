@@ -7,7 +7,77 @@
   <link rel="stylesheet" href="./styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body>
+<body class="auth-locked">
+  <div id="auth-gate" class="auth-gate" aria-hidden="false">
+    <div class="auth-gate-shell">
+      <div class="auth-gate-topbar">
+        <button id="auth-settings-btn" class="auth-icon-btn" type="button" aria-label="登入設定">⚙</button>
+        <button id="auth-menu-btn" class="auth-icon-btn" type="button" aria-label="功能簡介">☰</button>
+      </div>
+
+      <div class="auth-gate-body">
+        <div class="auth-hero-stack" aria-hidden="true">
+          <div class="auth-hero-card auth-hero-card-left"><span>札記</span></div>
+          <div class="auth-hero-card auth-hero-card-center"><span>成書</span></div>
+          <div class="auth-hero-card auth-hero-card-right"><span>同步</span></div>
+        </div>
+
+        <h2 class="auth-gate-title">獲取完整的體驗</h2>
+        <p class="auth-gate-copy">建立免費帳戶以同步札記、書籍專案、快照與 EPUB 匯出設定，也可以先用本機模式測試整個流程。</p>
+
+        <div class="auth-gate-actions">
+          <button id="open-register-btn" class="auth-cta auth-cta-primary" type="button">建立帳戶</button>
+          <button id="open-login-btn" class="auth-cta auth-cta-secondary" type="button">登入</button>
+        </div>
+
+        <section id="auth-inline-panel" class="auth-inline-panel hidden" aria-live="polite">
+          <div class="panel-header">
+            <h3 id="auth-inline-title">建立帳戶</h3>
+            <button id="close-auth-inline-btn" class="ghost-btn small" type="button">收合</button>
+          </div>
+          <div class="form-stack">
+            <label>Email
+              <input id="gate-auth-email" type="email" placeholder="name@example.com" />
+            </label>
+            <label>Password
+              <input id="gate-auth-password" type="password" placeholder="至少 6 碼" />
+            </label>
+            <div class="row wrap gap-sm">
+              <button id="gate-submit-btn" class="primary-btn" type="button">建立帳戶</button>
+              <button id="gate-magic-link-btn" class="ghost-btn" type="button">Magic Link</button>
+            </div>
+            <p id="auth-inline-hint" class="caption">尚未設定 Supabase 時，會先使用本機模式建立或登入帳號。</p>
+          </div>
+        </section>
+
+        <section id="auth-feature-sheet" class="auth-feature-sheet hidden">
+          <div class="auth-feature-item"><strong>雲端同步</strong><span>登入後可跨裝置同步札記、書籍與快照。</span></div>
+          <div class="auth-feature-item"><strong>書籍專案</strong><span>整理前言、後記、封面與章節編排。</span></div>
+          <div class="auth-feature-item"><strong>EPUB 匯出</strong><span>把整理完成的內容直接匯出成電子書。</span></div>
+        </section>
+      </div>
+
+      <div id="auth-settings-sheet" class="auth-settings-sheet hidden">
+        <section class="panel auth-settings-card">
+          <div class="panel-header">
+            <h3>登入設定</h3>
+            <button id="close-auth-settings-btn" class="ghost-btn small" type="button">關閉</button>
+          </div>
+          <label>Supabase URL
+            <input id="gate-supabase-url" placeholder="https://xxxx.supabase.co" />
+          </label>
+          <label>Supabase Anon Key
+            <textarea id="gate-supabase-anon-key" rows="4" placeholder="貼上 anon key"></textarea>
+          </label>
+          <div class="row gap-sm wrap">
+            <button id="gate-save-config-btn" class="secondary-btn" type="button">儲存設定</button>
+            <button id="gate-clear-config-btn" class="ghost-btn" type="button">清除設定</button>
+          </div>
+          <p class="caption">若已完成 Supabase 專案與 Auth 設定，儲存後就會啟用正式註冊與登入；未設定時仍可先用本機模式測試。</p>
+        </section>
+      </div>
+    </div>
+  </div>
   <div class="app-shell">
     <aside class="sidebar">
       <div>
@@ -225,8 +295,8 @@
                   <option value="testimony">見證合集版</option>
                 </select>
               </label>
-              <label>語言
-                <input id="book-language" value="zh-Hant" />
+              <label class="book-language-field hidden">語言
+                <input id="book-language" value="mul" />
               </label>
               <label>封面圖片
                 <input id="book-cover" type="file" accept="image/*" />
