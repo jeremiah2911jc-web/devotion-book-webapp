@@ -187,16 +187,13 @@ function getOrCreateDeviceId() {
   }
   return deviceId;
 }
-function shortDeviceId() {
-  return state.deviceId?.split('_').slice(-1)[0] || 'local';
-}
 function setSyncState({ status, detail, at } = {}) {
   if (typeof status === 'string') state.syncStatus = status;
   if (typeof detail === 'string') state.syncDetail = detail;
   if (typeof at === 'string') state.lastSyncAt = at;
 }
 function markCloudSynced(detail = '雲端資料已同步。') {
-  setSyncState({ status: '已同步', detail: `${detail} 裝置代號：${shortDeviceId()}`, at: nowIso() });
+  setSyncState({ status: '已同步', detail, at: nowIso() });
 }
 function teardownCloudRealtime() {
   if (!state.realtimeChannel || !state.supabase) {
@@ -231,11 +228,11 @@ function setupCloudRealtime() {
   });
   channel.subscribe((status) => {
     if (status === 'SUBSCRIBED') {
-      setSyncState({ status: '即時同步中', detail: `已連線雲端，即時監看其他裝置變更。裝置代號：${shortDeviceId()}` });
+      setSyncState({ status: '即時同步中', detail: '已連線雲端，資料會自動保持同步。' });
       refreshUi();
     }
     if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-      setSyncState({ status: '同步異常', detail: '雲端即時同步通道異常，仍可手動重新整理資料。' });
+      setSyncState({ status: '同步異常', detail: '雲端同步暫時不穩，請稍後再試或按立即同步。' });
       refreshUi();
     }
   });
@@ -573,7 +570,7 @@ function bindEvents() {
   }, 'Supabase 設定已儲存。').then(closeAuthSettings).catch(handleError));
   els.gateClearConfigBtn?.addEventListener('click', () => clearConnectionSettings().then(closeAuthSettings).catch(handleError));
   els.signoutBtn.addEventListener('click', () => handleSignOut().catch(handleError));
-  els.refreshBtn.addEventListener('click', () => loadAllData({ syncReason: '已手動重新整理雲端資料。' }).then(refreshUi).then(() => showToast('資料已重新整理。')).catch(handleError));
+  els.refreshBtn?.addEventListener('click', () => loadAllData({ syncReason: '已手動重新整理雲端資料。' }).then(refreshUi).then(() => showToast('資料已重新整理。')).catch(handleError));
   els.forceSyncBtn?.addEventListener('click', () => loadAllData({ syncReason: '已手動同步雲端資料。' }).then(() => showToast('同步完成。')).catch(handleError));
   els.pushLocalToCloudBtn?.addEventListener('click', () => uploadLocalDataToCloud().catch(handleError));
   els.downloadBackupBtn?.addEventListener('click', () => { try { downloadBackupJson(); } catch (error) { handleError(error); } });
@@ -762,8 +759,8 @@ function resolveBookLanguage(value = '') {
 }
 
 function refreshUi() {
-  els.authModeBadge.textContent = state.supabase ? '雲端模式' : '本機模式';
-  els.statusStorage.textContent = state.supabase ? 'Supabase' : 'Local';
+  if (els.authModeBadge) els.authModeBadge.textContent = state.supabase ? '雲端模式' : '本機模式';
+  if (els.statusStorage) els.statusStorage.textContent = state.supabase ? 'Supabase' : 'Local';
   if (els.statusSync) els.statusSync.textContent = state.syncStatus || '未啟用';
   els.authForms.classList.toggle('hidden', !!state.currentUser);
   els.authUser.classList.toggle('hidden', !state.currentUser);
@@ -1276,8 +1273,8 @@ function getSelectedBook() {
 function renderSelectedBookPanel() {
   const book = getSelectedBook();
   const chapterCount = (book?.chapters || []).length;
-  els.statusCurrentBook.textContent = book?.title || '未選取';
-  els.statusChapterCount.textContent = String(chapterCount);
+  if (els.statusCurrentBook) els.statusCurrentBook.textContent = book?.title || '未選取';
+  if (els.statusChapterCount) els.statusChapterCount.textContent = String(chapterCount);
   els.selectedBookEmpty.classList.toggle('hidden', !!book);
   els.selectedBookPanel.classList.toggle('hidden', !book);
   if (!book) return;
