@@ -2130,11 +2130,12 @@ function injectReaderViewStyles() {
     #view-reader .reader-toolbar label { display: grid; gap: 3px; font-size: .78rem; color: inherit; }
     #view-reader .reader-toolbar select, #view-reader .reader-toolbar input { max-width: 100%; }
     #view-reader .reader-stage { position: relative; z-index: 1; min-height: 0; display: grid; place-items: center; padding: clamp(12px, 3vw, 32px); overflow: hidden; }
-    #view-reader .reader-page-viewport { width: min(760px, 100%); height: min(74dvh, 860px); min-height: 420px; overflow: hidden; contain: paint; clip-path: inset(0); border-radius: 6px; background: #fffdf8; box-shadow: 0 18px 48px rgba(45,35,25,.14); }
+    #view-reader .reader-page-viewport { width: min(760px, 100%); height: min(74dvh, 860px); min-height: 420px; overflow: hidden; overflow: clip; contain: paint; clip-path: inset(0 2px 0 0); isolation: isolate; border-radius: 6px; background: #fffdf8; box-shadow: 0 18px 48px rgba(45,35,25,.14); }
     #view-reader.reader-dark .reader-page-viewport { background: #202020; box-shadow: 0 18px 48px rgba(0,0,0,.28); }
-    #view-reader .reader-flow { height: 100%; box-sizing: border-box; padding: clamp(24px, 5vw, 58px); overflow: visible; column-fill: auto; transition: transform .18s ease; will-change: transform; }
+    #view-reader .reader-flow { height: 100%; box-sizing: border-box; display: block; max-width: none; padding: clamp(24px, 5vw, 58px); overflow: visible; column-fill: auto; transition: transform .18s ease; will-change: transform; }
     #view-reader .reader-flow h1, #view-reader .reader-flow h2 { margin-top: 0; }
     #view-reader .reader-turn-zone { position: absolute; top: 0; bottom: 0; width: 34%; border: 0; background: transparent; cursor: pointer; }
+    #view-reader .reader-turn-zone:disabled, #view-reader .reader-footer button:disabled { cursor: default; opacity: .35; }
     #view-reader .reader-turn-left { left: 0; }
     #view-reader .reader-turn-right { right: 0; }
     #view-reader .reader-footer { position: relative; z-index: 4; display: grid; grid-template-columns: auto minmax(180px, 520px) auto; align-items: center; gap: 14px; padding: 12px clamp(12px, 3vw, 28px); border-top: 1px solid rgba(80,70,55,.18); background: rgba(255,255,255,.7); transition: opacity .2s ease, transform .2s ease; }
@@ -2277,8 +2278,16 @@ function updateReaderProgressUi() {
   const pageText = document.getElementById('reader-page-text');
   const progressBar = document.getElementById('reader-progress-bar');
   if (progressText) progressText.textContent = `${percent}%`;
-  if (pageText) pageText.textContent = `${getReaderGlobalPageIndex() + 1} / ${getReaderTotalPages()}`;
+  if (pageText) pageText.textContent = `第 ${getReaderGlobalPageIndex() + 1} / ${getReaderTotalPages()} 頁`;
   if (progressBar) progressBar.style.width = `${percent}%`;
+  updateReaderTurnButtons();
+}
+
+function updateReaderTurnButtons() {
+  const globalPage = getReaderGlobalPageIndex();
+  const totalPages = getReaderTotalPages();
+  document.querySelectorAll('[data-reader-prev-page]').forEach(button => { button.disabled = globalPage <= 0; });
+  document.querySelectorAll('[data-reader-next-page]').forEach(button => { button.disabled = globalPage >= totalPages - 1; });
 }
 
 function getCurrentReaderProgress() {
