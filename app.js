@@ -662,6 +662,14 @@ function isDuplicateRegistrationError(error) {
     || message.includes('email address already');
 }
 
+function isEmailRateLimitError(error) {
+  const message = String(error?.message || error?.code || error?.name || '').toLowerCase();
+  return message.includes('email rate limit')
+    || message.includes('rate limit exceeded')
+    || message.includes('too many requests')
+    || message.includes('over_email_send_rate_limit');
+}
+
 async function handleRegister() {
   const { email, password } = getAuthCredentials();
   if (!email) throw new Error('請輸入 Email。');
@@ -733,7 +741,10 @@ async function handleForgotPassword() {
   const { error } = await state.supabase.auth.resetPasswordForEmail(email, {
     redirectTo: window.location.origin + window.location.pathname,
   });
-  if (error) throw error;
+  if (error) {
+    if (isEmailRateLimitError(error)) throw new Error('重設密碼信寄送過於頻繁，請稍後再試。');
+    throw error;
+  }
   showToast('已寄出重設密碼信，請至信箱收信。');
 }
 
