@@ -1776,6 +1776,9 @@ const cloudLibrary = {
   readerChapterIndex: 0,
   readerPageIndex: 0,
   readerPageCount: 1,
+  readerChapterPageCounts: [],
+  readerControlsVisible: false,
+  readerControlsTimer: null,
   readerSettings: loadJson('devotion-app-reader-settings', { fontSize: 18, lineHeight: 1.8, theme: 'light' }),
 };
 
@@ -1790,6 +1793,10 @@ function clearCloudLibrary(message = '') {
   cloudLibrary.readerChapterIndex = 0;
   cloudLibrary.readerPageIndex = 0;
   cloudLibrary.readerPageCount = 1;
+  cloudLibrary.readerChapterPageCounts = [];
+  cloudLibrary.readerControlsVisible = false;
+  clearTimeout(cloudLibrary.readerControlsTimer);
+  cloudLibrary.readerControlsTimer = null;
 }
 
 function buildLibrarySetupError(error) {
@@ -2042,6 +2049,7 @@ function renderReaderShell() {
   document.getElementById('reader-meta').textContent = [book.author || '未填作者', `版本 ${book.version}`].join(' · ');
   document.getElementById('reader-chapter-nav').innerHTML = cloudLibrary.readerChapters.map((chapter, index) => `<option value="${index}">${escapeHtml(chapter.title || `第 ${index + 1} 章`)}</option>`).join('');
   renderReaderSettings();
+  hideReaderControls();
 }
 
 function ensureReaderViewShell() {
@@ -2114,22 +2122,24 @@ function injectReaderViewStyles() {
     #view-reader.reader-view { padding: 0; }
     #view-reader .reader-app-shell { position: relative; min-height: 100dvh; height: 100dvh; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 0; background: #f8f5ef; color: #2f2a24; }
     #view-reader.reader-dark .reader-app-shell { background: #171717; color: #eee7dd; }
-    #view-reader .reader-toolbar { display: grid; grid-template-columns: auto minmax(180px, 1fr) minmax(160px, 260px) repeat(3, auto); align-items: center; gap: 12px; padding: 12px clamp(12px, 3vw, 28px); border-bottom: 1px solid rgba(80,70,55,.18); background: rgba(255,255,255,.72); backdrop-filter: blur(12px); }
+    #view-reader .reader-toolbar { position: relative; z-index: 4; display: grid; grid-template-columns: auto minmax(180px, 1fr) minmax(160px, 260px) repeat(3, auto); align-items: center; gap: 12px; padding: 12px clamp(12px, 3vw, 28px); border-bottom: 1px solid rgba(80,70,55,.18); background: rgba(255,255,255,.72); backdrop-filter: blur(12px); transition: opacity .2s ease, transform .2s ease; }
     #view-reader.reader-dark .reader-toolbar { background: rgba(25,25,25,.78); border-color: rgba(255,255,255,.12); }
+    #view-reader.reader-controls-hidden .reader-toolbar { opacity: 0; transform: translateY(-100%); pointer-events: none; }
     #view-reader .reader-book-heading h2 { margin: 0; font-size: 1rem; line-height: 1.2; }
     #view-reader .reader-book-heading p { margin: 2px 0 0; }
     #view-reader .reader-toolbar label { display: grid; gap: 3px; font-size: .78rem; color: inherit; }
     #view-reader .reader-toolbar select, #view-reader .reader-toolbar input { max-width: 100%; }
     #view-reader .reader-stage { position: relative; z-index: 1; min-height: 0; display: grid; place-items: center; padding: clamp(12px, 3vw, 32px); overflow: hidden; }
-    #view-reader .reader-page-viewport { width: min(760px, 100%); height: min(74dvh, 860px); min-height: 420px; overflow: hidden; border-radius: 6px; background: #fffdf8; box-shadow: 0 18px 48px rgba(45,35,25,.14); }
+    #view-reader .reader-page-viewport { width: min(760px, 100%); height: min(74dvh, 860px); min-height: 420px; overflow: hidden; contain: paint; clip-path: inset(0); border-radius: 6px; background: #fffdf8; box-shadow: 0 18px 48px rgba(45,35,25,.14); }
     #view-reader.reader-dark .reader-page-viewport { background: #202020; box-shadow: 0 18px 48px rgba(0,0,0,.28); }
-    #view-reader .reader-flow { height: 100%; box-sizing: border-box; padding: clamp(24px, 5vw, 58px); overflow: visible; transition: transform .18s ease; will-change: transform; }
+    #view-reader .reader-flow { height: 100%; box-sizing: border-box; padding: clamp(24px, 5vw, 58px); overflow: visible; column-fill: auto; transition: transform .18s ease; will-change: transform; }
     #view-reader .reader-flow h1, #view-reader .reader-flow h2 { margin-top: 0; }
     #view-reader .reader-turn-zone { position: absolute; top: 0; bottom: 0; width: 34%; border: 0; background: transparent; cursor: pointer; }
     #view-reader .reader-turn-left { left: 0; }
     #view-reader .reader-turn-right { right: 0; }
-    #view-reader .reader-footer { position: relative; z-index: 1; display: grid; grid-template-columns: auto minmax(180px, 520px) auto; align-items: center; gap: 14px; padding: 12px clamp(12px, 3vw, 28px); border-top: 1px solid rgba(80,70,55,.18); background: rgba(255,255,255,.7); }
+    #view-reader .reader-footer { position: relative; z-index: 4; display: grid; grid-template-columns: auto minmax(180px, 520px) auto; align-items: center; gap: 14px; padding: 12px clamp(12px, 3vw, 28px); border-top: 1px solid rgba(80,70,55,.18); background: rgba(255,255,255,.7); transition: opacity .2s ease, transform .2s ease; }
     #view-reader.reader-dark .reader-footer { background: rgba(25,25,25,.78); border-color: rgba(255,255,255,.12); }
+    #view-reader.reader-controls-hidden .reader-footer { opacity: 0; transform: translateY(100%); pointer-events: none; }
     #view-reader .reader-progress { display: grid; grid-template-columns: auto auto; gap: 6px 12px; align-items: center; font-size: .9rem; }
     #view-reader .reader-progress div { grid-column: 1 / -1; height: 4px; border-radius: 999px; overflow: hidden; background: rgba(120,100,70,.22); }
     #view-reader .reader-progress i { display: block; height: 100%; width: 0; background: #9b7a48; }
@@ -2167,6 +2177,7 @@ function updateReaderSetting(key, value) {
   cloudLibrary.readerSettings = { fontSize: 18, lineHeight: 1.8, theme: 'light', ...cloudLibrary.readerSettings, [key]: value };
   saveJson(cloudLibrary.readerSettingsKey, cloudLibrary.readerSettings);
   renderReaderSettings();
+  showReaderControls();
 }
 
 async function openReaderChapter(index, options = {}) {
@@ -2185,33 +2196,77 @@ function paginateCurrentReaderChapter(restoreProgress = false) {
   const viewport = document.getElementById('reader-page-viewport');
   const content = document.getElementById('reader-content');
   if (!viewport || !content || !cloudLibrary.readerBook) return;
-  const width = Math.max(1, viewport.clientWidth);
-  const height = Math.max(1, viewport.clientHeight);
-  const gap = Math.min(56, Math.max(28, Math.round(width * 0.07)));
+  const currentHtml = content.innerHTML;
+  cloudLibrary.readerChapterPageCounts = cloudLibrary.readerChapters.map(chapter => measureReaderHtmlPageCount(chapter.html || '<p>這個章節目前沒有內容。</p>'));
+  content.innerHTML = currentHtml;
+  applyReaderPageMetrics();
+  cloudLibrary.readerPageCount = cloudLibrary.readerChapterPageCounts[cloudLibrary.readerChapterIndex] || 1;
+  if (restoreProgress) {
+    restoreReaderPageFromProgress(cloudLibrary.readerBook.reading_progress || 0);
+  }
+  cloudLibrary.readerPageIndex = Math.max(0, Math.min(cloudLibrary.readerPageIndex, cloudLibrary.readerPageCount - 1));
+  applyReaderPagePosition();
+}
+
+function applyReaderPageMetrics() {
+  const viewport = document.getElementById('reader-page-viewport');
+  const content = document.getElementById('reader-content');
+  if (!viewport || !content) return { width: 1, height: 1, pageStep: 1 };
+  const width = Math.max(1, Math.floor(viewport.clientWidth));
+  const height = Math.max(1, Math.floor(viewport.clientHeight));
   content.style.height = `${height}px`;
   content.style.width = `${width}px`;
   content.style.columnWidth = `${width}px`;
-  content.style.columnGap = `${gap}px`;
+  content.style.columnGap = '0px';
   content.style.transform = 'translateX(0)';
-  const pageStep = width + gap;
-  const pageCount = Math.max(1, Math.ceil(content.scrollWidth / pageStep));
-  cloudLibrary.readerPageCount = pageCount;
-  if (restoreProgress) {
-    const totalChapters = Math.max(cloudLibrary.readerChapters.length, 1);
-    const chapterProgress = Math.max(0, Math.min(0.999, (cloudLibrary.readerBook.reading_progress || 0) * totalChapters - cloudLibrary.readerChapterIndex));
-    cloudLibrary.readerPageIndex = Math.floor(chapterProgress * pageCount);
+  return { width, height, pageStep: width };
+}
+
+function measureReaderHtmlPageCount(html) {
+  const content = document.getElementById('reader-content');
+  if (!content) return 1;
+  content.innerHTML = html;
+  const { pageStep } = applyReaderPageMetrics();
+  return Math.max(1, Math.ceil(content.scrollWidth / pageStep));
+}
+
+function getReaderTotalPages() {
+  return Math.max(1, cloudLibrary.readerChapterPageCounts.reduce((sum, count) => sum + Math.max(1, count || 0), 0));
+}
+
+function getReaderGlobalPageIndex() {
+  const previousPages = cloudLibrary.readerChapterPageCounts
+    .slice(0, cloudLibrary.readerChapterIndex)
+    .reduce((sum, count) => sum + Math.max(1, count || 0), 0);
+  return previousPages + cloudLibrary.readerPageIndex;
+}
+
+function restoreReaderPageFromProgress(progress) {
+  const totalPages = getReaderTotalPages();
+  const targetGlobalPage = Math.max(0, Math.min(totalPages - 1, Math.round(progress * Math.max(totalPages - 1, 0))));
+  let remaining = targetGlobalPage;
+  for (let index = 0; index < cloudLibrary.readerChapters.length; index += 1) {
+    const count = Math.max(1, cloudLibrary.readerChapterPageCounts[index] || 1);
+    if (remaining < count) {
+      cloudLibrary.readerChapterIndex = index;
+      cloudLibrary.readerPageIndex = remaining;
+      const chapter = cloudLibrary.readerChapters[index];
+      document.getElementById('reader-chapter-nav').value = String(index);
+      document.getElementById('reader-content').innerHTML = chapter.html || '<p>這個章節目前沒有內容。</p>';
+      cloudLibrary.readerPageCount = count;
+      applyReaderPageMetrics();
+      return;
+    }
+    remaining -= count;
   }
-  cloudLibrary.readerPageIndex = Math.max(0, Math.min(cloudLibrary.readerPageIndex, pageCount - 1));
-  applyReaderPagePosition();
 }
 
 function applyReaderPagePosition() {
   const viewport = document.getElementById('reader-page-viewport');
   const content = document.getElementById('reader-content');
   if (!viewport || !content) return;
-  const width = Math.max(1, viewport.clientWidth);
-  const gap = Math.min(56, Math.max(28, Math.round(width * 0.07)));
-  content.style.transform = `translateX(-${cloudLibrary.readerPageIndex * (width + gap)}px)`;
+  const width = Math.max(1, Math.floor(viewport.clientWidth));
+  content.style.transform = `translateX(-${cloudLibrary.readerPageIndex * width}px)`;
   updateReaderProgressUi();
 }
 
@@ -2222,18 +2277,14 @@ function updateReaderProgressUi() {
   const pageText = document.getElementById('reader-page-text');
   const progressBar = document.getElementById('reader-progress-bar');
   if (progressText) progressText.textContent = `${percent}%`;
-  if (pageText) pageText.textContent = `本章 ${cloudLibrary.readerPageIndex + 1} / ${Math.max(cloudLibrary.readerPageCount, 1)} 頁`;
+  if (pageText) pageText.textContent = `${getReaderGlobalPageIndex() + 1} / ${getReaderTotalPages()}`;
   if (progressBar) progressBar.style.width = `${percent}%`;
 }
 
 function getCurrentReaderProgress() {
-  const totalChapters = Math.max(cloudLibrary.readerChapters.length, 1);
-  const pageCount = Math.max(cloudLibrary.readerPageCount, 1);
-  const isLastChapter = cloudLibrary.readerChapterIndex >= totalChapters - 1;
-  const isLastPage = cloudLibrary.readerPageIndex >= pageCount - 1;
-  if (isLastChapter && isLastPage) return 1;
-  const pageFraction = pageCount <= 1 ? 0 : cloudLibrary.readerPageIndex / pageCount;
-  return Math.max(0, Math.min(1, (cloudLibrary.readerChapterIndex + pageFraction) / totalChapters));
+  const totalPages = getReaderTotalPages();
+  if (totalPages <= 1) return 1;
+  return Math.max(0, Math.min(1, getReaderGlobalPageIndex() / (totalPages - 1)));
 }
 
 async function turnReaderPage(direction) {
@@ -2259,6 +2310,29 @@ async function persistCurrentReaderProgress() {
   const book = cloudLibrary.readerBook;
   if (!book) return;
   await persistReadingProgress(book.id, cloudLibrary.readerChapterIndex, getCurrentReaderProgress());
+}
+
+function showReaderControls() {
+  const view = document.getElementById('view-reader');
+  if (!view) return;
+  cloudLibrary.readerControlsVisible = true;
+  view.classList.remove('reader-controls-hidden');
+  clearTimeout(cloudLibrary.readerControlsTimer);
+  cloudLibrary.readerControlsTimer = setTimeout(() => hideReaderControls(), 3200);
+}
+
+function hideReaderControls() {
+  const view = document.getElementById('view-reader');
+  if (!view) return;
+  cloudLibrary.readerControlsVisible = false;
+  view.classList.add('reader-controls-hidden');
+  clearTimeout(cloudLibrary.readerControlsTimer);
+  cloudLibrary.readerControlsTimer = null;
+}
+
+function toggleReaderControls() {
+  if (cloudLibrary.readerControlsVisible) hideReaderControls();
+  else showReaderControls();
 }
 
 async function persistReadingProgress(bookId, currentChapter, readingProgress) {
@@ -2438,17 +2512,23 @@ document.addEventListener('click', event => {
   if (event.target.id === 'reader-back-library') setView('library');
   if (event.target.closest('[data-reader-prev-page]')) turnReaderPage(-1).catch(handleError);
   if (event.target.closest('[data-reader-next-page]')) turnReaderPage(1).catch(handleError);
+  if (document.getElementById('view-reader')?.classList.contains('active')) {
+    if (event.target.closest('.reader-toolbar, .reader-footer')) showReaderControls();
+    if (event.target.closest('.reader-stage') && !event.target.closest('[data-reader-prev-page], [data-reader-next-page]')) toggleReaderControls();
+  }
 });
 
 document.addEventListener('change', event => {
   if (event.target.id === 'library-sort') renderLibrary();
   if (event.target.id === 'reader-chapter-nav') openReaderChapter(Number(event.target.value) || 0, { pageIndex: 0 }).catch(handleError);
   if (event.target.id === 'reader-theme') updateReaderSetting('theme', event.target.value);
+  if (event.target.closest('#view-reader')) showReaderControls();
 });
 
 document.addEventListener('input', event => {
   if (event.target.id === 'reader-font-size') updateReaderSetting('fontSize', Number(event.target.value));
   if (event.target.id === 'reader-line-height') updateReaderSetting('lineHeight', Number(event.target.value));
+  if (event.target.closest('#view-reader')) showReaderControls();
 });
 
 document.addEventListener('keydown', event => {
