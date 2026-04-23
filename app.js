@@ -2146,9 +2146,11 @@ function injectReaderViewStyles() {
     #view-reader .reader-toolbar label { display: grid; gap: 3px; font-size: .78rem; color: inherit; }
     #view-reader .reader-toolbar select, #view-reader .reader-toolbar input { max-width: 100%; }
     #view-reader .reader-stage { position: absolute; top: var(--reader-stage-top); right: 0; bottom: var(--reader-stage-bottom); left: 0; z-index: 1; display: flex; align-items: stretch; justify-content: center; padding: clamp(10px, 2.5vw, 28px) clamp(12px, 4vw, 42px); overflow: hidden; }
-    #view-reader .reader-page-viewport { flex: 0 1 min(680px, 100%); width: min(680px, 100%); height: 100%; overflow: hidden; contain: layout paint size; isolation: isolate; border-radius: 10px; background: #fffdf8; box-shadow: 0 18px 48px rgba(45,35,25,.14); }
+    #view-reader .reader-page-viewport { flex: 0 1 min(1120px, 100%); width: min(1120px, 100%); height: 100%; overflow: hidden; contain: layout paint size; isolation: isolate; border-radius: 10px; background: #fffdf8; box-shadow: 0 18px 48px rgba(45,35,25,.14); }
     #view-reader.reader-dark .reader-page-viewport { background: #202020; box-shadow: 0 18px 48px rgba(0,0,0,.28); }
     #view-reader .reader-page-clip { width: 100%; height: 100%; overflow: hidden; contain: layout paint size; clip-path: inset(0); }
+    #view-reader.reader-spread-mode .reader-page-clip { background: linear-gradient(90deg, transparent calc(50% - 18px), rgba(80,70,55,.08) 50%, transparent calc(50% + 18px)); }
+    #view-reader.reader-dark.reader-spread-mode .reader-page-clip { background: linear-gradient(90deg, transparent calc(50% - 18px), rgba(255,255,255,.08) 50%, transparent calc(50% + 18px)); }
     #view-reader .reader-flow { height: 100%; box-sizing: border-box; display: block; max-width: none; padding: clamp(34px, 7vh, 72px) clamp(28px, 7vw, 74px) clamp(30px, 6vh, 64px); overflow: visible; column-fill: auto; transition: transform .18s ease; will-change: transform; overflow-wrap: anywhere; word-break: break-word; }
     #view-reader .reader-flow * { box-sizing: border-box; max-width: 100%; }
     #view-reader .reader-flow img, #view-reader .reader-flow svg, #view-reader .reader-flow video, #view-reader .reader-flow table { max-width: 100%; height: auto; }
@@ -2166,7 +2168,7 @@ function injectReaderViewStyles() {
     #view-reader .reader-progress { display: grid; grid-template-columns: auto auto; gap: 6px 12px; align-items: center; font-size: .9rem; }
     #view-reader .reader-progress div { grid-column: 1 / -1; height: 4px; border-radius: 999px; overflow: hidden; background: rgba(120,100,70,.22); }
     #view-reader .reader-progress i { display: block; height: 100%; width: 0; background: #9b7a48; }
-    @media (max-width: 760px) {
+    @media (max-width: 1023px) {
       body.reader-active #view-reader.reader-view.active { inset: 0; }
       #view-reader .reader-toolbar { grid-template-columns: auto 1fr; }
       #view-reader .reader-toolbar label { grid-column: span 1; }
@@ -2220,7 +2222,7 @@ function paginateCurrentReaderChapter(restoreProgress = false) {
   const viewport = document.getElementById('reader-page-viewport');
   const content = document.getElementById('reader-content');
   if (!viewport || !content || !cloudLibrary.readerBook) return;
-  const currentHtml = content.innerHTML;
+  const chapterHtml = cloudLibrary.readerChapters[cloudLibrary.readerChapterIndex]?.html || content.innerHTML;
   if (isMobileReaderLayout()) {
     cloudLibrary.readerChapterPages = cloudLibrary.readerChapters.map(chapter => buildMobileReaderPages(chapter.html || '<p>這個章節目前沒有內容。</p>'));
     cloudLibrary.readerChapterPageCounts = cloudLibrary.readerChapterPages.map(pages => Math.max(1, pages.length));
@@ -2228,25 +2230,47 @@ function paginateCurrentReaderChapter(restoreProgress = false) {
     if (restoreProgress) {
       restoreReaderPageFromProgress(cloudLibrary.readerBook.reading_progress || 0);
     }
-    cloudLibrary.readerPageIndex = Math.max(0, Math.min(cloudLibrary.readerPageIndex, cloudLibrary.readerPageCount - 1));
+    cloudLibrary.readerPageIndex = normalizeReaderPageIndex(cloudLibrary.readerPageIndex);
     renderMobileReaderPage();
     applyReaderPagePosition();
     return;
   }
   cloudLibrary.readerChapterPages = [];
   cloudLibrary.readerChapterPageCounts = cloudLibrary.readerChapters.map(chapter => measureReaderHtmlPageCount(chapter.html || '<p>這個章節目前沒有內容。</p>'));
-  content.innerHTML = currentHtml;
+  content.innerHTML = chapterHtml;
   applyReaderPageMetrics();
   cloudLibrary.readerPageCount = cloudLibrary.readerChapterPageCounts[cloudLibrary.readerChapterIndex] || 1;
   if (restoreProgress) {
     restoreReaderPageFromProgress(cloudLibrary.readerBook.reading_progress || 0);
   }
-  cloudLibrary.readerPageIndex = Math.max(0, Math.min(cloudLibrary.readerPageIndex, cloudLibrary.readerPageCount - 1));
+  cloudLibrary.readerPageIndex = normalizeReaderPageIndex(cloudLibrary.readerPageIndex);
   applyReaderPagePosition();
 }
 
+function isSinglePageReaderLayout() {
+  return window.matchMedia('(max-width: 1023px)').matches;
+}
+
 function isMobileReaderLayout() {
-  return window.matchMedia('(max-width: 760px)').matches;
+  return isSinglePageReaderLayout();
+}
+
+function getReaderPagesPerSpread() {
+  return isSinglePageReaderLayout() ? 1 : 2;
+}
+
+function normalizeReaderPageIndex(pageIndex, pageCount = cloudLibrary.readerPageCount) {
+  const count = Math.max(1, pageCount || 1);
+  const clamped = Math.max(0, Math.min(Number(pageIndex) || 0, count - 1));
+  if (getReaderPagesPerSpread() === 1) return clamped;
+  return Math.max(0, Math.min(Math.floor(clamped / 2) * 2, count - 1));
+}
+
+function getReaderVisibleEndPageIndex() {
+  return Math.min(
+    cloudLibrary.readerPageIndex + getReaderPagesPerSpread() - 1,
+    Math.max(0, cloudLibrary.readerPageCount - 1)
+  );
 }
 
 function buildMobileReaderPages(html) {
@@ -2306,17 +2330,22 @@ function applyReaderPageMetrics() {
   const content = document.getElementById('reader-content');
   if (!viewport || !content) return { width: 1, height: 1, pageStep: 1 };
   updateReaderViewportInsets();
-  const width = Math.max(1, Math.floor(pageViewport?.clientWidth || viewport.clientWidth));
+  const view = document.getElementById('view-reader');
+  const singlePage = isSinglePageReaderLayout();
+  const spreadGap = singlePage ? 0 : Math.max(28, Math.min(56, Math.round((pageViewport?.clientWidth || viewport.clientWidth) * 0.04)));
+  const spreadWidth = Math.max(1, Math.floor(pageViewport?.clientWidth || viewport.clientWidth));
+  const width = singlePage ? spreadWidth : Math.max(1, Math.floor((spreadWidth - spreadGap) / 2));
   const height = Math.max(1, Math.floor(viewport.clientHeight));
   const horizontalPadding = Math.max(24, Math.min(74, Math.round(width * 0.1)));
   const topPadding = Math.max(34, Math.min(72, Math.round(height * 0.09)));
   const bottomPadding = Math.max(30, Math.min(64, Math.round(height * 0.08)));
+  view?.classList.toggle('reader-spread-mode', !singlePage);
   content.style.height = `${height}px`;
-  content.style.width = `${width}px`;
-  content.style.minWidth = `${width}px`;
+  content.style.width = singlePage ? `${width}px` : `${spreadWidth}px`;
+  content.style.minWidth = singlePage ? `${width}px` : `${spreadWidth}px`;
   content.style.maxWidth = 'none';
   content.style.padding = `${topPadding}px ${horizontalPadding}px ${bottomPadding}px`;
-  if (isMobileReaderLayout()) {
+  if (singlePage) {
     content.style.columnWidth = 'auto';
     content.style.columnCount = 'auto';
     content.style.columnGap = '0px';
@@ -2324,21 +2353,21 @@ function applyReaderPageMetrics() {
   } else {
     content.style.columnCount = 'auto';
     content.style.columnWidth = `${width}px`;
-    content.style.columnGap = '0px';
+    content.style.columnGap = `${spreadGap}px`;
     content.style.columnFill = 'auto';
     content.style.overflow = 'visible';
   }
   content.style.transform = 'translateX(0)';
   viewport.scrollLeft = 0;
-  return { width, height, pageStep: width };
+  return { width, height, pageStep: width + spreadGap, spreadGap, spreadWidth };
 }
 
 function measureReaderHtmlPageCount(html) {
   const content = document.getElementById('reader-content');
   if (!content) return 1;
   content.innerHTML = html;
-  const { pageStep } = applyReaderPageMetrics();
-  return Math.max(1, Math.ceil(content.scrollWidth / pageStep));
+  const { pageStep, spreadGap } = applyReaderPageMetrics();
+  return Math.max(1, Math.ceil((content.scrollWidth + (spreadGap || 0)) / pageStep));
 }
 
 function getReaderTotalPages() {
@@ -2352,6 +2381,13 @@ function getReaderGlobalPageIndex() {
   return previousPages + cloudLibrary.readerPageIndex;
 }
 
+function getReaderVisibleEndGlobalPageIndex() {
+  const previousPages = cloudLibrary.readerChapterPageCounts
+    .slice(0, cloudLibrary.readerChapterIndex)
+    .reduce((sum, count) => sum + Math.max(1, count || 0), 0);
+  return previousPages + getReaderVisibleEndPageIndex();
+}
+
 function restoreReaderPageFromProgress(progress) {
   const totalPages = getReaderTotalPages();
   const targetGlobalPage = Math.max(0, Math.min(totalPages - 1, Math.round(progress * Math.max(totalPages - 1, 0))));
@@ -2360,7 +2396,7 @@ function restoreReaderPageFromProgress(progress) {
     const count = Math.max(1, cloudLibrary.readerChapterPageCounts[index] || 1);
     if (remaining < count) {
       cloudLibrary.readerChapterIndex = index;
-      cloudLibrary.readerPageIndex = remaining;
+      cloudLibrary.readerPageIndex = normalizeReaderPageIndex(remaining, count);
       const chapter = cloudLibrary.readerChapters[index];
       document.getElementById('reader-chapter-nav').value = String(index);
       document.getElementById('reader-content').innerHTML = chapter.html || '<p>這個章節目前沒有內容。</p>';
@@ -2384,8 +2420,9 @@ function applyReaderPagePosition() {
     updateReaderProgressUi();
     return;
   }
-  const width = Math.max(1, Math.floor(pageViewport?.clientWidth || viewport.clientWidth));
-  content.style.transform = `translate3d(-${cloudLibrary.readerPageIndex * width}px, 0, 0)`;
+  const { pageStep } = applyReaderPageMetrics();
+  cloudLibrary.readerPageIndex = normalizeReaderPageIndex(cloudLibrary.readerPageIndex);
+  content.style.transform = `translate3d(-${cloudLibrary.readerPageIndex * pageStep}px, 0, 0)`;
   viewport.scrollLeft = 0;
   updateReaderProgressUi();
 }
@@ -2397,7 +2434,12 @@ function updateReaderProgressUi() {
   const pageText = document.getElementById('reader-page-text');
   const progressBar = document.getElementById('reader-progress-bar');
   if (progressText) progressText.textContent = `${percent}%`;
-  if (pageText) pageText.textContent = `第 ${getReaderGlobalPageIndex() + 1} / ${getReaderTotalPages()} 頁`;
+  if (pageText) {
+    const totalPages = getReaderTotalPages();
+    const startPage = getReaderGlobalPageIndex() + 1;
+    const endPage = Math.min(startPage + getReaderPagesPerSpread() - 1, totalPages);
+    pageText.textContent = endPage > startPage ? `第 ${startPage}-${endPage} / ${totalPages} 頁` : `第 ${startPage} / ${totalPages} 頁`;
+  }
   if (progressBar) progressBar.style.width = `${percent}%`;
   updateReaderTurnButtons();
 }
@@ -2406,20 +2448,22 @@ function updateReaderTurnButtons() {
   const globalPage = getReaderGlobalPageIndex();
   const totalPages = getReaderTotalPages();
   document.querySelectorAll('[data-reader-prev-page]').forEach(button => { button.disabled = globalPage <= 0; });
-  document.querySelectorAll('[data-reader-next-page]').forEach(button => { button.disabled = globalPage >= totalPages - 1; });
+  document.querySelectorAll('[data-reader-next-page]').forEach(button => { button.disabled = getReaderVisibleEndGlobalPageIndex() >= totalPages - 1; });
 }
 
 function getCurrentReaderProgress() {
   const totalPages = getReaderTotalPages();
   if (totalPages <= 1) return 1;
-  return Math.max(0, Math.min(1, getReaderGlobalPageIndex() / (totalPages - 1)));
+  return Math.max(0, Math.min(1, getReaderVisibleEndGlobalPageIndex() / (totalPages - 1)));
 }
 
 async function turnReaderPage(direction) {
   if (!cloudLibrary.readerBook) return;
-  const nextPage = cloudLibrary.readerPageIndex + direction;
+  const step = getReaderPagesPerSpread();
+  const currentPage = normalizeReaderPageIndex(cloudLibrary.readerPageIndex);
+  const nextPage = currentPage + (direction * step);
   if (nextPage >= 0 && nextPage < cloudLibrary.readerPageCount) {
-    cloudLibrary.readerPageIndex = nextPage;
+    cloudLibrary.readerPageIndex = normalizeReaderPageIndex(nextPage);
     applyReaderPagePosition();
     await persistCurrentReaderProgress();
     return;
@@ -2428,7 +2472,7 @@ async function turnReaderPage(direction) {
   if (nextChapter < 0 || nextChapter >= cloudLibrary.readerChapters.length) return;
   await openReaderChapter(nextChapter, { pageIndex: direction > 0 ? 0 : Number.MAX_SAFE_INTEGER });
   if (direction < 0) {
-    cloudLibrary.readerPageIndex = Math.max(0, cloudLibrary.readerPageCount - 1);
+    cloudLibrary.readerPageIndex = normalizeReaderPageIndex(Math.max(0, cloudLibrary.readerPageCount - 1));
     applyReaderPagePosition();
     await persistCurrentReaderProgress();
   }
