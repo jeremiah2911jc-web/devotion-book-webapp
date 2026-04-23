@@ -2135,7 +2135,10 @@ function injectReaderViewStyles() {
     #view-reader .reader-page-viewport { flex: 0 1 min(760px, 100vw); width: min(760px, 100vw); height: 100%; overflow: hidden; contain: layout paint size; isolation: isolate; border-radius: 6px; background: #fffdf8; box-shadow: 0 18px 48px rgba(45,35,25,.14); }
     #view-reader.reader-dark .reader-page-viewport { background: #202020; box-shadow: 0 18px 48px rgba(0,0,0,.28); }
     #view-reader .reader-page-clip { width: 100%; height: 100%; overflow: hidden; contain: layout paint size; clip-path: inset(0); }
-    #view-reader .reader-flow { height: 100%; box-sizing: border-box; display: block; max-width: none; padding: clamp(24px, 5vw, 58px); overflow: visible; column-fill: auto; transition: transform .18s ease; will-change: transform; }
+    #view-reader .reader-flow { height: 100%; box-sizing: border-box; display: block; max-width: none; padding: clamp(24px, 5vw, 58px); overflow: visible; column-fill: auto; transition: transform .18s ease; will-change: transform; overflow-wrap: anywhere; word-break: break-word; }
+    #view-reader .reader-flow * { box-sizing: border-box; max-width: 100%; }
+    #view-reader .reader-flow img, #view-reader .reader-flow svg, #view-reader .reader-flow video, #view-reader .reader-flow table { max-width: 100%; height: auto; }
+    #view-reader .reader-flow pre, #view-reader .reader-flow code { white-space: pre-wrap; overflow-wrap: anywhere; }
     #view-reader .reader-flow h1, #view-reader .reader-flow h2 { margin-top: 0; }
     #view-reader .reader-turn-zone { position: absolute; top: 0; bottom: 0; width: 34%; border: 0; background: transparent; cursor: pointer; }
     #view-reader .reader-turn-zone:disabled, #view-reader .reader-footer button:disabled { cursor: default; opacity: .35; }
@@ -2226,13 +2229,15 @@ function updateReaderViewportInsets() {
 
 function applyReaderPageMetrics() {
   const viewport = document.querySelector('#reader-page-viewport .reader-page-clip') || document.getElementById('reader-page-viewport');
+  const pageViewport = document.getElementById('reader-page-viewport');
   const content = document.getElementById('reader-content');
   if (!viewport || !content) return { width: 1, height: 1, pageStep: 1 };
   updateReaderViewportInsets();
-  const width = Math.max(1, Math.floor(viewport.clientWidth));
+  const width = Math.max(1, Math.floor(pageViewport?.clientWidth || viewport.clientWidth));
   const height = Math.max(1, Math.floor(viewport.clientHeight));
   content.style.height = `${height}px`;
   content.style.width = `${width}px`;
+  content.style.minWidth = `${width}px`;
   content.style.maxWidth = 'none';
   content.style.padding = '0px';
   content.style.columnWidth = `${width}px`;
@@ -2284,10 +2289,11 @@ function restoreReaderPageFromProgress(progress) {
 
 function applyReaderPagePosition() {
   const viewport = document.querySelector('#reader-page-viewport .reader-page-clip') || document.getElementById('reader-page-viewport');
+  const pageViewport = document.getElementById('reader-page-viewport');
   const content = document.getElementById('reader-content');
   if (!viewport || !content) return;
   updateReaderViewportInsets();
-  const width = Math.max(1, Math.floor(viewport.clientWidth));
+  const width = Math.max(1, Math.floor(pageViewport?.clientWidth || viewport.clientWidth));
   content.style.transform = `translate3d(-${cloudLibrary.readerPageIndex * width}px, 0, 0)`;
   viewport.scrollLeft = 0;
   updateReaderProgressUi();
@@ -2545,10 +2551,20 @@ document.addEventListener('click', event => {
   if (event.target.id === 'go-library-btn') setView('library');
   if (event.target.id === 'library-empty-action') setView('books');
   if (event.target.id === 'reader-back-library') setView('library');
-  if (event.target.closest('[data-reader-prev-page]')) turnReaderPage(-1).catch(handleError);
-  if (event.target.closest('[data-reader-next-page]')) turnReaderPage(1).catch(handleError);
+  if (event.target.closest('[data-reader-prev-page]')) {
+    event.preventDefault();
+    event.stopPropagation();
+    turnReaderPage(-1).catch(handleError);
+    return;
+  }
+  if (event.target.closest('[data-reader-next-page]')) {
+    event.preventDefault();
+    event.stopPropagation();
+    turnReaderPage(1).catch(handleError);
+    return;
+  }
   if (document.getElementById('view-reader')?.classList.contains('active')) {
-    if (event.target.closest('.reader-toolbar, .reader-footer')) showReaderControls();
+    if (event.target.closest('.reader-toolbar')) showReaderControls();
     if (event.target.closest('.reader-stage') && !event.target.closest('[data-reader-prev-page], [data-reader-next-page]')) toggleReaderControls();
   }
 });
