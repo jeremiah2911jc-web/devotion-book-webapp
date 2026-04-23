@@ -1777,6 +1777,7 @@ const cloudLibrary = {
   readerPageIndex: 0,
   readerPageCount: 1,
   readerChapterPageCounts: [],
+  readerChapterPages: [],
   readerControlsVisible: false,
   readerControlsTimer: null,
   readerSettings: loadJson('devotion-app-reader-settings', { fontSize: 18, lineHeight: 1.8, theme: 'light' }),
@@ -1794,6 +1795,7 @@ function clearCloudLibrary(message = '') {
   cloudLibrary.readerPageIndex = 0;
   cloudLibrary.readerPageCount = 1;
   cloudLibrary.readerChapterPageCounts = [];
+  cloudLibrary.readerChapterPages = [];
   cloudLibrary.readerControlsVisible = false;
   clearTimeout(cloudLibrary.readerControlsTimer);
   cloudLibrary.readerControlsTimer = null;
@@ -2207,6 +2209,19 @@ function paginateCurrentReaderChapter(restoreProgress = false) {
   const content = document.getElementById('reader-content');
   if (!viewport || !content || !cloudLibrary.readerBook) return;
   const currentHtml = content.innerHTML;
+  if (isMobileReaderLayout()) {
+    cloudLibrary.readerChapterPages = cloudLibrary.readerChapters.map(chapter => buildMobileReaderPages(chapter.html || '<p>這個章節目前沒有內容。</p>'));
+    cloudLibrary.readerChapterPageCounts = cloudLibrary.readerChapterPages.map(pages => Math.max(1, pages.length));
+    cloudLibrary.readerPageCount = cloudLibrary.readerChapterPageCounts[cloudLibrary.readerChapterIndex] || 1;
+    if (restoreProgress) {
+      restoreReaderPageFromProgress(cloudLibrary.readerBook.reading_progress || 0);
+    }
+    cloudLibrary.readerPageIndex = Math.max(0, Math.min(cloudLibrary.readerPageIndex, cloudLibrary.readerPageCount - 1));
+    renderMobileReaderPage();
+    applyReaderPagePosition();
+    return;
+  }
+  cloudLibrary.readerChapterPages = [];
   cloudLibrary.readerChapterPageCounts = cloudLibrary.readerChapters.map(chapter => measureReaderHtmlPageCount(chapter.html || '<p>這個章節目前沒有內容。</p>'));
   content.innerHTML = currentHtml;
   applyReaderPageMetrics();
@@ -2216,6 +2231,44 @@ function paginateCurrentReaderChapter(restoreProgress = false) {
   }
   cloudLibrary.readerPageIndex = Math.max(0, Math.min(cloudLibrary.readerPageIndex, cloudLibrary.readerPageCount - 1));
   applyReaderPagePosition();
+}
+
+function isMobileReaderLayout() {
+  return window.matchMedia('(max-width: 760px)').matches;
+}
+
+function buildMobileReaderPages(html) {
+  const content = document.getElementById('reader-content');
+  if (!content) return [html];
+  applyReaderPageMetrics();
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  const nodes = [...template.content.childNodes].filter(node => node.textContent?.trim() || node.nodeType === Node.ELEMENT_NODE);
+  if (!nodes.length) return ['<p>這個章節目前沒有內容。</p>'];
+
+  const pages = [];
+  content.innerHTML = '';
+  content.style.transform = 'none';
+  nodes.forEach(node => {
+    const clone = node.cloneNode(true);
+    content.appendChild(clone);
+    if (content.scrollHeight > content.clientHeight + 1 && content.childNodes.length > 1) {
+      content.removeChild(clone);
+      pages.push(content.innerHTML);
+      content.innerHTML = '';
+      content.appendChild(clone);
+    }
+  });
+  if (content.innerHTML.trim()) pages.push(content.innerHTML);
+  return pages.length ? pages : ['<p>這個章節目前沒有內容。</p>'];
+}
+
+function renderMobileReaderPage() {
+  const content = document.getElementById('reader-content');
+  if (!content) return;
+  const pages = cloudLibrary.readerChapterPages[cloudLibrary.readerChapterIndex] || [];
+  content.innerHTML = pages[cloudLibrary.readerPageIndex] || '<p>這個章節目前沒有內容。</p>';
+  applyReaderPageMetrics();
 }
 
 function updateReaderViewportInsets() {
@@ -2247,9 +2300,18 @@ function applyReaderPageMetrics() {
   content.style.minWidth = `${width}px`;
   content.style.maxWidth = 'none';
   content.style.padding = `${topPadding}px ${horizontalPadding}px ${bottomPadding}px`;
-  content.style.columnWidth = `${width}px`;
-  content.style.columnGap = '0px';
-  content.style.columnFill = 'auto';
+  if (isMobileReaderLayout()) {
+    content.style.columnWidth = 'auto';
+    content.style.columnCount = 'auto';
+    content.style.columnGap = '0px';
+    content.style.overflow = 'hidden';
+  } else {
+    content.style.columnCount = 'auto';
+    content.style.columnWidth = `${width}px`;
+    content.style.columnGap = '0px';
+    content.style.columnFill = 'auto';
+    content.style.overflow = 'visible';
+  }
   content.style.transform = 'translateX(0)';
   viewport.scrollLeft = 0;
   return { width, height, pageStep: width };
@@ -2300,6 +2362,12 @@ function applyReaderPagePosition() {
   const content = document.getElementById('reader-content');
   if (!viewport || !content) return;
   updateReaderViewportInsets();
+  if (isMobileReaderLayout()) {
+    renderMobileReaderPage();
+    viewport.scrollLeft = 0;
+    updateReaderProgressUi();
+    return;
+  }
   const width = Math.max(1, Math.floor(pageViewport?.clientWidth || viewport.clientWidth));
   content.style.transform = `translate3d(-${cloudLibrary.readerPageIndex * width}px, 0, 0)`;
   viewport.scrollLeft = 0;
