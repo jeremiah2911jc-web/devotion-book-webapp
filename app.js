@@ -2048,8 +2048,8 @@ function renderReaderShell() {
   document.getElementById('reader-title').textContent = book.title;
   document.getElementById('reader-meta').textContent = [book.author || '未填作者', `版本 ${book.version}`].join(' · ');
   document.getElementById('reader-chapter-nav').innerHTML = cloudLibrary.readerChapters.map((chapter, index) => `<option value="${index}">${escapeHtml(chapter.title || `第 ${index + 1} 章`)}</option>`).join('');
-  renderReaderSettings();
   hideReaderControls();
+  renderReaderSettings();
 }
 
 function ensureReaderViewShell() {
@@ -2122,19 +2122,19 @@ function injectReaderViewStyles() {
     }
     body.reader-active #view-reader.reader-view.active.reader-dark::before { background: #171717; }
     #view-reader.reader-view { padding: 0; }
-    #view-reader .reader-app-shell { position: relative; min-height: 100dvh; height: 100dvh; overflow: hidden; background: #f8f5ef; color: #2f2a24; }
+    #view-reader .reader-app-shell { --reader-stage-top: 0px; --reader-stage-bottom: 0px; position: relative; min-height: 100dvh; height: 100dvh; overflow: hidden; background: #f8f5ef; color: #2f2a24; }
     #view-reader.reader-dark .reader-app-shell { background: #171717; color: #eee7dd; }
     #view-reader .reader-toolbar { position: absolute; top: 0; left: 0; right: 0; z-index: 4; display: grid; grid-template-columns: auto minmax(180px, 1fr) minmax(160px, 260px) repeat(3, auto); align-items: center; gap: 12px; padding: 12px clamp(12px, 3vw, 28px); border-bottom: 1px solid rgba(80,70,55,.18); background: rgba(255,255,255,.72); backdrop-filter: blur(12px); transition: opacity .2s ease, transform .2s ease; }
     #view-reader.reader-dark .reader-toolbar { background: rgba(25,25,25,.78); border-color: rgba(255,255,255,.12); }
-    #view-reader.reader-controls-hidden .reader-toolbar { opacity: 0; transform: translateY(-100%); pointer-events: none; }
+    #view-reader.reader-controls-hidden .reader-toolbar { display: none; opacity: 0; transform: translateY(-100%); pointer-events: none; }
     #view-reader .reader-book-heading h2 { margin: 0; font-size: 1rem; line-height: 1.2; }
     #view-reader .reader-book-heading p { margin: 2px 0 0; }
     #view-reader .reader-toolbar label { display: grid; gap: 3px; font-size: .78rem; color: inherit; }
     #view-reader .reader-toolbar select, #view-reader .reader-toolbar input { max-width: 100%; }
-    #view-reader .reader-stage { position: absolute; inset: 0; z-index: 1; display: grid; place-items: stretch center; padding: clamp(10px, 3vw, 28px); overflow: hidden; }
-    #view-reader .reader-page-viewport { align-self: stretch; width: min(760px, 100%); height: 100%; overflow: hidden; contain: strict; isolation: isolate; border-radius: 6px; background: #fffdf8; box-shadow: 0 18px 48px rgba(45,35,25,.14); }
+    #view-reader .reader-stage { position: absolute; top: var(--reader-stage-top); right: 0; bottom: var(--reader-stage-bottom); left: 0; z-index: 1; display: flex; align-items: stretch; justify-content: center; padding: 0; overflow: hidden; }
+    #view-reader .reader-page-viewport { flex: 0 1 min(760px, 100vw); width: min(760px, 100vw); height: 100%; overflow: hidden; contain: layout paint size; isolation: isolate; border-radius: 6px; background: #fffdf8; box-shadow: 0 18px 48px rgba(45,35,25,.14); }
     #view-reader.reader-dark .reader-page-viewport { background: #202020; box-shadow: 0 18px 48px rgba(0,0,0,.28); }
-    #view-reader .reader-page-clip { width: 100%; height: 100%; overflow: hidden; contain: paint; clip-path: inset(0); }
+    #view-reader .reader-page-clip { width: 100%; height: 100%; overflow: hidden; contain: layout paint size; clip-path: inset(0); }
     #view-reader .reader-flow { height: 100%; box-sizing: border-box; display: block; max-width: none; padding: clamp(24px, 5vw, 58px); overflow: visible; column-fill: auto; transition: transform .18s ease; will-change: transform; }
     #view-reader .reader-flow h1, #view-reader .reader-flow h2 { margin-top: 0; }
     #view-reader .reader-turn-zone { position: absolute; top: 0; bottom: 0; width: 34%; border: 0; background: transparent; cursor: pointer; }
@@ -2143,7 +2143,7 @@ function injectReaderViewStyles() {
     #view-reader .reader-turn-right { right: 0; }
     #view-reader .reader-footer { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; display: grid; grid-template-columns: auto minmax(180px, 520px) auto; align-items: center; gap: 14px; padding: 12px clamp(12px, 3vw, 28px); border-top: 1px solid rgba(80,70,55,.18); background: rgba(255,255,255,.7); transition: opacity .2s ease, transform .2s ease; }
     #view-reader.reader-dark .reader-footer { background: rgba(25,25,25,.78); border-color: rgba(255,255,255,.12); }
-    #view-reader.reader-controls-hidden .reader-footer { opacity: 0; transform: translateY(100%); pointer-events: none; }
+    #view-reader.reader-controls-hidden .reader-footer { display: none; opacity: 0; transform: translateY(100%); pointer-events: none; }
     #view-reader .reader-progress { display: grid; grid-template-columns: auto auto; gap: 6px 12px; align-items: center; font-size: .9rem; }
     #view-reader .reader-progress div { grid-column: 1 / -1; height: 4px; border-radius: 999px; overflow: hidden; background: rgba(120,100,70,.22); }
     #view-reader .reader-progress i { display: block; height: 100%; width: 0; background: #9b7a48; }
@@ -2151,8 +2151,7 @@ function injectReaderViewStyles() {
       body.reader-active #view-reader.reader-view.active { inset: 0; }
       #view-reader .reader-toolbar { grid-template-columns: auto 1fr; }
       #view-reader .reader-toolbar label { grid-column: span 1; }
-      #view-reader .reader-stage { padding: 0; }
-      #view-reader .reader-page-viewport { width: 100%; height: 100%; min-height: 0; border-radius: 0; box-shadow: none; }
+      #view-reader .reader-page-viewport { flex-basis: 100vw; width: 100vw; height: 100%; min-height: 0; border-radius: 0; box-shadow: none; }
       #view-reader .reader-footer { grid-template-columns: auto 1fr auto; }
       #view-reader .reader-book-heading h2 { font-size: .95rem; }
       #view-reader .reader-turn-zone { width: 28%; }
@@ -2212,17 +2211,35 @@ function paginateCurrentReaderChapter(restoreProgress = false) {
   applyReaderPagePosition();
 }
 
+function updateReaderViewportInsets() {
+  const view = document.getElementById('view-reader');
+  const shell = view?.querySelector('.reader-app-shell');
+  if (!view || !shell) return { top: 0, bottom: 0 };
+  const controlsVisible = !view.classList.contains('reader-controls-hidden');
+  const toolbar = view.querySelector('.reader-toolbar');
+  const footer = view.querySelector('.reader-footer');
+  const top = controlsVisible && toolbar ? Math.ceil(toolbar.getBoundingClientRect().height) : 0;
+  const bottom = controlsVisible && footer ? Math.ceil(footer.getBoundingClientRect().height) : 0;
+  shell.style.setProperty('--reader-stage-top', `${top}px`);
+  shell.style.setProperty('--reader-stage-bottom', `${bottom}px`);
+  return { top, bottom };
+}
+
 function applyReaderPageMetrics() {
   const viewport = document.querySelector('#reader-page-viewport .reader-page-clip') || document.getElementById('reader-page-viewport');
   const content = document.getElementById('reader-content');
   if (!viewport || !content) return { width: 1, height: 1, pageStep: 1 };
+  updateReaderViewportInsets();
   const width = Math.max(1, Math.floor(viewport.clientWidth));
   const height = Math.max(1, Math.floor(viewport.clientHeight));
   content.style.height = `${height}px`;
   content.style.width = `${width}px`;
+  content.style.maxWidth = 'none';
   content.style.columnWidth = `${width}px`;
   content.style.columnGap = '0px';
+  content.style.columnFill = 'auto';
   content.style.transform = 'translateX(0)';
+  viewport.scrollLeft = 0;
   return { width, height, pageStep: width };
 }
 
@@ -2269,8 +2286,10 @@ function applyReaderPagePosition() {
   const viewport = document.querySelector('#reader-page-viewport .reader-page-clip') || document.getElementById('reader-page-viewport');
   const content = document.getElementById('reader-content');
   if (!viewport || !content) return;
+  updateReaderViewportInsets();
   const width = Math.max(1, Math.floor(viewport.clientWidth));
-  content.style.transform = `translateX(-${cloudLibrary.readerPageIndex * width}px)`;
+  content.style.transform = `translate3d(-${cloudLibrary.readerPageIndex * width}px, 0, 0)`;
+  viewport.scrollLeft = 0;
   updateReaderProgressUi();
 }
 
@@ -2329,6 +2348,8 @@ function showReaderControls() {
   if (!view) return;
   cloudLibrary.readerControlsVisible = true;
   view.classList.remove('reader-controls-hidden');
+  applyReaderPageMetrics();
+  applyReaderPagePosition();
   clearTimeout(cloudLibrary.readerControlsTimer);
   cloudLibrary.readerControlsTimer = setTimeout(() => hideReaderControls(), 3200);
 }
@@ -2338,6 +2359,8 @@ function hideReaderControls() {
   if (!view) return;
   cloudLibrary.readerControlsVisible = false;
   view.classList.add('reader-controls-hidden');
+  applyReaderPageMetrics();
+  applyReaderPagePosition();
   clearTimeout(cloudLibrary.readerControlsTimer);
   cloudLibrary.readerControlsTimer = null;
 }
