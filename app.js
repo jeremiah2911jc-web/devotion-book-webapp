@@ -144,6 +144,7 @@ function removeRetiredInterfaceElements() {
   document.getElementById('summary-snapshots-count')?.closest('.summary-card')?.remove();
   document.getElementById('create-snapshot-btn')?.remove();
   document.querySelector('.sidebar h1 + .muted')?.remove();
+  document.getElementById('auth-inline-hint')?.classList.add('hidden');
 
   const authCopy = document.querySelector('.auth-gate-copy');
   if (authCopy) authCopy.textContent = '建立免費帳戶以同步札記、書籍專案與 EPUB 匯出設定，也可以先用本機模式測試整個流程。';
@@ -459,6 +460,14 @@ function openAuthInline(mode = 'register') {
     els.gateSubmitBtn.classList.toggle('secondary-btn', !isRegister);
     els.gateSubmitBtn.classList.toggle('primary-btn', isRegister);
   }
+  if (els.gateMagicLinkBtn) {
+    els.gateMagicLinkBtn.textContent = '忘記密碼';
+    els.gateMagicLinkBtn.classList.toggle('hidden', isRegister);
+  }
+  if (els.authInlineHint) {
+    els.authInlineHint.textContent = '';
+    els.authInlineHint.classList.add('hidden');
+  }
   els.gateAuthEmail?.focus();
 }
 function closeAuthInline() {
@@ -583,7 +592,7 @@ function bindEvents() {
   els.closeAuthInlineBtn?.addEventListener('click', closeAuthInline);
   els.authInlineBackdrop?.addEventListener('click', closeAuthInline);
   els.gateSubmitBtn?.addEventListener('click', () => (state.authInlineMode === 'register' ? handleRegister() : handleLogin()).catch(handleError));
-  els.gateMagicLinkBtn?.addEventListener('click', () => handleMagicLink().catch(handleError));
+  els.gateMagicLinkBtn?.addEventListener('click', () => handleForgotPassword().catch(handleError));
   els.gateSaveConfigBtn?.addEventListener('click', () => applyConnectionSettings({
     supabaseUrl: els.gateSupabaseUrl.value,
     supabaseAnonKey: els.gateSupabaseAnonKey.value,
@@ -702,6 +711,17 @@ async function handleMagicLink() {
   });
   if (error) throw error;
   showToast('Magic Link 已寄出。');
+}
+
+async function handleForgotPassword() {
+  const { email } = getAuthCredentials();
+  if (!email) throw new Error('請先輸入 Email。');
+  if (!state.supabase) throw new Error('忘記密碼需要先設定 Supabase。');
+  const { error } = await state.supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname,
+  });
+  if (error) throw error;
+  showToast('重設密碼信已寄出，請到信箱完成驗證。');
 }
 
 async function handleSignOut() {
