@@ -653,21 +653,34 @@ function closeSupportModal() {
   els.supportModal?.setAttribute('aria-hidden', 'true');
 }
 
+function isDuplicateRegistrationError(error) {
+  const message = String(error?.message || error?.code || error?.name || '').toLowerCase();
+  return message.includes('already registered')
+    || message.includes('already exists')
+    || message.includes('user_already_exists')
+    || message.includes('email_exists')
+    || message.includes('email address already');
+}
+
 async function handleRegister() {
   const { email, password } = getAuthCredentials();
   if (!email) throw new Error('請輸入 Email。');
   if (!password || password.length < 6) throw new Error('密碼至少需要 6 碼。');
   if (state.supabase) {
-    const { error } = await state.supabase.auth.signUp({
+    const { data, error } = await state.supabase.auth.signUp({
       email,
       password,
       options: { emailRedirectTo: window.location.origin + window.location.pathname },
     });
-    if (error) throw error;
+    if (error) {
+      if (isDuplicateRegistrationError(error)) throw new Error('此帳號已註冊。');
+      throw error;
+    }
+    if (Array.isArray(data?.user?.identities) && data.user.identities.length === 0) throw new Error('此帳號已註冊。');
     showToast('註冊完成，請依 Supabase 設定確認信箱。');
     return;
   }
-  if (findLocalAccountByEmail(email)) throw new Error('這個 Email 已經註冊過。');
+  if (findLocalAccountByEmail(email)) throw new Error('此帳號已註冊。');
   const account = { id: uid('local_user'), email, password, created_at: nowIso() };
   const accounts = loadLocalAccounts();
   accounts.unshift(account);
@@ -721,7 +734,7 @@ async function handleForgotPassword() {
     redirectTo: window.location.origin + window.location.pathname,
   });
   if (error) throw error;
-  showToast('重設密碼信已寄出，請到信箱完成驗證。');
+  showToast('已寄出重設密碼信，請至信箱收信。');
 }
 
 async function handleSignOut() {
