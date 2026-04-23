@@ -1848,10 +1848,6 @@ function storagePathForBook(userId, bookId, filename) {
   return `users/${userId}/books/${bookId}/${filename}`;
 }
 
-function safeFileSlug(value = 'book') {
-  return String(value || 'book').trim().replace(/[^\p{L}\p{N}_-]+/gu, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'book';
-}
-
 function nextLibraryVersionForSource(sourceProjectId) {
   return `1.0.${cloudLibrary.books.filter(book => book.source_project_id === sourceProjectId).length + 1}`;
 }
@@ -1860,7 +1856,7 @@ async function createCloudLibraryBook(sourceBook, snapshot, epubBlob) {
   requireCloudLibrary();
   const userId = getUserId();
   const bookId = uid('library_book');
-  const epubFilePath = storagePathForBook(userId, bookId, `${safeFileSlug(snapshot.book.title)}.epub`);
+  const epubFilePath = storagePathForBook(userId, bookId, 'book.epub');
   const coverUpload = snapshot.book.cover_data_url ? dataUrlToUpload(snapshot.book.cover_data_url) : null;
   const coverImagePath = coverUpload ? storagePathForBook(userId, bookId, `cover.${coverUpload.ext}`) : '';
   const chapters = makeLibraryChapters(snapshot, bookId, userId);
