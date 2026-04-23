@@ -2131,15 +2131,17 @@ function injectReaderViewStyles() {
     #view-reader .reader-book-heading p { margin: 2px 0 0; }
     #view-reader .reader-toolbar label { display: grid; gap: 3px; font-size: .78rem; color: inherit; }
     #view-reader .reader-toolbar select, #view-reader .reader-toolbar input { max-width: 100%; }
-    #view-reader .reader-stage { position: absolute; top: var(--reader-stage-top); right: 0; bottom: var(--reader-stage-bottom); left: 0; z-index: 1; display: flex; align-items: stretch; justify-content: center; padding: 0; overflow: hidden; }
-    #view-reader .reader-page-viewport { flex: 0 1 min(760px, 100vw); width: min(760px, 100vw); height: 100%; overflow: hidden; contain: layout paint size; isolation: isolate; border-radius: 6px; background: #fffdf8; box-shadow: 0 18px 48px rgba(45,35,25,.14); }
+    #view-reader .reader-stage { position: absolute; top: var(--reader-stage-top); right: 0; bottom: var(--reader-stage-bottom); left: 0; z-index: 1; display: flex; align-items: stretch; justify-content: center; padding: clamp(10px, 2.5vw, 28px) clamp(12px, 4vw, 42px); overflow: hidden; }
+    #view-reader .reader-page-viewport { flex: 0 1 min(680px, 100%); width: min(680px, 100%); height: 100%; overflow: hidden; contain: layout paint size; isolation: isolate; border-radius: 10px; background: #fffdf8; box-shadow: 0 18px 48px rgba(45,35,25,.14); }
     #view-reader.reader-dark .reader-page-viewport { background: #202020; box-shadow: 0 18px 48px rgba(0,0,0,.28); }
     #view-reader .reader-page-clip { width: 100%; height: 100%; overflow: hidden; contain: layout paint size; clip-path: inset(0); }
-    #view-reader .reader-flow { height: 100%; box-sizing: border-box; display: block; max-width: none; padding: clamp(24px, 5vw, 58px); overflow: visible; column-fill: auto; transition: transform .18s ease; will-change: transform; overflow-wrap: anywhere; word-break: break-word; }
+    #view-reader .reader-flow { height: 100%; box-sizing: border-box; display: block; max-width: none; padding: clamp(34px, 7vh, 72px) clamp(28px, 7vw, 74px) clamp(30px, 6vh, 64px); overflow: visible; column-fill: auto; transition: transform .18s ease; will-change: transform; overflow-wrap: anywhere; word-break: break-word; }
     #view-reader .reader-flow * { box-sizing: border-box; max-width: 100%; }
     #view-reader .reader-flow img, #view-reader .reader-flow svg, #view-reader .reader-flow video, #view-reader .reader-flow table { max-width: 100%; height: auto; }
     #view-reader .reader-flow pre, #view-reader .reader-flow code { white-space: pre-wrap; overflow-wrap: anywhere; }
-    #view-reader .reader-flow h1, #view-reader .reader-flow h2 { margin-top: 0; }
+    #view-reader .reader-flow h1, #view-reader .reader-flow h2 { margin: 0 0 1.15em; line-height: 1.35; }
+    #view-reader .reader-flow p { margin: 0 0 1.05em; }
+    #view-reader .reader-flow .scripture, #view-reader .reader-flow blockquote { margin: 1.15em 0 1.35em; padding-left: 1em; border-left: 3px solid rgba(155,122,72,.35); color: inherit; }
     #view-reader .reader-turn-zone { position: absolute; top: 0; bottom: 0; width: 34%; border: 0; background: transparent; cursor: pointer; }
     #view-reader .reader-turn-zone:disabled, #view-reader .reader-footer button:disabled { cursor: default; opacity: .35; }
     #view-reader .reader-turn-left { left: 0; }
@@ -2154,7 +2156,9 @@ function injectReaderViewStyles() {
       body.reader-active #view-reader.reader-view.active { inset: 0; }
       #view-reader .reader-toolbar { grid-template-columns: auto 1fr; }
       #view-reader .reader-toolbar label { grid-column: span 1; }
+      #view-reader .reader-stage { padding: 0; }
       #view-reader .reader-page-viewport { flex-basis: 100vw; width: 100vw; height: 100%; min-height: 0; border-radius: 0; box-shadow: none; }
+      #view-reader .reader-flow { padding: clamp(34px, 7vh, 58px) clamp(24px, 8vw, 38px) clamp(30px, 6vh, 48px); }
       #view-reader .reader-footer { grid-template-columns: auto 1fr auto; }
       #view-reader .reader-book-heading h2 { font-size: .95rem; }
       #view-reader .reader-turn-zone { width: 28%; }
@@ -2235,11 +2239,14 @@ function applyReaderPageMetrics() {
   updateReaderViewportInsets();
   const width = Math.max(1, Math.floor(pageViewport?.clientWidth || viewport.clientWidth));
   const height = Math.max(1, Math.floor(viewport.clientHeight));
+  const horizontalPadding = Math.max(24, Math.min(74, Math.round(width * 0.1)));
+  const topPadding = Math.max(34, Math.min(72, Math.round(height * 0.09)));
+  const bottomPadding = Math.max(30, Math.min(64, Math.round(height * 0.08)));
   content.style.height = `${height}px`;
   content.style.width = `${width}px`;
   content.style.minWidth = `${width}px`;
   content.style.maxWidth = 'none';
-  content.style.padding = '0px';
+  content.style.padding = `${topPadding}px ${horizontalPadding}px ${bottomPadding}px`;
   content.style.columnWidth = `${width}px`;
   content.style.columnGap = '0px';
   content.style.columnFill = 'auto';
