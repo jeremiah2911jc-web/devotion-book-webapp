@@ -2143,7 +2143,7 @@ function injectReaderViewStyles() {
     #view-reader .reader-turn-right { right: 0; }
     #view-reader .reader-footer { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; display: grid; grid-template-columns: auto minmax(180px, 520px) auto; align-items: center; gap: 14px; padding: 12px clamp(12px, 3vw, 28px); border-top: 1px solid rgba(80,70,55,.18); background: rgba(255,255,255,.7); transition: opacity .2s ease, transform .2s ease; }
     #view-reader.reader-dark .reader-footer { background: rgba(25,25,25,.78); border-color: rgba(255,255,255,.12); }
-    #view-reader.reader-controls-hidden .reader-footer { display: none; opacity: 0; transform: translateY(100%); pointer-events: none; }
+    #view-reader.reader-controls-hidden .reader-footer { display: grid; opacity: .92; transform: none; pointer-events: auto; padding-block: 8px; }
     #view-reader .reader-progress { display: grid; grid-template-columns: auto auto; gap: 6px 12px; align-items: center; font-size: .9rem; }
     #view-reader .reader-progress div { grid-column: 1 / -1; height: 4px; border-radius: 999px; overflow: hidden; background: rgba(120,100,70,.22); }
     #view-reader .reader-progress i { display: block; height: 100%; width: 0; background: #9b7a48; }
@@ -2215,11 +2215,10 @@ function updateReaderViewportInsets() {
   const view = document.getElementById('view-reader');
   const shell = view?.querySelector('.reader-app-shell');
   if (!view || !shell) return { top: 0, bottom: 0 };
-  const controlsVisible = !view.classList.contains('reader-controls-hidden');
   const toolbar = view.querySelector('.reader-toolbar');
   const footer = view.querySelector('.reader-footer');
-  const top = controlsVisible && toolbar ? Math.ceil(toolbar.getBoundingClientRect().height) : 0;
-  const bottom = controlsVisible && footer ? Math.ceil(footer.getBoundingClientRect().height) : 0;
+  const top = !view.classList.contains('reader-controls-hidden') && toolbar ? Math.ceil(toolbar.getBoundingClientRect().height) : 0;
+  const bottom = footer ? Math.ceil(footer.getBoundingClientRect().height) : 0;
   shell.style.setProperty('--reader-stage-top', `${top}px`);
   shell.style.setProperty('--reader-stage-bottom', `${bottom}px`);
   return { top, bottom };
@@ -2235,6 +2234,7 @@ function applyReaderPageMetrics() {
   content.style.height = `${height}px`;
   content.style.width = `${width}px`;
   content.style.maxWidth = 'none';
+  content.style.padding = '0px';
   content.style.columnWidth = `${width}px`;
   content.style.columnGap = '0px';
   content.style.columnFill = 'auto';
