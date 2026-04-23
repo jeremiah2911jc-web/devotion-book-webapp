@@ -188,3 +188,123 @@ begin
 exception
   when duplicate_object then null;
 end $$;
+
+-- Cloud bookshelf: fixed exported EPUB versions and synced reading progress.
+create table if not exists public.library_books (
+  id text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null,
+  author text,
+  description text,
+  cover_image_path text,
+  epub_file_path text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  last_read_at timestamptz,
+  reading_progress numeric not null default 0 check (reading_progress >= 0 and reading_progress <= 1),
+  total_chapters integer not null default 0,
+  current_chapter integer not null default 0,
+  source_project_id text,
+  source_compilation_id text,
+  version text not null default '1.0.0',
+  is_archived boolean not null default false
+);
+
+create unique index if not exists library_books_id_user_uidx
+on public.library_books (id, user_id);
+
+create table if not exists public.library_book_chapters (
+  id text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  book_id text not null,
+  title text not null,
+  chapter_order integer not null default 0,
+  href text not null,
+  chapter_path text not null,
+  progress numeric not null default 0 check (progress >= 0 and progress <= 1),
+  constraint library_book_chapters_book_user_fk
+    foreign key (book_id, user_id)
+    references public.library_books (id, user_id)
+    on delete cascade,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+
+-- Migration guard for environments that already created the old single-column FK.
+alter table public.library_book_chapters
+  drop constraint if exists library_book_chapters_book_id_fkey;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'library_book_chapters_book_user_fk'
+      and conrelid = 'public.library_book_chapters'::regclass
+  ) then
+    alter table public.library_book_chapters
+      add constraint library_book_chapters_book_user_fk
+      foreign key (book_id, user_id)
+      references public.library_books (id, user_id)
+      on delete cascade;
+  end if;
+end $$;
+-- library_book_chapters_book_user_fk_migration
+alter table public.library_books enable row level security;
+alter table public.library_book_chapters enable row level security;
+
+drop policy if exists "library_books_select_own" on public.library_books;
+create policy "library_books_select_own" on public.library_books for select using (auth.uid() = user_id);
+drop policy if exists "library_books_insert_own" on public.library_books;
+create policy "library_books_insert_own" on public.library_books for insert with check (auth.uid() = user_id);
+drop policy if exists "library_books_update_own" on public.library_books;
+create policy "library_books_update_own" on public.library_books for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "library_books_delete_own" on public.library_books;
+create policy "library_books_delete_own" on public.library_books for delete using (auth.uid() = user_id);
+
+drop policy if exists "library_chapters_select_own" on public.library_book_chapters;
+create policy "library_chapters_select_own" on public.library_book_chapters for select using (auth.uid() = user_id);
+drop policy if exists "library_chapters_insert_own" on public.library_book_chapters;
+create policy "library_chapters_insert_own" on public.library_book_chapters for insert with check (auth.uid() = user_id);
+drop policy if exists "library_chapters_update_own" on public.library_book_chapters;
+create policy "library_chapters_update_own" on public.library_book_chapters for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "library_chapters_delete_own" on public.library_book_chapters;
+create policy "library_chapters_delete_own" on public.library_book_chapters for delete using (auth.uid() = user_id);
+create index if not exists library_books_user_last_read_idx on public.library_books(user_id, last_read_at desc nulls last, created_at desc);
+create index if not exists library_books_user_source_idx on public.library_books(user_id, source_project_id, created_at desc);
+create index if not exists library_chapters_book_order_idx on public.library_book_chapters(book_id, chapter_order);
+
+drop trigger if exists library_books_set_updated_at on public.library_books;
+create trigger library_books_set_updated_at before update on public.library_books for each row execute function public.set_updated_at();
+drop trigger if exists library_chapters_set_updated_at on public.library_book_chapters;
+create trigger library_chapters_set_updated_at before update on public.library_book_chapters for each row execute function public.set_updated_at();
+
+grant select, insert, update, delete on table public.library_books to authenticated;
+grant select, insert, update, delete on table public.library_book_chapters to authenticated;
+
+-- Private Supabase Storage bucket for EPUB and cover files.
+-- The app stores only storage object paths; it downloads private EPUBs with the authenticated client
+-- and creates short-lived signed URLs for covers at read time.
+insert into storage.buckets (id, name, public)
+values ('library-books', 'library-books', false)
+on conflict (id) do update set public = false;
+
+drop policy if exists "library_books_storage_select_own" on storage.objects;
+create policy "library_books_storage_select_own" on storage.objects for select to authenticated using (
+  bucket_id = 'library-books' and (storage.foldername(name))[1] = 'users' and (storage.foldername(name))[2] = auth.uid()::text and (storage.foldername(name))[3] = 'books'
+);
+drop policy if exists "library_books_storage_insert_own" on storage.objects;
+create policy "library_books_storage_insert_own" on storage.objects for insert to authenticated with check (
+  bucket_id = 'library-books' and (storage.foldername(name))[1] = 'users' and (storage.foldername(name))[2] = auth.uid()::text and (storage.foldername(name))[3] = 'books'
+);
+drop policy if exists "library_books_storage_update_own" on storage.objects;
+create policy "library_books_storage_update_own" on storage.objects for update to authenticated using (
+  bucket_id = 'library-books' and (storage.foldername(name))[1] = 'users' and (storage.foldername(name))[2] = auth.uid()::text and (storage.foldername(name))[3] = 'books'
+) with check (
+  bucket_id = 'library-books' and (storage.foldername(name))[1] = 'users' and (storage.foldername(name))[2] = auth.uid()::text and (storage.foldername(name))[3] = 'books'
+);
+drop policy if exists "library_books_storage_delete_own" on storage.objects;
+create policy "library_books_storage_delete_own" on storage.objects for delete to authenticated using (
+  bucket_id = 'library-books' and (storage.foldername(name))[1] = 'users' and (storage.foldername(name))[2] = auth.uid()::text and (storage.foldername(name))[3] = 'books'
+);

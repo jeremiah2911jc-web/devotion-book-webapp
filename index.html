@@ -147,7 +147,8 @@
       <nav class="nav-links">
         <button class="nav-link active" data-view="dashboard">總覽</button>
         <button class="nav-link" data-view="notes">札記庫</button>
-        <button class="nav-link" data-view="books">書籍專案</button>
+        <button class="nav-link" data-view="books">書籍專案</button>        <button class="nav-link" data-view="library">書櫃</button>
+
         <button class="nav-link" data-view="snapshots">快照備份</button>
       </nav>
     </aside>
@@ -194,6 +195,10 @@
               <div class="summary-card">
                 <span>快照數</span>
                 <strong id="summary-snapshots-count">0</strong>
+              </div>
+              <div class="summary-card">
+                <span>書櫃</span>
+                <strong id="library-count">0</strong>
               </div>
             </div>
           </section>
@@ -352,11 +357,32 @@
                 <button id="create-snapshot-btn" class="secondary-btn">建立快照</button>
                 <button id="export-epub-btn" class="primary-btn">匯出 EPUB</button>
               </div>
+              <div id="export-success-actions" class="export-success-actions hidden">
+                <p>EPUB 已完成，並已加入書櫃</p>
+                <div class="row gap-sm wrap">
+                  <button id="read-exported-book-btn" class="primary-btn" type="button">立即閱讀</button>
+                  <button id="go-library-btn" class="secondary-btn" type="button">前往書櫃</button>
+                </div>
+              </div>
             </div>
           </section>
         </div>
       </section>
 
+      <section id="view-library" class="view">
+        <section class="panel library-panel">
+          <div class="panel-header">
+            <div><h2>&#26360;&#27331;</h2><p class="muted">&#24050;&#36664;&#20986;&#30340;&#22266;&#23450;&#29256;&#26412;&#20316;&#21697;&#26371;&#20445;&#23384;&#22312;&#38642;&#31471;&#26360;&#27331;&#12290;</p></div>
+            <label class="compact-control">&#25490;&#24207;<select id="library-sort"><option value="recent-read">&#26368;&#36817;&#38321;&#35712;</option><option value="recent-created">&#26368;&#36817;&#24314;&#31435;</option><option value="title">&#26360;&#21517;&#25490;&#24207;</option></select></label>
+          </div>
+          <div id="library-list" class="library-list empty-state"><h3>&#26360;&#27331;&#35041;&#36996;&#27794;&#26377;&#26360;</h3><p>&#20808;&#21435;&#20986;&#26360;&#25972;&#29702;&#27169;&#24335;&#24314;&#31435;&#31532;&#19968;&#26412;&#26360;&#12290;</p><button id="library-empty-action" class="primary-btn" type="button">&#21069;&#24448;&#20986;&#26360;&#25972;&#29702;</button></div>
+        </section>
+      </section>
+
+      <section id="view-reader" class="view reader-view">
+        <div class="reader-layout"><aside class="reader-sidebar"><button id="reader-back-library" class="ghost-btn" type="button">&#36820;&#22238;&#26360;&#27331;</button><label>&#31456;&#31680;<select id="reader-chapter-nav"></select></label><label>&#23383;&#39636;&#22823;&#23567;<input id="reader-font-size" type="range" min="15" max="26" step="1" /></label><label>&#34892;&#36317;<input id="reader-line-height" type="range" min="1.4" max="2.2" step="0.1" /></label><label>&#32972;&#26223;<select id="reader-theme"><option value="light">&#28154;&#33394;</option><option value="dark">&#28145;&#33394;</option></select></label></aside><article class="reader-page"><header class="reader-header"><div><h2 id="reader-title">&#38321;&#35712;&#27169;&#24335;</h2><p id="reader-meta" class="muted"></p></div><div class="reader-progress"><span id="reader-progress-text">0%</span><div><i id="reader-progress-bar"></i></div></div></header><div id="reader-content" class="reader-content"></div></article></div>
+      </section>
+      
       <section id="view-snapshots" class="view">
         <section class="panel">
           <div class="panel-header">

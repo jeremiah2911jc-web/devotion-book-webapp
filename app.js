@@ -730,12 +730,15 @@ async function loadAllData({ silent = false, syncReason = '' } = {}) {
       language: resolveBookLanguage(book.language),
     }));
     state.snapshots = (snapshotsRes.data || []).map(s => ({ ...s, snapshot_json: parseMaybeJson(s.snapshot_json, null) }));
+    await loadCloudLibrary(userId);
+    await syncPendingReadingProgress();
     markCloudSynced(syncReason || '雲端資料已讀取完成。');
   } else {
     const userId = getUserId();
     state.notes = loadJson(STORAGE_KEYS.notes, []).filter(item => item.user_id === userId);
     state.books = loadJson(STORAGE_KEYS.books, []).filter(item => item.user_id === userId).map(book => ({ ...book, language: resolveBookLanguage(book.language) }));
     state.snapshots = loadJson(STORAGE_KEYS.snapshots, []).filter(item => item.user_id === userId);
+    clearCloudLibrary('書櫃同步需要登入 Supabase 帳號。');
     setSyncState({
       status: state.supabase ? '尚未登入' : '本機模式',
       detail: state.supabase ? '已設定雲端，但目前還沒有登入帳號。' : '目前資料只保存在這台裝置。',
@@ -793,6 +796,8 @@ function refreshUi() {
   renderBooks();
   renderSelectedBookPanel();
   renderSnapshots();
+  renderLibrary();
+  renderReaderSettings();
 }
 
 function renderRecentCards() {
@@ -1474,11 +1479,14 @@ function setView(viewName) {
     notes: ['札記庫', '建立、編輯並整理靈修札記。'],
     books: ['書籍專案', '設定書籍並編排章節與匯出。'],
     snapshots: ['快照備份', '查看每次建立的書籍快照。'],
+    library: ['書櫃', '收藏已輸出的固定版本作品，直接開啟閱讀。'],
+    reader: ['閱讀模式', '安靜閱讀已加入書櫃的 EPUB。'],
   };
   els.navLinks.forEach(link => link.classList.toggle('active', link.dataset.view === viewName));
   els.views.forEach(view => view.classList.toggle('active', view.id === `view-${viewName}`));
-  els.viewTitle.textContent = titleMap[viewName][0];
-  els.viewSubtitle.textContent = titleMap[viewName][1];
+  const viewTitle = titleMap[viewName] || titleMap.dashboard;
+  els.viewTitle.textContent = viewTitle[0];
+  els.viewSubtitle.textContent = viewTitle[1];
   els.viewSubtitle.classList.toggle('hidden', viewName === 'dashboard');
 }
 
@@ -1496,14 +1504,15 @@ function handleError(error) {
 async function exportSelectedBookEpub() {
   requireUser();
   const book = getSelectedBook();
-  if (!book) throw new Error('請先選取一本書。');
-  if (!book.chapters?.length) throw new Error('至少要有一個章節才能匯出。');
+  if (!book) throw new Error('請先選取一本書籍專案。');
+  if (!book.chapters?.length) throw new Error('至少要有一個章節才能匯出 EPUB。');
   const snapshot = buildBookSnapshot(book);
   const epubBlob = await buildEpub(snapshot);
+  const libraryBook = await createCloudLibraryBook(book, snapshot, epubBlob);
   downloadBlob(`${book.title || 'book'}.epub`, epubBlob);
-  showToast('EPUB 已匯出。');
+  renderExportSuccessActions(libraryBook);
+  showToast('EPUB 已完成，並已加入書櫃');
 }
-
 async function buildEpub(snapshot) {
   const book = snapshot.book;
   const chapters = snapshot.chapters;
@@ -1727,5 +1736,475 @@ function crc32(bytes) {
   for (let i = 0; i < bytes.length; i++) crc = crcTable[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
   return (crc ^ 0xffffffff) >>> 0;
 }
+
+
+// CLOUD_LIBRARY_MARKER
+const cloudLibrary = {
+  bucket: 'library-books',
+  epubCacheDb: 'devotion-library-cache',
+  epubCacheStore: 'epubs',
+  readerSettingsKey: 'devotion-app-reader-settings',
+  pendingKey: 'devotion-app-reading-progress-pending',
+  books: [],
+  chapters: new Map(),
+  coverUrls: new Map(),
+  error: '',
+  selectedBookId: '',
+  readerBook: null,
+  readerChapters: [],
+  readerSettings: loadJson('devotion-app-reader-settings', { fontSize: 18, lineHeight: 1.8, theme: 'light' }),
+};
+
+function clearCloudLibrary(message = '') {
+  cloudLibrary.books = [];
+  cloudLibrary.chapters = new Map();
+  cloudLibrary.coverUrls = new Map();
+  cloudLibrary.error = message;
+  cloudLibrary.selectedBookId = '';
+  cloudLibrary.readerBook = null;
+  cloudLibrary.readerChapters = [];
+}
+
+function buildLibrarySetupError(error) {
+  const message = error?.message || String(error || '');
+  if (/library_books|library_book_chapters|does not exist|schema cache/i.test(message)) {
+    return '書櫃資料表尚未建立，請先執行 schema.sql 裡的 library_books 與 library_book_chapters 建置 SQL。';
+  }
+  return `書櫃資料讀取失敗：${message}`;
+}
+
+function requireCloudLibrary() {
+  requireUser();
+  if (!state.supabase) throw new Error('書櫃同步需要 Supabase 連線設定。');
+  if (!state.currentUser) throw new Error('請先登入後再使用雲端書櫃。');
+}
+
+function normalizeLibraryBook(book) {
+  return {
+    ...book,
+    title: book.title || '未命名書籍',
+    author: book.author || '',
+    description: book.description || '',
+    cover_image_path: book.cover_image_path || '',
+    epub_file_path: book.epub_file_path || '',
+    reading_progress: Number(book.reading_progress || 0),
+    total_chapters: Number(book.total_chapters || 0),
+    current_chapter: Number(book.current_chapter || 0),
+    version: book.version || '1.0.0',
+    is_archived: !!book.is_archived,
+  };
+}
+
+function normalizeLibraryChapters(chapters = []) {
+  return [...chapters].map(chapter => ({
+    ...chapter,
+    chapter_order: Number(chapter.chapter_order || 0),
+    progress: Number(chapter.progress || 0),
+    title: chapter.title || '未命名章節',
+    href: chapter.href || chapter.chapter_path || '',
+    chapter_path: chapter.chapter_path || chapter.href || '',
+  })).sort((a, b) => a.chapter_order - b.chapter_order);
+}
+
+async function loadCloudLibrary(userId) {
+  const { data, error } = await state.supabase
+    .from('library_books')
+    .select('*, library_book_chapters(*)')
+    .eq('user_id', userId)
+    .eq('is_archived', false)
+    .order('last_read_at', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false });
+  if (error) {
+    clearCloudLibrary(buildLibrarySetupError(error));
+    return;
+  }
+  cloudLibrary.error = '';
+  cloudLibrary.books = (data || []).map(normalizeLibraryBook);
+  cloudLibrary.chapters = new Map(cloudLibrary.books.map(book => [book.id, normalizeLibraryChapters(book.library_book_chapters || [])]));
+  cloudLibrary.books = cloudLibrary.books.map(({ library_book_chapters, ...book }) => book);
+  refreshLibraryCoverUrls().catch(console.warn);
+}
+
+function makeLibraryChapters(snapshot, bookId, userId) {
+  const rows = [];
+  const push = (title, chapterPath) => rows.push({
+    id: uid('library_chapter'),
+    user_id: userId,
+    book_id: bookId,
+    title,
+    chapter_order: rows.length,
+    href: chapterPath.replace(/^OEBPS\//, ''),
+    chapter_path: chapterPath,
+    progress: 0,
+  });
+  push('書名頁', 'OEBPS/text/title.xhtml');
+  if (snapshot.book.preface) push('序言', 'OEBPS/text/preface.xhtml');
+  snapshot.chapters.forEach((chapter, index) => push(chapter.chapter_title || `第 ${index + 1} 章`, `OEBPS/text/chapter-${index + 1}.xhtml`));
+  if (snapshot.book.afterword) push('後記', 'OEBPS/text/afterword.xhtml');
+  return rows;
+}
+
+function storagePathForBook(userId, bookId, filename) {
+  return `users/${userId}/books/${bookId}/${filename}`;
+}
+
+function safeFileSlug(value = 'book') {
+  return String(value || 'book').trim().replace(/[^\p{L}\p{N}_-]+/gu, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'book';
+}
+
+function nextLibraryVersionForSource(sourceProjectId) {
+  return `1.0.${cloudLibrary.books.filter(book => book.source_project_id === sourceProjectId).length + 1}`;
+}
+
+async function createCloudLibraryBook(sourceBook, snapshot, epubBlob) {
+  requireCloudLibrary();
+  const userId = getUserId();
+  const bookId = uid('library_book');
+  const epubFilePath = storagePathForBook(userId, bookId, `${safeFileSlug(snapshot.book.title)}.epub`);
+  const coverUpload = snapshot.book.cover_data_url ? dataUrlToUpload(snapshot.book.cover_data_url) : null;
+  const coverImagePath = coverUpload ? storagePathForBook(userId, bookId, `cover.${coverUpload.ext}`) : '';
+  const chapters = makeLibraryChapters(snapshot, bookId, userId);
+  const now = nowIso();
+  const bookRow = {
+    id: bookId,
+    user_id: userId,
+    title: snapshot.book.title || sourceBook.title || '未命名書籍',
+    author: snapshot.book.author_name || sourceBook.author_name || '',
+    description: snapshot.book.description || sourceBook.description || '',
+    cover_image_path: coverImagePath,
+    epub_file_path: epubFilePath,
+    last_read_at: null,
+    reading_progress: 0,
+    total_chapters: chapters.length,
+    current_chapter: 0,
+    source_project_id: sourceBook.id,
+    source_compilation_id: null,
+    version: nextLibraryVersionForSource(sourceBook.id),
+    is_archived: false,
+    created_at: now,
+    updated_at: now,
+  };
+  const { error: bookError } = await state.supabase.from('library_books').insert(bookRow);
+  if (bookError) throw new Error(`建立書櫃資料失敗：${bookError.message}`);
+  try {
+    await uploadStorageFile(epubFilePath, epubBlob, 'application/epub+zip');
+    if (coverUpload) await uploadStorageFile(coverImagePath, coverUpload.blob, coverUpload.mime);
+    const { error: chapterError } = await state.supabase.from('library_book_chapters').insert(chapters);
+    if (chapterError) throw new Error(`建立章節資料失敗：${chapterError.message}`);
+    await cacheEpubBlob(bookId, epubBlob);
+  } catch (error) {
+    await state.supabase.from('library_book_chapters').delete().eq('book_id', bookId).eq('user_id', userId);
+    await state.supabase.from('library_books').delete().eq('id', bookId).eq('user_id', userId);
+    await state.supabase.storage.from(cloudLibrary.bucket).remove([epubFilePath, coverImagePath].filter(Boolean));
+    throw error;
+  }
+  cloudLibrary.selectedBookId = bookId;
+  await loadAllData({ silent: true, syncReason: 'EPUB 已加入書櫃。' });
+  return getLibraryBook(bookId) || normalizeLibraryBook(bookRow);
+}
+
+async function uploadStorageFile(storagePath, file, contentType) {
+  const { error } = await state.supabase.storage.from(cloudLibrary.bucket).upload(storagePath, file, { contentType, upsert: true });
+  if (error) throw new Error(buildStorageError(error, '上傳檔案失敗'));
+}
+
+function buildStorageError(error, prefix) {
+  const message = error?.message || String(error || '');
+  if (/bucket/i.test(message) && /not found|does not exist/i.test(message)) {
+    return `${prefix}：找不到 private Storage bucket「${cloudLibrary.bucket}」，請先依 schema.sql 指引建立。`;
+  }
+  if (/row-level security|permission|policy|unauthorized|403/i.test(message)) {
+    return `${prefix}：Storage 權限不足，請確認 bucket 是 private 並已建立對應 RLS policy。`;
+  }
+  return `${prefix}：${message}`;
+}
+
+function dataUrlToUpload(dataUrl) {
+  const parsed = dataUrlToBytes(dataUrl);
+  const ext = parsed.mime.includes('png') ? 'png' : parsed.mime.includes('webp') ? 'webp' : 'jpg';
+  return { blob: new Blob([parsed.bytes], { type: parsed.mime }), mime: parsed.mime, ext };
+}
+
+function getLibraryBook(bookId) {
+  return cloudLibrary.books.find(book => book.id === bookId) || null;
+}
+
+async function refreshLibraryCoverUrls() {
+  if (!(state.supabase && state.currentUser)) return;
+  const entries = await Promise.all(cloudLibrary.books.map(async book => {
+    if (!book.cover_image_path) return [book.id, ''];
+    const { data, error } = await state.supabase.storage.from(cloudLibrary.bucket).createSignedUrl(book.cover_image_path, 60 * 20);
+    return [book.id, error ? '' : data?.signedUrl || ''];
+  }));
+  cloudLibrary.coverUrls = new Map(entries);
+  renderLibrary();
+}
+
+function renderLibrary() {
+  const list = document.getElementById('library-list');
+  const count = document.getElementById('library-count');
+  if (!list) return;
+  if (count) count.textContent = cloudLibrary.books.length;
+  if (cloudLibrary.error) {
+    list.className = 'library-list empty-state';
+    list.innerHTML = `<h3>書櫃暫時無法同步</h3><p>${escapeHtml(cloudLibrary.error)}</p>`;
+    return;
+  }
+  if (!cloudLibrary.books.length) {
+    list.className = 'library-list empty-state';
+    list.innerHTML = '<h3>書櫃裡還沒有書</h3><p>先到出書整理模式完成章節編排，輸出 EPUB 後會自動加入雲端書櫃。</p>';
+    return;
+  }
+  const sortMode = document.getElementById('library-sort')?.value || 'recent-read';
+  const books = [...cloudLibrary.books].sort((a, b) => sortMode === 'title'
+    ? String(a.title).localeCompare(String(b.title), 'zh-Hant')
+    : sortMode === 'recent-created'
+      ? String(b.created_at).localeCompare(String(a.created_at))
+      : String(b.last_read_at || b.created_at).localeCompare(String(a.last_read_at || a.created_at)));
+  list.className = 'library-list';
+  list.innerHTML = books.map(book => {
+    const coverUrl = cloudLibrary.coverUrls.get(book.id) || '';
+    const progress = Math.max(0, Math.min(1, book.reading_progress || 0));
+    return `<article class="library-book ${book.id === cloudLibrary.selectedBookId ? 'selected' : ''}"><div class="library-cover">${coverUrl ? `<img src="${coverUrl}" alt="${escapeHtml(book.title)}封面" />` : `<span>${escapeHtml((book.title || '書').slice(0, 2))}</span>`}</div><div class="library-book-main"><div><h3>${escapeHtml(book.title)}</h3><div class="card-meta"><span>${escapeHtml(book.author || '未填作者')}</span><span>建立：${formatDate(book.created_at)}</span><span>最後閱讀：${book.last_read_at ? formatDate(book.last_read_at) : '尚未閱讀'}</span><span>版本 ${escapeHtml(book.version)}</span></div><p>${escapeHtml(book.description || '這本書已保存於雲端書櫃，可在登入後跨裝置閱讀。')}</p></div><div class="library-progress"><span>${Math.round(progress * 100)}%</span><div><i style="width:${Math.round(progress * 100)}%"></i></div></div><div class="card-actions"><button class="primary-btn" data-open-library-book="${book.id}">開啟閱讀</button><button class="ghost-btn" data-info-library-book="${book.id}">查看資訊</button><button class="ghost-btn" data-reexport-library-book="${book.id}">重新匯出</button><button class="danger-btn" data-delete-library-book="${book.id}">刪除書籍</button></div></div></article>`;
+  }).join('');
+}
+
+async function deleteLibraryBook(bookId) {
+  requireCloudLibrary();
+  const book = getLibraryBook(bookId);
+  if (!book) return;
+  if (!confirm(`確定要從書櫃刪除「${book.title}」嗎？雲端 EPUB 與封面也會一併移除。`)) return;
+  const userId = getUserId();
+  const paths = [book.epub_file_path, book.cover_image_path].filter(Boolean);
+  if (paths.length) await state.supabase.storage.from(cloudLibrary.bucket).remove(paths);
+  await state.supabase.from('library_book_chapters').delete().eq('book_id', bookId).eq('user_id', userId);
+  const { error } = await state.supabase.from('library_books').delete().eq('id', bookId).eq('user_id', userId);
+  if (error) throw new Error(`刪除書籍失敗：${error.message}`);
+  await deleteCachedEpub(bookId);
+  if (cloudLibrary.readerBook?.id === bookId) cloudLibrary.readerBook = null;
+  await loadAllData({ silent: true, syncReason: '書櫃已更新。' });
+  showToast('書籍已從書櫃刪除。');
+}
+
+async function openLibraryBook(bookId) {
+  requireCloudLibrary();
+  const book = getLibraryBook(bookId);
+  if (!book) throw new Error('找不到這本書。');
+  const chapters = cloudLibrary.chapters.get(book.id) || [];
+  if (!chapters.length) throw new Error('找不到章節 metadata，請重新匯出 EPUB。');
+  const epubBlob = await loadEpubForReading(book);
+  cloudLibrary.selectedBookId = book.id;
+  cloudLibrary.readerBook = book;
+  cloudLibrary.readerChapters = await readEpubChapters(epubBlob, chapters);
+  setView('reader');
+  renderReaderShell();
+  await openReaderChapter(Math.min(book.current_chapter || 0, Math.max(cloudLibrary.readerChapters.length - 1, 0)));
+}
+
+async function loadEpubForReading(book) {
+  const cached = await getCachedEpub(book.id);
+  if (cached) return cached;
+  if (!book.epub_file_path) throw new Error('這本書沒有 EPUB 儲存路徑，請重新匯出。');
+  const { data, error } = await state.supabase.storage.from(cloudLibrary.bucket).download(book.epub_file_path);
+  if (error) throw new Error(buildStorageError(error, '下載 EPUB 失敗'));
+  await cacheEpubBlob(book.id, data);
+  return data;
+}
+
+function renderReaderShell() {
+  const book = cloudLibrary.readerBook;
+  if (!book) return;
+  document.getElementById('reader-title').textContent = book.title;
+  document.getElementById('reader-meta').textContent = [book.author || '未填作者', `版本 ${book.version}`].join(' · ');
+  document.getElementById('reader-chapter-nav').innerHTML = cloudLibrary.readerChapters.map((chapter, index) => `<option value="${index}">${escapeHtml(chapter.title || `第 ${index + 1} 章`)}</option>`).join('');
+  renderReaderSettings();
+}
+
+function renderReaderSettings() {
+  const content = document.getElementById('reader-content');
+  if (!content) return;
+  const settings = { fontSize: 18, lineHeight: 1.8, theme: 'light', ...cloudLibrary.readerSettings };
+  const font = document.getElementById('reader-font-size');
+  const line = document.getElementById('reader-line-height');
+  const theme = document.getElementById('reader-theme');
+  if (font) font.value = settings.fontSize;
+  if (line) line.value = settings.lineHeight;
+  if (theme) theme.value = settings.theme;
+  content.style.fontSize = `${settings.fontSize}px`;
+  content.style.lineHeight = String(settings.lineHeight);
+  document.getElementById('view-reader')?.classList.toggle('reader-dark', settings.theme === 'dark');
+}
+
+function updateReaderSetting(key, value) {
+  cloudLibrary.readerSettings = { fontSize: 18, lineHeight: 1.8, theme: 'light', ...cloudLibrary.readerSettings, [key]: value };
+  saveJson(cloudLibrary.readerSettingsKey, cloudLibrary.readerSettings);
+  renderReaderSettings();
+}
+
+async function openReaderChapter(index) {
+  const book = cloudLibrary.readerBook;
+  const chapter = cloudLibrary.readerChapters[index];
+  if (!book || !chapter) return;
+  document.getElementById('reader-chapter-nav').value = String(index);
+  document.getElementById('reader-content').innerHTML = chapter.html || '<p>這個章節目前沒有內容。</p>';
+  const total = Math.max(cloudLibrary.readerChapters.length, 1);
+  const progress = total <= 1 ? 1 : index / (total - 1);
+  document.getElementById('reader-progress-text').textContent = `${Math.round(progress * 100)}%`;
+  document.getElementById('reader-progress-bar').style.width = `${Math.round(progress * 100)}%`;
+  await persistReadingProgress(book.id, index, progress);
+}
+
+async function persistReadingProgress(bookId, currentChapter, readingProgress) {
+  const payload = { current_chapter: currentChapter, reading_progress: readingProgress, last_read_at: nowIso(), updated_at: nowIso() };
+  const localBook = cloudLibrary.books.find(book => book.id === bookId);
+  if (localBook) Object.assign(localBook, payload);
+  renderLibrary();
+  if (!(state.supabase && state.currentUser && navigator.onLine)) return queuePendingReadingProgress(bookId, payload);
+  const { error } = await state.supabase.from('library_books').update(payload).eq('id', bookId).eq('user_id', getUserId());
+  if (error) {
+    queuePendingReadingProgress(bookId, payload);
+    showToast(`閱讀進度暫存於本機，稍後會再同步：${error.message}`);
+  }
+}
+
+function queuePendingReadingProgress(bookId, payload) {
+  const pending = loadJson(cloudLibrary.pendingKey, []);
+  const idx = pending.findIndex(item => item.bookId === bookId && item.userId === getUserId());
+  const item = { bookId, userId: getUserId(), payload };
+  if (idx >= 0) pending[idx] = item; else pending.push(item);
+  saveJson(cloudLibrary.pendingKey, pending);
+}
+
+async function syncPendingReadingProgress() {
+  if (!(state.supabase && state.currentUser)) return;
+  const userId = getUserId();
+  const pending = loadJson(cloudLibrary.pendingKey, []);
+  for (const item of pending.filter(entry => entry.userId === userId)) {
+    const { error } = await state.supabase.from('library_books').update(item.payload).eq('id', item.bookId).eq('user_id', userId);
+    if (error) return;
+  }
+  saveJson(cloudLibrary.pendingKey, pending.filter(item => item.userId !== userId));
+}
+
+async function readEpubChapters(epubBlob, manifestChapters = []) {
+  const entries = await unzipStoredEntries(epubBlob);
+  return manifestChapters.map(chapter => {
+    const entry = entries.get(chapter.chapter_path) || entries.get(chapter.href) || entries.get(`OEBPS/${chapter.href}`);
+    return { ...chapter, html: entry ? sanitizeReaderHtml(entry) : '<p>找不到 EPUB 內的章節內容。</p>' };
+  });
+}
+
+function sanitizeReaderHtml(xhtml) {
+  const doc = new DOMParser().parseFromString(xhtml, 'application/xhtml+xml');
+  const parserError = doc.querySelector('parsererror');
+  const body = parserError ? new DOMParser().parseFromString(xhtml, 'text/html').body : doc.querySelector('body');
+  if (!body) return '<p>章節內容無法解析。</p>';
+  body.querySelectorAll('script, style, link').forEach(node => node.remove());
+  return body.innerHTML;
+}
+
+async function unzipStoredEntries(blob) {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const entries = new Map();
+  let offset = 0;
+  const decoder = new TextDecoder();
+  while (offset + 30 <= bytes.length) {
+    const view = new DataView(bytes.buffer, bytes.byteOffset + offset);
+    if (view.getUint32(0, true) !== 0x04034b50) break;
+    const compression = view.getUint16(8, true);
+    const compressedSize = view.getUint32(18, true);
+    const fileNameLength = view.getUint16(26, true);
+    const extraLength = view.getUint16(28, true);
+    const nameStart = offset + 30;
+    const nameEnd = nameStart + fileNameLength;
+    const contentStart = nameEnd + extraLength;
+    const contentEnd = contentStart + compressedSize;
+    const name = decoder.decode(bytes.slice(nameStart, nameEnd));
+    if (compression === 0) entries.set(name, decoder.decode(bytes.slice(contentStart, contentEnd)));
+    offset = contentEnd;
+  }
+  return entries;
+}
+
+function openEpubCacheDb() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(cloudLibrary.epubCacheDb, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(cloudLibrary.epubCacheStore)) db.createObjectStore(cloudLibrary.epubCacheStore);
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function cacheEpubBlob(bookId, blob) {
+  const db = await openEpubCacheDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(cloudLibrary.epubCacheStore, 'readwrite');
+    tx.objectStore(cloudLibrary.epubCacheStore).put(blob, bookId);
+    tx.oncomplete = () => { db.close(); resolve(); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
+  });
+}
+
+async function getCachedEpub(bookId) {
+  const db = await openEpubCacheDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(cloudLibrary.epubCacheStore, 'readonly');
+    const request = tx.objectStore(cloudLibrary.epubCacheStore).get(bookId);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+    tx.oncomplete = () => db.close();
+  });
+}
+
+async function deleteCachedEpub(bookId) {
+  const db = await openEpubCacheDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(cloudLibrary.epubCacheStore, 'readwrite');
+    tx.objectStore(cloudLibrary.epubCacheStore).delete(bookId);
+    tx.oncomplete = () => { db.close(); resolve(); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
+  });
+}
+
+function renderExportSuccessActions(libraryBook) {
+  const box = document.getElementById('export-success-actions');
+  if (!box) return;
+  cloudLibrary.selectedBookId = libraryBook.id;
+  box.classList.remove('hidden');
+}
+
+document.addEventListener('click', event => {
+  const openBook = event.target.closest('[data-open-library-book]');
+  if (openBook) openLibraryBook(openBook.dataset.openLibraryBook).catch(handleError);
+  const infoBook = event.target.closest('[data-info-library-book]');
+  if (infoBook) {
+    const book = getLibraryBook(infoBook.dataset.infoLibraryBook);
+    if (book) showToast(`${book.title}｜${book.total_chapters} 個閱讀段落｜版本 ${book.version}`);
+  }
+  const reexportBook = event.target.closest('[data-reexport-library-book]');
+  if (reexportBook) showToast('重新匯出入口已保留，請先回到出書整理頁重新輸出 EPUB。');
+  const deleteBookBtn = event.target.closest('[data-delete-library-book]');
+  if (deleteBookBtn) deleteLibraryBook(deleteBookBtn.dataset.deleteLibraryBook).catch(handleError);
+  if (event.target.id === 'read-exported-book-btn' && cloudLibrary.selectedBookId) openLibraryBook(cloudLibrary.selectedBookId).catch(handleError);
+  if (event.target.id === 'go-library-btn') setView('library');
+  if (event.target.id === 'library-empty-action') setView('books');
+  if (event.target.id === 'reader-back-library') setView('library');
+});
+
+document.addEventListener('change', event => {
+  if (event.target.id === 'library-sort') renderLibrary();
+  if (event.target.id === 'reader-chapter-nav') openReaderChapter(Number(event.target.value) || 0).catch(handleError);
+  if (event.target.id === 'reader-theme') updateReaderSetting('theme', event.target.value);
+});
+
+document.addEventListener('input', event => {
+  if (event.target.id === 'reader-font-size') updateReaderSetting('fontSize', Number(event.target.value));
+  if (event.target.id === 'reader-line-height') updateReaderSetting('lineHeight', Number(event.target.value));
+});
+
+window.addEventListener('online', () => syncPendingReadingProgress().catch(console.error));
 
 bootstrap().catch(handleError);
