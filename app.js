@@ -2243,7 +2243,11 @@ function buildMobileReaderPages(html) {
   applyReaderPageMetrics();
   const template = document.createElement('template');
   template.innerHTML = html;
-  const nodes = [...template.content.childNodes].filter(node => node.textContent?.trim() || node.nodeType === Node.ELEMENT_NODE);
+  const rootNodes = [...template.content.childNodes].filter(node => node.textContent?.trim() || node.nodeType === Node.ELEMENT_NODE);
+  const wrapper = rootNodes.length === 1 && rootNodes[0].nodeType === Node.ELEMENT_NODE ? rootNodes[0] : null;
+  const nodes = wrapper && /^(main|article|section|div)$/i.test(wrapper.tagName) && wrapper.childNodes.length
+    ? [...wrapper.childNodes].filter(node => node.textContent?.trim() || node.nodeType === Node.ELEMENT_NODE)
+    : rootNodes;
   if (!nodes.length) return ['<p>這個章節目前沒有內容。</p>'];
 
   const pages = [];
