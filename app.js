@@ -1424,6 +1424,7 @@ async function createSnapshotForSelectedBook() {
 }
 
 function buildBookSnapshot(book) {
+  const chapters = getBookProjectChapters(book);
   return {
     exported_at: nowIso(),
     book: {
@@ -1438,7 +1439,7 @@ function buildBookSnapshot(book) {
       toc_enabled: book.toc_enabled,
       cover_data_url: book.cover_data_url,
     },
-    chapters: (book.chapters || []).map(chapter => {
+    chapters: chapters.map(chapter => {
       const note = getNoteById(chapter.source_note_id);
       return {
         id: chapter.id,
@@ -1451,6 +1452,15 @@ function buildBookSnapshot(book) {
       };
     }),
   };
+}
+
+function getBookProjectChapters(book) {
+  const raw = book?.chapters ?? book?.chapters_json ?? [];
+  const parsed = parseMaybeJson(raw, []);
+  if (Array.isArray(parsed)) return parsed;
+  if (Array.isArray(parsed.chapters)) return parsed.chapters;
+  if (Array.isArray(parsed.items)) return parsed.items;
+  return [];
 }
 
 function renderSnapshots() {
@@ -1505,11 +1515,10 @@ async function exportSelectedBookEpub() {
   requireUser();
   const book = getSelectedBook();
   if (!book) throw new Error('請先選取一本書籍專案。');
-  if (!book.chapters?.length) throw new Error('至少要有一個章節才能匯出 EPUB。');
+  if (!getBookProjectChapters(book).length) throw new Error('至少要有一個章節才能匯出 EPUB。');
   const snapshot = buildBookSnapshot(book);
   const epubBlob = await buildEpub(snapshot);
   const libraryBook = await createCloudLibraryBook(book, snapshot, epubBlob);
-  downloadBlob(`${book.title || 'book'}.epub`, epubBlob);
   renderExportSuccessActions(libraryBook);
   showToast('EPUB 已完成，並已加入書櫃');
 }
@@ -2084,10 +2093,47 @@ async function syncPendingReadingProgress() {
 
 async function readEpubChapters(epubBlob, manifestChapters = []) {
   const entries = await unzipStoredEntries(epubBlob);
-  return manifestChapters.map(chapter => {
+  const epubChapters = extractEpubSpineChapters(entries);
+  const sourceChapters = epubChapters.length > manifestChapters.length ? epubChapters : manifestChapters;
+  return sourceChapters.map(chapter => {
     const entry = entries.get(chapter.chapter_path) || entries.get(chapter.href) || entries.get(`OEBPS/${chapter.href}`);
     return { ...chapter, html: entry ? sanitizeReaderHtml(entry) : '<p>找不到 EPUB 內的章節內容。</p>' };
   });
+}
+
+function extractEpubSpineChapters(entries) {
+  const opfPath = entries.has('OEBPS/content.opf') ? 'OEBPS/content.opf' : [...entries.keys()].find(name => name.endsWith('/content.opf') || name === 'content.opf');
+  if (!opfPath) return [];
+  const doc = new DOMParser().parseFromString(entries.get(opfPath), 'application/xml');
+  if (doc.querySelector('parsererror')) return [];
+  const basePath = opfPath.includes('/') ? opfPath.slice(0, opfPath.lastIndexOf('/') + 1) : '';
+  const elements = [...doc.getElementsByTagName('*')];
+  const manifest = new Map(elements
+    .filter(item => item.localName === 'item' && item.getAttribute('id'))
+    .map(item => [item.getAttribute('id'), item.getAttribute('href') || '']));
+  return elements
+    .filter(item => item.localName === 'itemref')
+    .map(item => manifest.get(item.getAttribute('idref')))
+    .filter(href => href && !href.endsWith('nav.xhtml'))
+    .map((href, index) => {
+      const chapterPath = `${basePath}${href}`.replace(/\/{2,}/g, '/');
+      const content = entries.get(chapterPath) || '';
+      return {
+        id: `epub_spine_${index}`,
+        title: extractChapterTitle(content, index),
+        chapter_order: index,
+        href,
+        chapter_path: chapterPath,
+        progress: 0,
+      };
+    });
+}
+
+function extractChapterTitle(xhtml, index) {
+  if (!xhtml) return index === 0 ? '書名頁' : `第 ${index + 1} 章`;
+  const doc = new DOMParser().parseFromString(xhtml, 'application/xhtml+xml');
+  const title = doc.querySelector('h1')?.textContent || doc.querySelector('title')?.textContent || '';
+  return title.trim() || (index === 0 ? '書名頁' : `第 ${index + 1} 章`);
 }
 
 function sanitizeReaderHtml(xhtml) {
