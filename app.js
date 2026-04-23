@@ -138,6 +138,25 @@ const els = {
   gateClearConfigBtn: document.getElementById('gate-clear-config-btn'),
 };
 
+function removeRetiredInterfaceElements() {
+  document.querySelectorAll('[data-view="snapshots"]').forEach(element => element.remove());
+  document.getElementById('view-snapshots')?.remove();
+  document.getElementById('summary-snapshots-count')?.closest('.summary-card')?.remove();
+  document.getElementById('create-snapshot-btn')?.remove();
+  document.querySelector('.sidebar h1 + .muted')?.remove();
+
+  const authCopy = document.querySelector('.auth-gate-copy');
+  if (authCopy) authCopy.textContent = '建立免費帳戶以同步札記、書籍專案與 EPUB 匯出設定，也可以先用本機模式測試整個流程。';
+
+  document.querySelectorAll('.auth-feature-item span').forEach(span => {
+    if (span.textContent.includes('快照')) span.textContent = span.textContent.replace('、快照', '').replace('與快照', '');
+  });
+
+  document.querySelectorAll('#view-dashboard .steps li').forEach(item => {
+    if (item.textContent.includes('快照')) item.textContent = '調整章節順序，確認後直接匯出 EPUB。';
+  });
+}
+
 const state = {
   config: buildMergedConfig(loadJson(STORAGE_KEYS.config, {})),
   supabase: null,
@@ -305,7 +324,7 @@ async function uploadLocalDataToCloud() {
     if (error) throw error;
   }
   await loadAllData({ silent: true, syncReason: '本機資料已上傳到雲端。' });
-  showToast(`已上傳：札記 ${notesToUpload.length}、書籍 ${booksToUpload.length}、快照 ${snapshotsToUpload.length}`);
+  showToast(`已上傳：札記 ${notesToUpload.length}、書籍 ${booksToUpload.length}`);
 }
 function downloadBackupJson() {
   requireUser();
@@ -515,6 +534,7 @@ async function clearConnectionSettings() {
 }
 
 async function bootstrap() {
+  removeRetiredInterfaceElements();
   syncConfigInputs();
   initSupabase();
   bindEvents();
@@ -594,7 +614,6 @@ function bindEvents() {
   });
   els.addChapterBtn.addEventListener('click', () => addChapterFromSelectedNote().catch(handleError));
   els.chapterSourceNote.addEventListener('change', renderSelectedNotePreview);
-  els.createSnapshotBtn.addEventListener('click', () => createSnapshotForSelectedBook().catch(handleError));
   els.exportEpubBtn.addEventListener('click', () => exportSelectedBookEpub().catch(handleError));
   els.supportBtn?.addEventListener('click', openSupportModal);
   els.closeSupportModal?.addEventListener('click', closeSupportModal);
@@ -790,12 +809,10 @@ function refreshUi() {
   }
   els.summaryNotesCount.textContent = state.notes.length;
   els.summaryBooksCount.textContent = state.books.length;
-  els.summarySnapshotsCount.textContent = state.snapshots.length;
   renderRecentCards();
   renderNotes();
   renderBooks();
   renderSelectedBookPanel();
-  renderSnapshots();
   renderLibrary();
   renderReaderSettings();
 }
@@ -1484,6 +1501,7 @@ function renderSnapshots() {
 }
 
 function setView(viewName) {
+  if (viewName === 'snapshots') viewName = 'dashboard';
   const isReaderView = viewName === 'reader';
   const titleMap = {
     dashboard: ['總覽', ''],
@@ -1997,7 +2015,7 @@ function renderLibrary() {
   list.innerHTML = books.map(book => {
     const coverUrl = cloudLibrary.coverUrls.get(book.id) || '';
     const progress = Math.max(0, Math.min(1, book.reading_progress || 0));
-    return `<article class="library-book ${book.id === cloudLibrary.selectedBookId ? 'selected' : ''}"><div class="library-cover">${coverUrl ? `<img src="${coverUrl}" alt="${escapeHtml(book.title)}封面" />` : `<span>${escapeHtml((book.title || '書').slice(0, 2))}</span>`}</div><div class="library-book-main"><div><h3>${escapeHtml(book.title)}</h3><div class="card-meta"><span>${escapeHtml(book.author || '未填作者')}</span><span>建立：${formatDate(book.created_at)}</span><span>最後閱讀：${book.last_read_at ? formatDate(book.last_read_at) : '尚未閱讀'}</span><span>版本 ${escapeHtml(book.version)}</span></div><p>${escapeHtml(book.description || '這本書已保存於雲端書櫃，可在登入後跨裝置閱讀。')}</p></div><div class="library-progress"><span>${Math.round(progress * 100)}%</span><div><i style="width:${Math.round(progress * 100)}%"></i></div></div><div class="card-actions"><button class="primary-btn" data-open-library-book="${book.id}">開啟閱讀</button><button class="ghost-btn" data-info-library-book="${book.id}">查看資訊</button><button class="ghost-btn" data-download-library-epub="${book.id}">下載 EPUB</button><button class="danger-btn" data-delete-library-book="${book.id}">刪除書籍</button></div></div></article>`;
+    return `<article class="library-book ${book.id === cloudLibrary.selectedBookId ? 'selected' : ''}"><div class="library-cover">${coverUrl ? `<img src="${coverUrl}" alt="${escapeHtml(book.title)}封面" />` : `<span>${escapeHtml((book.title || '書').slice(0, 2))}</span>`}</div><div class="library-book-main"><div><h3>${escapeHtml(book.title)}</h3><div class="card-meta"><span>${escapeHtml(book.author || '未填作者')}</span><span>建立：${formatDate(book.created_at)}</span><span>最後閱讀：${book.last_read_at ? formatDate(book.last_read_at) : '尚未閱讀'}</span><span>版本 ${escapeHtml(book.version)}</span></div><p>${escapeHtml(book.description || '這本書已保存於雲端書櫃，可在登入後跨裝置閱讀。')}</p></div><div class="library-progress"><span>${Math.round(progress * 100)}%</span><div><i style="width:${Math.round(progress * 100)}%"></i></div></div><div class="card-actions"><button class="primary-btn" data-open-library-book="${book.id}">開啟閱讀</button><button class="ghost-btn" data-download-library-epub="${book.id}">下載 EPUB</button><button class="danger-btn" data-delete-library-book="${book.id}">刪除書籍</button></div></div></article>`;
   }).join('');
 }
 
