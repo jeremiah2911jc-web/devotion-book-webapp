@@ -567,6 +567,56 @@ body:not(.auth-locked) .main {
   fill: currentColor;
 }
 
+.asset-icon {
+  display: inline-block;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  flex: 0 0 auto;
+}
+
+.asset-sprite-system {
+  background-image: url("./assets/ui/system-icons.png");
+  background-size: 400% 200%;
+}
+
+.asset-sprite-summary {
+  background-image: url("./assets/ui/summary-icons.png");
+  background-size: 300% 100%;
+}
+
+.asset-sprite-leaf {
+  background-image: url("./assets/ui/leaf-badges.png");
+  background-size: 300% 100%;
+}
+
+.icon-cloud-check,
+.icon-sync,
+.icon-gear,
+.icon-home,
+.icon-note,
+.icon-book,
+.icon-library,
+.icon-arrow {
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+.icon-cloud-check { background-image: url("./assets/ui/cloud-check.png"); }
+.icon-sync { background-image: url("./assets/ui/sync.png"); }
+.icon-gear { background-image: url("./assets/ui/gear.png"); }
+.icon-home { background-image: url("./assets/ui/home.png"); }
+.icon-note { background-image: url("./assets/ui/note.png"); }
+.icon-book { background-image: url("./assets/ui/book.png"); }
+.icon-library { background-image: url("./assets/ui/library.png"); }
+.icon-arrow { background-image: url("./assets/ui/arrow.png"); }
+
+.icon-only .asset-icon {
+  width: 18px;
+  height: 18px;
+}
+
 .dashboard-home {
   display: grid;
   gap: 12px;
@@ -581,19 +631,11 @@ body:not(.auth-locked) .main {
   position: relative;
   min-height: 198px;
   padding: 16px 18px 12px;
-  background:
-    radial-gradient(circle at top right, rgba(255, 247, 224, 0.95), transparent 42%),
-    linear-gradient(180deg, rgba(255, 253, 249, 0.98) 0%, rgba(250, 246, 237, 0.96) 100%);
+  background: #fffaf3 url("./assets/ui/hero-background.png") center top / cover no-repeat;
 }
 
 .home-hero::after {
-  content: "";
-  position: absolute;
-  inset: auto -26px -48px auto;
-  width: 150px;
-  height: 150px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(244, 218, 178, 0.28), transparent 70%);
+  display: none;
 }
 
 .hero-copy {
@@ -601,18 +643,6 @@ body:not(.auth-locked) .main {
   gap: 6px;
   z-index: 1;
   max-width: 360px;
-}
-
-.hero-kicker {
-  display: inline-flex;
-  width: fit-content;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: rgba(237, 245, 239, 0.92);
-  color: #5c7f73;
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .hero-copy h1 {
@@ -637,11 +667,10 @@ body:not(.auth-locked) .main {
   min-height: 112px;
 }
 
-.hero-illustration svg {
+.hero-illustration img {
   width: min(100%, 168px);
   height: auto;
-  opacity: 0.88;
-  filter: drop-shadow(0 8px 14px rgba(194, 173, 135, 0.12));
+  display: block;
 }
 
 .sync-banner {
@@ -681,7 +710,6 @@ body:not(.auth-locked) .main {
 .sync-banner-icon {
   width: 22px;
   height: 22px;
-  color: var(--primary);
 }
 
 .sync-detail {
@@ -696,6 +724,17 @@ body:not(.auth-locked) .main {
   border-radius: 999px;
   padding: 7px 12px;
   box-shadow: none;
+}
+
+.sync-btn-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sync-btn-content .asset-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .home-summary-cards {
@@ -716,32 +755,19 @@ body:not(.auth-locked) .main {
 }
 
 .summary-icon {
-  width: 34px;
-  height: 34px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   display: inline-grid;
   place-items: center;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
 }
 
-.summary-icon svg {
-  width: 16px;
-  height: 16px;
-}
-
-.summary-icon.mint {
-  background: #e7f2ea;
-  color: #256e69;
-}
-
-.summary-icon.sand {
-  background: #f8ecd6;
-  color: #9f6a2f;
-}
-
-.summary-icon.coral {
-  background: #fae8df;
-  color: #a8675e;
-}
+.summary-icon-notes { background-image: url("./assets/ui/summary-note.png"); }
+.summary-icon-books { background-image: url("./assets/ui/summary-book.png"); }
+.summary-icon-library { background-image: url("./assets/ui/summary-library.png"); }
 
 .summary-content {
   display: grid;
@@ -785,41 +811,25 @@ body:not(.auth-locked) .main {
   border: none;
   border-radius: 22px;
   min-height: 68px;
-  padding: 10px 11px;
+  padding: 10px 12px 10px 96px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: flex-start;
   text-align: left;
   box-shadow: var(--shadow);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
 }
 
 .hero-action-primary {
-  background: linear-gradient(135deg, #186f6f 0%, #2a8d87 100%);
+  background-image: url("./assets/ui/cta-write-note.png");
   color: #fffaf4;
 }
 
 .hero-action-secondary {
-  background: linear-gradient(135deg, #f6d8a8 0%, #f1c887 100%);
+  background-image: url("./assets/ui/cta-create-book.png");
   color: #82541d;
-}
-
-.hero-action-icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 10px;
-  display: inline-grid;
-  place-items: center;
-  background: rgba(255, 255, 255, 0.14);
-  flex: 0 0 auto;
-}
-
-.hero-action-secondary .hero-action-icon {
-  background: rgba(255, 255, 255, 0.28);
-}
-
-.hero-action-icon svg {
-  width: 16px;
-  height: 16px;
 }
 
 .hero-action-text {
@@ -881,14 +891,14 @@ body:not(.auth-locked) .main {
   border-radius: 50%;
   display: inline-grid;
   place-items: center;
-  background: #edf3e8;
-  color: #66876e;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
 }
 
-.recent-note-mark svg {
-  width: 13px;
-  height: 13px;
-}
+.leaf-badge-1 { background-image: url("./assets/ui/leaf-mint.png"); }
+.leaf-badge-2 { background-image: url("./assets/ui/leaf-sand.png"); }
+.leaf-badge-3 { background-image: url("./assets/ui/leaf-coral.png"); }
 
 .recent-note-copy {
   display: grid;
@@ -908,9 +918,9 @@ body:not(.auth-locked) .main {
 }
 
 .recent-note-arrow {
-  color: #a8b0ad;
-  font-size: 14px;
-  line-height: 1;
+  width: 12px;
+  height: 12px;
+  opacity: 0.55;
 }
 
 .account-summary-card {
@@ -936,9 +946,11 @@ body:not(.auth-locked) .main {
   flex: 0 0 auto;
 }
 
-.account-avatar svg {
+.account-avatar img {
   width: 100%;
   height: 100%;
+  display: block;
+  object-fit: cover;
 }
 
 .account-summary-copy {
@@ -1024,11 +1036,6 @@ body:not(.auth-locked) .main {
   height: 18px;
   display: inline-grid;
   place-items: center;
-}
-
-.nav-icon svg {
-  width: 16px;
-  height: 16px;
 }
 
 .account-settings-card {
@@ -1130,7 +1137,7 @@ body.auth-locked .bottom-nav {
     align-self: end;
   }
 
-  .hero-illustration svg {
+  .hero-illustration img {
     width: min(100%, 116px);
   }
 
