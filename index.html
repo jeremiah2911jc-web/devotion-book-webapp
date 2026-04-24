@@ -49,7 +49,11 @@
                 <button id="gate-submit-btn" class="primary-btn" type="button">建立帳戶</button>
                 <button id="gate-magic-link-btn" class="ghost-btn" type="button">Magic Link</button>
               </div>
+              <div class="row wrap gap-sm auth-modal-secondary-actions">
+                <button id="gate-reset-password-btn" class="ghost-btn subtle-action hidden" type="button">忘記密碼 / 重設密碼</button>
+              </div>
               <p id="auth-inline-hint" class="caption">尚未設定 Supabase 時，會先使用本機模式建立或登入帳號。</p>
+              <p id="auth-inline-reset-hint" class="caption hidden">重設密碼信會寄到輸入的 Email。若目前是本機模式，請先設定 Supabase 後再使用。</p>
             </div>
           </div>
         </div>
@@ -85,8 +89,8 @@
   <div class="app-shell">
     <aside class="sidebar">
       <div>
-        <h1>靈修札記成書系統</h1>
-        <p class="muted">登入、雲端同步、章節編排、EPUB 匯出</p>
+        <h1>我的靈修書房</h1>
+        <p class="muted">保留為內部功能容器，首頁入口已移到下方主畫面。</p>
       </div>
 
       <section class="panel compact" hidden>
@@ -125,32 +129,15 @@
             <button id="login-btn" class="secondary-btn">登入</button>
             <button id="magic-link-btn" class="ghost-btn">Magic Link</button>
           </div>
+          <div class="row wrap gap-sm">
+            <button id="reset-password-btn" class="ghost-btn subtle-action" type="button">忘記密碼 / 重設密碼</button>
+          </div>
           <p class="caption">本機模式會以 Email 建立測試帳號；雲端模式會走 Supabase Auth。</p>
         </div>
         <div id="auth-user" class="hidden">
-          <p id="current-user-text"></p>
-          <div id="cloud-sync-panel" class="sync-panel hidden">
-            <div class="sync-meta-row"><span>同步狀態</span><strong id="sync-status-text">未啟用</strong></div>
-            <div class="sync-meta-row"><span>最後同步</span><strong id="sync-last-time">尚未同步</strong></div>
-            <div class="row wrap gap-sm">
-              <button id="force-sync-btn" class="secondary-btn">立即同步</button>
-              <button id="push-local-to-cloud-btn" class="ghost-btn small subtle-action">本機資料上傳雲端</button>
-              <button id="download-backup-btn" class="ghost-btn">下載備份</button>
-            </div>
-          </div>
-          <div class="row wrap gap-sm">
-            <button id="signout-btn" class="ghost-btn">登出</button>
-          </div>
+          <p id="current-user-text" class="caption">目前使用者</p>
         </div>
       </section>
-
-      <nav class="nav-links">
-        <button class="nav-link active" data-view="dashboard">總覽</button>
-        <button class="nav-link" data-view="notes">札記庫</button>
-        <button class="nav-link" data-view="books">書籍專案</button>        <button class="nav-link" data-view="library">書櫃</button>
-
-        <button class="nav-link" data-view="snapshots">快照備份</button>
-      </nav>
     </aside>
 
     <main class="main">
@@ -159,65 +146,119 @@
           <h2 id="view-title">總覽</h2>
           <p id="view-subtitle" class="muted hidden"></p>
         </div>
-        <div class="row gap-sm wrap">
-          <button id="quick-new-note" class="secondary-btn">新增札記</button>
-          <button id="quick-new-book" class="primary-btn">新增書籍</button>
+        <div class="row gap-sm wrap topbar-actions">
+          <button id="open-snapshots-btn" class="ghost-btn">快照備份</button>
+          <button id="open-account-settings-btn" class="ghost-btn icon-only" type="button" aria-label="帳號設定">
+            <span class="asset-icon asset-sprite-system icon-gear" aria-hidden="true"></span>
+          </button>
         </div>
       </header>
 
       <section id="view-dashboard" class="view active">
-        <div class="grid two-col">
-          <section class="panel">
+        <section class="dashboard-home">
+          <section class="home-hero">
+            <div class="hero-copy">
+              <h1>我的靈修書房</h1>
+              <p>整理每日札記，慢慢編成一本書</p>
+            </div>
+            <div class="hero-illustration" aria-hidden="true">
+              <img src="./assets/ui/hero-illustration.png" alt="" decoding="async" />
+            </div>
+          </section>
+
+          <section id="cloud-sync-panel" class="sync-panel sync-banner">
+            <div class="sync-banner-copy">
+              <div class="sync-banner-main">
+                <span class="sync-banner-icon asset-icon asset-sprite-system icon-cloud-check" aria-hidden="true"></span>
+                <div>
+                  <strong id="sync-status-text">未啟用</strong>
+                  <p id="sync-last-time">尚未同步</p>
+                </div>
+              </div>
+              <span id="sync-detail-text" class="sync-detail hidden">登入同一個雲端帳號後，可在多裝置同步。</span>
+            </div>
+            <button id="force-sync-btn" class="primary-btn sync-btn" type="button">
+              <span class="sync-btn-content">
+                <span class="asset-icon asset-sprite-system icon-sync" aria-hidden="true"></span>
+                <span>同步</span>
+              </span>
+            </button>
+          </section>
+
+          <section class="summary-cards home-summary-cards">
+            <article class="summary-card">
+              <span class="summary-icon summary-icon-notes" aria-hidden="true"></span>
+              <div class="summary-content">
+                <span>札記</span>
+                <strong><span id="summary-notes-count">0</span><small>篇</small></strong>
+              </div>
+            </article>
+            <article class="summary-card">
+              <span class="summary-icon summary-icon-books" aria-hidden="true"></span>
+              <div class="summary-content">
+                <span>書籍</span>
+                <strong><span id="summary-books-count">0</span><small>本</small></strong>
+              </div>
+            </article>
+            <article class="summary-card">
+              <span class="summary-icon summary-icon-library" aria-hidden="true"></span>
+              <div class="summary-content">
+                <span>書櫃</span>
+                <strong><span id="library-count">0</span><small>本完成</small></strong>
+              </div>
+            </article>
+          </section>
+
+          <section class="home-primary-actions">
+            <button id="quick-new-note" class="hero-action-card hero-action-primary" type="button">
+              <span class="hero-action-text">
+                <strong>寫一篇札記</strong>
+              </span>
+            </button>
+            <button id="quick-new-book" class="hero-action-card hero-action-secondary" type="button">
+              <span class="hero-action-text">
+                <strong>建立一本書</strong>
+              </span>
+            </button>
+          </section>
+
+          <section class="panel home-recent-panel">
+            <div class="panel-header">
+              <h2>最近編輯</h2>
+              <button id="view-all-notes-btn" class="ghost-btn small" type="button">查看全部</button>
+            </div>
+            <div id="recent-notes" class="list-stack empty-state">還沒有札記。</div>
+            <div id="recent-books" class="hidden"></div>
+          </section>
+
+          <section class="panel account-summary-card">
+            <div class="account-summary-main">
+              <span class="account-avatar" aria-hidden="true">
+                <img src="./assets/ui/account-sprout.png" alt="" decoding="async" />
+              </span>
+              <div class="account-summary-copy">
+                <strong id="account-email">-</strong>
+                <p>願你的文字成為祝福</p>
+              </div>
+            </div>
+            <button id="account-settings-btn" class="ghost-btn icon-only account-settings-trigger" type="button" aria-label="開啟帳號設定">
+              <span class="asset-icon asset-sprite-system icon-gear" aria-hidden="true"></span>
+            </button>
+          </section>
+
+          <section id="dashboard-flow-card" class="panel home-flow-card hidden">
             <div class="panel-header">
               <h2>使用流程</h2>
             </div>
             <ol class="steps">
-              <li>先到「札記庫」新增一篇札記。</li>
-              <li>寫好標題、經文、摘要和內容後儲存。</li>
-              <li>到「書籍專案」新增一本書。</li>
-              <li>選擇札記，把它加入書中成為章節。</li>
-              <li>調整章節順序，確認後建立快照或匯出 EPUB。</li>
+              <li>先寫下今天的札記，保留經文與摘要。</li>
+              <li>建立一本書，把合適的札記收進章節。</li>
+              <li>完成後匯出 EPUB，並加入雲端書櫃閱讀。</li>
             </ol>
           </section>
-          <section class="panel">
-            <div class="panel-header">
-              <h2>快速摘要</h2>
-            </div>
-            <div class="summary-cards">
-              <div class="summary-card">
-                <span>札記數</span>
-                <strong id="summary-notes-count">0</strong>
-              </div>
-              <div class="summary-card">
-                <span>書籍數</span>
-                <strong id="summary-books-count">0</strong>
-              </div>
-              <div class="summary-card">
-                <span>快照數</span>
-                <strong id="summary-snapshots-count">0</strong>
-              </div>
-              <div class="summary-card">
-                <span>書櫃</span>
-                <strong id="library-count">0</strong>
-              </div>
-            </div>
-          </section>
-        </div>
 
-        <div class="grid two-col mt-lg">
-          <section class="panel">
-            <div class="panel-header">
-              <h2>最近札記</h2>
-            </div>
-            <div id="recent-notes" class="list-stack empty-state">還沒有札記。</div>
-          </section>
-          <section class="panel">
-            <div class="panel-header">
-              <h2>最近書籍</h2>
-            </div>
-            <div id="recent-books" class="list-stack empty-state">還沒有書籍專案。</div>
-          </section>
-        </div>
+          <span id="summary-snapshots-count" class="hidden">0</span>
+        </section>
       </section>
 
       <section id="view-notes" class="view">
@@ -316,6 +357,7 @@
               </label>
               <label class="checkbox-row">
                 <input id="book-toc-enabled" type="checkbox" checked />
+                <p id="book-save-feedback" class="caption hidden" aria-live="polite"></p>
                 <span>匯出時包含目錄</span>
               </label>
               <div class="row gap-sm wrap">
@@ -396,7 +438,58 @@
         <p class="footer-copyright">© 2026 <a href="https://sanzepm.com.tw" target="_blank" rel="noopener noreferrer">三策專案管理顧問有限公司</a>. All rights reserved.</p>
       </footer>
 
+      <nav class="nav-links bottom-nav" aria-label="主要導覽">
+        <button class="nav-link active" data-view="dashboard" type="button">
+          <span class="nav-icon asset-icon asset-sprite-system icon-home" aria-hidden="true"></span>
+          <span>總覽</span>
+        </button>
+        <button class="nav-link" data-view="notes" type="button">
+          <span class="nav-icon asset-icon asset-sprite-system icon-note" aria-hidden="true"></span>
+          <span>札記</span>
+        </button>
+        <button class="nav-link" data-view="books" type="button">
+          <span class="nav-icon asset-icon asset-sprite-system icon-book" aria-hidden="true"></span>
+          <span>書籍</span>
+        </button>
+        <button class="nav-link" data-view="library" type="button">
+          <span class="nav-icon asset-icon asset-sprite-system icon-library" aria-hidden="true"></span>
+          <span>書櫃</span>
+        </button>
+      </nav>
+
     </main>
+  </div>
+
+  <div id="account-settings-modal" class="modal hidden" aria-hidden="true">
+    <div id="account-settings-backdrop" class="modal-backdrop"></div>
+    <div class="modal-card account-settings-card" role="dialog" aria-modal="true" aria-labelledby="account-settings-title">
+      <div class="panel-header">
+        <div>
+          <h2 id="account-settings-title">帳號設定</h2>
+          <p class="modal-intro">把同步、備份與帳號操作收在這裡，首頁只保留最重要的閱讀入口。</p>
+        </div>
+        <button id="close-account-settings-btn" class="ghost-btn small" type="button">關閉</button>
+      </div>
+      <div class="account-settings-section">
+        <span class="account-settings-label">目前帳號</span>
+        <strong id="account-settings-email">-</strong>
+      </div>
+      <div id="account-cloud-actions" class="account-settings-section">
+        <span class="account-settings-label">雲端資料</span>
+        <div class="account-settings-actions">
+          <button id="push-local-to-cloud-btn" class="ghost-btn" type="button">上傳本機資料</button>
+          <button id="download-backup-btn" class="ghost-btn" type="button">下載雲端備份</button>
+        </div>
+        <p id="account-cloud-hint" class="caption">登入雲端帳號後，可把本機資料上傳或下載雲端備份。</p>
+      </div>
+      <div class="account-settings-section">
+        <span class="account-settings-label">其他</span>
+        <div class="account-settings-actions">
+          <button id="go-snapshots-btn" class="ghost-btn" type="button">查看快照備份</button>
+          <button id="signout-btn" class="danger-btn" type="button">登出</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   
