@@ -485,7 +485,7 @@ function openAuthInline(mode = 'register') {
     els.gateSubmitBtn.classList.toggle('primary-btn', isRegister);
   }
   if (els.gateMagicLinkBtn) {
-    els.gateMagicLinkBtn.textContent = '??????';
+    els.gateMagicLinkBtn.textContent = '寄送 Magic Link';
     els.gateMagicLinkBtn.classList.toggle('hidden', isRegister);
   }
   if (els.authInlineHint) {
@@ -872,8 +872,8 @@ function refreshUi() {
   els.downloadBackupBtn?.toggleAttribute('disabled', !cloudActionsAvailable);
   if (els.accountCloudHint) {
     els.accountCloudHint.textContent = cloudActionsAvailable
-      ? '???????????????????'
-      : '???????????????????????????????? Supabase?';
+      ? '登入雲端帳號後，可把本機資料上傳或下載雲端備份。'
+      : '本機模式下會保留這兩個入口；若要使用雲端同步與備份，請先設定並登入 Supabase。';
   }
   if (els.syncStatusText) els.syncStatusText.textContent = state.syncStatus || '未啟用';
   if (els.syncLastTime) els.syncLastTime.textContent = state.lastSyncAt ? formatDate(state.lastSyncAt) : '尚未同步';

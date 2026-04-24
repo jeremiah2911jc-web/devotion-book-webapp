@@ -209,8 +209,7 @@ async function run() {
       page.locator('#download-backup-btn').count(),
       page.locator('#signout-btn').count(),
     ]);
-    if (accountUiExists.every(Boolean)) results.push('?????? DOM ???????');
-    if (accountUiExists.every(Boolean)) results.push('?????? DOM ???????');
+    if (accountUiExists.every(Boolean)) results.push('帳號設定相關 DOM 已存在。');
 
     await page.click('.bottom-nav .nav-link[data-view="notes"]');
     await expectVisible(page, '#view-notes.view.active', '札記頁可切換');
