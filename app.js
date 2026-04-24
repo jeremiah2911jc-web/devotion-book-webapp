@@ -70,6 +70,7 @@ const els = {
   authForms: document.getElementById('auth-forms'),
   authUser: document.getElementById('auth-user'),
   currentUserText: document.getElementById('current-user-text'),
+  accountEmail: document.getElementById('account-email'),
   navLinks: [...document.querySelectorAll('.nav-link')],
   viewTitle: document.getElementById('view-title'),
   viewSubtitle: document.getElementById('view-subtitle'),
@@ -165,7 +166,7 @@ const els = {
   openSnapshotsBtn: document.getElementById('open-snapshots-btn'),
   viewAllNotesBtn: document.getElementById('view-all-notes-btn'),
   openAccountSettingsBtn: document.getElementById('open-account-settings-btn'),
-  accountSettingsBtn: document.getElementById('account-settings-btn'),
+  accountSignoutBtn: document.getElementById('account-signout-btn'),
   accountSettingsModal: document.getElementById('account-settings-modal'),
   accountSettingsBackdrop: document.getElementById('account-settings-backdrop'),
   closeAccountSettingsBtn: document.getElementById('close-account-settings-btn'),
@@ -647,6 +648,7 @@ function bindEvents() {
   }, 'Supabase 設定已儲存。').then(closeAuthSettings).catch(handleError));
   els.gateClearConfigBtn?.addEventListener('click', () => clearConnectionSettings().then(closeAuthSettings).catch(handleError));
   els.signoutBtn.addEventListener('click', () => handleSignOut().catch(handleError));
+  els.accountSignoutBtn?.addEventListener('click', () => handleSignOut().catch(handleError));
   els.refreshBtn?.addEventListener('click', () => loadAllData({ syncReason: '已手動重新整理雲端資料。' }).then(refreshUi).then(() => showToast('資料已重新整理。')).catch(handleError));
   els.forceSyncBtn?.addEventListener('click', () => loadAllData({ syncReason: '已手動同步雲端資料。' }).then(() => showToast('同步完成。')).catch(handleError));
   els.pushLocalToCloudBtn?.addEventListener('click', () => uploadLocalDataToCloud().catch(handleError));
@@ -866,12 +868,15 @@ function resolveBookLanguage(value = '') {
 }
 
 function refreshUi() {
+  const accountEmail = String(state.currentUser?.email || state.currentUser?.id || '').trim() || '未顯示帳號';
   if (els.authModeBadge) els.authModeBadge.textContent = state.supabase ? '雲端模式' : '本機模式';
   if (els.statusStorage) els.statusStorage.textContent = state.supabase ? 'Supabase' : 'Local';
   if (els.statusSync) els.statusSync.textContent = state.syncStatus || '未啟用';
   els.authForms.classList.toggle('hidden', !!state.currentUser);
   els.authUser.classList.toggle('hidden', !state.currentUser);
-  els.currentUserText.textContent = state.currentUser ? `目前使用者：${state.currentUser.email || state.currentUser.id}` : '尚未登入';
+  els.currentUserText.textContent = state.currentUser ? `目前使用者：${accountEmail}` : '尚未登入';
+  if (els.accountEmail) els.accountEmail.textContent = accountEmail;
+  els.accountSignoutBtn?.toggleAttribute('disabled', !state.currentUser);
   document.body.classList.toggle('auth-locked', !state.currentUser);
   els.authGate?.classList.toggle('hidden', !!state.currentUser);
   els.authGate?.setAttribute('aria-hidden', state.currentUser ? 'true' : 'false');
