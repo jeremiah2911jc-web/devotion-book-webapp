@@ -129,6 +129,8 @@ const els = {
   gateAuthPassword: document.getElementById('gate-auth-password'),
   gateSubmitBtn: document.getElementById('gate-submit-btn'),
   gateMagicLinkBtn: document.getElementById('gate-magic-link-btn'),
+  gateResetPasswordBtn: document.getElementById('gate-reset-password-btn'),
+  authInlineResetHint: document.getElementById('auth-inline-reset-hint'),
   authFeatureSheet: document.getElementById('auth-feature-sheet'),
   authSettingsSheet: document.getElementById('auth-settings-sheet'),
   closeAuthSettingsBtn: document.getElementById('close-auth-settings-btn'),
@@ -136,6 +138,19 @@ const els = {
   gateSupabaseAnonKey: document.getElementById('gate-supabase-anon-key'),
   gateSaveConfigBtn: document.getElementById('gate-save-config-btn'),
   gateClearConfigBtn: document.getElementById('gate-clear-config-btn'),
+  openSnapshotsBtn: document.getElementById('open-snapshots-btn'),
+  viewAllNotesBtn: document.getElementById('view-all-notes-btn'),
+  openAccountSettingsBtn: document.getElementById('open-account-settings-btn'),
+  accountSettingsBtn: document.getElementById('account-settings-btn'),
+  accountSettingsModal: document.getElementById('account-settings-modal'),
+  accountSettingsBackdrop: document.getElementById('account-settings-backdrop'),
+  closeAccountSettingsBtn: document.getElementById('close-account-settings-btn'),
+  accountCloudActions: document.getElementById('account-cloud-actions'),
+  accountCloudHint: document.getElementById('account-cloud-hint'),
+  goSnapshotsBtn: document.getElementById('go-snapshots-btn'),
+  dashboardFlowCard: document.getElementById('dashboard-flow-card'),
+  resetPasswordBtn: document.getElementById('reset-password-btn'),
+  bookSaveFeedback: document.getElementById('book-save-feedback'),
 };
 
 function removeRetiredInterfaceElements() {
@@ -445,6 +460,15 @@ function getAuthCredentials() {
   syncAuthInputs({ email, password });
   return { email, password };
 }
+
+async function completeLocalAuth(user, successMessage) {
+  setLocalUser(user);
+  state.currentUser = user;
+  await loadAllData();
+  refreshUi();
+  setView('dashboard');
+  showToast(successMessage);
+}
 function openAuthInline(mode = 'register') {
   state.authInlineMode = mode;
   const isRegister = mode === 'register';
@@ -461,13 +485,15 @@ function openAuthInline(mode = 'register') {
     els.gateSubmitBtn.classList.toggle('primary-btn', isRegister);
   }
   if (els.gateMagicLinkBtn) {
-    els.gateMagicLinkBtn.textContent = '忘記密碼';
+    els.gateMagicLinkBtn.textContent = '??????';
     els.gateMagicLinkBtn.classList.toggle('hidden', isRegister);
   }
   if (els.authInlineHint) {
     els.authInlineHint.textContent = '';
     els.authInlineHint.classList.add('hidden');
   }
+  els.gateResetPasswordBtn?.classList.toggle('hidden', isRegister);
+  els.authInlineResetHint?.classList.toggle('hidden', isRegister);
   els.gateAuthEmail?.focus();
 }
 function closeAuthInline() {
@@ -592,7 +618,9 @@ function bindEvents() {
   els.closeAuthInlineBtn?.addEventListener('click', closeAuthInline);
   els.authInlineBackdrop?.addEventListener('click', closeAuthInline);
   els.gateSubmitBtn?.addEventListener('click', () => (state.authInlineMode === 'register' ? handleRegister() : handleLogin()).catch(handleError));
-  els.gateMagicLinkBtn?.addEventListener('click', () => handleForgotPassword().catch(handleError));
+  els.gateMagicLinkBtn?.addEventListener('click', () => handleMagicLink().catch(handleError));
+  els.gateResetPasswordBtn?.addEventListener('click', () => handleResetPassword().catch(handleError));
+  els.resetPasswordBtn?.addEventListener('click', () => handleResetPassword().catch(handleError));
   els.gateSaveConfigBtn?.addEventListener('click', () => applyConnectionSettings({
     supabaseUrl: els.gateSupabaseUrl.value,
     supabaseAnonKey: els.gateSupabaseAnonKey.value,
@@ -672,8 +700,8 @@ function isEmailRateLimitError(error) {
 
 async function handleRegister() {
   const { email, password } = getAuthCredentials();
-  if (!email) throw new Error('請輸入 Email。');
-  if (!password || password.length < 6) throw new Error('密碼至少需要 6 碼。');
+  if (!email) throw new Error('\u8acb\u5148\u8f38\u5165 Email\u3002');
+  if (!password || password.length < 6) throw new Error('\u5bc6\u78bc\u81f3\u5c11\u9700\u8981 6 \u78bc\u3002');
   if (state.supabase) {
     const { data, error } = await state.supabase.auth.signUp({
       email,
@@ -681,71 +709,64 @@ async function handleRegister() {
       options: { emailRedirectTo: window.location.origin + window.location.pathname },
     });
     if (error) {
-      if (isDuplicateRegistrationError(error)) throw new Error('此帳號已註冊。');
+      if (isDuplicateRegistrationError(error)) throw new Error('\u6b64\u5e33\u865f\u5df2\u8a3b\u518a\u3002');
       throw error;
     }
-    if (Array.isArray(data?.user?.identities) && data.user.identities.length === 0) throw new Error('此帳號已註冊。');
-    showToast('註冊完成，請依 Supabase 設定確認信箱。');
+    if (Array.isArray(data?.user?.identities) && data.user.identities.length === 0) {
+      throw new Error('\u6b64\u5e33\u865f\u5df2\u8a3b\u518a\u3002');
+    }
+    showToast('\u5e33\u6236\u5df2\u5efa\u7acb\uff0c\u8acb\u4f9d\u7167 Supabase \u8a2d\u5b9a\u5b8c\u6210\u9a57\u8b49\u3002');
     return;
   }
-  if (findLocalAccountByEmail(email)) throw new Error('此帳號已註冊。');
+  if (findLocalAccountByEmail(email)) throw new Error('\u9019\u500b Email \u5df2\u7d93\u5efa\u7acb\u904e\u5e33\u6236\u3002');
   const account = { id: uid('local_user'), email, password, created_at: nowIso() };
   const accounts = loadLocalAccounts();
   accounts.unshift(account);
   saveLocalAccounts(accounts);
   const user = sanitizeLocalUser(account);
-  setLocalUser(user);
-  state.currentUser = user;
-  await loadAllData();
-  refreshUi();
-  setView('dashboard');
-  showToast('本機帳號已建立，已為你登入。');
+  await completeLocalAuth(user, '\u672c\u6a5f\u5e33\u6236\u5df2\u5efa\u7acb\uff0c\u5df2\u9032\u5165\u9996\u9801\u3002');
 }
 
 async function handleLogin() {
   const { email, password } = getAuthCredentials();
-  if (!email) throw new Error('請輸入 Email。');
+  if (!email) throw new Error('\u8acb\u5148\u8f38\u5165 Email\u3002');
   if (state.supabase) {
     const { error } = await state.supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    showToast('登入成功。');
+    showToast('\u767b\u5165\u6210\u529f\u3002');
     return;
   }
   const account = findLocalAccountByEmail(email);
-  if (!account || account.password !== password) throw new Error('Email 或密碼不正確。');
+  if (!account || account.password !== password) throw new Error('Email \u6216\u5bc6\u78bc\u932f\u8aa4\u3002');
   const user = sanitizeLocalUser(account);
-  setLocalUser(user);
-  state.currentUser = user;
-  await loadAllData();
-  refreshUi();
-  setView('dashboard');
-  showToast('登入成功。');
+  await completeLocalAuth(user, '\u5df2\u767b\u5165\u672c\u6a5f\u5e33\u6236\u3002');
+}
+
+async function handleResetPassword() {
+  const { email } = getAuthCredentials();
+  if (!email) throw new Error('\u8acb\u5148\u8f38\u5165 Email\u3002');
+  if (!state.supabase) throw new Error('\u91cd\u8a2d\u5bc6\u78bc\u9700\u8981\u5148\u8a2d\u5b9a Supabase\u3002');
+  const { error } = await state.supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname,
+  });
+  if (error) throw error;
+  showToast('\u91cd\u8a2d\u5bc6\u78bc\u4fe1\u5df2\u5bc4\u51fa\uff0c\u8acb\u6aa2\u67e5\u4fe1\u7bb1\u3002');
 }
 
 async function handleMagicLink() {
   const { email } = getAuthCredentials();
-  if (!email) throw new Error('請先輸入 Email。');
-  if (!state.supabase) throw new Error('Magic Link 需要先設定 Supabase。');
+  if (!email) throw new Error('\u8acb\u5148\u8f38\u5165 Email\u3002');
+  if (!state.supabase) throw new Error('Magic Link \u9700\u8981\u5148\u8a2d\u5b9a Supabase\u3002');
   const { error } = await state.supabase.auth.signInWithOtp({
     email,
     options: { emailRedirectTo: window.location.origin + window.location.pathname },
   });
   if (error) throw error;
-  showToast('Magic Link 已寄出。');
+  showToast('Magic Link \u5df2\u5bc4\u51fa\u3002');
 }
 
 async function handleForgotPassword() {
-  const { email } = getAuthCredentials();
-  if (!email) throw new Error('請先輸入 Email。');
-  if (!state.supabase) throw new Error('忘記密碼需要先設定 Supabase。');
-  const { error } = await state.supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + window.location.pathname,
-  });
-  if (error) {
-    if (isEmailRateLimitError(error)) throw new Error('重設密碼信寄送過於頻繁，請稍後再試。');
-    throw error;
-  }
-  showToast('已寄出重設密碼信，請至信箱收信。');
+  await handleResetPassword();
 }
 
 async function handleSignOut() {
@@ -836,12 +857,24 @@ function refreshUi() {
   els.authGate?.setAttribute('aria-hidden', state.currentUser ? 'true' : 'false');
   if (els.authInlineHint) {
     els.authInlineHint.textContent = state.supabase
-      ? '目前已啟用 Supabase Auth，建立帳戶與登入都會走雲端驗證。'
-      : '尚未設定 Supabase，現在會先使用本機模式建立或登入帳號。';
+      ? '\u76ee\u524d\u4f7f\u7528 Supabase Auth\uff0c\u8acb\u4f7f\u7528\u4fe1\u7bb1\u8207\u5bc6\u78bc\u767b\u5165\uff0c\u6216\u6539\u7528 Magic Link\u3002'
+      : '\u76ee\u524d\u70ba\u672c\u6a5f\u6a21\u5f0f\uff0c\u4e0d\u9700\u8a2d\u5b9a Supabase \uff0c\u53ef\u76f4\u63a5\u5efa\u7acb\u6216\u767b\u5165\u672c\u6a5f\u5e33\u6236\u3002';
+  }
+  if (els.authInlineResetHint) {
+    els.authInlineResetHint.classList.toggle('hidden', state.authInlineMode !== 'login');
   }
   if (els.gateSupabaseUrl && document.activeElement !== els.gateSupabaseUrl && document.activeElement !== els.gateSupabaseAnonKey) syncConfigInputs();
   const showCloudSyncTools = !!(state.supabase && state.currentUser);
   els.cloudSyncPanel?.classList.toggle('hidden', !showCloudSyncTools);
+  const cloudActionsAvailable = !!(state.supabase && state.currentUser);
+  els.accountCloudActions?.classList.remove('hidden');
+  els.pushLocalToCloudBtn?.toggleAttribute('disabled', !cloudActionsAvailable);
+  els.downloadBackupBtn?.toggleAttribute('disabled', !cloudActionsAvailable);
+  if (els.accountCloudHint) {
+    els.accountCloudHint.textContent = cloudActionsAvailable
+      ? '???????????????????'
+      : '???????????????????????????????? Supabase?';
+  }
   if (els.syncStatusText) els.syncStatusText.textContent = state.syncStatus || '未啟用';
   if (els.syncLastTime) els.syncLastTime.textContent = state.lastSyncAt ? formatDate(state.lastSyncAt) : '尚未同步';
   if (els.syncDetailText) els.syncDetailText.textContent = state.syncDetail || '登入同一個雲端帳號後，可在多裝置同步。';
@@ -1202,6 +1235,10 @@ function populateBookForm(bookId) {
   if (!book) return;
   setView('books');
   state.selectedBookId = book.id;
+  if (els.bookSaveFeedback) {
+    els.bookSaveFeedback.textContent = '';
+    els.bookSaveFeedback.classList.add('hidden');
+  }
   els.bookId.value = book.id;
   els.bookTitle.value = book.title || '';
   els.bookSubtitle.value = book.subtitle || '';
@@ -1223,6 +1260,10 @@ function clearBookForm() {
   els.bookTemplate.value = 'devotion';
   els.bookTocEnabled.checked = true;
   els.deleteBookBtn.classList.add('hidden');
+  if (els.bookSaveFeedback) {
+    els.bookSaveFeedback.textContent = '';
+    els.bookSaveFeedback.classList.add('hidden');
+  }
 }
 
 async function saveBook() {
@@ -1246,7 +1287,7 @@ async function saveBook() {
     updated_at: nowIso(),
     created_at: existing?.created_at || nowIso(),
   };
-  if (!payload.title) throw new Error('請填入書名。');
+  if (!payload.title) throw new Error('\u8acb\u5148\u8f38\u5165\u66f8\u540d\u3002');
   if (state.supabase) {
     const dbPayload = { ...payload, chapters: JSON.stringify(payload.chapters) };
     const { error } = await state.supabase.from('book_projects').upsert(dbPayload);
@@ -1259,9 +1300,13 @@ async function saveBook() {
   }
   clearBookForm();
   state.selectedBookId = payload.id;
-  await loadAllData({ silent: true, syncReason: state.supabase ? '書籍已同步到雲端。' : '' });
+  if (els.bookSaveFeedback) {
+    els.bookSaveFeedback.textContent = '\u66f8\u7c4d\u5df2\u5132\u5b58';
+    els.bookSaveFeedback.classList.remove('hidden');
+  }
+  await loadAllData({ silent: true, syncReason: state.supabase ? '\u66f8\u7c4d\u5132\u5b58\u5f8c\u540c\u6b65' : '' });
   setView('books');
-  showToast('書籍已儲存。');
+  showToast('\u66f8\u7c4d\u5df2\u5132\u5b58');
 }
 
 async function deleteBook() {
@@ -1588,14 +1633,36 @@ function handleError(error) {
 async function exportSelectedBookEpub() {
   requireUser();
   const book = getSelectedBook();
-  if (!book) throw new Error('請先選取一本書籍專案。');
-  if (!getBookProjectChapters(book).length) throw new Error('至少要有一個章節才能匯出 EPUB。');
+  if (!book) throw new Error('\u8acb\u5148\u9078\u64c7\u8981\u532f\u51fa\u7684\u66f8\u7c4d\u3002');
+  if (!getBookProjectChapters(book).length) throw new Error('\u8acb\u81f3\u5c11\u52a0\u5165\u4e00\u7ae0\u5167\u5bb9\u5f8c\u518d\u532f\u51fa EPUB\u3002');
   const snapshot = buildBookSnapshot(book);
   const epubBlob = await buildEpub(snapshot);
-  const libraryBook = await createCloudLibraryBook(book, snapshot, epubBlob);
+  downloadBlob(`${slugifyFilename(book.title || 'devotion-book')}.epub`, epubBlob);
+  let libraryBook = null;
+  if (state.supabase && state.currentUser) {
+    try {
+      libraryBook = await createCloudLibraryBook(book, snapshot, epubBlob);
+    } catch (error) {
+      console.warn('cloud library sync skipped after EPUB export', error);
+      showToast(`EPUB \u5df2\u4e0b\u8f09\uff0c\u4f46\u96f2\u7aef\u66f8\u6ac3\u540c\u6b65\u5931\u6557\uff1a${error.message}`);
+    }
+  } else {
+    showToast('EPUB \u5df2\u4e0b\u8f09\u3002\u672c\u6a5f\u6a21\u5f0f\u4e0b\u4e0d\u6703\u540c\u6b65\u5230\u96f2\u7aef\u66f8\u6ac3\u3002');
+  }
   renderExportSuccessActions(libraryBook);
-  showToast('EPUB 已完成，並已加入書櫃');
+  if (libraryBook) showToast('EPUB \u5df2\u5b8c\u6210\uff0c\u4e26\u5df2\u52a0\u5165\u66f8\u6ac3\u3002');
 }
+
+function slugifyFilename(value = '') {
+  const safe = String(value || '')
+    .trim()
+    .replace(/[\/:*?"<>|]+/g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  return safe || 'devotion-book';
+}
+
 async function buildEpub(snapshot) {
   const book = snapshot.book;
   const chapters = snapshot.chapters;
@@ -2790,6 +2857,10 @@ async function deleteCachedEpub(bookId) {
 function renderExportSuccessActions(libraryBook) {
   const box = document.getElementById('export-success-actions');
   if (!box) return;
+  if (!libraryBook) {
+    box.classList.add('hidden');
+    return;
+  }
   cloudLibrary.selectedBookId = libraryBook.id;
   box.classList.remove('hidden');
 }

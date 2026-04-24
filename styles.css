@@ -163,6 +163,9 @@ body:not(.auth-settings-visible) #auth-settings-sheet {
 .auth-modal-actions {
   margin-top: 2px;
 }
+.auth-modal-secondary-actions {
+  margin-top: -2px;
+}
 .auth-settings-sheet {
   margin-top: 18px;
 }
@@ -262,6 +265,14 @@ input:focus, textarea:focus, select:focus {
 .secondary-btn:hover { background: linear-gradient(135deg, #ffcbb8, #ffe5da); }
 .ghost-btn { background: rgba(255,255,255,0.72); border: 1px solid rgba(191,211,208,0.9); color: #35585d; }
 .ghost-btn:hover { background: rgba(255,255,255,0.95); }
+.primary-btn:disabled,
+.secondary-btn:disabled,
+.ghost-btn:disabled,
+.danger-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+  box-shadow: none;
+}
 .danger-btn { background: linear-gradient(135deg, #d9787f, var(--danger)); color: #fff; }
 .support-btn {
   background: linear-gradient(135deg, var(--accent), #f7b8c6);
