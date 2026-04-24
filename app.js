@@ -21,10 +21,34 @@ const DEFAULT_CONFIG = {
   supabaseAnonKey: 'sb_publishable_7dOBDTLOfsppsElw5tTIrQ_luCT8vVh',
 };
 
-function buildMergedConfig(raw = {}) {
+function buildMergedConfig(raw = null) {
+  const next = raw && typeof raw === 'object' ? raw : {};
+  const mode = next.mode === 'local'
+    ? 'local'
+    : (typeof next.supabaseUrl === 'string' || typeof next.supabaseAnonKey === 'string' || next.mode === 'custom')
+      ? 'custom'
+      : 'default';
+
+  if (mode === 'local') {
+    return {
+      mode,
+      supabaseUrl: '',
+      supabaseAnonKey: '',
+    };
+  }
+
+  if (mode === 'custom') {
+    return {
+      mode,
+      supabaseUrl: String(next.supabaseUrl || '').trim(),
+      supabaseAnonKey: String(next.supabaseAnonKey || '').trim(),
+    };
+  }
+
   return {
-    supabaseUrl: String(raw.supabaseUrl || DEFAULT_CONFIG.supabaseUrl || '').trim(),
-    supabaseAnonKey: String(raw.supabaseAnonKey || DEFAULT_CONFIG.supabaseAnonKey || '').trim(),
+    mode,
+    supabaseUrl: String(DEFAULT_CONFIG.supabaseUrl || '').trim(),
+    supabaseAnonKey: String(DEFAULT_CONFIG.supabaseAnonKey || '').trim(),
   };
 }
 
@@ -174,7 +198,7 @@ function removeRetiredInterfaceElements() {
 }
 
 const state = {
-  config: buildMergedConfig(loadJson(STORAGE_KEYS.config, {})),
+  config: buildMergedConfig(loadJson(STORAGE_KEYS.config, null)),
   supabase: null,
   currentUser: null,
   storageMode: 'local',
@@ -392,7 +416,12 @@ function fileToDataUrl(file) {
 }
 
 function initSupabase() {
-  const { supabaseUrl, supabaseAnonKey } = state.config;
+  const { mode, supabaseUrl, supabaseAnonKey } = state.config;
+  if (mode === 'local') {
+    state.supabase = null;
+    state.storageMode = 'local';
+    return;
+  }
   if (!supabaseUrl || !supabaseAnonKey || !window.supabase?.createClient) {
     state.supabase = null;
     state.storageMode = 'local';
@@ -513,9 +542,12 @@ function closeAuthSettings() {
 async function applyConnectionSettings({ supabaseUrl = '', supabaseAnonKey = '' } = {}, successMessage = '') {
   teardownCloudRealtime();
 
+  const trimmedUrl = supabaseUrl.trim();
+  const trimmedAnonKey = supabaseAnonKey.trim();
   const overrideConfig = {
-    supabaseUrl: supabaseUrl.trim(),
-    supabaseAnonKey: supabaseAnonKey.trim(),
+    mode: trimmedUrl && trimmedAnonKey ? 'custom' : 'local',
+    supabaseUrl: trimmedUrl,
+    supabaseAnonKey: trimmedAnonKey,
   };
 
   saveJson(STORAGE_KEYS.config, overrideConfig);
@@ -543,23 +575,11 @@ async function applyConnectionSettings({ supabaseUrl = '', supabaseAnonKey = '' 
 async function clearConnectionSettings() {
   teardownCloudRealtime();
 
-  localStorage.removeItem(STORAGE_KEYS.config);
-  state.config = buildMergedConfig({});
+  const localModeConfig = { mode: 'local', supabaseUrl: '', supabaseAnonKey: '' };
+  saveJson(STORAGE_KEYS.config, localModeConfig);
+  state.config = buildMergedConfig(localModeConfig);
   syncConfigInputs();
   initSupabase();
-
-  if (state.supabase) {
-    const { data } = await state.supabase.auth.getSession();
-    state.currentUser = data.session?.user || null;
-    if (state.currentUser) setupCloudRealtime();
-    if (!state.currentUser) {
-      setSyncState({ status: '尚未登入', detail: '已恢復預設雲端設定，請登入帳號。', at: '' });
-    }
-    await loadAllData({ silent: true, syncReason: '已恢復預設雲端設定。' });
-    refreshUi();
-    showToast('已恢復預設雲端設定。');
-    return;
-  }
 
   state.currentUser = getLocalUser();
   setSyncState({ status: '本機模式', detail: '目前資料只保存在這台裝置。', at: '' });
