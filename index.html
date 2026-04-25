@@ -10,24 +10,25 @@
 <body class="auth-locked">
   <div id="auth-gate" class="auth-gate" aria-hidden="false">
     <div class="auth-gate-shell">
-      <div class="auth-gate-topbar">
-        <button id="auth-settings-btn" class="auth-icon-btn" type="button" aria-label="登入設定">⚙</button>
-        <button id="auth-menu-btn" class="auth-icon-btn" type="button" aria-label="功能簡介">☰</button>
-      </div>
-
       <div class="auth-gate-body">
-        <div class="auth-hero-stack" aria-hidden="true">
-          <div class="auth-hero-card auth-hero-card-left"><span>札記</span></div>
-          <div class="auth-hero-card auth-hero-card-center"><span>成書</span></div>
-          <div class="auth-hero-card auth-hero-card-right"><span>同步</span></div>
+        <div class="auth-gate-welcome">
+          <div class="auth-gate-copy-wrap">
+            <h2 class="auth-gate-title">我的靈修書房</h2>
+            <p class="auth-gate-subtitle">整理每日札記，慢慢編成一本書</p>
+            <div class="auth-gate-divider" aria-hidden="true">
+              <span></span>
+              <i class="asset-icon auth-divider-icon"></i>
+              <span></span>
+            </div>
+            <div class="auth-gate-copy">
+              <p>建立免費帳戶後，可在手機與桌機間同步資料。</p>
+            </div>
+          </div>
         </div>
 
-        <h2 class="auth-gate-title">獲取完整的體驗</h2>
-        <p class="auth-gate-copy">建立免費帳戶以同步札記、書籍專案、快照與 EPUB 匯出設定，也可以先用本機模式測試整個流程。</p>
-
         <div class="auth-gate-actions">
-          <button id="open-register-btn" class="auth-cta auth-cta-primary" type="button">建立帳戶</button>
-          <button id="open-login-btn" class="auth-cta auth-cta-secondary" type="button">登入</button>
+          <button id="open-register-btn" class="auth-cta auth-cta-primary" type="button">建立免費帳戶</button>
+          <button id="open-login-btn" class="auth-cta auth-cta-secondary" type="button">登入已有帳戶</button>
         </div>
 
         <div id="auth-inline-panel" class="modal auth-input-modal hidden" aria-hidden="true" aria-live="polite">
@@ -58,11 +59,6 @@
           </div>
         </div>
 
-        <section id="auth-feature-sheet" class="auth-feature-sheet hidden">
-          <div class="auth-feature-item"><strong>雲端同步</strong><span>登入後可跨裝置同步札記、書籍與快照。</span></div>
-          <div class="auth-feature-item"><strong>書籍專案</strong><span>整理前言、後記、封面與章節編排。</span></div>
-          <div class="auth-feature-item"><strong>EPUB 匯出</strong><span>把整理完成的內容直接匯出成電子書。</span></div>
-        </section>
       </div>
 
       <div id="auth-settings-sheet" class="auth-settings-sheet hidden">
@@ -81,7 +77,7 @@
             <button id="gate-save-config-btn" class="secondary-btn" type="button">儲存設定</button>
             <button id="gate-clear-config-btn" class="ghost-btn" type="button">清除設定</button>
           </div>
-          <p class="caption">若已完成 Supabase 專案與 Auth 設定，儲存後就會啟用正式註冊與登入；未設定時仍可先用本機模式測試。</p>
+          <p class="caption">若已完成 Supabase 專案與 Auth 設定，儲存後就會啟用正式註冊與登入。</p>
         </section>
       </div>
     </div>

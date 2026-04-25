@@ -141,8 +141,6 @@ const els = {
   supportModalBackdrop: document.getElementById('support-modal-backdrop'),
   closeSupportModal: document.getElementById('close-support-modal'),
   authGate: document.getElementById('auth-gate'),
-  authSettingsBtn: document.getElementById('auth-settings-btn'),
-  authMenuBtn: document.getElementById('auth-menu-btn'),
   openRegisterBtn: document.getElementById('open-register-btn'),
   openLoginBtn: document.getElementById('open-login-btn'),
   authInlinePanel: document.getElementById('auth-inline-panel'),
@@ -156,7 +154,6 @@ const els = {
   gateMagicLinkBtn: document.getElementById('gate-magic-link-btn'),
   gateResetPasswordBtn: document.getElementById('gate-reset-password-btn'),
   authInlineResetHint: document.getElementById('auth-inline-reset-hint'),
-  authFeatureSheet: document.getElementById('auth-feature-sheet'),
   authSettingsSheet: document.getElementById('auth-settings-sheet'),
   closeAuthSettingsBtn: document.getElementById('close-auth-settings-btn'),
   gateSupabaseUrl: document.getElementById('gate-supabase-url'),
@@ -187,7 +184,7 @@ function removeRetiredInterfaceElements() {
   document.getElementById('auth-inline-hint')?.classList.add('hidden');
 
   const authCopy = document.querySelector('.auth-gate-copy');
-  if (authCopy) authCopy.textContent = '建立免費帳戶以同步札記、書籍專案與 EPUB 匯出設定，也可以先用本機模式測試整個流程。';
+  if (authCopy) authCopy.textContent = '建立免費帳戶後，可在手機與桌機間同步資料。';
 
   document.querySelectorAll('.auth-feature-item span').forEach(span => {
     if (span.textContent.includes('快照')) span.textContent = span.textContent.replace('、快照', '').replace('與快照', '');
@@ -519,8 +516,10 @@ function openAuthInline(mode = 'register') {
     els.gateMagicLinkBtn.classList.toggle('hidden', isRegister);
   }
   if (els.authInlineHint) {
-    els.authInlineHint.textContent = '';
-    els.authInlineHint.classList.add('hidden');
+    els.authInlineHint.textContent = state.supabase
+      ? '目前使用 Supabase Auth，請使用信箱與密碼登入，或改用 Magic Link。'
+      : '目前為本機模式，不需設定 Supabase，可直接建立或登入本機帳戶。';
+    els.authInlineHint.classList.remove('hidden');
   }
   els.gateResetPasswordBtn?.classList.toggle('hidden', isRegister);
   els.authInlineResetHint?.classList.toggle('hidden', isRegister);
@@ -529,9 +528,6 @@ function openAuthInline(mode = 'register') {
 function closeAuthInline() {
   els.authInlinePanel?.classList.add('hidden');
   els.authInlinePanel?.setAttribute('aria-hidden', 'true');
-}
-function toggleAuthFeatures() {
-  els.authFeatureSheet?.classList.toggle('hidden');
 }
 function openAuthSettings() {
   syncConfigInputs();
@@ -631,9 +627,7 @@ function bindEvents() {
   els.registerBtn.addEventListener('click', () => handleRegister().catch(handleError));
   els.loginBtn.addEventListener('click', () => handleLogin().catch(handleError));
   els.magicLinkBtn.addEventListener('click', () => handleMagicLink().catch(handleError));
-  els.authSettingsBtn?.addEventListener('click', openAuthSettings);
   els.closeAuthSettingsBtn?.addEventListener('click', closeAuthSettings);
-  els.authMenuBtn?.addEventListener('click', toggleAuthFeatures);
   els.openRegisterBtn?.addEventListener('click', () => openAuthInline('register'));
   els.openLoginBtn?.addEventListener('click', () => openAuthInline('login'));
   els.closeAuthInlineBtn?.addEventListener('click', closeAuthInline);
@@ -906,7 +900,6 @@ function refreshUi() {
   if (state.currentUser) {
     closeAuthInline();
     closeAuthSettings();
-    els.authFeatureSheet?.classList.add('hidden');
     syncAuthInputs({ email: state.currentUser.email || '', password: '' });
   }
   els.summaryNotesCount.textContent = state.notes.length;

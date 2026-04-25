@@ -28,14 +28,12 @@ html, body {
 body { min-height: 100vh; }
 
 body.auth-locked .app-shell { display: none; }
-body:not(.auth-settings-visible) #auth-settings-btn,
-body:not(.auth-settings-visible) #auth-settings-sheet {
-  display: none !important;
-}
 .auth-gate {
   min-height: 100vh;
-  padding: 18px 18px 40px;
-  background: linear-gradient(180deg, #fbfbfb 0%, #f4f4f4 100%);
+  padding: 24px 18px 28px;
+  background:
+    linear-gradient(180deg, rgba(252, 247, 237, 0.64) 0%, rgba(249, 242, 229, 0.34) 48%, rgba(247, 239, 224, 0.12) 100%),
+    url("./assets/ui/auth-hero-background.png") center top / cover no-repeat;
 }
 .auth-gate.hidden { display: none; }
 .auth-gate-shell {
@@ -43,110 +41,90 @@ body:not(.auth-settings-visible) #auth-settings-sheet {
   margin: 0 auto;
   position: relative;
 }
-.auth-gate-topbar {
-  display: flex;
-  justify-content: flex-end;
-  gap: 14px;
-  padding-top: 6px;
-}
-.auth-icon-btn {
-  width: 56px;
-  height: 56px;
-  border: none;
-  border-radius: 18px;
-  background: rgba(255,255,255,0.88);
-  box-shadow: 0 14px 30px rgba(47, 61, 64, 0.08);
-  font-size: 28px;
-  color: #20292b;
-}
 .auth-gate-body {
-  padding: 56px 6px 0;
-  text-align: center;
+  padding: 138px 8px 0;
 }
-.auth-hero-stack {
-  position: relative;
-  width: min(100%, 340px);
-  height: 260px;
-  margin: 0 auto 22px;
+.auth-gate-welcome {
+  display: grid;
+  gap: 0;
 }
-.auth-hero-card {
-  position: absolute;
-  top: 16px;
-  width: 150px;
-  height: 210px;
-  border-radius: 22px;
-  box-shadow: 0 20px 36px rgba(45, 55, 58, 0.18);
-  overflow: hidden;
-  display: flex;
-  align-items: end;
-  justify-content: center;
-  padding: 18px;
-}
-.auth-hero-card span {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 84px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.88);
-  color: #223234;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-}
-.auth-hero-card-left {
-  left: 22px;
-  transform: rotate(-8deg);
-  background: linear-gradient(180deg, #9b7b68 0%, #4b352e 100%);
-}
-.auth-hero-card-center {
-  left: 95px;
-  z-index: 2;
-  background: linear-gradient(180deg, #bcc5cb 0%, #41484d 100%);
-}
-.auth-hero-card-right {
-  right: 18px;
-  transform: rotate(8deg);
-  background: linear-gradient(180deg, #e4c79a 0%, #6488a2 100%);
+.auth-gate-copy-wrap {
+  text-align: left;
+  color: #365e5d;
 }
 .auth-gate-title {
   margin: 0;
-  font-size: clamp(34px, 8vw, 54px);
+  font-size: clamp(35px, 11vw, 54px);
   line-height: 1.12;
-  color: #101417;
+  color: #2e6967;
   letter-spacing: 0.02em;
 }
+.auth-gate-subtitle {
+  margin: 18px 0 0;
+  font-size: clamp(17px, 5vw, 22px);
+  line-height: 1.6;
+  color: #41696a;
+}
+.auth-gate-divider {
+  margin: 24px 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: rgba(114, 130, 113, 0.45);
+}
+.auth-gate-divider span {
+  height: 1px;
+  flex: 1;
+  background: currentColor;
+}
+.auth-divider-icon {
+  width: 26px;
+  height: 26px;
+  background: center / contain no-repeat url("./assets/ui/leaf-sand.png");
+  opacity: 0.8;
+}
 .auth-gate-copy {
-  margin: 26px auto 0;
-  max-width: 430px;
-  font-size: clamp(17px, 4.6vw, 26px);
-  line-height: 1.8;
-  color: #2d3336;
+  display: grid;
+  gap: 16px;
+  max-width: 292px;
+  font-size: clamp(16px, 4.4vw, 20px);
+  line-height: 1.82;
+  color: #576463;
+}
+.auth-gate-copy p {
+  margin: 0;
 }
 .auth-gate-actions {
   display: grid;
-  gap: 16px;
-  margin-top: 48px;
+  gap: 18px;
+  margin-top: 78px;
 }
 .auth-cta {
-  width: 100%;
-  border: none;
-  border-radius: 999px;
-  padding: 18px 24px;
-  font-size: clamp(20px, 5vw, 30px);
+  width: min(86%, 360px);
+  min-height: 64px;
+  border-radius: 22px;
+  padding: 16px 22px;
+  font-size: clamp(18px, 5vw, 24px);
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-inline: auto;
 }
 .auth-cta-primary {
-  background: linear-gradient(180deg, #ff4d66 0%, #ff3350 100%);
+  background: linear-gradient(180deg, #4b7975 0%, #386866 100%);
   color: #fff;
+  box-shadow: 0 14px 24px rgba(60, 101, 98, 0.16);
+  border: none;
 }
 .auth-cta-secondary {
-  background: #d8d4d5;
-  color: #111618;
+  border: 1px solid rgba(177, 168, 143, 0.55);
+  background: rgba(255, 250, 243, 0.72);
+  color: #2f4748;
 }
-.auth-settings-card,
-.auth-feature-sheet {
+.auth-settings-card {
   margin-top: 18px;
   text-align: left;
 }
@@ -168,29 +146,6 @@ body:not(.auth-settings-visible) #auth-settings-sheet {
 }
 .auth-settings-sheet {
   margin-top: 18px;
-}
-.auth-feature-sheet {
-  display: grid;
-  gap: 12px;
-  padding: 18px;
-  border-radius: 22px;
-  background: rgba(255,255,255,0.88);
-  border: 1px solid rgba(191,211,208,0.72);
-}
-.auth-feature-item {
-  display: grid;
-  gap: 4px;
-  padding: 12px 14px;
-  border-radius: 16px;
-  background: rgba(247, 251, 251, 0.9);
-  border: 1px solid rgba(191,211,208,0.66);
-}
-.auth-feature-item strong {
-  color: #21373b;
-}
-.auth-feature-item span {
-  color: var(--muted);
-  line-height: 1.6;
 }
 button, input, textarea, select { font: inherit; }
 button { cursor: pointer; }
@@ -426,14 +381,42 @@ input:focus, textarea:focus, select:focus {
   .chapter-picker .secondary-btn { width: 100%; }
   .chapter-controls .small { min-height: 38px; }
   .site-footer { padding-bottom: 34px; }
-  .auth-gate { padding-inline: 20px; }
-  .auth-gate-topbar { gap: 12px; }
-  .auth-icon-btn { width: 52px; height: 52px; }
-  .auth-hero-stack { width: 310px; height: 230px; }
-  .auth-hero-card { width: 136px; height: 194px; }
-  .auth-hero-card-left { left: 8px; }
-  .auth-hero-card-center { left: 86px; }
-  .auth-hero-card-right { right: 8px; }
+  .auth-gate {
+    padding-inline: 16px;
+    padding-top: 22px;
+    padding-bottom: 22px;
+    background-position: 54% top;
+  }
+  .auth-gate-shell {
+    width: min(100%, 430px);
+  }
+  .auth-gate-body {
+    padding-top: 120px;
+  }
+  .auth-gate-title {
+    font-size: clamp(33px, 11.4vw, 47px);
+  }
+  .auth-gate-subtitle {
+    font-size: clamp(16px, 4.9vw, 20px);
+  }
+  .auth-gate-divider {
+    margin: 22px 0 20px;
+  }
+  .auth-gate-copy {
+    max-width: 320px;
+    font-size: 15px;
+    line-height: 1.84;
+  }
+  .auth-gate-actions {
+    gap: 14px;
+    margin-top: 72px;
+  }
+  .auth-cta {
+    width: min(86%, 336px);
+    min-height: 60px;
+    padding: 16px 20px;
+    font-size: 17px;
+  }
 }
 
 .footer-copyright a {
