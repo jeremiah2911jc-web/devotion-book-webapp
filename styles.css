@@ -2453,12 +2453,30 @@ body:not(.auth-locked) .main {
   }
 
   .home-hero {
-    min-height: 224px;
-    margin: 0 -15px -14px;
-    padding: 26px 15px 0;
+    min-height: 196px;
+    margin: 0 -15px -4px;
+    padding: 28px 15px 0;
+    background:
+      linear-gradient(90deg, rgba(255, 251, 244, 0.96) 0%, rgba(255, 248, 239, 0.82) 35%, rgba(255, 247, 234, 0.34) 58%, rgba(255, 246, 232, 0.1) 100%),
+      url("./assets/ui/hero-illustration.png") 74% 46% / 104% auto no-repeat;
+  }
+
+  .hero-copy {
+    max-width: 53%;
+    padding-top: 22px;
+    gap: 7px;
+  }
+
+  .hero-copy h1 {
+    line-height: 1.02;
+  }
+
+  .hero-copy p {
+    line-height: 1.28;
   }
 
   .sync-banner {
+    display: flex;
     margin-top: 0;
     min-height: 48px;
     padding: 4px 7px 4px 14px;
@@ -2471,7 +2489,30 @@ body:not(.auth-locked) .main {
 
   .home-primary-actions {
     gap: 7px;
-    margin-top: -1px;
+    margin-top: 0;
+  }
+
+  .hero-action-card {
+    min-height: 84px;
+    padding: 14px 14px 14px min(94px, 25vw);
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center center;
+  }
+
+  .hero-action-text strong {
+    font-size: 13px;
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+
+  .hero-action-primary {
+    background-position: 28% center;
+  }
+
+  .hero-action-secondary {
+    background-position: 31% center;
   }
 
   .home-recent-panel {
@@ -2487,9 +2528,28 @@ body:not(.auth-locked) .main {
 
 @media (max-width: 380px) {
   .home-hero {
-    min-height: 208px;
+    min-height: 188px;
     margin-left: -12px;
     margin-right: -12px;
-    margin-bottom: -12px;
+    margin-bottom: -4px;
+    padding-top: 24px;
+    background:
+      linear-gradient(90deg, rgba(255, 251, 244, 0.97) 0%, rgba(255, 248, 239, 0.84) 36%, rgba(255, 247, 234, 0.35) 60%, rgba(255, 246, 232, 0.12) 100%),
+      url("./assets/ui/hero-illustration.png") 73% 44% / 108% auto no-repeat;
+  }
+
+  .hero-copy {
+    padding-top: 18px;
+    max-width: 55%;
+  }
+
+  .hero-action-card {
+    min-height: 82px;
+    padding-left: min(90px, 24vw);
+    padding-right: 12px;
+  }
+
+  .hero-action-text strong {
+    font-size: 12px;
   }
 }

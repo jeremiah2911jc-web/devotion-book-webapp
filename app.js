@@ -889,8 +889,8 @@ function refreshUi() {
     els.authInlineResetHint.classList.toggle('hidden', state.authInlineMode !== 'login');
   }
   if (els.gateSupabaseUrl && document.activeElement !== els.gateSupabaseUrl && document.activeElement !== els.gateSupabaseAnonKey) syncConfigInputs();
-  const showCloudSyncTools = !!(state.supabase && state.currentUser);
-  els.cloudSyncPanel?.classList.toggle('hidden', !showCloudSyncTools);
+  const showSyncPanel = !!state.currentUser;
+  els.cloudSyncPanel?.classList.toggle('hidden', !showSyncPanel);
   const cloudActionsAvailable = !!(state.supabase && state.currentUser);
   els.accountCloudActions?.classList.remove('hidden');
   els.pushLocalToCloudBtn?.toggleAttribute('disabled', !cloudActionsAvailable);
