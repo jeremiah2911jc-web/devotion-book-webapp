@@ -150,7 +150,6 @@ const els = {
   gateAuthEmail: document.getElementById('gate-auth-email'),
   gateAuthPassword: document.getElementById('gate-auth-password'),
   gateSubmitBtn: document.getElementById('gate-submit-btn'),
-  gateMagicLinkBtn: document.getElementById('gate-magic-link-btn'),
   gateResetPasswordBtn: document.getElementById('gate-reset-password-btn'),
   authSettingsSheet: document.getElementById('auth-settings-sheet'),
   closeAuthSettingsBtn: document.getElementById('close-auth-settings-btn'),
@@ -487,10 +486,19 @@ function getAuthCredentials() {
 async function completeLocalAuth(user, successMessage) {
   setLocalUser(user);
   state.currentUser = user;
+  settleMobileViewport();
   await loadAllData();
   refreshUi();
   setView('dashboard');
   showToast(successMessage);
+}
+function settleMobileViewport() {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return;
+  const active = document.activeElement;
+  if (active && typeof active.blur === 'function' && /INPUT|TEXTAREA|SELECT/.test(active.tagName)) active.blur();
+  if (window.innerWidth <= 900) {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }
 }
 function openAuthInline(mode = 'register') {
   state.authInlineMode = mode;
@@ -506,10 +514,6 @@ function openAuthInline(mode = 'register') {
     els.gateSubmitBtn.textContent = isRegister ? '建立帳戶' : '登入';
     els.gateSubmitBtn.classList.toggle('secondary-btn', !isRegister);
     els.gateSubmitBtn.classList.toggle('primary-btn', isRegister);
-  }
-  if (els.gateMagicLinkBtn) {
-    els.gateMagicLinkBtn.textContent = '寄送 Magic Link';
-    els.gateMagicLinkBtn.classList.toggle('hidden', isRegister);
   }
   els.gateResetPasswordBtn?.classList.toggle('hidden', isRegister);
   els.gateAuthEmail?.focus();
@@ -585,6 +589,7 @@ async function bootstrap() {
     if (state.currentUser) setupCloudRealtime();
     state.supabase.auth.onAuthStateChange((_event, session) => {
       state.currentUser = session?.user || null;
+      if (state.currentUser) settleMobileViewport();
       teardownCloudRealtime();
       if (state.currentUser) {
         setupCloudRealtime();
@@ -622,7 +627,6 @@ function bindEvents() {
   els.closeAuthInlineBtn?.addEventListener('click', closeAuthInline);
   els.authInlineBackdrop?.addEventListener('click', closeAuthInline);
   els.gateSubmitBtn?.addEventListener('click', () => (state.authInlineMode === 'register' ? handleRegister() : handleLogin()).catch(handleError));
-  els.gateMagicLinkBtn?.addEventListener('click', () => handleMagicLink().catch(handleError));
   els.gateResetPasswordBtn?.addEventListener('click', () => handleResetPassword().catch(handleError));
   els.resetPasswordBtn?.addEventListener('click', () => handleResetPassword().catch(handleError));
   els.gateSaveConfigBtn?.addEventListener('click', () => applyConnectionSettings({

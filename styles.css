@@ -24,6 +24,7 @@ html, body {
   font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
   background: var(--bg-soft);
   color: var(--text);
+  overflow-x: hidden;
 }
 body { min-height: 100vh; }
 
@@ -133,6 +134,7 @@ body.auth-locked .app-shell { display: none; }
 }
 .auth-input-modal-card {
   width: min(92vw, 520px);
+  max-width: calc(100vw - 24px);
   text-align: left;
 }
 .auth-modal-header {
@@ -206,6 +208,7 @@ label { display: grid; gap: 6px; font-size: 14px; }
 input, textarea, select {
   width: 100%; padding: 11px 12px; border: 1px solid rgba(191, 211, 208, 0.9); border-radius: 14px;
   background: rgba(255,255,255,0.96); color: var(--text);
+  font-size: 16px;
 }
 input:focus, textarea:focus, select:focus {
   outline: none; border-color: #89c4c3; box-shadow: 0 0 0 4px rgba(121,197,192,0.16);
@@ -1779,7 +1782,9 @@ body:not(.auth-locked) .main {
 body:not(.auth-locked) .main {
   padding: 0 15px 128px;
   max-width: 430px;
+  width: 100%;
   min-height: 100vh;
+  overflow-x: clip;
   background: radial-gradient(circle at 50% -12%, #fffdf8 0%, #fbf4e9 48%, #f1eadf 100%);
 }
 
@@ -1789,6 +1794,8 @@ body:not(.auth-locked) .topbar {
 
 .dashboard-home {
   gap: 10px;
+  width: 100%;
+  overflow-x: clip;
 }
 
 .home-hero {
@@ -2065,6 +2072,7 @@ body:not(.auth-locked) .topbar {
 .bottom-nav {
   bottom: 8px;
   width: min(calc(100% - 26px), 404px);
+  max-width: calc(100vw - 26px);
   padding: 6px 12px max(9px, env(safe-area-inset-bottom));
   border-radius: 25px;
   box-shadow: 0 8px 20px rgba(65, 78, 74, 0.1);
