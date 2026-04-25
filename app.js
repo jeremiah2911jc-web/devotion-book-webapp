@@ -222,6 +222,9 @@ const state = {
   syncDetail: '目前資料只保存在這台裝置。',
   lastSyncAt: '',
   syncReloadTimer: null,
+  todayDevotions: null,
+  todayDevotionsStatus: 'idle',
+  todayDevotionsPromise: null,
 };
 
 function loadJson(key, fallback) {
@@ -1041,17 +1044,101 @@ function renderDesktopBookshelfCard() {
 }
 
 function renderTodayDevotionCard() {
+  const today = new Date();
   const todayLabel = new Intl.DateTimeFormat('zh-TW', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
     weekday: 'long',
-  }).format(new Date());
+  }).format(today);
+  applyTodayDevotionFallback(todayLabel);
+  const devotion = getTodayDevotionByDate(today);
+  if (devotion) applyTodayDevotionContent(devotion, todayLabel);
+  if (els.todayDevotionNoteBtn) els.todayDevotionNoteBtn.textContent = '寫成札記';
+  ensureTodayDevotionsLoaded();
+}
+
+function applyTodayDevotionFallback(todayLabel) {
   if (els.todayDevotionDate) els.todayDevotionDate.textContent = todayLabel;
   if (els.todayDevotionScripture) els.todayDevotionScripture.textContent = '今日默想';
   if (els.todayDevotionTheme) els.todayDevotionTheme.textContent = '尚未載入今日默想內容';
   if (els.todayDevotionSummary) els.todayDevotionSummary.textContent = '請先建立或匯入今日默想資料庫';
-  if (els.todayDevotionNoteBtn) els.todayDevotionNoteBtn.textContent = '寫成札記';
+}
+
+function applyTodayDevotionContent(devotion, todayLabel) {
+  const quote = sanitizeDisplayText(devotion?.quote, '');
+  const scripture = sanitizeDisplayText(devotion?.scripture, '');
+  const title = sanitizeDisplayText(devotion?.title, '');
+  const summary = sanitizeDisplayText(devotion?.summary, '');
+  if (els.todayDevotionDate) els.todayDevotionDate.textContent = todayLabel;
+  if (els.todayDevotionScripture) els.todayDevotionScripture.textContent = quote || scripture || '今日默想';
+  if (els.todayDevotionTheme) els.todayDevotionTheme.textContent = title || '尚未載入今日默想內容';
+  if (els.todayDevotionSummary) els.todayDevotionSummary.textContent = summary || '請先建立或匯入今日默想資料庫';
+}
+
+function getLocalDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function normalizeTodayDevotionRecord(entry) {
+  if (!entry || typeof entry !== 'object') return null;
+  const date = String(entry.date || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  return {
+    date,
+    month: Number.isFinite(entry.month) ? entry.month : Number.parseInt(entry.month, 10) || null,
+    weekday: String(entry.weekday || '').trim(),
+    title: String(entry.title || '').trim(),
+    scripture: String(entry.scripture || '').trim(),
+    quote: String(entry.quote || '').trim(),
+    summary: String(entry.summary || '').trim(),
+    theme: String(entry.theme || '').trim(),
+    specialDay: String(entry.specialDay || '').trim(),
+    specialGroup: String(entry.specialGroup || '').trim(),
+    isSpecial: entry.isSpecial === true,
+    cssTag: String(entry.cssTag || '').trim(),
+    signature: String(entry.signature || '').trim(),
+    sourceNote: String(entry.sourceNote || '').trim(),
+  };
+}
+
+function getTodayDevotionByDate(date = new Date()) {
+  if (!Array.isArray(state.todayDevotions)) return null;
+  const todayKey = getLocalDateKey(date);
+  return state.todayDevotions.find(entry => entry.date === todayKey) || null;
+}
+
+async function ensureTodayDevotionsLoaded() {
+  if (state.todayDevotionsStatus === 'loaded' || state.todayDevotionsStatus === 'loading') {
+    return state.todayDevotionsPromise;
+  }
+
+  state.todayDevotionsStatus = 'loading';
+  state.todayDevotionsPromise = fetch('./data/today-devotions-2026.json')
+    .then(response => {
+      if (!response.ok) throw new Error(`Failed to fetch today devotions: ${response.status}`);
+      return response.json();
+    })
+    .then(payload => {
+      if (!Array.isArray(payload)) throw new Error('Today devotions JSON must be an array.');
+      state.todayDevotions = payload
+        .map(normalizeTodayDevotionRecord)
+        .filter(Boolean);
+      state.todayDevotionsStatus = 'loaded';
+      refreshUi();
+      return state.todayDevotions;
+    })
+    .catch(error => {
+      console.error(error);
+      state.todayDevotions = [];
+      state.todayDevotionsStatus = 'error';
+      return state.todayDevotions;
+    });
+
+  return state.todayDevotionsPromise;
 }
 
 function normalizeScriptureReferences(raw = '') {
