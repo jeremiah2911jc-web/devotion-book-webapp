@@ -3028,43 +3028,57 @@ body:not(.auth-locked) .main {
 
   .home-primary-actions {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px;
+    grid-template-columns: repeat(2, minmax(0, 520px));
+    justify-content: center;
+    gap: 24px;
     margin-top: 0;
+    align-items: stretch;
   }
 
   .hero-action-card {
-    min-height: 124px;
-    max-height: 140px;
-    padding: 16px 18px;
+    min-height: 210px;
+    max-height: none;
+    padding: 20px 24px;
     border-radius: 24px;
-    background-image: none;
-    background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(252,248,242,0.98));
-    border: 1px solid rgba(191, 211, 208, 0.72);
+    background-color: #f6efe4;
+    border: none;
     box-shadow: none;
-    display: grid;
-    grid-template-columns: minmax(160px, 34%) minmax(0, 1fr);
-    gap: 16px;
+    display: flex;
     align-items: center;
+    justify-content: flex-end;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
   }
 
-  .hero-action-primary,
+  .hero-action-primary {
+    background-image: url("/assets/ui/cta-write-note-desktop.png");
+    color: #fffaf3;
+  }
+
   .hero-action-secondary {
-    background-image: none;
-    color: inherit;
+    background-image: url("/assets/ui/cta-create-book-desktop.png");
+    color: #6d4c20;
   }
 
   .hero-action-text strong {
     font-size: 21px;
     line-height: 1.2;
     white-space: normal;
-    color: #21484c;
+    color: inherit;
   }
 
   .hero-action-text {
     display: grid;
     gap: 8px;
     align-content: center;
+    position: relative;
+    z-index: 2;
+    margin-left: auto;
+    width: 44%;
   }
 
   .hero-action-description {
@@ -3075,19 +3089,7 @@ body:not(.auth-locked) .main {
   }
 
   .hero-action-media-placeholder {
-    display: grid;
-    place-items: center;
-    min-height: 84px;
-    border-radius: 18px;
-    border: 1px dashed #8eb6b2;
-    background:
-      linear-gradient(135deg, rgba(216,236,234,0.9), rgba(255,255,255,0.9)),
-      repeating-linear-gradient(45deg, rgba(142,182,178,0.12) 0, rgba(142,182,178,0.12) 12px, rgba(255,255,255,0.12) 12px, rgba(255,255,255,0.12) 24px);
-    color: #476a67;
-    font-size: 13px;
-    font-weight: 700;
-    text-align: center;
-    padding: 0 14px;
+    display: none;
   }
 
   .dashboard-lower-grid {
@@ -3300,8 +3302,14 @@ body:not(.auth-locked) .main {
     gap: 18px;
   }
 
+  .home-primary-actions {
+    grid-template-columns: repeat(2, minmax(0, 560px));
+    justify-content: center;
+  }
+
   .hero-action-card {
-    grid-template-columns: minmax(176px, 32%) minmax(0, 1fr);
+    min-height: 230px;
+    padding: 24px 28px;
   }
 
   .dashboard-lower-grid {
