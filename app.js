@@ -145,7 +145,6 @@ const els = {
   openLoginBtn: document.getElementById('open-login-btn'),
   authInlinePanel: document.getElementById('auth-inline-panel'),
   authInlineTitle: document.getElementById('auth-inline-title'),
-  authInlineHint: document.getElementById('auth-inline-hint'),
   closeAuthInlineBtn: document.getElementById('close-auth-inline-btn'),
   authInlineBackdrop: document.getElementById('auth-inline-backdrop'),
   gateAuthEmail: document.getElementById('gate-auth-email'),
@@ -153,7 +152,6 @@ const els = {
   gateSubmitBtn: document.getElementById('gate-submit-btn'),
   gateMagicLinkBtn: document.getElementById('gate-magic-link-btn'),
   gateResetPasswordBtn: document.getElementById('gate-reset-password-btn'),
-  authInlineResetHint: document.getElementById('auth-inline-reset-hint'),
   authSettingsSheet: document.getElementById('auth-settings-sheet'),
   closeAuthSettingsBtn: document.getElementById('close-auth-settings-btn'),
   gateSupabaseUrl: document.getElementById('gate-supabase-url'),
@@ -181,8 +179,6 @@ function removeRetiredInterfaceElements() {
   document.getElementById('summary-snapshots-count')?.closest('.summary-card')?.remove();
   document.getElementById('create-snapshot-btn')?.remove();
   document.querySelector('.sidebar h1 + .muted')?.remove();
-  document.getElementById('auth-inline-hint')?.classList.add('hidden');
-
   const authCopy = document.querySelector('.auth-gate-copy');
   if (authCopy) authCopy.textContent = '建立免費帳戶後，可在手機與桌機間同步資料。';
 
@@ -515,14 +511,7 @@ function openAuthInline(mode = 'register') {
     els.gateMagicLinkBtn.textContent = '寄送 Magic Link';
     els.gateMagicLinkBtn.classList.toggle('hidden', isRegister);
   }
-  if (els.authInlineHint) {
-    els.authInlineHint.textContent = state.supabase
-      ? '目前使用 Supabase Auth，請使用信箱與密碼登入，或改用 Magic Link。'
-      : '目前為本機模式，不需設定 Supabase，可直接建立或登入本機帳戶。';
-    els.authInlineHint.classList.remove('hidden');
-  }
   els.gateResetPasswordBtn?.classList.toggle('hidden', isRegister);
-  els.authInlineResetHint?.classList.toggle('hidden', isRegister);
   els.gateAuthEmail?.focus();
 }
 function closeAuthInline() {
