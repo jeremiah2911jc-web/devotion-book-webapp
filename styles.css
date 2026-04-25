@@ -3326,22 +3326,23 @@ body:not(.auth-locked) .main {
     border: none;
     border-radius: 0;
     box-shadow: none;
-    background:
-      radial-gradient(circle at 78% 18%, rgba(245, 218, 157, 0.34), transparent 24%),
-      radial-gradient(circle at 88% 72%, rgba(125, 156, 126, 0.16), transparent 28%),
-      linear-gradient(90deg, #fbf6ee 0%, #fbf6ee 36%, #f7ecd8 67%, #f3dfbf 100%);
+    background-image:
+      linear-gradient(
+        90deg,
+        rgba(251, 246, 238, 0.98) 0%,
+        rgba(251, 246, 238, 0.86) 30%,
+        rgba(251, 246, 238, 0.25) 55%,
+        rgba(251, 246, 238, 0) 100%
+      ),
+      url("/assets/ui/desktop-hero-background.png");
+    background-size: cover;
+    background-position: center right;
+    background-repeat: no-repeat;
     overflow: hidden;
   }
 
   .home-hero::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background:
-      linear-gradient(90deg, rgba(251, 246, 238, 0.96) 0%, rgba(251, 246, 238, 0.92) 35%, rgba(251, 246, 238, 0.3) 49%, rgba(251, 246, 238, 0) 62%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.08) 38%, rgba(255, 255, 255, 0) 100%);
-    z-index: 0;
-    pointer-events: none;
+    display: none;
   }
 
   .hero-copy {
@@ -3369,43 +3370,7 @@ body:not(.auth-locked) .main {
   }
 
   .hero-illustration {
-    display: block;
-    position: absolute;
-    inset: 0 0 0 48%;
-    width: auto;
-    height: auto;
-    pointer-events: none;
-    z-index: 1;
-    background:
-      radial-gradient(circle at 26% 22%, rgba(255, 250, 242, 0.78), rgba(255, 250, 242, 0.12) 24%, transparent 44%),
-      linear-gradient(180deg, rgba(255, 247, 230, 0.12) 0%, rgba(231, 219, 194, 0.22) 100%);
-  }
-
-  .hero-illustration::before {
-    content: "";
-    position: absolute;
-    inset: 8% 10% 16% 16%;
-    border-radius: 28px 0 0 0;
-    background:
-      linear-gradient(180deg, rgba(255, 253, 249, 0.88) 0%, rgba(250, 238, 209, 0.36) 60%, rgba(238, 223, 191, 0.14) 100%),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.7) 0 3%, rgba(255, 255, 255, 0) 3% 31%, rgba(255, 255, 255, 0.56) 31% 34%, rgba(255, 255, 255, 0) 34% 64%, rgba(255, 255, 255, 0.42) 64% 67%, rgba(255, 255, 255, 0) 67% 100%);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.42);
-    opacity: 0.96;
-  }
-
-  .hero-illustration::after {
-    content: "";
-    position: absolute;
-    left: 12%;
-    right: 10%;
-    bottom: 0;
-    height: 40%;
-    border-radius: 36px 36px 0 0;
-    background:
-      radial-gradient(circle at 22% 18%, rgba(122, 156, 129, 0.3), transparent 18%),
-      radial-gradient(circle at 58% 8%, rgba(122, 87, 47, 0.18), transparent 16%),
-      linear-gradient(180deg, rgba(209, 186, 145, 0.08) 0%, rgba(206, 177, 126, 0.32) 52%, rgba(171, 135, 89, 0.5) 100%);
-    opacity: 0.72;
+    display: none;
   }
 
   .hero-illustration img {
