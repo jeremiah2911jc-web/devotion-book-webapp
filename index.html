@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>靈修札記成書系統</title>
+  <title>我的靈修書房</title>
   <link rel="stylesheet" href="./styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -55,7 +55,6 @@
             </div>
           </div>
         </div>
-
       </div>
 
       <div id="auth-settings-sheet" class="auth-settings-sheet hidden">
@@ -79,17 +78,61 @@
       </div>
     </div>
   </div>
+
   <div class="app-shell">
     <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-mark" aria-hidden="true">Logo</div>
+        <div class="sidebar-brand-copy">
+          <h1>我的靈修書房</h1>
+          <p class="muted">Desktop Dashboard</p>
+        </div>
+      </div>
+
+      <nav class="desktop-sidebar-nav" aria-label="Desktop navigation">
+        <button class="desktop-sidebar-link active" data-view="dashboard" type="button">
+          <span class="nav-icon asset-icon asset-sprite-system icon-home" aria-hidden="true"></span>
+          <span>總覽</span>
+        </button>
+        <button class="desktop-sidebar-link" data-view="notes" type="button">
+          <span class="nav-icon asset-icon asset-sprite-system icon-note" aria-hidden="true"></span>
+          <span>札記</span>
+        </button>
+        <button class="desktop-sidebar-link" data-view="books" type="button">
+          <span class="nav-icon asset-icon asset-sprite-system icon-book" aria-hidden="true"></span>
+          <span>書籍</span>
+        </button>
+        <button class="desktop-sidebar-link" data-view="library" type="button">
+          <span class="nav-icon asset-icon asset-sprite-system icon-library" aria-hidden="true"></span>
+          <span>書櫃</span>
+        </button>
+        <button class="desktop-sidebar-link is-muted" type="button" disabled>
+          <span class="desktop-sidebar-dot" aria-hidden="true"></span>
+          <span>標籤</span>
+        </button>
+        <button class="desktop-sidebar-link is-muted" type="button" disabled>
+          <span class="desktop-sidebar-dot" aria-hidden="true"></span>
+          <span>統計</span>
+        </button>
+        <button class="desktop-sidebar-link is-muted" type="button" disabled>
+          <span class="desktop-sidebar-dot" aria-hidden="true"></span>
+          <span>匯出</span>
+        </button>
+        <button class="desktop-sidebar-link is-muted" data-open-account-settings type="button">
+          <span class="nav-icon asset-icon asset-sprite-system icon-gear" aria-hidden="true"></span>
+          <span>設定</span>
+        </button>
+      </nav>
+
       <div>
         <h1>我的靈修書房</h1>
-        <p class="muted">保留為內部功能容器，首頁入口已移到下方主畫面。</p>
+        <p class="muted">整理每日札記，慢慢編成一本書。</p>
       </div>
 
       <section class="panel compact" hidden>
         <div class="panel-header">
           <h2>連線設定</h2>
-          <button id="toggle-config-btn" class="ghost-btn small">展開</button>
+          <button id="toggle-config-btn" class="ghost-btn small" type="button">展開</button>
         </div>
         <div id="config-panel" class="hidden">
           <label>Supabase URL
@@ -99,16 +142,16 @@
             <textarea id="supabase-anon-key" rows="4" placeholder="貼上 anon key"></textarea>
           </label>
           <div class="row gap-sm wrap">
-            <button id="save-config-btn" class="secondary-btn">儲存設定</button>
-            <button id="clear-config-btn" class="ghost-btn">清除設定</button>
+            <button id="save-config-btn" class="secondary-btn" type="button">儲存設定</button>
+            <button id="clear-config-btn" class="ghost-btn" type="button">清除設定</button>
           </div>
-          <p class="caption">未設定時，系統會以本機模式運作，方便先測流程。</p>
+          <p class="caption">若已完成 Supabase 專案與 Auth 設定，儲存後就會啟用正式註冊與登入。</p>
         </div>
       </section>
 
-      <section class="panel compact" id="auth-card">
+      <section class="panel compact" id="auth-card" hidden>
         <div class="panel-header">
-          <h2>帳號</h2>
+          <h2>登入</h2>
         </div>
         <div id="auth-forms">
           <label>Email
@@ -118,19 +161,38 @@
             <input id="auth-password" type="password" placeholder="至少 6 碼" />
           </label>
           <div class="row wrap gap-sm">
-            <button id="register-btn" class="primary-btn">註冊</button>
-            <button id="login-btn" class="secondary-btn">登入</button>
-            <button id="magic-link-btn" class="ghost-btn">Magic Link</button>
+            <button id="register-btn" class="primary-btn" type="button">建立帳戶</button>
+            <button id="login-btn" class="secondary-btn" type="button">登入</button>
+            <button id="magic-link-btn" class="ghost-btn" type="button" hidden aria-hidden="true" tabindex="-1">Magic Link</button>
           </div>
           <div class="row wrap gap-sm">
             <button id="reset-password-btn" class="ghost-btn subtle-action" type="button">忘記密碼 / 重設密碼</button>
           </div>
-          <p class="caption">本機模式會以 Email 建立測試帳號；雲端模式會走 Supabase Auth。</p>
+          <p class="caption">如要改用 Supabase Auth，請使用信箱與密碼登入。</p>
         </div>
         <div id="auth-user" class="hidden">
-          <p id="current-user-text" class="caption">目前使用者</p>
+          <p id="current-user-text" class="caption">尚未登入</p>
         </div>
       </section>
+
+      <div class="desktop-sidebar-footer">
+        <section class="panel compact desktop-sidebar-account-card">
+          <div class="desktop-sidebar-footer-label">帳號</div>
+          <div class="desktop-sidebar-account-main">
+            <span class="account-avatar desktop-sidebar-avatar" aria-hidden="true">
+              <img src="./assets/ui/account-sprout.png" alt="" decoding="async" />
+            </span>
+            <div class="desktop-sidebar-account-copy">
+              <strong id="desktop-account-email">尚未登入</strong>
+              <p>目前登入的帳號</p>
+            </div>
+          </div>
+          <div class="desktop-sidebar-account-actions">
+            <button class="ghost-btn small" data-open-account-settings type="button">帳號設定</button>
+            <button id="desktop-sidebar-signout-btn" class="ghost-btn small" type="button">登出</button>
+          </div>
+        </section>
+      </div>
     </aside>
 
     <main class="main">
@@ -140,7 +202,14 @@
           <p id="view-subtitle" class="muted hidden"></p>
         </div>
         <div class="row gap-sm wrap topbar-actions">
-          <button id="open-snapshots-btn" class="ghost-btn">快照備份</button>
+          <div class="desktop-topbar-sync-pill">
+            <strong id="topbar-sync-status-text">同步狀態</strong>
+            <span id="topbar-sync-detail-text">目前資料只保存在這台裝置。</span>
+          </div>
+          <button id="topbar-force-sync-btn" class="ghost-btn desktop-topbar-sync-btn" type="button">立即同步</button>
+          <button class="ghost-btn icon-only desktop-topbar-notify" type="button" aria-label="通知">
+            <span class="desktop-topbar-notify-dot" aria-hidden="true"></span>
+          </button>
           <button id="open-account-settings-btn" class="ghost-btn icon-only" type="button" aria-label="帳號設定">
             <span class="asset-icon asset-sprite-system icon-gear" aria-hidden="true"></span>
           </button>
@@ -164,7 +233,7 @@
               <div class="sync-banner-main">
                 <span class="sync-banner-icon asset-icon asset-sprite-system icon-cloud-check" aria-hidden="true"></span>
                 <div>
-                  <strong id="sync-status-text">未啟用</strong>
+                  <strong id="sync-status-text">同步狀態</strong>
                   <p id="sync-last-time">尚未同步</p>
                 </div>
               </div>
@@ -173,7 +242,7 @@
             <button id="force-sync-btn" class="primary-btn sync-btn" type="button">
               <span class="sync-btn-content">
                 <span class="asset-icon asset-sprite-system icon-sync" aria-hidden="true"></span>
-                <span>同步</span>
+                <span>立即同步</span>
               </span>
             </button>
           </section>
@@ -197,7 +266,7 @@
               <span class="summary-icon summary-icon-library" aria-hidden="true"></span>
               <div class="summary-content">
                 <span>書櫃</span>
-                <strong><span id="library-count">0</span><small>本完成</small></strong>
+                <strong><span id="library-count">0</span><small>已完成</small></strong>
               </div>
             </article>
           </section>
@@ -215,13 +284,44 @@
             </button>
           </section>
 
-          <section class="panel home-recent-panel">
-            <div class="panel-header">
-              <h2>最近編輯</h2>
-              <button id="view-all-notes-btn" class="ghost-btn small" type="button">查看全部</button>
-            </div>
-            <div id="recent-notes" class="list-stack empty-state">還沒有札記。</div>
-            <div id="recent-books" class="hidden"></div>
+          <section class="dashboard-lower-grid">
+            <section class="panel home-recent-panel">
+              <div class="panel-header">
+                <h2>最近編輯</h2>
+                <button id="view-all-notes-btn" class="ghost-btn small" type="button">查看全部</button>
+              </div>
+              <div id="recent-notes" class="list-stack empty-state">目前還沒有札記。</div>
+              <div id="recent-books" class="hidden"></div>
+            </section>
+
+            <aside class="dashboard-side-column">
+              <section id="dashboard-bookshelf-card" class="panel home-bookshelf-card desktop-only-panel">
+                <div class="panel-header">
+                  <h2>書櫃</h2>
+                </div>
+                <div id="desktop-bookshelf-list" class="bookshelf-grid">
+                  <div class="bookshelf-empty-state">
+                    <strong>尚未建立書籍</strong>
+                    <p>建立一本書，開始整理你的札記</p>
+                  </div>
+                </div>
+              </section>
+
+              <section class="panel home-today-devotion-card desktop-only-panel">
+                <div class="panel-header">
+                  <h2>今日默想</h2>
+                </div>
+                <div class="today-devotion-copy">
+                  <div class="today-devotion-meta">
+                    <span id="today-devotion-date" class="caption">今日日期</span>
+                    <strong id="today-devotion-scripture">今日默想</strong>
+                  </div>
+                  <h3 id="today-devotion-theme" class="today-devotion-theme">尚未載入今日默想內容</h3>
+                  <p id="today-devotion-summary" class="today-devotion-summary">請先建立或匯入今日默想資料庫</p>
+                </div>
+                <button id="today-devotion-note-btn" class="ghost-btn" type="button">寫成札記</button>
+              </section>
+            </aside>
           </section>
 
           <section class="panel account-summary-card">
@@ -230,22 +330,11 @@
                 <img src="./assets/ui/account-sprout.png" alt="" decoding="async" />
               </span>
               <div class="account-summary-copy">
-                <strong id="account-email">未顯示帳號</strong>
-                <p>願你的文字成為祝福</p>
+                <strong id="account-email">尚未登入</strong>
+                <p>目前登入的帳號</p>
               </div>
             </div>
             <button id="account-signout-btn" class="ghost-btn account-settings-trigger account-signout-btn" type="button" aria-label="登出">登出</button>
-          </section>
-
-          <section id="dashboard-flow-card" class="panel home-flow-card hidden">
-            <div class="panel-header">
-              <h2>使用流程</h2>
-            </div>
-            <ol class="steps">
-              <li>先寫下今天的札記，保留經文與摘要。</li>
-              <li>建立一本書，把合適的札記收進章節。</li>
-              <li>完成後匯出 EPUB，並加入雲端書櫃閱讀。</li>
-            </ol>
           </section>
 
           <span id="summary-snapshots-count" class="hidden">0</span>
@@ -257,7 +346,7 @@
           <section class="panel">
             <div class="panel-header">
               <h2>札記編輯</h2>
-              <button id="new-note-btn" class="ghost-btn">清空重填</button>
+              <button id="new-note-btn" class="ghost-btn" type="button">清空重填</button>
             </div>
             <form id="note-form" class="form-stack">
               <input type="hidden" id="note-id" />
@@ -311,7 +400,7 @@
           <section class="panel">
             <div class="panel-header">
               <h2>書籍設定</h2>
-              <button id="new-book-btn" class="ghost-btn">清空重填</button>
+              <button id="new-book-btn" class="ghost-btn" type="button">清空重填</button>
             </div>
             <form id="book-form" class="form-stack">
               <input type="hidden" id="book-id" />
@@ -376,7 +465,7 @@
                 <label for="chapter-source-note">選擇一篇札記作為新章節</label>
                 <select id="chapter-source-note"></select>
                 <div id="selected-note-preview" class="selected-note-preview">請先選擇一篇札記</div>
-                <button id="add-chapter-btn" class="secondary-btn">加入這篇札記到書中</button>
+                <button id="add-chapter-btn" class="secondary-btn" type="button">加入這篇札記到書中</button>
               </div>
               <section class="toc-preview mt-md">
                 <h3>目錄預覽</h3>
@@ -387,8 +476,8 @@
               </div>
               <div id="chapters-list" class="list-stack mt-md empty-state">尚未加入任何章節。</div>
               <div class="row gap-sm wrap mt-lg">
-                <button id="create-snapshot-btn" class="secondary-btn">建立快照</button>
-                <button id="export-epub-btn" class="primary-btn">匯出 EPUB</button>
+                <button id="create-snapshot-btn" class="secondary-btn" type="button">建立快照</button>
+                <button id="export-epub-btn" class="primary-btn" type="button">匯出 EPUB</button>
               </div>
               <div id="export-success-actions" class="export-success-actions hidden">
                 <p>EPUB 已完成，並已加入書櫃</p>
@@ -405,17 +494,62 @@
       <section id="view-library" class="view">
         <section class="panel library-panel">
           <div class="panel-header">
-            <div><h2>&#26360;&#27331;</h2><p class="muted">&#24050;&#36664;&#20986;&#30340;&#22266;&#23450;&#29256;&#26412;&#20316;&#21697;&#26371;&#20445;&#23384;&#22312;&#38642;&#31471;&#26360;&#27331;&#12290;</p></div>
-            <label class="compact-control">&#25490;&#24207;<select id="library-sort"><option value="recent-read">&#26368;&#36817;&#38321;&#35712;</option><option value="recent-created">&#26368;&#36817;&#24314;&#31435;</option><option value="title">&#26360;&#21517;&#25490;&#24207;</option></select></label>
+            <div>
+              <h2>書櫃</h2>
+              <p class="muted">已匯出的固定版本作品會保存在雲端書櫃。</p>
+            </div>
+            <label class="compact-control">排序
+              <select id="library-sort">
+                <option value="recent-read">最近閱讀</option>
+                <option value="recent-created">最近建立</option>
+                <option value="title">書名排序</option>
+              </select>
+            </label>
           </div>
-          <div id="library-list" class="library-list empty-state"><h3>&#26360;&#27331;&#35041;&#36996;&#27794;&#26377;&#26360;</h3><p>&#20808;&#21435;&#20986;&#26360;&#25972;&#29702;&#27169;&#24335;&#24314;&#31435;&#31532;&#19968;&#26412;&#26360;&#12290;</p><button id="library-empty-action" class="primary-btn" type="button">&#21069;&#24448;&#20986;&#26360;&#25972;&#29702;</button></div>
+          <div id="library-list" class="library-list empty-state">
+            <h3>書櫃裡還沒有書</h3>
+            <p>先去出書整理模式建立第一本書。</p>
+            <button id="library-empty-action" class="primary-btn" type="button">前往出書整理</button>
+          </div>
         </section>
       </section>
 
       <section id="view-reader" class="view reader-view">
-        <div class="reader-layout"><aside class="reader-sidebar"><button id="reader-back-library" class="ghost-btn" type="button">&#36820;&#22238;&#26360;&#27331;</button><label>&#31456;&#31680;<select id="reader-chapter-nav"></select></label><label>&#23383;&#39636;&#22823;&#23567;<input id="reader-font-size" type="range" min="15" max="26" step="1" /></label><label>&#34892;&#36317;<input id="reader-line-height" type="range" min="1.4" max="2.2" step="0.1" /></label><label>&#32972;&#26223;<select id="reader-theme"><option value="light">&#28154;&#33394;</option><option value="dark">&#28145;&#33394;</option></select></label></aside><article class="reader-page"><header class="reader-header"><div><h2 id="reader-title">&#38321;&#35712;&#27169;&#24335;</h2><p id="reader-meta" class="muted"></p></div><div class="reader-progress"><span id="reader-progress-text">0%</span><div><i id="reader-progress-bar"></i></div></div></header><div id="reader-content" class="reader-content"></div></article></div>
+        <div class="reader-layout">
+          <aside class="reader-sidebar">
+            <button id="reader-back-library" class="ghost-btn" type="button">返回書櫃</button>
+            <label>章節
+              <select id="reader-chapter-nav"></select>
+            </label>
+            <label>字體大小
+              <input id="reader-font-size" type="range" min="15" max="26" step="1" />
+            </label>
+            <label>行距
+              <input id="reader-line-height" type="range" min="1.4" max="2.2" step="0.1" />
+            </label>
+            <label>背景
+              <select id="reader-theme">
+                <option value="light">淺色</option>
+                <option value="dark">深色</option>
+              </select>
+            </label>
+          </aside>
+          <article class="reader-page">
+            <header class="reader-header">
+              <div>
+                <h2 id="reader-title">閱讀模式</h2>
+                <p id="reader-meta" class="muted"></p>
+              </div>
+              <div class="reader-progress">
+                <span id="reader-progress-text">0%</span>
+                <div><i id="reader-progress-bar"></i></div>
+              </div>
+            </header>
+            <div id="reader-content" class="reader-content"></div>
+          </article>
+        </div>
       </section>
-      
+
       <section id="view-snapshots" class="view">
         <section class="panel">
           <div class="panel-header">
@@ -424,30 +558,30 @@
           <div id="snapshots-list" class="list-stack empty-state">還沒有快照。</div>
         </section>
       </section>
+
       <footer class="site-footer">
         <button id="support-btn" class="support-btn" type="button">支持平台／支持事工</button>
         <p class="footer-copyright">© 2026 <a href="https://sanzepm.com.tw" target="_blank" rel="noopener noreferrer">三策專案管理顧問有限公司</a>. All rights reserved.</p>
       </footer>
 
       <nav class="nav-links bottom-nav" aria-label="主要導覽">
-        <button class="nav-link active" data-view="dashboard" type="button">
+        <button class="nav-link mobile-bottom-link active" data-view="dashboard" type="button">
           <span class="nav-icon asset-icon asset-sprite-system icon-home" aria-hidden="true"></span>
           <span>總覽</span>
         </button>
-        <button class="nav-link" data-view="notes" type="button">
+        <button class="nav-link mobile-bottom-link" data-view="notes" type="button">
           <span class="nav-icon asset-icon asset-sprite-system icon-note" aria-hidden="true"></span>
           <span>札記</span>
         </button>
-        <button class="nav-link" data-view="books" type="button">
+        <button class="nav-link mobile-bottom-link" data-view="books" type="button">
           <span class="nav-icon asset-icon asset-sprite-system icon-book" aria-hidden="true"></span>
           <span>書籍</span>
         </button>
-        <button class="nav-link" data-view="library" type="button">
+        <button class="nav-link mobile-bottom-link" data-view="library" type="button">
           <span class="nav-icon asset-icon asset-sprite-system icon-library" aria-hidden="true"></span>
           <span>書櫃</span>
         </button>
       </nav>
-
     </main>
   </div>
 
@@ -483,7 +617,6 @@
     </div>
   </div>
 
-  
   <div id="support-modal" class="modal hidden" aria-hidden="true">
     <div id="support-modal-backdrop" class="modal-backdrop"></div>
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="support-modal-title">

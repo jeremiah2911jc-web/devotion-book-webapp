@@ -1,4 +1,4 @@
-const STORAGE_KEYS = {
+﻿const STORAGE_KEYS = {
   config: 'devotion-app-config',
   user: 'devotion-app-local-user',
   notes: 'devotion-app-notes',
@@ -71,7 +71,8 @@ const els = {
   authUser: document.getElementById('auth-user'),
   currentUserText: document.getElementById('current-user-text'),
   accountEmail: document.getElementById('account-email'),
-  navLinks: [...document.querySelectorAll('.nav-link')],
+  desktopAccountEmail: document.getElementById('desktop-account-email'),
+  viewNavLinks: [...document.querySelectorAll('.desktop-sidebar-link[data-view], .mobile-bottom-link[data-view], .nav-link[data-view]')],
   viewTitle: document.getElementById('view-title'),
   viewSubtitle: document.getElementById('view-subtitle'),
   views: [...document.querySelectorAll('.view')],
@@ -160,7 +161,9 @@ const els = {
   openSnapshotsBtn: document.getElementById('open-snapshots-btn'),
   viewAllNotesBtn: document.getElementById('view-all-notes-btn'),
   openAccountSettingsBtn: document.getElementById('open-account-settings-btn'),
+  openAccountSettingsButtons: [...document.querySelectorAll('[data-open-account-settings]')],
   accountSignoutBtn: document.getElementById('account-signout-btn'),
+  desktopSidebarSignoutBtn: document.getElementById('desktop-sidebar-signout-btn'),
   accountSettingsModal: document.getElementById('account-settings-modal'),
   accountSettingsBackdrop: document.getElementById('account-settings-backdrop'),
   closeAccountSettingsBtn: document.getElementById('close-account-settings-btn'),
@@ -168,6 +171,13 @@ const els = {
   accountCloudHint: document.getElementById('account-cloud-hint'),
   goSnapshotsBtn: document.getElementById('go-snapshots-btn'),
   dashboardFlowCard: document.getElementById('dashboard-flow-card'),
+  desktopBookshelfList: document.getElementById('desktop-bookshelf-list'),
+  todayDevotionDate: document.getElementById('today-devotion-date'),
+  todayDevotionScripture: document.getElementById('today-devotion-scripture'),
+  todayDevotionTheme: document.getElementById('today-devotion-theme'),
+  todayDevotionSummary: document.getElementById('today-devotion-summary'),
+  todayDevotionNoteBtn: document.getElementById('today-devotion-note-btn'),
+  topbarForceSyncBtn: document.getElementById('topbar-force-sync-btn'),
   resetPasswordBtn: document.getElementById('reset-password-btn'),
   bookSaveFeedback: document.getElementById('book-save-feedback'),
 };
@@ -515,7 +525,10 @@ function openAuthInline(mode = 'register') {
     els.gateSubmitBtn.classList.toggle('secondary-btn', !isRegister);
     els.gateSubmitBtn.classList.toggle('primary-btn', isRegister);
   }
-  els.gateResetPasswordBtn?.classList.toggle('hidden', isRegister);
+  if (els.gateResetPasswordBtn) {
+    els.gateResetPasswordBtn.classList.remove('hidden');
+    els.gateResetPasswordBtn.textContent = '忘記密碼 / 重設密碼';
+  }
   els.gateAuthEmail?.focus();
 }
 function closeAuthInline() {
@@ -580,6 +593,7 @@ async function clearConnectionSettings() {
 
 async function bootstrap() {
   removeRetiredInterfaceElements();
+  document.body.dataset.currentView = document.querySelector('.view.active')?.id?.replace('view-', '') || 'dashboard';
   syncConfigInputs();
   initSupabase();
   bindEvents();
@@ -636,14 +650,18 @@ function bindEvents() {
   els.gateClearConfigBtn?.addEventListener('click', () => clearConnectionSettings().then(closeAuthSettings).catch(handleError));
   els.signoutBtn.addEventListener('click', () => handleSignOut().catch(handleError));
   els.accountSignoutBtn?.addEventListener('click', () => handleSignOut().catch(handleError));
+  els.desktopSidebarSignoutBtn?.addEventListener('click', () => handleSignOut().catch(handleError));
   els.refreshBtn?.addEventListener('click', () => loadAllData({ syncReason: '已手動重新整理雲端資料。' }).then(refreshUi).then(() => showToast('資料已重新整理。')).catch(handleError));
   els.forceSyncBtn?.addEventListener('click', () => loadAllData({ syncReason: '已手動同步雲端資料。' }).then(() => showToast('同步完成。')).catch(handleError));
+  els.topbarForceSyncBtn?.addEventListener('click', () => loadAllData({ syncReason: '已手動同步雲端資料。' }).then(() => showToast('同步完成。')).catch(handleError));
   els.pushLocalToCloudBtn?.addEventListener('click', () => uploadLocalDataToCloud().catch(handleError));
   els.downloadBackupBtn?.addEventListener('click', () => { try { downloadBackupJson(); } catch (error) { handleError(error); } });
 
-  els.navLinks.forEach(btn => btn.addEventListener('click', () => setView(btn.dataset.view)));
+  els.viewNavLinks.forEach(btn => btn.addEventListener('click', () => setView(btn.dataset.view)));
   els.quickNewNote.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
   els.quickNewBook.addEventListener('click', () => { setView('books'); clearBookForm(); });
+  els.todayDevotionNoteBtn?.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
+  els.viewAllNotesBtn?.addEventListener('click', () => setView('notes'));
   els.newNoteBtn.addEventListener('click', clearNoteForm);
   els.newBookBtn.addEventListener('click', clearBookForm);
   els.noteForm.addEventListener('submit', event => { event.preventDefault(); saveNote().catch(handleError); });
@@ -854,8 +872,53 @@ function resolveBookLanguage(value = '') {
   return lang || DEFAULT_BOOK_LANGUAGE;
 }
 
+function sanitizeDisplayText(value, fallback = '') {
+  const text = String(value ?? '').replace(/\s+/g, ' ').trim();
+  if (!text) return fallback;
+  if (text.includes('??') || text.includes('\uFFFD')) return fallback;
+  const stripped = text.replace(/[?\uFFFD]/g, '');
+  if (!stripped.trim()) return fallback;
+  return text;
+}
+
+function syncDesktopDashboardStaticCopy() {
+  document.querySelector('.sidebar-brand-copy h1')?.replaceChildren(document.createTextNode('我的靈修書房'));
+  document.querySelector('.sidebar-brand-copy .muted')?.replaceChildren(document.createTextNode('Desktop Dashboard'));
+  document.querySelectorAll('.desktop-sidebar-link').forEach(link => {
+    const label = link.querySelector('span:last-child');
+    if (!label) return;
+    const copy = {
+      dashboard: '總覽',
+      notes: '札記',
+      books: '書籍',
+      library: '書櫃',
+    }[link.dataset.view] || (link.classList.contains('is-muted') ? ['標籤', '統計', '匯出'][[...link.parentElement.querySelectorAll('.desktop-sidebar-link.is-muted')].indexOf(link)] : '設定');
+    label.textContent = copy;
+  });
+  document.querySelector('.desktop-sidebar-footer-label')?.replaceChildren(document.createTextNode('帳號'));
+  document.querySelector('.desktop-sidebar-account-copy p')?.replaceChildren(document.createTextNode('目前登入的帳號'));
+  document.querySelector('.desktop-sidebar-account-actions [data-open-account-settings]')?.replaceChildren(document.createTextNode('帳號設定'));
+  document.querySelector('#force-sync-btn .sync-btn-content span:last-child')?.replaceChildren(document.createTextNode('立即同步'));
+  document.querySelector('#desktop-sidebar-signout-btn')?.replaceChildren(document.createTextNode('登出'));
+  document.querySelector('.hero-copy h1')?.replaceChildren(document.createTextNode('我的靈修書房'));
+  document.querySelector('.hero-copy p')?.replaceChildren(document.createTextNode('整理每日札記，慢慢編成一本書'));
+  document.querySelectorAll('.home-summary-cards .summary-card')[0]?.querySelector('.summary-content span')?.replaceChildren(document.createTextNode('札記'));
+  document.querySelectorAll('.home-summary-cards .summary-card')[1]?.querySelector('.summary-content span')?.replaceChildren(document.createTextNode('書籍'));
+  document.querySelectorAll('.home-summary-cards .summary-card')[2]?.querySelector('.summary-content span')?.replaceChildren(document.createTextNode('書櫃'));
+  document.querySelector('#summary-notes-count + small')?.replaceChildren(document.createTextNode('篇'));
+  document.querySelector('#summary-books-count + small')?.replaceChildren(document.createTextNode('本'));
+  document.querySelector('#library-count + small')?.replaceChildren(document.createTextNode('已完成'));
+  document.querySelector('#quick-new-note strong')?.replaceChildren(document.createTextNode('寫一篇札記'));
+  document.querySelector('#quick-new-book strong')?.replaceChildren(document.createTextNode('建立一本書'));
+  document.querySelector('.home-recent-panel .panel-header h2')?.replaceChildren(document.createTextNode('最近編輯'));
+  document.querySelector('#view-all-notes-btn')?.replaceChildren(document.createTextNode('查看全部'));
+  document.querySelector('#dashboard-bookshelf-card .panel-header h2')?.replaceChildren(document.createTextNode('書櫃'));
+  document.querySelector('.home-today-devotion-card .panel-header h2')?.replaceChildren(document.createTextNode('今日默想'));
+}
+
 function refreshUi() {
   const accountEmail = String(state.currentUser?.email || state.currentUser?.id || '').trim() || '未顯示帳號';
+  syncDesktopDashboardStaticCopy();
   if (els.authModeBadge) els.authModeBadge.textContent = state.supabase ? '雲端模式' : '本機模式';
   if (els.statusStorage) els.statusStorage.textContent = state.supabase ? 'Supabase' : 'Local';
   if (els.statusSync) els.statusSync.textContent = state.syncStatus || '未啟用';
@@ -863,7 +926,9 @@ function refreshUi() {
   els.authUser.classList.toggle('hidden', !state.currentUser);
   els.currentUserText.textContent = state.currentUser ? `目前使用者：${accountEmail}` : '尚未登入';
   if (els.accountEmail) els.accountEmail.textContent = accountEmail;
+  if (els.desktopAccountEmail) els.desktopAccountEmail.textContent = state.currentUser ? accountEmail : '尚未登入';
   els.accountSignoutBtn?.toggleAttribute('disabled', !state.currentUser);
+  els.desktopSidebarSignoutBtn?.toggleAttribute('disabled', !state.currentUser);
   document.body.classList.toggle('auth-locked', !state.currentUser);
   els.authGate?.classList.toggle('hidden', !!state.currentUser);
   els.authGate?.setAttribute('aria-hidden', state.currentUser ? 'true' : 'false');
@@ -897,7 +962,11 @@ function refreshUi() {
   }
   els.summaryNotesCount.textContent = state.notes.length;
   els.summaryBooksCount.textContent = state.books.length;
+  const libraryCount = document.getElementById('library-count');
+  if (libraryCount) libraryCount.textContent = String(cloudLibrary.books.length);
   renderRecentCards();
+  renderDesktopBookshelfCard();
+  renderTodayDevotionCard();
   renderNotes();
   renderBooks();
   renderSelectedBookPanel();
@@ -906,27 +975,83 @@ function refreshUi() {
 }
 
 function renderRecentCards() {
-  renderCardList(els.recentNotes, state.notes.slice(0, 3), note => `
-    <div class="card">
-      <h3>${escapeHtml(note.title || '未命名札記')}</h3>
-      <div class="card-meta"><span>${escapeHtml(note.scripture_reference || '未填經文')}</span><span>${formatDate(note.updated_at)}</span></div>
-      <div>${escapeHtml((note.summary || note.content || '').slice(0, 90))}</div>
-    </div>`);
-  renderCardList(els.recentBooks, state.books.slice(0, 3), book => `
-    <div class="card">
-      <h3>${escapeHtml(book.title || '未命名書籍')}</h3>
-      <div class="card-meta"><span>${escapeHtml(TEMPLATE_LABELS[book.template_code] || '模板')}</span><span>${(book.chapters || []).length} 章</span></div>
-      <div>${escapeHtml((book.description || '').slice(0, 90) || '尚未填寫簡介')}</div>
-    </div>`);
+  renderCardList(els.recentNotes, state.notes.slice(0, 3), note => {
+    const title = sanitizeDisplayText(note.title, '未命名札記');
+    const scripture = sanitizeDisplayText(note.scripture_reference, '未設定經文');
+    const summary = sanitizeDisplayText(note.summary, '')
+      || sanitizeDisplayText(note.content, '')
+      || '尚無摘要';
+    return `
+      <div class="card">
+        <h3>${escapeHtml(title)}</h3>
+        <div class="card-meta"><span>${escapeHtml(scripture)}</span><span>${formatDate(note.updated_at)}</span></div>
+        <div>${escapeHtml(summary.slice(0, 90))}</div>
+      </div>`;
+  }, '目前還沒有札記。');
+  renderCardList(els.recentBooks, state.books.slice(0, 3), book => {
+    const title = sanitizeDisplayText(book.title, '未命名書籍');
+    const template = sanitizeDisplayText(TEMPLATE_LABELS[book.template_code], '一般書籍');
+    const summary = sanitizeDisplayText(book.description, '尚無摘要');
+    return `
+      <div class="card">
+        <h3>${escapeHtml(title)}</h3>
+        <div class="card-meta"><span>${escapeHtml(template)}</span><span>${(book.chapters || []).length} 章</span></div>
+        <div>${escapeHtml(summary.slice(0, 90))}</div>
+      </div>`;
+  }, '目前還沒有書籍。');
 }
-function renderCardList(container, items, renderer) {
+function renderCardList(container, items, renderer, emptyText = '還沒有資料。') {
   if (!items.length) {
     container.className = 'list-stack empty-state';
-    container.textContent = '還沒有資料。';
+    container.textContent = emptyText;
     return;
   }
   container.className = 'list-stack';
   container.innerHTML = items.map(renderer).join('');
+}
+
+function renderDesktopBookshelfCard() {
+  if (!els.desktopBookshelfList) return;
+  const books = state.books.slice(0, 4);
+  if (!books.length) {
+    els.desktopBookshelfList.innerHTML = `
+      <div class="bookshelf-empty-state">
+        <strong>尚未建立書籍</strong>
+        <p>建立一本書，開始整理你的札記</p>
+      </div>`;
+    return;
+  }
+  const snapshotBookIds = new Set(state.snapshots.map(snapshot => snapshot.book_id).filter(Boolean));
+  els.desktopBookshelfList.innerHTML = books.map((book, index) => {
+    const title = sanitizeDisplayText(book.title, `書籍 ${index + 1}`);
+    const chapterCount = Array.isArray(book.chapters) ? book.chapters.length : 0;
+    const status = snapshotBookIds.has(book.id) ? '已完成' : (chapterCount > 0 ? '整理中' : '已建立');
+    return `
+      <article class="bookshelf-book-card">
+        <div class="bookshelf-cover-placeholder" aria-hidden="true">封面</div>
+        <div class="bookshelf-book-copy">
+          <strong>${escapeHtml(title)}</strong>
+          <div class="bookshelf-book-meta">
+            <span>${chapterCount} 章</span>
+            <span>${status}</span>
+          </div>
+        </div>
+      </article>`;
+  }).join('');
+}
+
+function renderTodayDevotionCard() {
+  const todayLabel = new Intl.DateTimeFormat('zh-TW', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long',
+  }).format(new Date());
+  if (els.todayDevotionDate) els.todayDevotionDate.textContent = todayLabel;
+  if (els.todayDevotionScripture) els.todayDevotionScripture.textContent = '今日默想';
+  if (els.todayDevotionTheme) els.todayDevotionTheme.textContent = '尚未載入今日默想內容';
+  if (els.todayDevotionSummary) els.todayDevotionSummary.textContent = '請先建立或匯入今日默想資料庫';
+  if (els.todayDevotionNoteBtn) els.todayDevotionNoteBtn.textContent = '寫成札記';
 }
 
 function normalizeScriptureReferences(raw = '') {
@@ -1112,6 +1237,7 @@ function applyScriptureBlockToNoteContent(items) {
 }
 
 function renderNotes() {
+  if (!els.notesList) return;
   const query = state.noteSearch;
   const filtered = !query ? state.notes : state.notes.filter(note => [note.title, note.scripture_reference, note.summary, note.content].join(' ').toLowerCase().includes(query));
   if (!filtered.length) {
@@ -1216,6 +1342,7 @@ async function deleteNote() {
 }
 
 function renderBooks() {
+  if (!els.booksList) return;
   if (!state.books.length) {
     els.booksList.className = 'list-stack empty-state';
     els.booksList.textContent = '還沒有書籍專案。';
@@ -1611,12 +1738,15 @@ function setView(viewName) {
     library: ['書櫃', '收藏已輸出的固定版本作品，直接開啟閱讀。'],
     reader: ['閱讀模式', '安靜閱讀已加入書櫃的 EPUB。'],
   };
-  els.navLinks.forEach(link => link.classList.toggle('active', link.dataset.view === viewName));
+  document.body.dataset.currentView = viewName;
+  els.viewNavLinks.forEach(link => link.classList.toggle('active', link.dataset.view === viewName));
   els.views.forEach(view => view.classList.toggle('active', view.id === `view-${viewName}`));
   const viewTitle = titleMap[viewName] || titleMap.dashboard;
-  els.viewTitle.textContent = viewTitle[0];
-  els.viewSubtitle.textContent = viewTitle[1];
-  els.viewSubtitle.classList.toggle('hidden', viewName === 'dashboard');
+  if (els.viewTitle) els.viewTitle.textContent = viewTitle[0];
+  if (els.viewSubtitle) {
+    els.viewSubtitle.textContent = viewTitle[1];
+    els.viewSubtitle.classList.toggle('hidden', viewName === 'dashboard');
+  }
   if (isReaderView) {
     document.body.dataset.readerScrollY = String(window.scrollY || 0);
     document.body.classList.add('reader-active');
