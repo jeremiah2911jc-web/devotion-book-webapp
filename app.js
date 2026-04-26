@@ -2314,7 +2314,7 @@ a{color:${theme[1]};text-decoration:none;}
 nav ol{padding-left:1.3em;}
 .title-page{background:${theme[0]};padding:2.4em 2.2em;border-radius:22px;margin-top:2.2em;box-shadow:inset 0 0 0 1px rgba(140,118,90,.08);}
 .meta{color:#6b6259;font-size:.95em;line-height:1.75;}
-.chapter-head{margin:0 0 2.05em;padding:2.15em 0 1.25em;border-bottom:1px solid rgba(166,143,115,.18);text-align:left;}
+.chapter-head{margin:0 0 2.05em;padding:1.1em 0 1.25em;border-bottom:1px solid rgba(166,143,115,.18);text-align:left;}
 .chapter-kicker{margin:0 0 .8em;color:#6f5b47;font-size:1.42em;line-height:1.36;font-weight:700;letter-spacing:.11em;text-align:center;}
 .chapter-head h1{margin:0;font-size:1.28em;line-height:1.54;font-weight:700;letter-spacing:.01em;text-align:left;}
 .chapter-head .scripture{margin:.95em 0 0;}
@@ -2944,7 +2944,7 @@ function injectReaderViewStyles() {
       #view-reader .reader-flow .text-blue, #view-reader .reader-flow .text-blue strong { color: #355d8d !important; }
       #view-reader .reader-flow .text-gold, #view-reader .reader-flow .text-gold strong { color: #8a6a1f !important; }
       #view-reader .reader-flow .text-purple, #view-reader .reader-flow .text-purple strong { color: #6a4a82 !important; }
-      #view-reader .reader-flow .chapter-head { margin: 0 0 2.05em; padding: 2.05em 0 1.2em; border-bottom: 1px solid rgba(166,143,115,.18); text-align: left; }
+      #view-reader .reader-flow .chapter-head { margin: 0 0 2.05em; padding: 1.02em 0 1.2em; border-bottom: 1px solid rgba(166,143,115,.18); text-align: left; }
       #view-reader .reader-flow .chapter-kicker { margin: 0 0 .8em; color: #6f5b47; font-size: 1.42em; line-height: 1.36; font-weight: 700; letter-spacing: .11em; text-align: center; }
       #view-reader .reader-flow .chapter-head h1 { margin: 0; font-size: 1.28em; line-height: 1.54; letter-spacing: .01em; text-align: left; }
       #view-reader .reader-flow .chapter-head .scripture { margin: .92em 0 0; }
@@ -2974,7 +2974,7 @@ function injectReaderViewStyles() {
       #view-reader .reader-flow h2 { font-size: 1.08em; margin-top: 1.72em; }
       #view-reader .reader-flow p { margin-bottom: 1em; line-height: 1.82; }
       #view-reader .reader-flow hr { width: 46%; margin: 1.7em auto; }
-      #view-reader .reader-flow .chapter-head { margin-bottom: 1.75em; padding: 1.75em 0 1.05em; }
+      #view-reader .reader-flow .chapter-head { margin-bottom: 1.75em; padding: .92em 0 1.05em; }
       #view-reader .reader-flow .chapter-kicker { font-size: 1.24em; letter-spacing: .09em; margin-bottom: .66em; }
       #view-reader .reader-flow .chapter-head h1 { font-size: 1.16em; line-height: 1.5; }
       #view-reader .reader-flow .chapter-summary { margin-bottom: 1.55em; padding: 1em 1em .96em; }
