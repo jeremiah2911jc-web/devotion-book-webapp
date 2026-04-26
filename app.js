@@ -94,6 +94,11 @@ const els = {
   noteCategory: document.getElementById('note-category'),
   noteTags: document.getElementById('note-tags'),
   noteSummary: document.getElementById('note-summary'),
+  markdownHeadingBtn: document.getElementById('markdown-heading-btn'),
+  markdownBoldBtn: document.getElementById('markdown-bold-btn'),
+  markdownQuoteBtn: document.getElementById('markdown-quote-btn'),
+  markdownScriptureBtn: document.getElementById('markdown-scripture-btn'),
+  markdownListBtn: document.getElementById('markdown-list-btn'),
   noteContent: document.getElementById('note-content'),
   notePreviewBtn: document.getElementById('note-preview-btn'),
   notePreview: document.getElementById('note-preview'),
@@ -678,6 +683,11 @@ function bindEvents() {
   els.viewAllNotesBtn?.addEventListener('click', () => setView('notes'));
   els.newNoteBtn.addEventListener('click', clearNoteForm);
   els.newBookBtn.addEventListener('click', clearBookForm);
+  els.markdownHeadingBtn?.addEventListener('click', () => applyMarkdownHeading());
+  els.markdownBoldBtn?.addEventListener('click', () => applyMarkdownBold());
+  els.markdownQuoteBtn?.addEventListener('click', () => applyMarkdownQuote());
+  els.markdownScriptureBtn?.addEventListener('click', () => applyMarkdownScripture());
+  els.markdownListBtn?.addEventListener('click', () => applyMarkdownList());
   els.noteForm.addEventListener('submit', event => { event.preventDefault(); saveNote().catch(handleError); });
   els.noteForm.addEventListener('input', event => {
     if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) renderNotePreview();
@@ -1424,6 +1434,111 @@ function renderNotePreview() {
       ${contentBlocks}
     </section>
   `;
+}
+
+function getNoteContentTextarea() {
+  if (!(els.noteContent instanceof HTMLTextAreaElement)) {
+    throw new Error('找不到札記內容輸入框。');
+  }
+  return els.noteContent;
+}
+
+function getNoteContentSelection() {
+  const textarea = getNoteContentTextarea();
+  const value = textarea.value || '';
+  const start = typeof textarea.selectionStart === 'number' ? textarea.selectionStart : value.length;
+  const end = typeof textarea.selectionEnd === 'number' ? textarea.selectionEnd : start;
+  return {
+    textarea,
+    value,
+    start,
+    end,
+    selectedText: value.slice(start, end),
+    hasSelection: end > start,
+  };
+}
+
+function updateNoteContentSelection(nextValue, selectionStart, selectionEnd = selectionStart) {
+  const textarea = getNoteContentTextarea();
+  textarea.value = nextValue;
+  textarea.focus();
+  textarea.setSelectionRange(selectionStart, selectionEnd);
+  renderNotePreview();
+}
+
+function replaceNoteContentSelection(replacement, options = {}) {
+  const {
+    selectionStartOffset = replacement.length,
+    selectionEndOffset = selectionStartOffset,
+  } = options;
+  const { value, start, end } = getNoteContentSelection();
+  const nextValue = `${value.slice(0, start)}${replacement}${value.slice(end)}`;
+  updateNoteContentSelection(nextValue, start + selectionStartOffset, start + selectionEndOffset);
+}
+
+function prefixSelectedLines(text, prefix) {
+  return String(text || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map(line => `${prefix}${line}`)
+    .join('\n');
+}
+
+function applyMarkdownHeading() {
+  const { hasSelection, selectedText } = getNoteContentSelection();
+  const headingText = (hasSelection ? selectedText : '小標題').trim() || '小標題';
+  const replacement = `## ${headingText}`;
+  replaceNoteContentSelection(replacement, hasSelection
+    ? {}
+    : {
+        selectionStartOffset: 3,
+        selectionEndOffset: replacement.length,
+      });
+}
+
+function applyMarkdownBold() {
+  const { hasSelection, selectedText } = getNoteContentSelection();
+  const content = hasSelection ? selectedText : '文字';
+  const replacement = `**${content}**`;
+  replaceNoteContentSelection(replacement, hasSelection
+    ? {}
+    : {
+        selectionStartOffset: 2,
+        selectionEndOffset: replacement.length - 2,
+      });
+}
+
+function applyMarkdownQuote() {
+  const { hasSelection, selectedText } = getNoteContentSelection();
+  const replacement = hasSelection ? prefixSelectedLines(selectedText, '> ') : '> 引用內容';
+  replaceNoteContentSelection(replacement, hasSelection
+    ? {}
+    : {
+        selectionStartOffset: 2,
+        selectionEndOffset: replacement.length,
+      });
+}
+
+function applyMarkdownScripture() {
+  const { hasSelection, selectedText } = getNoteContentSelection();
+  const replacement = hasSelection ? prefixSelectedLines(selectedText, '> ') : '> 經文內容';
+  replaceNoteContentSelection(replacement, hasSelection
+    ? {}
+    : {
+        selectionStartOffset: 2,
+        selectionEndOffset: replacement.length,
+      });
+}
+
+function applyMarkdownList() {
+  const { hasSelection, selectedText } = getNoteContentSelection();
+  const replacement = hasSelection ? prefixSelectedLines(selectedText, '- ') : '- 項目';
+  replaceNoteContentSelection(replacement, hasSelection
+    ? {}
+    : {
+        selectionStartOffset: 2,
+        selectionEndOffset: replacement.length,
+      });
 }
 
 function openNotePreview() {

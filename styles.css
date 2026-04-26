@@ -466,6 +466,18 @@ input:focus, textarea:focus, select:focus {
 .note-summary-hint {
   margin: -4px 0 2px;
 }
+.markdown-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 2px 0 4px;
+}
+.markdown-toolbar-btn {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 7px 12px;
+  white-space: nowrap;
+}
 .note-preview-modal-card {
   width: min(860px, calc(100vw - 160px));
   max-width: calc(100vw - 160px);
@@ -580,6 +592,15 @@ input:focus, textarea:focus, select:focus {
   .note-preview-summary {
     padding: 14px 15px;
     border-radius: 16px;
+  }
+
+  .markdown-toolbar {
+    gap: 7px;
+  }
+
+  .markdown-toolbar-btn {
+    min-height: 38px;
+    padding: 8px 12px;
   }
 }
 .scripture-card {
