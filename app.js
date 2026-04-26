@@ -2282,7 +2282,7 @@ function buildTemplateCss(templateCode) {
     sermon: ['#f0f3f7', '#253648'],
     testimony: ['#f7ecef', '#5b2f3a'],
   }[templateCode] || ['#f6f0e6', '#44362b'];
-  return `body{font-family:"Noto Serif TC","PingFang TC",serif;line-height:1.8;color:#222;margin:0;padding:0;}main{padding:1.6em;}h1,h2{color:${theme[1]};}h2{margin:1.7em 0 .75em;font-size:1.2em;line-height:1.45;font-weight:700;}a{color:${theme[1]};text-decoration:none;}nav ol{padding-left:1.2em;}.title-page{background:${theme[0]};padding:2em;border-radius:18px;margin-top:2em;} .meta{color:#666;font-size:.95em;} .scripture{margin:.8em 0;color:#555;font-style:italic;} .chapter-summary{margin:1.15em 0 1.6em;padding:1em 1.1em;border:1px solid rgba(160,142,112,.24);border-radius:14px;background:rgba(246,240,230,.68);} .chapter-summary .kicker{display:block;margin-bottom:.45em;color:#7a6753;font-size:.82em;font-weight:700;letter-spacing:.06em;} .chapter-summary p{margin:0;} blockquote{margin:1.15em 0 1.4em;padding:.95em 1.1em;border-left:4px solid rgba(155,122,72,.4);background:rgba(246,240,230,.46);color:#4c4033;} hr{margin:1.6em 0;border:0;border-top:1px solid rgba(155,122,72,.35);} ul{margin:0 0 1.2em;padding-left:1.5em;} li{margin:.35em 0;line-height:1.8;} strong{font-weight:700;color:${theme[1]};}.text-red{color:#8a3b3b;}.text-blue{color:#355d8d;}.text-gold{color:#8a6a1f;}.text-purple{color:#6a4a82;} p{margin:0 0 1em;} `;
+  return `body{font-family:"Noto Serif TC","PingFang TC",serif;line-height:1.8;color:#222;margin:0;padding:0;}main{padding:1.6em;}h1,h2{color:${theme[1]};}h2{margin:1.7em 0 .75em;font-size:1.2em;line-height:1.45;font-weight:700;}a{color:${theme[1]};text-decoration:none;}nav ol{padding-left:1.2em;}.title-page{background:${theme[0]};padding:2em;border-radius:18px;margin-top:2em;} .meta{color:#666;font-size:.95em;} .scripture{margin:.8em 0;color:#555;font-style:italic;} .chapter-summary{margin:1.15em 0 1.6em;padding:1em 1.1em;border:1px solid rgba(160,142,112,.24);border-radius:14px;background:rgba(246,240,230,.68);} .chapter-summary .kicker{display:block;margin-bottom:.45em;color:#7a6753;font-size:.82em;font-weight:700;letter-spacing:.06em;} .chapter-summary p{margin:0;} blockquote{margin:1.15em 0 1.4em;padding:.95em 1.1em;border-left:4px solid rgba(155,122,72,.4);background:rgba(246,240,230,.46);color:#4c4033;} hr{margin:1.6em 0;border:0;border-top:1px solid rgba(155,122,72,.35);} ul{margin:0 0 1.2em;padding-left:1.5em;} li{margin:.35em 0;line-height:1.8;} strong{font-weight:700;color:${theme[1]};}.text-red,.text-red strong{color:#8a3b3b !important;}.text-blue,.text-blue strong{color:#355d8d !important;}.text-gold,.text-gold strong{color:#8a6a1f !important;}.text-purple,.text-purple strong{color:#6a4a82 !important;} p{margin:0 0 1em;} `;
 }
 
 function containerXml() {
@@ -2887,10 +2887,10 @@ function injectReaderViewStyles() {
       #view-reader .reader-flow ul { margin: 0 0 1.15em; padding-left: 1.45em; }
       #view-reader .reader-flow li { margin: .35em 0; line-height: 1.85; }
       #view-reader .reader-flow strong { font-weight: 700; color: inherit; }
-      #view-reader .reader-flow .text-red { color: #8a3b3b; }
-      #view-reader .reader-flow .text-blue { color: #355d8d; }
-      #view-reader .reader-flow .text-gold { color: #8a6a1f; }
-      #view-reader .reader-flow .text-purple { color: #6a4a82; }
+      #view-reader .reader-flow .text-red, #view-reader .reader-flow .text-red strong { color: #8a3b3b !important; }
+      #view-reader .reader-flow .text-blue, #view-reader .reader-flow .text-blue strong { color: #355d8d !important; }
+      #view-reader .reader-flow .text-gold, #view-reader .reader-flow .text-gold strong { color: #8a6a1f !important; }
+      #view-reader .reader-flow .text-purple, #view-reader .reader-flow .text-purple strong { color: #6a4a82 !important; }
       #view-reader .reader-flow .scripture, #view-reader .reader-flow blockquote { margin: 1.15em 0 1.35em; padding: .95em 1.05em .95em 1.15em; border-left: 3px solid rgba(155,122,72,.35); border-radius: 0 16px 16px 0; background: rgba(246,240,230,.45); color: inherit; }
       #view-reader .reader-flow .chapter-summary { margin: 1.15em 0 1.4em; padding: 1em 1.05em; border-radius: 16px; border: 1px solid rgba(160,142,112,.24); background: rgba(246,240,230,.72); }
       #view-reader .reader-flow .chapter-summary .kicker { display: block; margin-bottom: .45em; color: #7a6753; font-size: .82em; font-weight: 700; letter-spacing: .06em; }

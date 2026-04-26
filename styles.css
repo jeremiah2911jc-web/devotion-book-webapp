@@ -587,17 +587,21 @@ input:focus, textarea:focus, select:focus {
   font-weight: 700;
   color: #27494d;
 }
-.note-preview-content .text-red {
-  color: #8a3b3b;
+.note-preview-content .text-red,
+.note-preview-content .text-red strong {
+  color: #8a3b3b !important;
 }
-.note-preview-content .text-blue {
-  color: #355d8d;
+.note-preview-content .text-blue,
+.note-preview-content .text-blue strong {
+  color: #355d8d !important;
 }
-.note-preview-content .text-gold {
-  color: #8a6a1f;
+.note-preview-content .text-gold,
+.note-preview-content .text-gold strong {
+  color: #8a6a1f !important;
 }
-.note-preview-content .text-purple {
-  color: #6a4a82;
+.note-preview-content .text-purple,
+.note-preview-content .text-purple strong {
+  color: #6a4a82 !important;
 }
 .note-preview-empty,
 .note-preview-placeholder {
