@@ -1060,8 +1060,8 @@ function renderTodayDevotionCard() {
 
 function applyTodayDevotionFallback(todayLabel) {
   if (els.todayDevotionDate) els.todayDevotionDate.textContent = todayLabel;
-  if (els.todayDevotionScripture) els.todayDevotionScripture.textContent = '今日默想';
   if (els.todayDevotionTheme) els.todayDevotionTheme.textContent = '尚未載入今日默想內容';
+  if (els.todayDevotionScripture) els.todayDevotionScripture.textContent = '今日默想';
   if (els.todayDevotionSummary) els.todayDevotionSummary.textContent = '請先建立或匯入今日默想資料庫';
 }
 

@@ -3197,31 +3197,64 @@ body:not(.auth-locked) .main {
 
   .today-devotion-copy {
     display: grid;
-    gap: 10px;
+    gap: 14px;
     margin-bottom: 16px;
   }
 
-  .today-devotion-meta {
+  .today-devotion-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .today-devotion-date {
+    margin-left: auto;
+    text-align: right;
+    color: #667b78;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .today-devotion-section {
     display: grid;
     gap: 6px;
   }
 
-  .today-devotion-meta strong {
-    color: #155f69;
-    font-size: 18px;
+  .today-devotion-label {
+    color: #89a09b;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
   }
 
   .today-devotion-theme {
     margin: 0;
     color: #21484c;
-    font-size: 20px;
+    font-size: 22px;
+    font-weight: 700;
     line-height: 1.35;
+  }
+
+  .today-devotion-quote {
+    margin: 0;
+    color: #7a5630;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.65;
   }
 
   .today-devotion-summary {
     margin: 0;
     line-height: 1.7;
     color: #496468;
+  }
+
+  .today-devotion-section + .today-devotion-section {
+    padding-top: 2px;
+    border-top: 1px solid rgba(191, 211, 208, 0.4);
   }
 
   .account-summary-card {
