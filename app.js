@@ -1500,9 +1500,8 @@ function renderMarkdownContent(text = '') {
         blankLineCount += 1;
         index += 1;
       }
-      if (blocks.length && index < lines.length) {
-        const spacer = renderMarkdownSpacer(blankLineCount);
-        if (spacer) blocks.push(spacer);
+      if (blocks.length && index < lines.length && blankLineCount > 1) {
+        blocks.push(renderMarkdownSpacer(blankLineCount));
       }
       continue;
     }
