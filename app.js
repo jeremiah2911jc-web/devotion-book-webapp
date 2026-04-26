@@ -913,7 +913,8 @@ function syncDesktopDashboardStaticCopy() {
   document.querySelector('#library-count + small')?.replaceChildren(document.createTextNode('已完成'));
   document.querySelector('#quick-new-note strong')?.replaceChildren(document.createTextNode('寫一篇札記'));
   document.querySelector('#quick-new-book strong')?.replaceChildren(document.createTextNode('建立一本書'));
-  document.querySelector('.home-recent-panel .panel-header h2')?.replaceChildren(document.createTextNode('最近編輯'));
+  document.querySelector('.home-recent-panel .panel-header h2')?.replaceChildren(document.createTextNode('最近編輯札記'));
+  document.querySelector('#recent-books-heading')?.replaceChildren(document.createTextNode('最近編輯書冊'));
   document.querySelector('#view-all-notes-btn')?.replaceChildren(document.createTextNode('查看全部'));
   document.querySelector('#dashboard-bookshelf-card .panel-header h2')?.replaceChildren(document.createTextNode('書櫃'));
   document.querySelector('.home-today-devotion-card .panel-header h2')?.replaceChildren(document.createTextNode('今日默想'));

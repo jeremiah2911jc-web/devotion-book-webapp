@@ -913,6 +913,23 @@ body:not(.auth-locked) .main {
   gap: 0;
 }
 
+.home-recent-group {
+  display: grid;
+  gap: 12px;
+}
+
+.home-recent-books-group {
+  margin-top: 20px;
+}
+
+.home-recent-subtitle {
+  margin: 0;
+  color: #35585d;
+  font-size: 15px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
 .recent-note-item {
   width: 100%;
   border: none;
@@ -1301,6 +1318,14 @@ body.auth-locked .bottom-nav {
 
   .home-recent-panel .small {
     font-size: 12px;
+  }
+
+  .home-recent-books-group {
+    margin-top: 18px;
+  }
+
+  .home-recent-subtitle {
+    font-size: 14px;
   }
 
   .recent-note-copy strong {
@@ -2001,6 +2026,18 @@ body:not(.auth-locked) .topbar {
 .home-recent-panel .small {
   font-size: 12px;
   padding-right: 17px;
+}
+
+.home-recent-group {
+  gap: 10px;
+}
+
+.home-recent-books-group {
+  margin-top: 16px;
+}
+
+.home-recent-subtitle {
+  font-size: 14px;
 }
 
 .recent-note-item {

@@ -287,11 +287,16 @@
           <section class="dashboard-lower-grid">
             <section class="panel home-recent-panel">
               <div class="panel-header">
-                <h2>最近編輯</h2>
+                <h2>最近編輯札記</h2>
                 <button id="view-all-notes-btn" class="ghost-btn small" type="button">查看全部</button>
               </div>
-              <div id="recent-notes" class="list-stack empty-state">目前還沒有札記。</div>
-              <div id="recent-books" class="hidden"></div>
+              <div class="home-recent-group">
+                <div id="recent-notes" class="list-stack empty-state">目前還沒有札記。</div>
+              </div>
+              <section class="home-recent-group home-recent-books-group" aria-labelledby="recent-books-heading">
+                <h3 id="recent-books-heading" class="home-recent-subtitle">最近編輯書冊</h3>
+                <div id="recent-books" class="list-stack empty-state">目前還沒有書籍。</div>
+              </section>
             </section>
 
             <aside class="dashboard-side-column">
