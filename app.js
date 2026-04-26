@@ -1476,6 +1476,13 @@ function renderMarkdownInline(text = '') {
   return colorized.replace(/\*\*([^*\n][^*\n]*?)\*\*/g, '<strong>$1</strong>');
 }
 
+function renderMarkdownSpacer(blankLineCount = 0) {
+  const extraBlankLines = Math.max(0, Number(blankLineCount || 0) - 1);
+  if (!extraBlankLines) return '';
+  const level = Math.min(extraBlankLines, 2);
+  return `<div class="markdown-spacer markdown-spacer-${level}" aria-hidden="true"></div>`;
+}
+
 function renderMarkdownContent(text = '') {
   const normalized = String(text || '').replace(/\r\n/g, '\n');
   if (!normalized.trim()) return '';
@@ -1488,7 +1495,15 @@ function renderMarkdownContent(text = '') {
     const trimmed = lines[index].trim();
 
     if (!trimmed) {
-      index += 1;
+      let blankLineCount = 0;
+      while (index < lines.length && !lines[index].trim()) {
+        blankLineCount += 1;
+        index += 1;
+      }
+      if (blocks.length && index < lines.length) {
+        const spacer = renderMarkdownSpacer(blankLineCount);
+        if (spacer) blocks.push(spacer);
+      }
       continue;
     }
 
@@ -2330,6 +2345,8 @@ blockquote{margin:1.35em 0 1.55em;padding:1.05em 1.2em 1.05em 1.3em;border-left:
 hr{width:38%;margin:2em auto 1.9em;border:0;border-top:1px solid rgba(155,122,72,.34);}
 ul{margin:0 0 1.45em;padding-left:1.5em;}
 li{margin:.45em 0;line-height:1.86;padding-left:.12em;}
+.markdown-spacer{height:1rem;}
+.markdown-spacer-2{height:1.8rem;}
 strong{font-weight:700;color:${theme[1]};}
 .text-red,.text-red strong{color:#8a3b3b !important;}
 .text-blue,.text-blue strong{color:#355d8d !important;}
@@ -3200,6 +3217,8 @@ function injectReaderViewStyles() {
       #view-reader .reader-flow .chapter-summary { margin: 1.18em 0 1.8em; padding: 1.12em 1.15em 1.05em; border-radius: 18px; border: 1px solid rgba(160,142,112,.22); background: linear-gradient(180deg, rgba(248,244,237,.96), rgba(243,236,226,.82)); box-shadow: 0 10px 24px rgba(94,76,54,.06); }
       #view-reader .reader-flow .chapter-summary .kicker { display: block; margin-bottom: .45em; color: #7a6753; font-size: .82em; font-weight: 700; letter-spacing: .06em; }
       #view-reader .reader-flow .chapter-summary p { margin: 0; line-height: 1.84; color: #4d4339; }
+      #view-reader .reader-flow .markdown-spacer { height: 1rem; }
+      #view-reader .reader-flow .markdown-spacer-2 { height: 1.8rem; }
       #view-reader .reader-turn-zone { position: absolute; top: 0; bottom: 0; width: 34%; border: 0; background: transparent; cursor: pointer; }
     #view-reader .reader-turn-zone:disabled, #view-reader .reader-footer button:disabled { cursor: default; opacity: .35; }
     #view-reader .reader-turn-left { left: 0; }

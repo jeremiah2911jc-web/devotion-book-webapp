@@ -563,6 +563,12 @@ input:focus, textarea:focus, select:focus {
   gap: 18px;
   font-size: 17px;
 }
+.note-preview-content .markdown-spacer {
+  height: 1rem;
+}
+.note-preview-content .markdown-spacer-2 {
+  height: 1.8rem;
+}
 .note-preview-content h2 {
   margin: 0;
   color: #21484c;
