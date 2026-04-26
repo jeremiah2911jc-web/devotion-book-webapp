@@ -363,7 +363,7 @@
             <form id="note-form" class="form-stack">
               <input type="hidden" id="note-id" />
               <label>標題
-                <input id="note-title" required placeholder="例：詩篇 103 的恩典與憐憫" />
+                <input id="note-title" required placeholder="例：在恩典中重新學會感恩" />
               </label>
               <label>經文
                 <input id="note-scripture" placeholder="例：詩篇 103:1-11；約翰福音 3:16-18" />
@@ -387,11 +387,13 @@
               <label>摘要
                 <textarea id="note-summary" rows="3" placeholder="這篇內容的重點摘要"></textarea>
               </label>
+              <p class="caption note-summary-hint">可在文章完成後整理重點，供列表預覽或未來成書時選擇顯示。</p>
               <label>內容
                 <textarea id="note-content" rows="14" required placeholder="輸入靈修札記全文"></textarea>
               </label>
               <div class="row gap-sm wrap">
                 <button type="submit" class="primary-btn">儲存札記</button>
+                <button type="button" id="note-preview-btn" class="ghost-btn">預覽文章</button>
                 <button type="button" id="delete-note-btn" class="danger-btn hidden">刪除札記</button>
               </div>
             </form>
@@ -626,6 +628,20 @@
           <button id="signout-btn" class="danger-btn" type="button">登出</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div id="note-preview-modal" class="modal hidden" aria-hidden="true">
+    <div id="note-preview-backdrop" class="modal-backdrop"></div>
+    <div class="modal-card note-preview-modal-card" role="dialog" aria-modal="true" aria-labelledby="note-preview-title">
+      <div class="panel-header note-preview-modal-header">
+        <div>
+          <h2 id="note-preview-title">文章預覽</h2>
+          <p class="modal-intro">儲存前先確認標題、摘要與段落讀起來是否自然。</p>
+        </div>
+        <button id="close-note-preview-btn" class="ghost-btn small" type="button">關閉</button>
+      </div>
+      <article id="note-preview" class="note-preview-article"></article>
     </div>
   </div>
 

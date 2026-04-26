@@ -95,6 +95,11 @@ const els = {
   noteTags: document.getElementById('note-tags'),
   noteSummary: document.getElementById('note-summary'),
   noteContent: document.getElementById('note-content'),
+  notePreviewBtn: document.getElementById('note-preview-btn'),
+  notePreview: document.getElementById('note-preview'),
+  notePreviewModal: document.getElementById('note-preview-modal'),
+  notePreviewBackdrop: document.getElementById('note-preview-backdrop'),
+  closeNotePreviewBtn: document.getElementById('close-note-preview-btn'),
   newNoteBtn: document.getElementById('new-note-btn'),
   deleteNoteBtn: document.getElementById('delete-note-btn'),
   noteSearch: document.getElementById('note-search'),
@@ -622,6 +627,7 @@ async function bootstrap() {
   }
   await loadAllData({ silent: true });
   refreshUi();
+  renderNotePreview();
 }
 
 function bindEvents() {
@@ -668,6 +674,15 @@ function bindEvents() {
   els.newNoteBtn.addEventListener('click', clearNoteForm);
   els.newBookBtn.addEventListener('click', clearBookForm);
   els.noteForm.addEventListener('submit', event => { event.preventDefault(); saveNote().catch(handleError); });
+  els.noteForm.addEventListener('input', event => {
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) renderNotePreview();
+  });
+  els.noteForm.addEventListener('change', event => {
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) renderNotePreview();
+  });
+  els.notePreviewBtn?.addEventListener('click', openNotePreview);
+  els.notePreviewBackdrop?.addEventListener('click', closeNotePreview);
+  els.closeNotePreviewBtn?.addEventListener('click', closeNotePreview);
   els.bookForm.addEventListener('submit', event => { event.preventDefault(); saveBook().catch(handleError); });
   els.deleteNoteBtn.addEventListener('click', () => deleteNote().catch(handleError));
   els.deleteBookBtn.addEventListener('click', () => deleteBook().catch(handleError));
@@ -689,6 +704,7 @@ function bindEvents() {
     if (event.key === 'Escape' && !els.supportModal?.classList.contains('hidden')) closeSupportModal();
     if (event.key === 'Escape' && !els.authSettingsSheet?.classList.contains('hidden')) closeAuthSettings();
     if (event.key === 'Escape' && !els.authInlinePanel?.classList.contains('hidden')) closeAuthInline();
+    if (event.key === 'Escape' && !els.notePreviewModal?.classList.contains('hidden')) closeNotePreview();
   });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && state.supabase && state.currentUser) {
@@ -1322,6 +1338,7 @@ function applyScriptureBlockToNoteContent(items) {
     ...(Array.isArray(state.scriptureAppliedBlocks) ? state.scriptureAppliedBlocks : []).filter(block => block && block !== scriptureBlock),
   ].slice(0, 12);
   els.noteContent.value = next;
+  renderNotePreview();
 }
 
 function renderNotes() {
@@ -1353,6 +1370,63 @@ function renderNotes() {
   updateChapterSourceOptions();
 }
 
+function renderNotePreview() {
+  if (!els.notePreview) return;
+  const title = els.noteTitle?.value.trim() || '未命名札記';
+  const scripture = els.noteScripture?.value.trim();
+  const category = els.noteCategory?.value.trim();
+  const tags = (els.noteTags?.value || '')
+    .split(',')
+    .map(value => value.trim())
+    .filter(Boolean);
+  const summary = els.noteSummary?.value.trim();
+  const content = els.noteContent?.value.trim();
+
+  const metaItems = [
+    `<span>經文｜${escapeHtml(scripture || '尚未填寫經文')}</span>`,
+    `<span>分類｜${escapeHtml(category || '尚未分類')}</span>`,
+    `<span>標籤｜${tags.length ? tags.map(tag => `#${escapeHtml(tag)}`).join(' ') : '尚未設定標籤'}</span>`,
+  ];
+
+  const summaryBlock = `
+    <section class="note-preview-summary">
+      <span class="note-preview-kicker">摘要</span>
+      <p>${escapeHtml(summary || '尚未填寫摘要')}</p>
+    </section>
+  `;
+
+  const contentBlocks = content
+    ? String(content)
+      .split(/\n{2,}/)
+      .map(paragraph => paragraph.trim())
+      .filter(Boolean)
+      .map(paragraph => `<p>${escapeHtml(paragraph).replaceAll('\n', '<br/>')}</p>`)
+      .join('')
+    : '<p class="note-preview-placeholder">尚未輸入內容</p>';
+
+  els.notePreview.innerHTML = `
+    <header class="note-preview-header">
+      <h4>${escapeHtml(title)}</h4>
+      <div class="note-preview-meta">${metaItems.join('')}</div>
+    </header>
+    ${summaryBlock}
+    <section class="note-preview-content">
+      ${contentBlocks}
+    </section>
+  `;
+}
+
+function openNotePreview() {
+  renderNotePreview();
+  els.notePreviewModal?.classList.remove('hidden');
+  els.notePreviewModal?.setAttribute('aria-hidden', 'false');
+}
+
+function closeNotePreview() {
+  els.notePreviewModal?.classList.add('hidden');
+  els.notePreviewModal?.setAttribute('aria-hidden', 'true');
+}
+
 function populateNoteForm(noteId) {
   const note = state.notes.find(item => item.id === noteId);
   if (!note) return;
@@ -1372,6 +1446,7 @@ function populateNoteForm(noteId) {
   } else {
     resetScripturePreview();
   }
+  renderNotePreview();
 }
 
 function clearNoteForm() {
@@ -1380,6 +1455,7 @@ function clearNoteForm() {
   els.deleteNoteBtn.classList.add('hidden');
   resetScripturePreview({ clearApplied: true });
   els.scriptureAppendToContent.checked = true;
+  renderNotePreview();
 }
 
 async function saveNote() {
