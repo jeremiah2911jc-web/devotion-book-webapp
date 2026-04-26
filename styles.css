@@ -524,8 +524,9 @@ input:focus, textarea:focus, select:focus {
 }
 @media (max-width: 760px) {
   .note-preview-modal-card {
-    width: min(100vw - 16px, 720px);
-    max-height: calc(100vh - 32px);
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
     padding: 18px;
     border-radius: 20px;
   }
