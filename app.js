@@ -99,6 +99,7 @@ const els = {
   markdownQuoteBtn: document.getElementById('markdown-quote-btn'),
   markdownScriptureBtn: document.getElementById('markdown-scripture-btn'),
   markdownListBtn: document.getElementById('markdown-list-btn'),
+  markdownDividerBtn: document.getElementById('markdown-divider-btn'),
   noteContent: document.getElementById('note-content'),
   notePreviewBtn: document.getElementById('note-preview-btn'),
   notePreview: document.getElementById('note-preview'),
@@ -688,6 +689,7 @@ function bindEvents() {
   els.markdownQuoteBtn?.addEventListener('click', () => applyMarkdownQuote());
   els.markdownScriptureBtn?.addEventListener('click', () => applyMarkdownScripture());
   els.markdownListBtn?.addEventListener('click', () => applyMarkdownList());
+  els.markdownDividerBtn?.addEventListener('click', () => applyMarkdownDivider());
   els.noteForm.addEventListener('submit', event => { event.preventDefault(); saveNote().catch(handleError); });
   els.noteForm.addEventListener('input', event => {
     if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) renderNotePreview();
@@ -1459,6 +1461,12 @@ function renderMarkdownContent(text = '') {
       continue;
     }
 
+    if (trimmed === '---') {
+      blocks.push('<hr />');
+      index += 1;
+      continue;
+    }
+
     if (/^>\s?/.test(trimmed)) {
       const quoteLines = [];
       while (index < lines.length) {
@@ -1488,7 +1496,12 @@ function renderMarkdownContent(text = '') {
       const current = lines[index];
       const currentTrimmed = current.trim();
       if (!currentTrimmed) break;
-      if (/^##\s+/.test(currentTrimmed) || /^>\s?/.test(currentTrimmed) || /^-\s+/.test(currentTrimmed)) break;
+      if (
+        currentTrimmed === '---'
+        || /^##\s+/.test(currentTrimmed)
+        || /^>\s?/.test(currentTrimmed)
+        || /^-\s+/.test(currentTrimmed)
+      ) break;
       paragraphLines.push(current);
       index += 1;
     }
@@ -1601,6 +1614,30 @@ function applyMarkdownList() {
         selectionStartOffset: 2,
         selectionEndOffset: replacement.length,
       });
+}
+
+function applyMarkdownDivider() {
+  const { value, start } = getNoteContentSelection();
+  const before = value.slice(0, start);
+  const after = value.slice(start);
+  const prefix = !before
+    ? ''
+    : before.endsWith('\n\n')
+      ? ''
+      : before.endsWith('\n')
+        ? '\n'
+        : '\n\n';
+  const suffix = !after
+    ? '\n\n'
+    : after.startsWith('\n\n')
+      ? ''
+      : after.startsWith('\n')
+        ? '\n'
+        : '\n\n';
+  const replacement = `${prefix}---${suffix}`;
+  const nextValue = `${before}${replacement}${after}`;
+  const cursorOffset = replacement.length;
+  updateNoteContentSelection(nextValue, before.length + cursorOffset);
 }
 
 function openNotePreview() {
@@ -2204,7 +2241,7 @@ function buildTemplateCss(templateCode) {
     sermon: ['#f0f3f7', '#253648'],
     testimony: ['#f7ecef', '#5b2f3a'],
   }[templateCode] || ['#f6f0e6', '#44362b'];
-  return `body{font-family:"Noto Serif TC","PingFang TC",serif;line-height:1.8;color:#222;margin:0;padding:0;}main{padding:1.6em;}h1,h2{color:${theme[1]};}h2{margin:1.7em 0 .75em;font-size:1.2em;line-height:1.45;font-weight:700;}a{color:${theme[1]};text-decoration:none;}nav ol{padding-left:1.2em;}.title-page{background:${theme[0]};padding:2em;border-radius:18px;margin-top:2em;} .meta{color:#666;font-size:.95em;} .scripture{margin:.8em 0;color:#555;font-style:italic;} .chapter-summary{margin:1.15em 0 1.6em;padding:1em 1.1em;border:1px solid rgba(160,142,112,.24);border-radius:14px;background:rgba(246,240,230,.68);} .chapter-summary .kicker{display:block;margin-bottom:.45em;color:#7a6753;font-size:.82em;font-weight:700;letter-spacing:.06em;} .chapter-summary p{margin:0;} blockquote{margin:1.15em 0 1.4em;padding:.95em 1.1em;border-left:4px solid rgba(155,122,72,.4);background:rgba(246,240,230,.46);color:#4c4033;} ul{margin:0 0 1.2em;padding-left:1.5em;} li{margin:.35em 0;line-height:1.8;} strong{font-weight:700;color:${theme[1]};} p{margin:0 0 1em;} `;
+  return `body{font-family:"Noto Serif TC","PingFang TC",serif;line-height:1.8;color:#222;margin:0;padding:0;}main{padding:1.6em;}h1,h2{color:${theme[1]};}h2{margin:1.7em 0 .75em;font-size:1.2em;line-height:1.45;font-weight:700;}a{color:${theme[1]};text-decoration:none;}nav ol{padding-left:1.2em;}.title-page{background:${theme[0]};padding:2em;border-radius:18px;margin-top:2em;} .meta{color:#666;font-size:.95em;} .scripture{margin:.8em 0;color:#555;font-style:italic;} .chapter-summary{margin:1.15em 0 1.6em;padding:1em 1.1em;border:1px solid rgba(160,142,112,.24);border-radius:14px;background:rgba(246,240,230,.68);} .chapter-summary .kicker{display:block;margin-bottom:.45em;color:#7a6753;font-size:.82em;font-weight:700;letter-spacing:.06em;} .chapter-summary p{margin:0;} blockquote{margin:1.15em 0 1.4em;padding:.95em 1.1em;border-left:4px solid rgba(155,122,72,.4);background:rgba(246,240,230,.46);color:#4c4033;} hr{margin:1.6em 0;border:0;border-top:1px solid rgba(155,122,72,.35);} ul{margin:0 0 1.2em;padding-left:1.5em;} li{margin:.35em 0;line-height:1.8;} strong{font-weight:700;color:${theme[1]};} p{margin:0 0 1em;} `;
 }
 
 function containerXml() {
@@ -2805,6 +2842,7 @@ function injectReaderViewStyles() {
       #view-reader .reader-flow h1, #view-reader .reader-flow h2 { margin: 0 0 1.15em; line-height: 1.35; }
       #view-reader .reader-flow h2 { font-size: 1.18em; color: #21484c; }
       #view-reader .reader-flow p { margin: 0 0 1.05em; }
+      #view-reader .reader-flow hr { margin: 1.5em 0; border: 0; border-top: 1px solid rgba(155,122,72,.35); }
       #view-reader .reader-flow ul { margin: 0 0 1.15em; padding-left: 1.45em; }
       #view-reader .reader-flow li { margin: .35em 0; line-height: 1.85; }
       #view-reader .reader-flow strong { font-weight: 700; color: inherit; }

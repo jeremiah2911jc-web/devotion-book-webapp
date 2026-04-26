@@ -569,6 +569,12 @@ input:focus, textarea:focus, select:focus {
   color: #4f4135;
   line-height: 1.9;
 }
+.note-preview-content hr {
+  width: 100%;
+  margin: 6px 0;
+  border: 0;
+  border-top: 1px solid rgba(136, 109, 89, 0.32);
+}
 .note-preview-content ul {
   margin: 0;
   padding-left: 1.4em;
@@ -622,6 +628,10 @@ input:focus, textarea:focus, select:focus {
 
   .note-preview-content blockquote {
     padding: 12px 14px;
+  }
+
+  .note-preview-content hr {
+    margin: 4px 0;
   }
 
   .note-preview-summary {
