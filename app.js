@@ -717,11 +717,9 @@ function bindEvents() {
   els.deleteBookBtn.addEventListener('click', () => deleteBook().catch(handleError));
   els.noteSearch.addEventListener('input', () => { state.noteSearch = els.noteSearch.value.trim().toLowerCase(); renderNotes(); });
   els.noteScripture.addEventListener('input', handleScriptureInput);
-  els.fetchScriptureBtn.addEventListener('click', () => fetchAndRenderScriptures({ force: true }).catch(handleError));
+  els.fetchScriptureBtn.addEventListener('click', () => fetchAndRenderScriptures({ force: true, syncToContent: true }).catch(handleError));
   els.scriptureAppendToContent.addEventListener('change', () => {
-    if (els.scriptureAppendToContent.checked && els.scripturePreview.dataset.serialized) {
-      applyScriptureBlockToNoteContent(JSON.parse(els.scripturePreview.dataset.serialized));
-    }
+    renderNotePreview();
   });
   els.addChapterBtn.addEventListener('click', () => addChapterFromSelectedNote().catch(handleError));
   els.chapterSourceNote.addEventListener('change', renderSelectedNotePreview);
@@ -1210,7 +1208,7 @@ function handleScriptureInput() {
     return;
   }
   state.scriptureFetchTimer = setTimeout(() => {
-    fetchAndRenderScriptures().catch(handleError);
+    fetchAndRenderScriptures({ syncToContent: false }).catch(handleError);
   }, 650);
 }
 
@@ -1283,7 +1281,7 @@ async function fetchScriptureReference(reference, signal) {
   return result;
 }
 
-async function fetchAndRenderScriptures({ force = false } = {}) {
+async function fetchAndRenderScriptures({ force = false, syncToContent = false } = {}) {
   const references = normalizeScriptureReferences(els.noteScripture.value);
   if (!references.length) {
     resetScripturePreview();
@@ -1309,7 +1307,7 @@ async function fetchAndRenderScriptures({ force = false } = {}) {
       </article>
     `).join('');
     setScriptureStatus(`已帶出 ${fetched.length} 處經文。`);
-    if (els.scriptureAppendToContent.checked) {
+    if (syncToContent && els.scriptureAppendToContent.checked) {
       applyScriptureBlockToNoteContent(fetched);
     }
   } catch (error) {
@@ -1735,7 +1733,7 @@ function populateNoteForm(noteId) {
   els.noteContent.value = stripScriptureMarkers(note.content || '');
   els.deleteNoteBtn.classList.remove('hidden');
   if (note.scripture_reference) {
-    fetchAndRenderScriptures({ force: true }).catch(() => setScriptureStatus('經文預覽暫時無法載入。', true));
+    fetchAndRenderScriptures({ force: true, syncToContent: false }).catch(() => setScriptureStatus('經文預覽暫時無法載入。', true));
   } else {
     resetScripturePreview();
   }
