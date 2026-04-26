@@ -1452,16 +1452,15 @@ function renderMarkdownInline(text = '') {
 }
 
 function renderMarkdownContent(text = '') {
-  const normalized = String(text || '').replace(/\r\n/g, '\n').trim();
-  if (!normalized) return '';
+  const normalized = String(text || '').replace(/\r\n/g, '\n');
+  if (!normalized.trim()) return '';
 
   const lines = normalized.split('\n');
   const blocks = [];
   let index = 0;
 
   while (index < lines.length) {
-    const line = lines[index];
-    const trimmed = line.trim();
+    const trimmed = lines[index].trim();
 
     if (!trimmed) {
       index += 1;
@@ -1483,9 +1482,10 @@ function renderMarkdownContent(text = '') {
     if (/^>\s?/.test(trimmed)) {
       const quoteLines = [];
       while (index < lines.length) {
-        const current = lines[index].trim();
-        if (!current || !/^>\s?/.test(current)) break;
-        quoteLines.push(current.replace(/^>\s?/, ''));
+        const currentLine = lines[index];
+        const currentTrimmed = currentLine.trim();
+        if (!currentTrimmed || !/^>\s?/.test(currentTrimmed)) break;
+        quoteLines.push(currentTrimmed.replace(/^>\s?/, ''));
         index += 1;
       }
       blocks.push(`<blockquote>${renderMarkdownInline(quoteLines.join('\n')).replaceAll('\n', '<br/>')}</blockquote>`);
@@ -1495,9 +1495,10 @@ function renderMarkdownContent(text = '') {
     if (/^-\s+/.test(trimmed)) {
       const items = [];
       while (index < lines.length) {
-        const current = lines[index].trim();
-        if (!current || !/^-\s+/.test(current)) break;
-        items.push(`<li>${renderMarkdownInline(current.replace(/^-\s+/, '').trim())}</li>`);
+        const currentLine = lines[index];
+        const currentTrimmed = currentLine.trim();
+        if (!currentTrimmed || !/^-\s+/.test(currentTrimmed)) break;
+        items.push(`<li>${renderMarkdownInline(currentTrimmed.replace(/^-\s+/, '').trim())}</li>`);
         index += 1;
       }
       blocks.push(`<ul>${items.join('')}</ul>`);
@@ -1506,8 +1507,8 @@ function renderMarkdownContent(text = '') {
 
     const paragraphLines = [];
     while (index < lines.length) {
-      const current = lines[index];
-      const currentTrimmed = current.trim();
+      const currentLine = lines[index];
+      const currentTrimmed = currentLine.trim();
       if (!currentTrimmed) break;
       if (
         currentTrimmed === '---'
@@ -1515,7 +1516,7 @@ function renderMarkdownContent(text = '') {
         || /^>\s?/.test(currentTrimmed)
         || /^-\s+/.test(currentTrimmed)
       ) break;
-      paragraphLines.push(current);
+      paragraphLines.push(currentLine.trimEnd());
       index += 1;
     }
     blocks.push(`<p>${renderMarkdownInline(paragraphLines.join('\n')).replaceAll('\n', '<br/>')}</p>`);
