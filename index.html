@@ -451,20 +451,25 @@
               <label>後記
                 <textarea id="book-afterword" rows="4" placeholder="輸入後記"></textarea>
               </label>
-              <label class="checkbox-row">
-                <input id="book-toc-enabled" type="checkbox" checked />
-                <p id="book-save-feedback" class="caption hidden" aria-live="polite"></p>
-                <span>匯出時包含目錄</span>
-              </label>
-              <label class="checkbox-row">
-                <input id="book-include-chapter-summary" type="checkbox" />
-                <span>成書時顯示章節摘要</span>
-              </label>
-              <p class="caption">勾選後，匯出 EPUB 時會在每章開頭顯示該札記摘要。</p>
+              <section class="book-export-options" aria-labelledby="book-export-options-title">
+                <h3 id="book-export-options-title">匯出選項</h3>
+                <label class="checkbox-row">
+                  <input id="book-toc-enabled" type="checkbox" checked />
+                  <span>匯出時包含目錄</span>
+                </label>
+                <div class="book-export-option">
+                  <label class="checkbox-row">
+                    <input id="book-include-chapter-summary" type="checkbox" />
+                    <span>成書時顯示章節摘要</span>
+                  </label>
+                  <p class="caption book-export-option-caption">勾選後，匯出 EPUB 時會在每章開頭顯示該札記摘要。</p>
+                </div>
+              </section>
               <div class="row gap-sm wrap">
                 <button type="submit" class="primary-btn">儲存書籍</button>
                 <button type="button" id="delete-book-btn" class="danger-btn hidden">刪除書籍</button>
               </div>
+              <p id="book-save-feedback" class="caption book-save-feedback hidden" aria-live="polite"></p>
             </form>
           </section>
 
@@ -501,9 +506,10 @@
                 <button id="export-epub-btn" class="primary-btn" type="button">匯出 EPUB</button>
               </div>
               <div id="export-success-actions" class="export-success-actions hidden">
-                <p>EPUB 已完成，並已加入書櫃</p>
+                <p id="export-success-message">EPUB 已完成，並已加入書櫃。</p>
                 <div class="row gap-sm wrap">
                   <button id="read-exported-book-btn" class="primary-btn" type="button">立即閱讀</button>
+                  <button id="download-exported-book-btn" class="ghost-btn" type="button">下載 EPUB</button>
                   <button id="go-library-btn" class="secondary-btn" type="button">前往書櫃</button>
                 </div>
               </div>

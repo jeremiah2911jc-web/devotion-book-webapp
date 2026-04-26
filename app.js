@@ -130,6 +130,9 @@ const els = {
   chaptersList: document.getElementById('chapters-list'),
   createSnapshotBtn: document.getElementById('create-snapshot-btn'),
   exportEpubBtn: document.getElementById('export-epub-btn'),
+  exportSuccessActions: document.getElementById('export-success-actions'),
+  exportSuccessMessage: document.getElementById('export-success-message'),
+  downloadExportedBookBtn: document.getElementById('download-exported-book-btn'),
   snapshotsList: document.getElementById('snapshots-list'),
   statusStorage: document.getElementById('status-storage'),
   statusSync: document.getElementById('status-sync'),
@@ -231,6 +234,7 @@ const state = {
   todayDevotions: null,
   todayDevotionsStatus: 'idle',
   todayDevotionsPromise: null,
+  latestExportedBook: null,
 };
 
 function loadJson(key, fallback) {
@@ -1699,7 +1703,10 @@ function renderSelectedBookPanel() {
   if (els.statusChapterCount) els.statusChapterCount.textContent = String(chapterCount);
   els.selectedBookEmpty.classList.toggle('hidden', !!book);
   els.selectedBookPanel.classList.toggle('hidden', !book);
-  if (!book) return;
+  if (!book) {
+    renderExportSuccessActions(null);
+    return;
+  }
   updateChapterSourceOptions();
   els.bookCoverPreview.innerHTML = `
     ${book.cover_data_url ? `<img src="${book.cover_data_url}" alt="封面" />` : ''}
@@ -1713,6 +1720,7 @@ function renderSelectedBookPanel() {
   renderSelectedNotePreview();
   renderTocPreview(book);
   renderChaptersList(book);
+  renderExportSuccessActions(state.latestExportedBook?.sourceBookId === book.id ? state.latestExportedBook : null);
 }
 
 function renderChaptersList(book) {
@@ -1953,20 +1961,27 @@ async function exportSelectedBookEpub() {
   if (!getBookProjectChapters(book).length) throw new Error('\u8acb\u81f3\u5c11\u52a0\u5165\u4e00\u7ae0\u5167\u5bb9\u5f8c\u518d\u532f\u51fa EPUB\u3002');
   const snapshot = buildBookSnapshot(book);
   const epubBlob = await buildEpub(snapshot);
-  downloadBlob(`${slugifyFilename(book.title || 'devotion-book')}.epub`, epubBlob);
+  const exportFilename = `${slugifyFilename(book.title || 'devotion-book')}.epub`;
   let libraryBook = null;
+  let exportMessage = 'EPUB 已完成，請點選下載 EPUB 保存檔案。';
   if (state.supabase && state.currentUser) {
     try {
       libraryBook = await createCloudLibraryBook(book, snapshot, epubBlob);
+      exportMessage = 'EPUB 已完成，並已加入書櫃。';
     } catch (error) {
       console.warn('cloud library sync skipped after EPUB export', error);
-      showToast(`EPUB \u5df2\u4e0b\u8f09\uff0c\u4f46\u96f2\u7aef\u66f8\u6ac3\u540c\u6b65\u5931\u6557\uff1a${error.message}`);
+      exportMessage = `EPUB 已完成，但加入書櫃失敗：${error.message}`;
     }
-  } else {
-    showToast('EPUB \u5df2\u4e0b\u8f09\u3002\u672c\u6a5f\u6a21\u5f0f\u4e0b\u4e0d\u6703\u540c\u6b65\u5230\u96f2\u7aef\u66f8\u6ac3\u3002');
   }
-  renderExportSuccessActions(libraryBook);
-  if (libraryBook) showToast('EPUB \u5df2\u5b8c\u6210\uff0c\u4e26\u5df2\u52a0\u5165\u66f8\u6ac3\u3002');
+  state.latestExportedBook = {
+    sourceBookId: book.id,
+    filename: exportFilename,
+    blob: epubBlob,
+    libraryBookId: libraryBook?.id || '',
+    message: exportMessage,
+  };
+  renderExportSuccessActions(state.latestExportedBook);
+  showToast(exportMessage);
 }
 
 function slugifyFilename(value = '') {
@@ -3180,14 +3195,29 @@ async function deleteCachedEpub(bookId) {
 }
 
 function renderExportSuccessActions(libraryBook) {
-  const box = document.getElementById('export-success-actions');
+  const box = els.exportSuccessActions;
   if (!box) return;
   if (!libraryBook) {
     box.classList.add('hidden');
     return;
   }
-  cloudLibrary.selectedBookId = libraryBook.id;
+  const canOpenLibraryBook = !!libraryBook.libraryBookId;
+  if (els.exportSuccessMessage) {
+    els.exportSuccessMessage.textContent = libraryBook.message || 'EPUB 已完成。';
+  }
+  document.getElementById('read-exported-book-btn')?.classList.toggle('hidden', !canOpenLibraryBook);
+  document.getElementById('go-library-btn')?.classList.toggle('hidden', !canOpenLibraryBook);
+  if (canOpenLibraryBook) cloudLibrary.selectedBookId = libraryBook.libraryBookId;
   box.classList.remove('hidden');
+}
+
+function downloadLatestExportedBook() {
+  const exported = state.latestExportedBook;
+  if (!(exported?.blob && exported?.filename)) {
+    throw new Error('目前沒有可下載的 EPUB，請先完成匯出。');
+  }
+  downloadBlob(exported.filename, exported.blob);
+  showToast('EPUB 已下載。');
 }
 
 document.addEventListener('click', event => {
@@ -3202,7 +3232,8 @@ document.addEventListener('click', event => {
   if (downloadBook) downloadLibraryBookEpub(downloadBook.dataset.downloadLibraryEpub).catch(handleError);
   const deleteBookBtn = event.target.closest('[data-delete-library-book]');
   if (deleteBookBtn) deleteLibraryBook(deleteBookBtn.dataset.deleteLibraryBook).catch(handleError);
-  if (event.target.id === 'read-exported-book-btn' && cloudLibrary.selectedBookId) openLibraryBook(cloudLibrary.selectedBookId).catch(handleError);
+  if (event.target.id === 'read-exported-book-btn' && state.latestExportedBook?.libraryBookId) openLibraryBook(state.latestExportedBook.libraryBookId).catch(handleError);
+  if (event.target.id === 'download-exported-book-btn') downloadLatestExportedBook();
   if (event.target.id === 'go-library-btn') setView('library');
   if (event.target.id === 'library-empty-action') setView('books');
   if (event.target.id === 'reader-back-library') setView('library');
