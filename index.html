@@ -1,9 +1,9 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>我的靈修書房</title>
+  <title>???耨?豢</title>
   <link rel="stylesheet" href="./styles.css?v=markdown-line-parser-20260426" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -13,44 +13,44 @@
       <div class="auth-gate-body">
         <div class="auth-gate-welcome">
           <div class="auth-gate-copy-wrap">
-            <h2 class="auth-gate-title">我的靈修書房</h2>
-            <p class="auth-gate-subtitle">整理每日札記，慢慢編成一本書</p>
+            <h2 class="auth-gate-title">???耨?豢</h2>
+            <p class="auth-gate-subtitle">?渡?瘥?剛?嚗?Ｙ楊???祆</p>
             <div class="auth-gate-divider" aria-hidden="true">
               <span></span>
               <i class="asset-icon auth-divider-icon"></i>
               <span></span>
             </div>
             <div class="auth-gate-copy">
-              <p>建立免費帳戶後，可在手機與桌機間同步資料。</p>
+              <p>撱箇??祥撣單敺??臬????璈??郊鞈???/p>
             </div>
           </div>
         </div>
 
         <div class="auth-gate-actions">
-          <button id="open-register-btn" class="auth-cta auth-cta-primary" type="button">建立免費帳戶</button>
-          <button id="open-login-btn" class="auth-cta auth-cta-secondary" type="button">登入已有帳戶</button>
+          <button id="open-register-btn" class="auth-cta auth-cta-primary" type="button">撱箇??祥撣單</button>
+          <button id="open-login-btn" class="auth-cta auth-cta-secondary" type="button">?餃撌脫?撣單</button>
         </div>
 
         <div id="auth-inline-panel" class="modal auth-input-modal hidden" aria-hidden="true" aria-live="polite">
           <div id="auth-inline-backdrop" class="modal-backdrop"></div>
           <div class="modal-card auth-input-modal-card">
             <div class="panel-header auth-modal-header">
-              <h3 id="auth-inline-title">建立帳戶</h3>
-              <button id="close-auth-inline-btn" class="ghost-btn small" type="button">關閉</button>
+              <h3 id="auth-inline-title">撱箇?撣單</h3>
+              <button id="close-auth-inline-btn" class="ghost-btn small" type="button">??</button>
             </div>
-            <p id="auth-inline-intro" class="modal-intro">輸入 Email 與密碼後即可建立帳戶或登入。</p>
+            <p id="auth-inline-intro" class="modal-intro">頛詨 Email ??蝣澆??喳撱箇?撣單??乓?/p>
             <div class="form-stack">
               <label>Email
                 <input id="gate-auth-email" type="email" placeholder="name@example.com" />
               </label>
               <label>Password
-                <input id="gate-auth-password" type="password" placeholder="至少 6 碼" />
+                <input id="gate-auth-password" type="password" placeholder="?喳? 6 蝣? />
               </label>
               <div class="row wrap gap-sm auth-modal-actions">
-                <button id="gate-submit-btn" class="primary-btn" type="button">建立帳戶</button>
+                <button id="gate-submit-btn" class="primary-btn" type="button">撱箇?撣單</button>
               </div>
               <div class="row wrap gap-sm auth-modal-secondary-actions">
-                <button id="gate-reset-password-btn" class="ghost-btn subtle-action hidden" type="button">忘記密碼 / 重設密碼</button>
+                <button id="gate-reset-password-btn" class="ghost-btn subtle-action hidden" type="button">敹?撖Ⅳ / ?身撖Ⅳ</button>
               </div>
             </div>
           </div>
@@ -60,20 +60,20 @@
       <div id="auth-settings-sheet" class="auth-settings-sheet hidden">
         <section class="panel auth-settings-card">
           <div class="panel-header">
-            <h3>登入設定</h3>
-            <button id="close-auth-settings-btn" class="ghost-btn small" type="button">關閉</button>
+            <h3>?餃閮剖?</h3>
+            <button id="close-auth-settings-btn" class="ghost-btn small" type="button">??</button>
           </div>
           <label>Supabase URL
             <input id="gate-supabase-url" placeholder="https://xxxx.supabase.co" />
           </label>
           <label>Supabase Anon Key
-            <textarea id="gate-supabase-anon-key" rows="4" placeholder="貼上 anon key"></textarea>
+            <textarea id="gate-supabase-anon-key" rows="4" placeholder="鞎潔? anon key"></textarea>
           </label>
           <div class="row gap-sm wrap">
-            <button id="gate-save-config-btn" class="secondary-btn" type="button">儲存設定</button>
-            <button id="gate-clear-config-btn" class="ghost-btn" type="button">清除設定</button>
+            <button id="gate-save-config-btn" class="secondary-btn" type="button">?脣?閮剖?</button>
+            <button id="gate-clear-config-btn" class="ghost-btn" type="button">皜閮剖?</button>
           </div>
-          <p class="caption">若已完成 Supabase 專案與 Auth 設定，儲存後就會啟用正式註冊與登入。</p>
+          <p class="caption">?亙歇摰? Supabase 撠???Auth 閮剖?嚗摮?撠望??甇??閮餃???乓?/p>
         </section>
       </div>
     </div>
@@ -84,7 +84,7 @@
       <div class="sidebar-brand">
         <div class="sidebar-brand-mark" aria-hidden="true">Logo</div>
         <div class="sidebar-brand-copy">
-          <h1>我的靈修書房</h1>
+          <h1>???耨?豢</h1>
           <p class="muted">Desktop Dashboard</p>
         </div>
       </div>
@@ -92,86 +92,86 @@
       <nav class="desktop-sidebar-nav" aria-label="Desktop navigation">
         <button class="desktop-sidebar-link active" data-view="dashboard" type="button">
           <span class="nav-icon asset-icon asset-sprite-system icon-home" aria-hidden="true"></span>
-          <span>總覽</span>
+          <span>蝮質汗</span>
         </button>
         <button class="desktop-sidebar-link" data-view="notes" type="button">
           <span class="nav-icon asset-icon asset-sprite-system icon-note" aria-hidden="true"></span>
-          <span>札記</span>
+          <span>?剛?</span>
         </button>
         <button class="desktop-sidebar-link" data-view="books" type="button">
           <span class="nav-icon asset-icon asset-sprite-system icon-book" aria-hidden="true"></span>
-          <span>書籍</span>
+          <span>?貊?</span>
         </button>
         <button class="desktop-sidebar-link" data-view="library" type="button">
           <span class="nav-icon asset-icon asset-sprite-system icon-library" aria-hidden="true"></span>
-          <span>書櫃</span>
+          <span>?豢?</span>
         </button>
         <button class="desktop-sidebar-link is-muted" type="button" disabled>
           <span class="desktop-sidebar-dot" aria-hidden="true"></span>
-          <span>標籤</span>
+          <span>璅惜</span>
         </button>
         <button class="desktop-sidebar-link is-muted" type="button" disabled>
           <span class="desktop-sidebar-dot" aria-hidden="true"></span>
-          <span>統計</span>
+          <span>蝯梯?</span>
         </button>
         <button class="desktop-sidebar-link is-muted" type="button" disabled>
           <span class="desktop-sidebar-dot" aria-hidden="true"></span>
-          <span>匯出</span>
+          <span>?臬</span>
         </button>
         <button class="desktop-sidebar-link is-muted" data-open-account-settings type="button">
           <span class="nav-icon asset-icon asset-sprite-system icon-gear" aria-hidden="true"></span>
-          <span>設定</span>
+          <span>閮剖?</span>
         </button>
       </nav>
 
       <div>
-        <h1>我的靈修書房</h1>
-        <p class="muted">整理每日札記，慢慢編成一本書。</p>
+        <h1>???耨?豢</h1>
+        <p class="muted">?渡?瘥?剛?嚗?Ｙ楊???祆??/p>
       </div>
 
       <section class="panel compact" hidden>
         <div class="panel-header">
-          <h2>連線設定</h2>
-          <button id="toggle-config-btn" class="ghost-btn small" type="button">展開</button>
+          <h2>???閮剖?</h2>
+          <button id="toggle-config-btn" class="ghost-btn small" type="button">撅?</button>
         </div>
         <div id="config-panel" class="hidden">
           <label>Supabase URL
             <input id="supabase-url" placeholder="https://xxxx.supabase.co" />
           </label>
           <label>Supabase Anon Key
-            <textarea id="supabase-anon-key" rows="4" placeholder="貼上 anon key"></textarea>
+            <textarea id="supabase-anon-key" rows="4" placeholder="鞎潔? anon key"></textarea>
           </label>
           <div class="row gap-sm wrap">
-            <button id="save-config-btn" class="secondary-btn" type="button">儲存設定</button>
-            <button id="clear-config-btn" class="ghost-btn" type="button">清除設定</button>
+            <button id="save-config-btn" class="secondary-btn" type="button">?脣?閮剖?</button>
+            <button id="clear-config-btn" class="ghost-btn" type="button">皜閮剖?</button>
           </div>
-          <p class="caption">若已完成 Supabase 專案與 Auth 設定，儲存後就會啟用正式註冊與登入。</p>
+          <p class="caption">?亙歇摰? Supabase 撠???Auth 閮剖?嚗摮?撠望??甇??閮餃???乓?/p>
         </div>
       </section>
 
       <section class="panel compact" id="auth-card" hidden>
         <div class="panel-header">
-          <h2>登入</h2>
+          <h2>?餃</h2>
         </div>
         <div id="auth-forms">
           <label>Email
             <input id="auth-email" type="email" placeholder="name@example.com" />
           </label>
           <label>Password
-            <input id="auth-password" type="password" placeholder="至少 6 碼" />
+            <input id="auth-password" type="password" placeholder="?喳? 6 蝣? />
           </label>
           <div class="row wrap gap-sm">
-            <button id="register-btn" class="primary-btn" type="button">建立帳戶</button>
-            <button id="login-btn" class="secondary-btn" type="button">登入</button>
+            <button id="register-btn" class="primary-btn" type="button">撱箇?撣單</button>
+            <button id="login-btn" class="secondary-btn" type="button">?餃</button>
             <button id="magic-link-btn" class="ghost-btn" type="button" hidden aria-hidden="true" tabindex="-1">Magic Link</button>
           </div>
           <div class="row wrap gap-sm">
-            <button id="reset-password-btn" class="ghost-btn subtle-action" type="button">忘記密碼 / 重設密碼</button>
+            <button id="reset-password-btn" class="ghost-btn subtle-action" type="button">敹?撖Ⅳ / ?身撖Ⅳ</button>
           </div>
-          <p class="caption">如要改用 Supabase Auth，請使用信箱與密碼登入。</p>
+          <p class="caption">憒??寧 Supabase Auth嚗?雿輻靽∠拳??蝣潛?乓?/p>
         </div>
         <div id="auth-user" class="hidden">
-          <p id="current-user-text" class="caption">尚未登入</p>
+          <p id="current-user-text" class="caption">撠?餃</p>
         </div>
       </section>
 
@@ -181,17 +181,17 @@
             <span class="account-avatar desktop-sidebar-avatar" aria-hidden="true">
               <img src="./assets/ui/account-sprout.png" alt="" decoding="async" />
             </span>
-            <div class="desktop-sidebar-footer-label">帳號</div>
+            <div class="desktop-sidebar-footer-label">撣唾?</div>
           </div>
           <div class="desktop-sidebar-account-main">
             <div class="desktop-sidebar-account-copy">
-              <strong id="desktop-account-email">尚未登入</strong>
-              <p>願你的文字成為祝福</p>
+              <strong id="desktop-account-email">撠?餃</strong>
+              <p>憿???摮??箇?蝳?/p>
             </div>
           </div>
           <div class="desktop-sidebar-account-actions">
-            <button class="ghost-btn small" data-open-account-settings type="button">帳號設定</button>
-            <button id="desktop-sidebar-signout-btn" class="ghost-btn small" type="button">登出</button>
+            <button class="ghost-btn small" data-open-account-settings type="button">撣唾?閮剖?</button>
+            <button id="desktop-sidebar-signout-btn" class="ghost-btn small" type="button">?餃</button>
           </div>
         </section>
       </div>
@@ -200,19 +200,19 @@
     <main class="main">
       <header class="topbar">
         <div>
-          <h2 id="view-title">總覽</h2>
+          <h2 id="view-title">蝮質汗</h2>
           <p id="view-subtitle" class="muted hidden"></p>
         </div>
         <div class="row gap-sm wrap topbar-actions">
           <div class="desktop-topbar-sync-pill">
-            <strong id="topbar-sync-status-text">同步狀態</strong>
-            <span id="topbar-sync-detail-text">目前資料只保存在這台裝置。</span>
+            <strong id="topbar-sync-status-text">?郊???/strong>
+            <span id="topbar-sync-detail-text">?桀?鞈??芯?摮?鋆蔭??/span>
           </div>
-          <button id="topbar-force-sync-btn" class="ghost-btn desktop-topbar-sync-btn" type="button">立即同步</button>
-          <button class="ghost-btn icon-only desktop-topbar-notify" type="button" aria-label="通知">
+          <button id="topbar-force-sync-btn" class="ghost-btn desktop-topbar-sync-btn" type="button">蝡?郊</button>
+          <button class="ghost-btn icon-only desktop-topbar-notify" type="button" aria-label="?">
             <span class="desktop-topbar-notify-dot" aria-hidden="true"></span>
           </button>
-          <button id="open-account-settings-btn" class="ghost-btn icon-only" type="button" aria-label="帳號設定">
+          <button id="open-account-settings-btn" class="ghost-btn icon-only" type="button" aria-label="撣唾?閮剖?">
             <span class="asset-icon asset-sprite-system icon-gear" aria-hidden="true"></span>
           </button>
         </div>
@@ -222,8 +222,8 @@
         <section class="dashboard-home">
           <section class="home-hero">
             <div class="hero-copy">
-              <h1>我的靈修書房</h1>
-              <p>整理每日札記，慢慢編成一本書</p>
+              <h1>???耨?豢</h1>
+              <p>?渡?瘥?剛?嚗?Ｙ楊???祆</p>
             </div>
             <div class="hero-illustration" aria-hidden="true">
               <img src="./assets/ui/hero-illustration.png" alt="" decoding="async" />
@@ -235,16 +235,16 @@
               <div class="sync-banner-main">
                 <span class="sync-banner-icon asset-icon asset-sprite-system icon-cloud-check" aria-hidden="true"></span>
                 <div>
-                  <strong id="sync-status-text">同步狀態</strong>
-                  <p id="sync-last-time">尚未同步</p>
+                  <strong id="sync-status-text">?郊???/strong>
+                  <p id="sync-last-time">撠?郊</p>
                 </div>
               </div>
-              <span id="sync-detail-text" class="sync-detail hidden">登入同一個雲端帳號後，可在多裝置同步。</span>
+              <span id="sync-detail-text" class="sync-detail hidden">?餃???蝡臬董??嚗?典?鋆蔭?郊??/span>
             </div>
             <button id="force-sync-btn" class="primary-btn sync-btn" type="button">
               <span class="sync-btn-content">
                 <span class="asset-icon asset-sprite-system icon-sync" aria-hidden="true"></span>
-                <span>立即同步</span>
+                <span>蝡?郊</span>
               </span>
             </button>
           </section>
@@ -253,22 +253,22 @@
             <article class="summary-card">
               <span class="summary-icon summary-icon-notes" aria-hidden="true"></span>
               <div class="summary-content">
-                <span>札記</span>
-                <strong><span id="summary-notes-count">0</span><small>篇</small></strong>
+                <span>?剛?</span>
+                <strong><span id="summary-notes-count">0</span><small>蝭?/small></strong>
               </div>
             </article>
             <article class="summary-card">
               <span class="summary-icon summary-icon-books" aria-hidden="true"></span>
               <div class="summary-content">
-                <span>書籍</span>
-                <strong><span id="summary-books-count">0</span><small>本</small></strong>
+                <span>?貊?</span>
+                <strong><span id="summary-books-count">0</span><small>??/small></strong>
               </div>
             </article>
             <article class="summary-card">
               <span class="summary-icon summary-icon-library" aria-hidden="true"></span>
               <div class="summary-content">
-                <span>書櫃</span>
-                <strong><span id="library-count">0</span><small>已完成</small></strong>
+                <span>?豢?</span>
+                <strong><span id="library-count">0</span><small>撌脣???/small></strong>
               </div>
             </article>
           </section>
@@ -276,12 +276,12 @@
           <section class="home-primary-actions">
             <button id="quick-new-note" class="hero-action-card hero-action-primary" type="button">
               <span class="hero-action-text">
-                <strong>寫一篇札記</strong>
+                <strong>撖思?蝭閮?/strong>
               </span>
             </button>
             <button id="quick-new-book" class="hero-action-card hero-action-secondary" type="button">
               <span class="hero-action-text">
-                <strong>建立一本書</strong>
+                <strong>撱箇?銝?祆</strong>
               </span>
             </button>
           </section>
@@ -289,51 +289,51 @@
           <section class="dashboard-lower-grid">
             <section class="panel home-recent-panel">
               <div class="panel-header">
-                <h2>最近編輯札記</h2>
-                <button id="view-all-notes-btn" class="ghost-btn small" type="button">查看全部</button>
+                <h2>?餈楊頛舀閮?/h2>
+                <button id="view-all-notes-btn" class="ghost-btn small" type="button">?亦??券</button>
               </div>
               <div class="home-recent-group">
-                <div id="recent-notes" class="list-stack empty-state">目前還沒有札記。</div>
+                <div id="recent-notes" class="list-stack empty-state">?桀????閮?/div>
               </div>
               <section class="home-recent-group home-recent-books-group" aria-labelledby="recent-books-heading">
-                <h3 id="recent-books-heading" class="home-recent-subtitle">最近編輯書冊</h3>
-                <div id="recent-books" class="list-stack empty-state">目前還沒有書籍。</div>
+                <h3 id="recent-books-heading" class="home-recent-subtitle">?餈楊頛舀??/h3>
+                <div id="recent-books" class="list-stack empty-state">?桀????蝐?/div>
               </section>
             </section>
 
             <aside class="dashboard-side-column">
               <section id="dashboard-bookshelf-card" class="panel home-bookshelf-card desktop-only-panel">
                 <div class="panel-header">
-                  <h2>書櫃</h2>
+                  <h2>?豢?</h2>
                 </div>
                 <div id="desktop-bookshelf-list" class="bookshelf-grid">
                   <div class="bookshelf-empty-state">
-                    <strong>尚未建立書籍</strong>
-                    <p>建立一本書，開始整理你的札記</p>
+                    <strong>撠撱箇??貊?</strong>
+                    <p>撱箇?銝?祆嚗?憪???閮?/p>
                   </div>
                 </div>
               </section>
 
               <section class="panel home-today-devotion-card desktop-only-panel">
                 <div class="panel-header today-devotion-header">
-                  <h2>今日默想</h2>
-                  <span id="today-devotion-date" class="caption today-devotion-date">今日日期</span>
+                  <h2>隞暺</h2>
+                  <span id="today-devotion-date" class="caption today-devotion-date">隞?交?</span>
                 </div>
                 <div class="today-devotion-copy">
                   <div class="today-devotion-section">
-                    <span class="today-devotion-label">主題</span>
-                    <h3 id="today-devotion-theme" class="today-devotion-theme">尚未載入今日默想內容</h3>
+                    <span class="today-devotion-label">銝駁?</span>
+                    <h3 id="today-devotion-theme" class="today-devotion-theme">撠頛隞暺?批捆</h3>
                   </div>
                   <div class="today-devotion-section">
-                    <span class="today-devotion-label">金句</span>
-                    <p id="today-devotion-scripture" class="today-devotion-quote">今日默想</p>
+                    <span class="today-devotion-label">?</span>
+                    <p id="today-devotion-scripture" class="today-devotion-quote">隞暺</p>
                   </div>
                   <div class="today-devotion-section">
-                    <span class="today-devotion-label">默想</span>
-                    <p id="today-devotion-summary" class="today-devotion-summary">請先建立或匯入今日默想資料庫</p>
+                    <span class="today-devotion-label">暺</span>
+                    <p id="today-devotion-summary" class="today-devotion-summary">隢?撱箇???乩??仿??唾??澈</p>
                   </div>
                 </div>
-                <button id="today-devotion-note-btn" class="ghost-btn" type="button">寫成札記</button>
+                <button id="today-devotion-note-btn" class="ghost-btn" type="button">撖急??剛?</button>
               </section>
             </aside>
           </section>
@@ -344,11 +344,11 @@
                 <img src="./assets/ui/account-sprout.png" alt="" decoding="async" />
               </span>
               <div class="account-summary-copy">
-                <strong id="account-email">尚未登入</strong>
-                <p>願你的文字成為祝福</p>
+                <strong id="account-email">撠?餃</strong>
+                <p>憿???摮??箇?蝳?/p>
               </div>
             </div>
-            <button id="account-signout-btn" class="ghost-btn account-settings-trigger account-signout-btn" type="button" aria-label="登出">登出</button>
+            <button id="account-signout-btn" class="ghost-btn account-settings-trigger account-signout-btn" type="button" aria-label="?餃">?餃</button>
           </section>
 
           <span id="summary-snapshots-count" class="hidden">0</span>
@@ -359,67 +359,67 @@
         <div class="grid two-col align-start">
           <section class="panel">
             <div class="panel-header">
-              <h2>札記編輯</h2>
-              <button id="new-note-btn" class="ghost-btn" type="button">清空重填</button>
+              <h2>?剛?蝺刻摩</h2>
+              <button id="new-note-btn" class="ghost-btn" type="button">皜征?‵</button>
             </div>
             <form id="note-form" class="form-stack">
               <input type="hidden" id="note-id" />
-              <label>標題
-                <input id="note-title" required placeholder="例：在恩典中重新學會感恩" />
+              <label>璅?
+                <input id="note-title" required placeholder="靘??冽?訾葉?摮豢??" />
               </label>
-              <label>經文
-                <input id="note-scripture" placeholder="例：詩篇 103:1-11；約翰福音 3:16-18" />
+              <label>蝬?
+                <input id="note-scripture" placeholder="靘?閰拍? 103:1-11嚗?蝧啁???3:16-18" />
               </label>
-              <p class="caption scripture-hint">可輸入多處經文，請用分號「；」或「;」分隔。輸入後會自動抓取和預覽經文。</p>
+              <p class="caption scripture-hint">?航撓?亙?????隢???????????撓?亙???????汗蝬???/p>
               <div class="row gap-sm wrap scripture-tools">
-                <button type="button" id="fetch-scripture-btn" class="ghost-btn small">抓取經文</button>
+                <button type="button" id="fetch-scripture-btn" class="ghost-btn small">??蝬?</button>
                 <label class="checkbox-inline">
                   <input id="scripture-append-to-content" type="checkbox" checked />
-                  <span>抓取後同步放入札記全文</span>
+                  <span>??敺?甇交?交閮??/span>
                 </label>
               </div>
               <p id="scripture-fetch-status" class="caption hidden"></p>
               <div id="scripture-preview" class="scripture-preview hidden"></div>
-              <label>分類
-                <input id="note-category" placeholder="例：詩篇靈修、主日筆記" />
+              <label>??
+                <input id="note-category" placeholder="靘?閰拍??耨?蜓?亦?閮? />
               </label>
-              <label>標籤（以逗號分隔）
-                <input id="note-tags" placeholder="例：恩典, 悔改, 盼望" />
+              <label>璅惜嚗誑????嚗?
+                <input id="note-tags" placeholder="靘??拙, ?, ?潭?" />
               </label>
-              <label>摘要
-                <textarea id="note-summary" rows="3" placeholder="這篇內容的重點摘要"></textarea>
+              <label>??
+                <textarea id="note-summary" rows="3" placeholder="???批捆??暺?閬?></textarea>
               </label>
-              <p class="caption note-summary-hint">可在文章完成後整理重點，供列表預覽或未來成書時選擇顯示。</p>
-              <div class="markdown-toolbar" role="toolbar" aria-label="札記 Markdown 工具列">
-                <button type="button" id="markdown-heading-btn" class="ghost-btn small markdown-toolbar-btn">小標題</button>
-                <button type="button" id="markdown-bold-btn" class="ghost-btn small markdown-toolbar-btn">粗體</button>
-                <button type="button" id="markdown-quote-btn" class="ghost-btn small markdown-toolbar-btn">引用</button>
-                <button type="button" id="markdown-scripture-btn" class="ghost-btn small markdown-toolbar-btn">經文</button>
-                <button type="button" id="markdown-list-btn" class="ghost-btn small markdown-toolbar-btn">清單</button>
-                <button type="button" id="markdown-divider-btn" class="ghost-btn small markdown-toolbar-btn">分隔線</button>
-                <button type="button" id="markdown-red-btn" class="ghost-btn small markdown-toolbar-btn">紅字</button>
-                <button type="button" id="markdown-blue-btn" class="ghost-btn small markdown-toolbar-btn">藍字</button>
-                <button type="button" id="markdown-gold-btn" class="ghost-btn small markdown-toolbar-btn">金字</button>
-                <button type="button" id="markdown-purple-btn" class="ghost-btn small markdown-toolbar-btn">紫字</button>
+              <p class="caption note-summary-hint">?臬??摰?敺??暺?靘?銵券?閬賣??芯????＊蝷箝?/p>
+              <div class="markdown-toolbar" role="toolbar" aria-label="?剛? Markdown 撌亙??>
+                <button type="button" id="markdown-heading-btn" class="ghost-btn small markdown-toolbar-btn">撠?憿?/button>
+                <button type="button" id="markdown-bold-btn" class="ghost-btn small markdown-toolbar-btn">蝎?</button>
+                <button type="button" id="markdown-quote-btn" class="ghost-btn small markdown-toolbar-btn">撘</button>
+                <button type="button" id="markdown-scripture-btn" class="ghost-btn small markdown-toolbar-btn">蝬?</button>
+                <button type="button" id="markdown-list-btn" class="ghost-btn small markdown-toolbar-btn">皜</button>
+                <button type="button" id="markdown-divider-btn" class="ghost-btn small markdown-toolbar-btn">??蝺?/button>
+                <button type="button" id="markdown-red-btn" class="ghost-btn small markdown-toolbar-btn">蝝?</button>
+                <button type="button" id="markdown-blue-btn" class="ghost-btn small markdown-toolbar-btn">??</button>
+                <button type="button" id="markdown-gold-btn" class="ghost-btn small markdown-toolbar-btn">??</button>
+                <button type="button" id="markdown-purple-btn" class="ghost-btn small markdown-toolbar-btn">蝝怠?</button>
               </div>
               <p id="markdown-syntax-hint" class="caption markdown-syntax-hint hidden" aria-live="polite"></p>
-              <label>內容
-                <textarea id="note-content" rows="14" required placeholder="輸入靈修札記全文"></textarea>
+              <label>?批捆
+                <textarea id="note-content" rows="14" required placeholder="頛詨?耨?剛??冽?"></textarea>
               </label>
               <div class="row gap-sm wrap">
-                <button type="submit" class="primary-btn">儲存札記</button>
-                <button type="button" id="note-preview-btn" class="ghost-btn">預覽文章</button>
-                <button type="button" id="delete-note-btn" class="danger-btn hidden">刪除札記</button>
+                <button type="submit" class="primary-btn">?脣??剛?</button>
+                <button type="button" id="note-preview-btn" class="ghost-btn">?汗??</button>
+                <button type="button" id="delete-note-btn" class="danger-btn hidden">?芷?剛?</button>
               </div>
             </form>
           </section>
 
           <section class="panel">
             <div class="panel-header">
-              <h2>札記列表</h2>
-              <input id="note-search" class="search" placeholder="搜尋標題、經文、內容" />
+              <h2>?剛??”</h2>
+              <input id="note-search" class="search" placeholder="??璅????摰? />
             </div>
-            <div id="notes-list" class="list-stack empty-state">還沒有札記。</div>
+            <div id="notes-list" class="list-stack empty-state">???閮?/div>
           </section>
         </div>
       </section>
@@ -428,59 +428,59 @@
         <div class="grid layout-books align-start">
           <section class="panel">
             <div class="panel-header">
-              <h2>書籍編排</h2>
-              <button id="new-book-btn" class="ghost-btn" type="button">清空重填</button>
+              <h2>?貊?蝺冽?</h2>
+              <button id="new-book-btn" class="ghost-btn" type="button">皜征?‵</button>
             </div>
             <form id="book-form" class="form-stack">
               <input type="hidden" id="book-id" />
-              <label>書名
-                <input id="book-title" required placeholder="例：一顆仍然願意信靠的心" />
+              <label>?詨?
+                <input id="book-title" required placeholder="靘?銝憿??園??縑??敹? />
               </label>
-              <label>副標
-                <input id="book-subtitle" placeholder="例：靈修札記選集" />
+              <label>?舀?
+                <input id="book-subtitle" placeholder="靘??耨?剛??賊?" />
               </label>
-              <label>作者
-                <input id="book-author" placeholder="例：Jeremiah" />
+              <label>雿?
+                <input id="book-author" placeholder="靘?Jeremiah" />
               </label>
-              <label>書籍簡介
-                <textarea id="book-description" rows="3" placeholder="介紹這本書的主題與方向"></textarea>
+              <label>?貊?蝪∩?
+                <textarea id="book-description" rows="3" placeholder="隞晶??貊?銝駁????></textarea>
               </label>
-              <label>模板
+              <label>璅⊥
                 <select id="book-template">
-                  <option value="devotion">靈修札記版</option>
-                  <option value="sermon">講章整理版</option>
-                  <option value="testimony">見證合集版</option>
+                  <option value="devotion">?耨?剛???/option>
+                  <option value="sermon">雓??渡???/option>
+                  <option value="testimony">閬?????/option>
                 </select>
               </label>
-              <label class="book-language-field hidden">語言
+              <label class="book-language-field hidden">隤?
                 <input id="book-language" value="mul" />
               </label>
-              <label>封面圖片
+              <label>撠??
                 <input id="book-cover" type="file" accept="image/*" />
               </label>
-              <label>前言
-                <textarea id="book-preface" rows="4" placeholder="輸入前言"></textarea>
+              <label>??
+                <textarea id="book-preface" rows="4" placeholder="頛詨??"></textarea>
               </label>
-              <label>後記
-                <textarea id="book-afterword" rows="4" placeholder="輸入後記"></textarea>
+              <label>敺?
+                <textarea id="book-afterword" rows="4" placeholder="頛詨敺?"></textarea>
               </label>
               <section class="book-export-options" aria-labelledby="book-export-options-title">
-                <h3 id="book-export-options-title">匯出選項</h3>
+                <h3 id="book-export-options-title">?臬?賊?</h3>
                 <label class="checkbox-row">
                   <input id="book-toc-enabled" type="checkbox" checked />
-                  <span>匯出時包含目錄</span>
+                  <span>?臬???怎??/span>
                 </label>
                 <div class="book-export-option">
                   <label class="checkbox-row">
                     <input id="book-include-chapter-summary" type="checkbox" />
-                    <span>成書時顯示章節摘要</span>
+                    <span>??＊蝷箇?蝭??</span>
                   </label>
-                  <p class="caption book-export-option-caption">勾選後，匯出 EPUB 時會在每章開頭顯示該札記摘要。</p>
+                  <p class="caption book-export-option-caption">?暸敺??臬 EPUB ???冽?蝡??剝＊蝷箄府?剛?????/p>
                 </div>
               </section>
               <div class="row gap-sm wrap">
-                <button type="submit" class="primary-btn">儲存書籍</button>
-                <button type="button" id="delete-book-btn" class="danger-btn hidden">刪除書籍</button>
+                <button type="submit" class="primary-btn">?脣??貊?</button>
+                <button type="button" id="delete-book-btn" class="danger-btn hidden">?芷?貊?</button>
               </div>
               <p id="book-save-feedback" class="caption book-save-feedback hidden" aria-live="polite"></p>
             </form>
@@ -488,42 +488,42 @@
 
           <section class="panel">
             <div class="panel-header">
-              <h2>書籍列表</h2>
+              <h2>?貊??”</h2>
             </div>
-            <div id="books-list" class="list-stack empty-state">還沒有書籍專案。</div>
+            <div id="books-list" class="list-stack empty-state">???蝐?獢?/div>
           </section>
 
           <section class="panel">
             <div class="panel-header">
-              <h2>章節編排與匯出</h2>
+              <h2>蝡?蝺冽????/h2>
             </div>
-            <div id="selected-book-empty" class="empty-state">請先選取一本書。</div>
+            <div id="selected-book-empty" class="empty-state">隢??詨?銝?祆??/div>
             <div id="selected-book-panel" class="hidden">
               <div id="book-cover-preview" class="cover-preview"></div>
               <div class="chapter-picker mt-md">
-                <label for="chapter-source-note">選擇一篇札記作為新章節</label>
+                <label for="chapter-source-note">?豢?銝蝭閮??箸蝡?</label>
                 <select id="chapter-source-note"></select>
-                <div id="selected-note-preview" class="selected-note-preview">請先選擇一篇札記</div>
-                <button id="add-chapter-btn" class="secondary-btn" type="button">加入這篇札記到書中</button>
+                <div id="selected-note-preview" class="selected-note-preview">隢??豢?銝蝭閮?/div>
+                <button id="add-chapter-btn" class="secondary-btn" type="button">????剛??唳銝?/button>
               </div>
               <section class="toc-preview mt-md">
-                <h3>目錄預覽</h3>
-                <div id="toc-preview-list" class="toc-preview-list empty-state">尚未有列入目錄的章節。</div>
+                <h3>?桅??汗</h3>
+                <div id="toc-preview-list" class="toc-preview-list empty-state">撠???亦??蝡???/div>
               </section>
               <div class="chapter-list-heading mt-md">
-                <h3>目前章節順序</h3>
+                <h3>?桀?蝡???</h3>
               </div>
-              <div id="chapters-list" class="list-stack mt-md empty-state">尚未加入任何章節。</div>
+              <div id="chapters-list" class="list-stack mt-md empty-state">撠?隞颱?蝡???/div>
               <div class="row gap-sm wrap mt-lg">
-                <button id="create-snapshot-btn" class="secondary-btn" type="button">建立快照</button>
-                <button id="export-epub-btn" class="primary-btn" type="button">匯出 EPUB</button>
+                <button id="create-snapshot-btn" class="secondary-btn" type="button">撱箇?敹怎</button>
+                <button id="export-epub-btn" class="primary-btn" type="button">?臬 EPUB</button>
               </div>
               <div id="export-success-actions" class="export-success-actions hidden">
-                <p id="export-success-message">EPUB 已完成，並已加入書櫃。</p>
+                <p id="export-success-message">EPUB 撌脣???銝血歇??豢???/p>
                 <div class="row gap-sm wrap">
-                  <button id="read-exported-book-btn" class="primary-btn" type="button">立即閱讀</button>
-                  <button id="download-exported-book-btn" class="ghost-btn" type="button">下載 EPUB</button>
-                  <button id="go-library-btn" class="secondary-btn" type="button">前往書櫃</button>
+                  <button id="read-exported-book-btn" class="primary-btn" type="button">蝡?梯?</button>
+                  <button id="download-exported-book-btn" class="ghost-btn" type="button">銝? EPUB</button>
+                  <button id="go-library-btn" class="secondary-btn" type="button">???豢?</button>
                 </div>
               </div>
             </div>
@@ -535,23 +535,24 @@
         <section class="panel library-panel">
           <div class="panel-header">
             <div>
-              <h2>書櫃</h2>
-              <p class="muted">已匯出的固定版本作品會保存在雲端書櫃。</p>
+              <h2>?豢?</h2>
+              <p class="muted">撌脣?箇??箏??雿???摮?脩垢?豢???/p>
             </div>
-            <label class="compact-control">排序
+            <div class="library-panel-actions">
               <button id="import-epub-btn" class="secondary-btn" type="button">匯入 EPUB</button>
               <input id="import-epub-input" type="file" accept=".epub,application/epub+zip" hidden />
-              <select id="library-sort">
-                <option value="recent-read">最近閱讀</option>
-                <option value="recent-created">最近建立</option>
-                <option value="title">書名排序</option>
-              </select>
-            </label>
-          </div>
+              <label class="compact-control compact-control-library">排序
+                <select id="library-sort">
+                  <option value="recent-read">最近閱讀</option>
+                  <option value="recent-created">最近建立</option>
+                  <option value="title">書名排序</option>
+                </select>
+              </label>
+            </div>
           <div id="library-list" class="library-list empty-state">
-            <h3>書櫃裡還沒有書</h3>
-            <p>先去出書整理模式建立第一本書。</p>
-            <button id="library-empty-action" class="primary-btn" type="button">前往出書整理</button>
+            <h3>?豢?鋆⊿?瘝???/h3>
+            <p>??箸?渡?璅∪?撱箇?蝚砌??祆??/p>
+            <button id="library-empty-action" class="primary-btn" type="button">???箸?渡?</button>
           </div>
         </section>
       </section>
@@ -559,27 +560,27 @@
       <section id="view-reader" class="view reader-view">
         <div class="reader-layout">
           <aside class="reader-sidebar">
-            <button id="reader-back-library" class="ghost-btn" type="button">返回書櫃</button>
-            <label>章節
+            <button id="reader-back-library" class="ghost-btn" type="button">餈??豢?</button>
+            <label>蝡?
               <select id="reader-chapter-nav"></select>
             </label>
-            <label>字體大小
+            <label>摮?憭批?
               <input id="reader-font-size" type="range" min="15" max="26" step="1" />
             </label>
-            <label>行距
+            <label>銵?
               <input id="reader-line-height" type="range" min="1.4" max="2.2" step="0.1" />
             </label>
-            <label>背景
+            <label>?
               <select id="reader-theme">
-                <option value="light">淺色</option>
-                <option value="dark">深色</option>
+                <option value="light">瘛箄</option>
+                <option value="dark">瘛梯</option>
               </select>
             </label>
           </aside>
           <article class="reader-page">
             <header class="reader-header">
               <div>
-                <h2 id="reader-title">閱讀模式</h2>
+                <h2 id="reader-title">?梯?璅∪?</h2>
                 <p id="reader-meta" class="muted"></p>
               </div>
               <div class="reader-progress">
@@ -595,33 +596,33 @@
       <section id="view-snapshots" class="view">
         <section class="panel">
           <div class="panel-header">
-            <h2>快照備份</h2>
+            <h2>敹怎?遢</h2>
           </div>
-          <div id="snapshots-list" class="list-stack empty-state">還沒有快照。</div>
+          <div id="snapshots-list" class="list-stack empty-state">???翰?扼?/div>
         </section>
       </section>
 
       <footer class="site-footer">
-        <button id="support-btn" class="support-btn" type="button">支持平台／支持事工</button>
-        <p class="footer-copyright">© 2026 <a href="https://sanzepm.com.tw" target="_blank" rel="noopener noreferrer">三策專案管理顧問有限公司</a>. All rights reserved.</p>
+        <button id="support-btn" class="support-btn" type="button">?舀?撟喳嚗??撌?/button>
+        <p class="footer-copyright">穢 2026 <a href="https://sanzepm.com.tw" target="_blank" rel="noopener noreferrer">銝?撠?蝞∠?憿批????砍</a>. All rights reserved.</p>
       </footer>
 
-      <nav class="nav-links bottom-nav" aria-label="主要導覽">
+      <nav class="nav-links bottom-nav" aria-label="銝餉?撠汗">
         <button class="nav-link mobile-bottom-link active" data-view="dashboard" type="button">
           <span class="nav-icon asset-icon asset-sprite-system icon-home" aria-hidden="true"></span>
-          <span>總覽</span>
+          <span>蝮質汗</span>
         </button>
         <button class="nav-link mobile-bottom-link" data-view="notes" type="button">
           <span class="nav-icon asset-icon asset-sprite-system icon-note" aria-hidden="true"></span>
-          <span>札記</span>
+          <span>?剛?</span>
         </button>
         <button class="nav-link mobile-bottom-link" data-view="books" type="button">
           <span class="nav-icon asset-icon asset-sprite-system icon-book" aria-hidden="true"></span>
-          <span>書籍</span>
+          <span>?貊?</span>
         </button>
         <button class="nav-link mobile-bottom-link" data-view="library" type="button">
           <span class="nav-icon asset-icon asset-sprite-system icon-library" aria-hidden="true"></span>
-          <span>書櫃</span>
+          <span>?豢?</span>
         </button>
       </nav>
     </main>
@@ -632,28 +633,28 @@
     <div class="modal-card account-settings-card" role="dialog" aria-modal="true" aria-labelledby="account-settings-title">
       <div class="panel-header">
         <div>
-          <h2 id="account-settings-title">帳號設定</h2>
-          <p class="modal-intro">把同步、備份與帳號操作收在這裡，首頁只保留最重要的閱讀入口。</p>
+          <h2 id="account-settings-title">撣唾?閮剖?</h2>
+          <p class="modal-intro">??甇乓?隞質?撣唾????嗅?ㄐ嚗??靽?????霈?亙??/p>
         </div>
-        <button id="close-account-settings-btn" class="ghost-btn small" type="button">關閉</button>
+        <button id="close-account-settings-btn" class="ghost-btn small" type="button">??</button>
       </div>
       <div class="account-settings-section">
-        <span class="account-settings-label">目前帳號</span>
+        <span class="account-settings-label">?桀?撣唾?</span>
         <strong id="account-settings-email">-</strong>
       </div>
       <div id="account-cloud-actions" class="account-settings-section">
-        <span class="account-settings-label">雲端資料</span>
+        <span class="account-settings-label">?脩垢鞈?</span>
         <div class="account-settings-actions">
-          <button id="push-local-to-cloud-btn" class="ghost-btn" type="button">上傳本機資料</button>
-          <button id="download-backup-btn" class="ghost-btn" type="button">下載雲端備份</button>
+          <button id="push-local-to-cloud-btn" class="ghost-btn" type="button">銝?祆?鞈?</button>
+          <button id="download-backup-btn" class="ghost-btn" type="button">銝??脩垢?遢</button>
         </div>
-        <p id="account-cloud-hint" class="caption">登入雲端帳號後，可把本機資料上傳或下載雲端備份。</p>
+        <p id="account-cloud-hint" class="caption">?餃?脩垢撣唾?敺??舀??祆?鞈?銝??頛蝡臬?隞賬?/p>
       </div>
       <div class="account-settings-section">
-        <span class="account-settings-label">其他</span>
+        <span class="account-settings-label">?嗡?</span>
         <div class="account-settings-actions">
-          <button id="go-snapshots-btn" class="ghost-btn" type="button">查看快照備份</button>
-          <button id="signout-btn" class="danger-btn" type="button">登出</button>
+          <button id="go-snapshots-btn" class="ghost-btn" type="button">?亦?敹怎?遢</button>
+          <button id="signout-btn" class="danger-btn" type="button">?餃</button>
         </div>
       </div>
     </div>
@@ -664,10 +665,10 @@
     <div class="modal-card note-preview-modal-card" role="dialog" aria-modal="true" aria-labelledby="note-preview-title">
       <div class="panel-header note-preview-modal-header">
         <div>
-          <h2 id="note-preview-title">文章預覽</h2>
-          <p class="modal-intro">儲存前先確認標題、摘要與段落讀起來是否自然。</p>
+          <h2 id="note-preview-title">???汗</h2>
+          <p class="modal-intro">?脣???蝣箄?璅???閬?畾菔霈韏瑚??臬?芰??/p>
         </div>
-        <button id="close-note-preview-btn" class="ghost-btn small" type="button">關閉</button>
+        <button id="close-note-preview-btn" class="ghost-btn small" type="button">??</button>
       </div>
       <article id="note-preview" class="note-preview-article"></article>
     </div>
@@ -677,15 +678,15 @@
     <div id="support-modal-backdrop" class="modal-backdrop"></div>
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="support-modal-title">
       <div class="panel-header">
-        <h2 id="support-modal-title">支持平台／支持事工</h2>
-        <button id="close-support-modal" class="ghost-btn small" type="button">關閉</button>
+        <h2 id="support-modal-title">?舀?撟喳嚗??撌?/h2>
+        <button id="close-support-modal" class="ghost-btn small" type="button">??</button>
       </div>
-      <p class="modal-intro">您所提供之支持款項，將用於內容製作、系統開發、雲端維護與出版功能優化。</p>
+      <p class="modal-intro">?冽???銋?狡??撠?澆摰寡ˊ雿頂蝯梢??潦蝡舐雁霅瑁??箇???芸???/p>
       <div class="support-info">
-        <p><strong>匯款銀行：</strong>台北富邦銀行</p>
-        <p><strong>銀行代碼：</strong>000</p>
-        <p><strong>戶名：</strong>三策專案管理顧問有限公司</p>
-        <p><strong>匯款帳號：</strong>0000000000</p>
+        <p><strong>?舀狡?銵?</strong>?啣?撖?銵?/p>
+        <p><strong>?銵誨蝣潘?</strong>000</p>
+        <p><strong>?嗅?嚗?/strong>銝?撠?蝞∠?憿批????砍</p>
+        <p><strong>?舀狡撣唾?嚗?/strong>0000000000</p>
       </div>
     </div>
   </div>
