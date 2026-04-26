@@ -104,6 +104,7 @@ const els = {
   markdownBlueBtn: document.getElementById('markdown-blue-btn'),
   markdownGoldBtn: document.getElementById('markdown-gold-btn'),
   markdownPurpleBtn: document.getElementById('markdown-purple-btn'),
+  markdownSyntaxHint: document.getElementById('markdown-syntax-hint'),
   noteContent: document.getElementById('note-content'),
   notePreviewBtn: document.getElementById('note-preview-btn'),
   notePreview: document.getElementById('note-preview'),
@@ -1439,6 +1440,26 @@ function renderNotePreview() {
       ${contentBlocks}
     </section>
   `;
+  updateMarkdownSyntaxHint();
+}
+
+function getMarkdownSyntaxHintMessage(text = '') {
+  const lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const match = trimmed.match(/^\{(red|blue|gold|purple)\}##(?!#)\s*.+\{\/\1\}$/);
+    if (!match) continue;
+    const colorName = match[1];
+    return `語法提醒：若要讓小標題變色，請使用 \`## {${colorName}}標題{/${colorName}}\`\uFF0C不要使用 \`{${colorName}}## 標題{/${colorName}}\`。`;
+  }
+  return '';
+}
+
+function updateMarkdownSyntaxHint() {
+  if (!els.markdownSyntaxHint) return;
+  const message = getMarkdownSyntaxHintMessage(els.noteContent?.value || '');
+  els.markdownSyntaxHint.textContent = message;
+  els.markdownSyntaxHint.classList.toggle('hidden', !message);
 }
 
 function renderMarkdownInline(text = '') {

@@ -478,6 +478,15 @@ input:focus, textarea:focus, select:focus {
   padding: 7px 12px;
   white-space: nowrap;
 }
+.markdown-syntax-hint {
+  margin: 2px 0 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(246, 240, 230, 0.78);
+  border: 1px solid rgba(191, 176, 148, 0.44);
+  color: #5f4d3f;
+  overflow-wrap: anywhere;
+}
 .note-preview-modal-card {
   width: min(860px, calc(100vw - 160px));
   max-width: calc(100vw - 160px);
@@ -662,6 +671,11 @@ input:focus, textarea:focus, select:focus {
   .markdown-toolbar-btn {
     min-height: 38px;
     padding: 8px 12px;
+  }
+
+  .markdown-syntax-hint {
+    padding: 9px 11px;
+    font-size: 12px;
   }
 }
 .scripture-card {
