@@ -1468,8 +1468,8 @@ function renderMarkdownContent(text = '') {
       continue;
     }
 
-    if (/^##\s+/.test(trimmed)) {
-      blocks.push(`<h2>${renderMarkdownInline(trimmed.replace(/^##\s+/, '').trim())}</h2>`);
+    if (/^##(?!#)\s*/.test(trimmed)) {
+      blocks.push(`<h2>${renderMarkdownInline(trimmed.replace(/^##(?!#)\s*/, '').trim())}</h2>`);
       index += 1;
       continue;
     }
@@ -1511,7 +1511,7 @@ function renderMarkdownContent(text = '') {
       if (!currentTrimmed) break;
       if (
         currentTrimmed === '---'
-        || /^##\s+/.test(currentTrimmed)
+        || /^##(?!#)\s*/.test(currentTrimmed)
         || /^>\s?/.test(currentTrimmed)
         || /^-\s+/.test(currentTrimmed)
       ) break;
