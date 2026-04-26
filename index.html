@@ -415,7 +415,7 @@
         <div class="grid layout-books align-start">
           <section class="panel">
             <div class="panel-header">
-              <h2>書籍設定</h2>
+              <h2>書籍編排</h2>
               <button id="new-book-btn" class="ghost-btn" type="button">清空重填</button>
             </div>
             <form id="book-form" class="form-stack">
@@ -456,6 +456,11 @@
                 <p id="book-save-feedback" class="caption hidden" aria-live="polite"></p>
                 <span>匯出時包含目錄</span>
               </label>
+              <label class="checkbox-row">
+                <input id="book-include-chapter-summary" type="checkbox" />
+                <span>成書時顯示章節摘要</span>
+              </label>
+              <p class="caption">勾選後，匯出 EPUB 時會在每章開頭顯示該札記摘要。</p>
               <div class="row gap-sm wrap">
                 <button type="submit" class="primary-btn">儲存書籍</button>
                 <button type="button" id="delete-book-btn" class="danger-btn hidden">刪除書籍</button>

@@ -116,6 +116,7 @@ const els = {
   bookPreface: document.getElementById('book-preface'),
   bookAfterword: document.getElementById('book-afterword'),
   bookTocEnabled: document.getElementById('book-toc-enabled'),
+  bookIncludeChapterSummary: document.getElementById('book-include-chapter-summary'),
   newBookBtn: document.getElementById('new-book-btn'),
   deleteBookBtn: document.getElementById('delete-book-btn'),
   booksList: document.getElementById('books-list'),
@@ -858,6 +859,7 @@ async function loadAllData({ silent = false, syncReason = '' } = {}) {
       chapters: parseMaybeJson(book.chapters, []),
       cover_data_url: book.cover_data_url || '',
       language: resolveBookLanguage(book.language),
+      include_chapter_summary: !!book.include_chapter_summary,
     }));
     state.snapshots = (snapshotsRes.data || []).map(s => ({ ...s, snapshot_json: parseMaybeJson(s.snapshot_json, null) }));
     await loadCloudLibrary(userId);
@@ -866,7 +868,11 @@ async function loadAllData({ silent = false, syncReason = '' } = {}) {
   } else {
     const userId = getUserId();
     state.notes = loadJson(STORAGE_KEYS.notes, []).filter(item => item.user_id === userId);
-    state.books = loadJson(STORAGE_KEYS.books, []).filter(item => item.user_id === userId).map(book => ({ ...book, language: resolveBookLanguage(book.language) }));
+    state.books = loadJson(STORAGE_KEYS.books, []).filter(item => item.user_id === userId).map(book => ({
+      ...book,
+      language: resolveBookLanguage(book.language),
+      include_chapter_summary: !!book.include_chapter_summary,
+    }));
     state.snapshots = loadJson(STORAGE_KEYS.snapshots, []).filter(item => item.user_id === userId);
     clearCloudLibrary('書櫃同步需要登入 Supabase 帳號。');
     setSyncState({
@@ -1551,6 +1557,7 @@ function populateBookForm(bookId) {
   els.bookPreface.value = book.preface || '';
   els.bookAfterword.value = book.afterword || '';
   els.bookTocEnabled.checked = !!book.toc_enabled;
+  els.bookIncludeChapterSummary.checked = !!book.include_chapter_summary;
   els.deleteBookBtn.classList.remove('hidden');
   refreshUi();
 }
@@ -1561,6 +1568,7 @@ function clearBookForm() {
   els.bookLanguage.value = DEFAULT_BOOK_LANGUAGE;
   els.bookTemplate.value = 'devotion';
   els.bookTocEnabled.checked = true;
+  els.bookIncludeChapterSummary.checked = false;
   els.deleteBookBtn.classList.add('hidden');
   if (els.bookSaveFeedback) {
     els.bookSaveFeedback.textContent = '';
@@ -1585,6 +1593,7 @@ async function saveBook() {
     preface: els.bookPreface.value.trim(),
     afterword: els.bookAfterword.value.trim(),
     toc_enabled: els.bookTocEnabled.checked,
+    include_chapter_summary: els.bookIncludeChapterSummary.checked,
     chapters: existing?.chapters || [],
     updated_at: nowIso(),
     created_at: existing?.created_at || nowIso(),
@@ -1845,6 +1854,7 @@ function buildBookSnapshot(book) {
       preface: book.preface,
       afterword: book.afterword,
       toc_enabled: book.toc_enabled,
+      include_chapter_summary: !!book.include_chapter_summary,
       cover_data_url: book.cover_data_url,
     },
     chapters: chapters.map(chapter => {
@@ -1856,6 +1866,7 @@ function buildBookSnapshot(book) {
         source_note_id: chapter.source_note_id,
         note_title: note?.title || '',
         scripture_reference: note?.scripture_reference || '',
+        summary: note?.summary || '',
         content: note?.content || '',
       };
     }),
@@ -1985,7 +1996,7 @@ async function buildEpub(snapshot) {
   files.push({ name: 'OEBPS/text/title.xhtml', content: encoder.encode(titlePage(book)) });
   if (book.preface) files.push({ name: 'OEBPS/text/preface.xhtml', content: encoder.encode(simpleSection('前言', book.preface, book.language)) });
   chapters.forEach((chapter, index) => {
-    files.push({ name: `OEBPS/text/chapter-${index + 1}.xhtml`, content: encoder.encode(chapterXhtml(chapter, index + 1, book.language)) });
+    files.push({ name: `OEBPS/text/chapter-${index + 1}.xhtml`, content: encoder.encode(chapterXhtml(chapter, index + 1, book)) });
   });
   if (book.afterword) files.push({ name: 'OEBPS/text/afterword.xhtml', content: encoder.encode(simpleSection('後記', book.afterword, book.language)) });
   if (coverImage) files.push({ name: `OEBPS/images/cover.${coverExt}`, content: coverImage.bytes });
@@ -2001,7 +2012,7 @@ function buildTemplateCss(templateCode) {
     sermon: ['#f0f3f7', '#253648'],
     testimony: ['#f7ecef', '#5b2f3a'],
   }[templateCode] || ['#f6f0e6', '#44362b'];
-  return `body{font-family:"Noto Serif TC","PingFang TC",serif;line-height:1.8;color:#222;margin:0;padding:0;}main{padding:1.6em;}h1,h2{color:${theme[1]};}a{color:${theme[1]};text-decoration:none;}nav ol{padding-left:1.2em;}.title-page{background:${theme[0]};padding:2em;border-radius:18px;margin-top:2em;} .meta{color:#666;font-size:.95em;} .scripture{margin:.8em 0;color:#555;font-style:italic;} p{margin:0 0 1em;} `;
+  return `body{font-family:"Noto Serif TC","PingFang TC",serif;line-height:1.8;color:#222;margin:0;padding:0;}main{padding:1.6em;}h1,h2{color:${theme[1]};}a{color:${theme[1]};text-decoration:none;}nav ol{padding-left:1.2em;}.title-page{background:${theme[0]};padding:2em;border-radius:18px;margin-top:2em;} .meta{color:#666;font-size:.95em;} .scripture{margin:.8em 0;color:#555;font-style:italic;} .chapter-summary{margin:1.15em 0 1.6em;padding:1em 1.1em;border:1px solid rgba(160,142,112,.24);border-radius:14px;background:rgba(246,240,230,.68);} .chapter-summary .kicker{display:block;margin-bottom:.45em;color:#7a6753;font-size:.82em;font-weight:700;letter-spacing:.06em;} .chapter-summary p{margin:0;} p{margin:0 0 1em;} `;
 }
 
 function containerXml() {
@@ -2028,14 +2039,20 @@ function titlePage(book) {
 function simpleSection(title, content, language = DEFAULT_BOOK_LANGUAGE) {
   return xhtmlWrap(title, `<main><h1>${escapeHtml(title)}</h1>${paragraphs(content)}</main>`, false, "../styles/book.css", resolveBookLanguage(language));
 }
-function chapterXhtml(chapter, order, language = DEFAULT_BOOK_LANGUAGE) {
+function chapterXhtml(chapter, order, book = {}) {
+  const language = resolveBookLanguage(book.language);
+  const summaryHtml = escapeHtml(chapter.summary || '').replaceAll('\n', '<br/>');
+  const summaryBlock = book.include_chapter_summary && chapter.summary
+    ? `<section class="chapter-summary"><span class="kicker">本章摘要</span><p>${summaryHtml}</p></section>`
+    : '';
   return xhtmlWrap(chapter.chapter_title, `
     <main>
       <h1>第 ${order} 章　${escapeHtml(chapter.chapter_title)}</h1>
       ${chapter.scripture_reference ? `<p class="scripture">${escapeHtml(chapter.scripture_reference)}</p>` : ''}
+      ${summaryBlock}
       ${paragraphs(chapter.content || '')}
     </main>
-  `, false, "../styles/book.css", resolveBookLanguage(language));
+  `, false, "../styles/book.css", language);
 }
 function navXhtml(book, chapters) {
   const items = [];
@@ -2590,13 +2607,16 @@ function injectReaderViewStyles() {
     #view-reader .reader-spread { width: 100%; height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--reader-spread-gap, 44px); }
     #view-reader .reader-page-surface { height: 100%; min-width: 0; box-sizing: border-box; overflow: hidden; padding: var(--reader-page-padding-top, 56px) var(--reader-page-padding-x, 52px) var(--reader-page-padding-bottom, 48px); background: transparent; }
     #view-reader .reader-page-surface.is-empty { opacity: .35; }
-    #view-reader .reader-flow * { box-sizing: border-box; max-width: 100%; }
-    #view-reader .reader-flow img, #view-reader .reader-flow svg, #view-reader .reader-flow video, #view-reader .reader-flow table { max-width: 100%; height: auto; }
-    #view-reader .reader-flow pre, #view-reader .reader-flow code { white-space: pre-wrap; overflow-wrap: anywhere; }
-    #view-reader .reader-flow h1, #view-reader .reader-flow h2 { margin: 0 0 1.15em; line-height: 1.35; }
-    #view-reader .reader-flow p { margin: 0 0 1.05em; }
-    #view-reader .reader-flow .scripture, #view-reader .reader-flow blockquote { margin: 1.15em 0 1.35em; padding-left: 1em; border-left: 3px solid rgba(155,122,72,.35); color: inherit; }
-    #view-reader .reader-turn-zone { position: absolute; top: 0; bottom: 0; width: 34%; border: 0; background: transparent; cursor: pointer; }
+      #view-reader .reader-flow * { box-sizing: border-box; max-width: 100%; }
+      #view-reader .reader-flow img, #view-reader .reader-flow svg, #view-reader .reader-flow video, #view-reader .reader-flow table { max-width: 100%; height: auto; }
+      #view-reader .reader-flow pre, #view-reader .reader-flow code { white-space: pre-wrap; overflow-wrap: anywhere; }
+      #view-reader .reader-flow h1, #view-reader .reader-flow h2 { margin: 0 0 1.15em; line-height: 1.35; }
+      #view-reader .reader-flow p { margin: 0 0 1.05em; }
+      #view-reader .reader-flow .scripture, #view-reader .reader-flow blockquote { margin: 1.15em 0 1.35em; padding-left: 1em; border-left: 3px solid rgba(155,122,72,.35); color: inherit; }
+      #view-reader .reader-flow .chapter-summary { margin: 1.15em 0 1.4em; padding: 1em 1.05em; border-radius: 16px; border: 1px solid rgba(160,142,112,.24); background: rgba(246,240,230,.72); }
+      #view-reader .reader-flow .chapter-summary .kicker { display: block; margin-bottom: .45em; color: #7a6753; font-size: .82em; font-weight: 700; letter-spacing: .06em; }
+      #view-reader .reader-flow .chapter-summary p { margin: 0; }
+      #view-reader .reader-turn-zone { position: absolute; top: 0; bottom: 0; width: 34%; border: 0; background: transparent; cursor: pointer; }
     #view-reader .reader-turn-zone:disabled, #view-reader .reader-footer button:disabled { cursor: default; opacity: .35; }
     #view-reader .reader-turn-left { left: 0; }
     #view-reader .reader-turn-right { right: 0; }

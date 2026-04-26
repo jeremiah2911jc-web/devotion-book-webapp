@@ -29,10 +29,14 @@ create table if not exists public.book_projects (
   preface text,
   afterword text,
   toc_enabled boolean not null default true,
+  include_chapter_summary boolean not null default false,
   chapters jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.book_projects
+  add column if not exists include_chapter_summary boolean not null default false;
 
 create table if not exists public.book_snapshots (
   id text primary key,
