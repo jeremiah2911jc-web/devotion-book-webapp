@@ -2304,7 +2304,33 @@ function buildTemplateCss(templateCode) {
     sermon: ['#f0f3f7', '#253648'],
     testimony: ['#f7ecef', '#5b2f3a'],
   }[templateCode] || ['#f6f0e6', '#44362b'];
-  return `body{font-family:"Noto Serif TC","PingFang TC",serif;line-height:1.8;color:#222;margin:0;padding:0;}main{padding:1.6em;}h1,h2{color:${theme[1]};}h2{margin:1.7em 0 .75em;font-size:1.2em;line-height:1.45;font-weight:700;}a{color:${theme[1]};text-decoration:none;}nav ol{padding-left:1.2em;}.title-page{background:${theme[0]};padding:2em;border-radius:18px;margin-top:2em;} .meta{color:#666;font-size:.95em;} .scripture{margin:.8em 0;color:#555;font-style:italic;} .chapter-summary{margin:1.15em 0 1.6em;padding:1em 1.1em;border:1px solid rgba(160,142,112,.24);border-radius:14px;background:rgba(246,240,230,.68);} .chapter-summary .kicker{display:block;margin-bottom:.45em;color:#7a6753;font-size:.82em;font-weight:700;letter-spacing:.06em;} .chapter-summary p{margin:0;} blockquote{margin:1.15em 0 1.4em;padding:.95em 1.1em;border-left:4px solid rgba(155,122,72,.4);background:rgba(246,240,230,.46);color:#4c4033;} hr{margin:1.6em 0;border:0;border-top:1px solid rgba(155,122,72,.35);} ul{margin:0 0 1.2em;padding-left:1.5em;} li{margin:.35em 0;line-height:1.8;} strong{font-weight:700;color:${theme[1]};}.text-red,.text-red strong{color:#8a3b3b !important;}.text-blue,.text-blue strong{color:#355d8d !important;}.text-gold,.text-gold strong{color:#8a6a1f !important;}.text-purple,.text-purple strong{color:#6a4a82 !important;} p{margin:0 0 1em;} `;
+  return `
+body{font-family:"Noto Serif TC","PingFang TC",serif;line-height:1.92;color:#2e2823;margin:0;padding:0;background:#fffdf9;}
+main{max-width:38em;margin:0 auto;padding:2.35em 1.8em 2.7em;}
+h1,h2{color:${theme[1]};}
+h1{margin:0;font-size:1.7em;line-height:1.34;font-weight:700;letter-spacing:.01em;}
+h2{margin:1.95em 0 .72em;font-size:1.18em;line-height:1.5;font-weight:700;letter-spacing:.01em;}
+a{color:${theme[1]};text-decoration:none;}
+nav ol{padding-left:1.3em;}
+.title-page{background:${theme[0]};padding:2.4em 2.2em;border-radius:22px;margin-top:2.2em;box-shadow:inset 0 0 0 1px rgba(140,118,90,.08);}
+.meta{color:#6b6259;font-size:.95em;line-height:1.75;}
+.chapter-head{margin:0 0 2.05em;padding:2.15em 0 1.25em;border-bottom:1px solid rgba(166,143,115,.18);}
+.chapter-head .scripture{margin:.95em 0 0;}
+.scripture{color:#736453;font-size:.96em;line-height:1.78;letter-spacing:.04em;font-style:italic;}
+.chapter-summary{margin:1.15em 0 1.95em;padding:1.15em 1.2em 1.08em;border:1px solid rgba(160,142,112,.22);border-radius:18px;background:linear-gradient(180deg, rgba(248,244,237,.96), rgba(243,236,226,.82));box-shadow:0 10px 24px rgba(94,76,54,.06);}
+.chapter-summary .kicker{display:block;margin-bottom:.45em;color:#7a6753;font-size:.8em;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
+.chapter-summary p{margin:0;line-height:1.86;color:#4d4339;}
+blockquote{margin:1.35em 0 1.55em;padding:1.05em 1.2em 1.05em 1.3em;border-left:4px solid rgba(155,122,72,.42);border-radius:0 18px 18px 0;background:linear-gradient(180deg, rgba(247,242,234,.92), rgba(243,236,226,.7));color:#4a4034;line-height:1.92;}
+hr{width:38%;margin:2em auto 1.9em;border:0;border-top:1px solid rgba(155,122,72,.34);}
+ul{margin:0 0 1.45em;padding-left:1.5em;}
+li{margin:.45em 0;line-height:1.86;padding-left:.12em;}
+strong{font-weight:700;color:${theme[1]};}
+.text-red,.text-red strong{color:#8a3b3b !important;}
+.text-blue,.text-blue strong{color:#355d8d !important;}
+.text-gold,.text-gold strong{color:#8a6a1f !important;}
+.text-purple,.text-purple strong{color:#6a4a82 !important;}
+p{margin:0 0 1.18em;line-height:1.92;}
+`;
 }
 
 function containerXml() {
@@ -2339,8 +2365,10 @@ function chapterXhtml(chapter, order, book = {}) {
     : '';
   return xhtmlWrap(chapter.chapter_title, `
     <main>
-      <h1>第 ${order} 章　${escapeHtml(chapter.chapter_title)}</h1>
-      ${chapter.scripture_reference ? `<p class="scripture">${escapeHtml(chapter.scripture_reference)}</p>` : ''}
+      <header class="chapter-head">
+        <h1>第 ${order} 章　${escapeHtml(chapter.chapter_title)}</h1>
+        ${chapter.scripture_reference ? `<p class="scripture">${escapeHtml(chapter.scripture_reference)}</p>` : ''}
+      </header>
       ${summaryBlock}
       ${renderMarkdownContent(chapter.content || '')}
     </main>
@@ -2894,29 +2922,32 @@ function injectReaderViewStyles() {
     #view-reader .reader-page-clip { width: 100%; height: 100%; overflow: hidden; contain: layout paint size; clip-path: inset(0); }
     #view-reader.reader-spread-mode .reader-page-clip { background: linear-gradient(90deg, transparent calc(50% - 18px), rgba(80,70,55,.08) 50%, transparent calc(50% + 18px)); }
     #view-reader.reader-dark.reader-spread-mode .reader-page-clip { background: linear-gradient(90deg, transparent calc(50% - 18px), rgba(255,255,255,.08) 50%, transparent calc(50% + 18px)); }
-    #view-reader .reader-flow { height: 100%; box-sizing: border-box; display: block; max-width: none; padding: clamp(34px, 7vh, 72px) clamp(28px, 7vw, 74px) clamp(30px, 6vh, 64px); overflow: visible; column-fill: auto; transition: transform .18s ease; will-change: transform; overflow-wrap: anywhere; word-break: break-word; }
+    #view-reader .reader-flow { height: 100%; box-sizing: border-box; display: block; max-width: none; padding: clamp(48px, 8vh, 88px) clamp(36px, 7vw, 86px) clamp(40px, 7vh, 76px); overflow: visible; column-fill: auto; transition: transform .18s ease; will-change: transform; overflow-wrap: anywhere; word-break: break-word; }
     #view-reader.reader-spread-mode .reader-flow { padding: 0; display: block; overflow: hidden; transition: none; }
     #view-reader .reader-spread { width: 100%; height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--reader-spread-gap, 44px); }
-    #view-reader .reader-page-surface { height: 100%; min-width: 0; box-sizing: border-box; overflow: hidden; padding: var(--reader-page-padding-top, 56px) var(--reader-page-padding-x, 52px) var(--reader-page-padding-bottom, 48px); background: transparent; }
+    #view-reader .reader-page-surface { height: 100%; min-width: 0; box-sizing: border-box; overflow: hidden; padding: var(--reader-page-padding-top, 64px) var(--reader-page-padding-x, 56px) var(--reader-page-padding-bottom, 54px); background: transparent; }
     #view-reader .reader-page-surface.is-empty { opacity: .35; }
       #view-reader .reader-flow * { box-sizing: border-box; max-width: 100%; }
       #view-reader .reader-flow img, #view-reader .reader-flow svg, #view-reader .reader-flow video, #view-reader .reader-flow table { max-width: 100%; height: auto; }
       #view-reader .reader-flow pre, #view-reader .reader-flow code { white-space: pre-wrap; overflow-wrap: anywhere; }
-      #view-reader .reader-flow h1, #view-reader .reader-flow h2 { margin: 0 0 1.15em; line-height: 1.35; }
-      #view-reader .reader-flow h2 { font-size: 1.18em; color: #21484c; }
-      #view-reader .reader-flow p { margin: 0 0 1.05em; }
-      #view-reader .reader-flow hr { margin: 1.5em 0; border: 0; border-top: 1px solid rgba(155,122,72,.35); }
-      #view-reader .reader-flow ul { margin: 0 0 1.15em; padding-left: 1.45em; }
-      #view-reader .reader-flow li { margin: .35em 0; line-height: 1.85; }
+      #view-reader .reader-flow h1 { margin: 0; font-size: 1.72em; line-height: 1.34; letter-spacing: .01em; color: #21484c; }
+      #view-reader .reader-flow h2 { margin: 1.9em 0 .72em; font-size: 1.18em; line-height: 1.48; letter-spacing: .01em; color: #21484c; }
+      #view-reader .reader-flow p { margin: 0 0 1.12em; line-height: 1.9; }
+      #view-reader .reader-flow hr { width: 36%; margin: 1.95em auto 1.85em; border: 0; border-top: 1px solid rgba(155,122,72,.34); }
+      #view-reader .reader-flow ul { margin: 0 0 1.38em; padding-left: 1.5em; }
+      #view-reader .reader-flow li { margin: .42em 0; line-height: 1.86; padding-left: .12em; }
       #view-reader .reader-flow strong { font-weight: 700; color: inherit; }
       #view-reader .reader-flow .text-red, #view-reader .reader-flow .text-red strong { color: #8a3b3b !important; }
       #view-reader .reader-flow .text-blue, #view-reader .reader-flow .text-blue strong { color: #355d8d !important; }
       #view-reader .reader-flow .text-gold, #view-reader .reader-flow .text-gold strong { color: #8a6a1f !important; }
       #view-reader .reader-flow .text-purple, #view-reader .reader-flow .text-purple strong { color: #6a4a82 !important; }
-      #view-reader .reader-flow .scripture, #view-reader .reader-flow blockquote { margin: 1.15em 0 1.35em; padding: .95em 1.05em .95em 1.15em; border-left: 3px solid rgba(155,122,72,.35); border-radius: 0 16px 16px 0; background: rgba(246,240,230,.45); color: inherit; }
-      #view-reader .reader-flow .chapter-summary { margin: 1.15em 0 1.4em; padding: 1em 1.05em; border-radius: 16px; border: 1px solid rgba(160,142,112,.24); background: rgba(246,240,230,.72); }
+      #view-reader .reader-flow .chapter-head { margin: 0 0 2.05em; padding: 2.05em 0 1.2em; border-bottom: 1px solid rgba(166,143,115,.18); }
+      #view-reader .reader-flow .chapter-head .scripture { margin: .92em 0 0; }
+      #view-reader .reader-flow .scripture { color: #736453; font-size: .95em; line-height: 1.78; letter-spacing: .04em; font-style: italic; }
+      #view-reader .reader-flow blockquote { margin: 1.32em 0 1.52em; padding: 1.02em 1.12em 1.02em 1.22em; border-left: 4px solid rgba(155,122,72,.4); border-radius: 0 18px 18px 0; background: linear-gradient(180deg, rgba(247,242,234,.92), rgba(243,236,226,.68)); color: inherit; line-height: 1.9; }
+      #view-reader .reader-flow .chapter-summary { margin: 1.18em 0 1.8em; padding: 1.12em 1.15em 1.05em; border-radius: 18px; border: 1px solid rgba(160,142,112,.22); background: linear-gradient(180deg, rgba(248,244,237,.96), rgba(243,236,226,.82)); box-shadow: 0 10px 24px rgba(94,76,54,.06); }
       #view-reader .reader-flow .chapter-summary .kicker { display: block; margin-bottom: .45em; color: #7a6753; font-size: .82em; font-weight: 700; letter-spacing: .06em; }
-      #view-reader .reader-flow .chapter-summary p { margin: 0; }
+      #view-reader .reader-flow .chapter-summary p { margin: 0; line-height: 1.84; color: #4d4339; }
       #view-reader .reader-turn-zone { position: absolute; top: 0; bottom: 0; width: 34%; border: 0; background: transparent; cursor: pointer; }
     #view-reader .reader-turn-zone:disabled, #view-reader .reader-footer button:disabled { cursor: default; opacity: .35; }
     #view-reader .reader-turn-left { left: 0; }
@@ -2933,7 +2964,13 @@ function injectReaderViewStyles() {
       #view-reader .reader-toolbar label { grid-column: span 1; }
       #view-reader .reader-stage { padding: 0; }
       #view-reader .reader-page-viewport { flex-basis: 100vw; width: 100vw; height: 100%; min-height: 0; border-radius: 0; box-shadow: none; }
-      #view-reader .reader-flow { padding: clamp(34px, 7vh, 58px) clamp(24px, 8vw, 38px) clamp(30px, 6vh, 48px); }
+      #view-reader .reader-flow { padding: clamp(34px, 7vh, 58px) clamp(24px, 8vw, 40px) clamp(30px, 6vh, 50px); }
+      #view-reader .reader-flow h1 { font-size: 1.54em; }
+      #view-reader .reader-flow h2 { font-size: 1.08em; margin-top: 1.72em; }
+      #view-reader .reader-flow p { margin-bottom: 1em; line-height: 1.82; }
+      #view-reader .reader-flow hr { width: 46%; margin: 1.7em auto; }
+      #view-reader .reader-flow .chapter-head { margin-bottom: 1.75em; padding: 1.75em 0 1.05em; }
+      #view-reader .reader-flow .chapter-summary { margin-bottom: 1.55em; padding: 1em 1em .96em; }
       #view-reader .reader-footer { grid-template-columns: auto 1fr auto; }
       #view-reader .reader-book-heading h2 { font-size: .95rem; }
       #view-reader .reader-turn-zone { width: 28%; }
