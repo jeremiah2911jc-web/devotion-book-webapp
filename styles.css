@@ -2864,16 +2864,22 @@ body:not(.auth-locked) .main {
     font-size: 12px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+    margin-bottom: 0;
+  }
+
+  .desktop-sidebar-account-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     margin-bottom: 10px;
   }
 
   .desktop-sidebar-account-main {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+    display: block;
+    min-width: 0;
   }
 
-  .desktop-sidebar-account-main .account-avatar {
+  .desktop-sidebar-account-header .account-avatar {
     width: 44px;
     height: 44px;
     border-radius: 14px;
@@ -2885,30 +2891,33 @@ body:not(.auth-locked) .main {
     font-weight: 700;
   }
 
-  .desktop-sidebar-account-main .account-avatar img {
+  .desktop-sidebar-account-header .account-avatar img {
     display: none;
   }
 
-  .desktop-sidebar-account-main .account-avatar::before {
+  .desktop-sidebar-account-header .account-avatar::before {
     content: "A";
   }
 
   .desktop-sidebar-account-copy {
     display: grid;
-    gap: 3px;
+    gap: 6px;
     min-width: 0;
   }
 
   .desktop-sidebar-account-copy strong {
     font-size: 14px;
     line-height: 1.3;
-    word-break: break-word;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .desktop-sidebar-account-copy p {
     margin: 0;
     color: var(--muted);
     font-size: 12px;
+    line-height: 1.45;
   }
 
   .desktop-sidebar-account-actions {

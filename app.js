@@ -915,7 +915,7 @@ function syncDesktopDashboardStaticCopy() {
     label.textContent = copy;
   });
   document.querySelector('.desktop-sidebar-footer-label')?.replaceChildren(document.createTextNode('帳號'));
-  document.querySelector('.desktop-sidebar-account-copy p')?.replaceChildren(document.createTextNode('目前登入的帳號'));
+  document.querySelector('.desktop-sidebar-account-copy p')?.replaceChildren(document.createTextNode('願你的文字成為祝福'));
   document.querySelector('.desktop-sidebar-account-actions [data-open-account-settings]')?.replaceChildren(document.createTextNode('帳號設定'));
   document.querySelector('#force-sync-btn .sync-btn-content span:last-child')?.replaceChildren(document.createTextNode('立即同步'));
   document.querySelector('#desktop-sidebar-signout-btn')?.replaceChildren(document.createTextNode('登出'));
