@@ -2825,17 +2825,21 @@ body:not(.auth-locked) .main {
     box-sizing: border-box;
   }
 
-  body:not(.auth-locked) .topbar {
-    display: flex;
-    margin-bottom: 12px;
-    align-items: center;
-    padding-left: var(--desktop-hero-text-inset);
-    box-sizing: border-box;
-  }
+body:not(.auth-locked) .topbar {
+  display: flex;
+  margin-bottom: 12px;
+  align-items: center;
+  padding-left: var(--desktop-hero-text-inset);
+  box-sizing: border-box;
+}
 
-  body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
-    display: none;
-  }
+body:not(.auth-locked) .topbar-actions {
+  display: none;
+}
+
+body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
+  display: none;
+}
 
   #view-title {
     font-size: 14px;
