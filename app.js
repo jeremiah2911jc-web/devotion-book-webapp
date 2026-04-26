@@ -2314,7 +2314,9 @@ a{color:${theme[1]};text-decoration:none;}
 nav ol{padding-left:1.3em;}
 .title-page{background:${theme[0]};padding:2.4em 2.2em;border-radius:22px;margin-top:2.2em;box-shadow:inset 0 0 0 1px rgba(140,118,90,.08);}
 .meta{color:#6b6259;font-size:.95em;line-height:1.75;}
-.chapter-head{margin:0 0 2.05em;padding:2.15em 0 1.25em;border-bottom:1px solid rgba(166,143,115,.18);}
+.chapter-head{margin:0 0 2.05em;padding:2.15em 0 1.25em;border-bottom:1px solid rgba(166,143,115,.18);text-align:center;}
+.chapter-kicker{margin:0 0 .72em;color:#7f6a54;font-size:.82em;line-height:1.5;font-weight:700;letter-spacing:.18em;text-transform:uppercase;}
+.chapter-head h1{margin:0;font-size:1.52em;line-height:1.46;font-weight:700;letter-spacing:.01em;}
 .chapter-head .scripture{margin:.95em 0 0;}
 .scripture{color:#736453;font-size:.96em;line-height:1.78;letter-spacing:.04em;font-style:italic;}
 .chapter-summary{margin:1.15em 0 1.95em;padding:1.15em 1.2em 1.08em;border:1px solid rgba(160,142,112,.22);border-radius:18px;background:linear-gradient(180deg, rgba(248,244,237,.96), rgba(243,236,226,.82));box-shadow:0 10px 24px rgba(94,76,54,.06);}
@@ -2366,7 +2368,8 @@ function chapterXhtml(chapter, order, book = {}) {
   return xhtmlWrap(chapter.chapter_title, `
     <main>
       <header class="chapter-head">
-        <h1>第 ${order} 章　${escapeHtml(chapter.chapter_title)}</h1>
+        <p class="chapter-kicker">第 ${order} 章</p>
+        <h1>${escapeHtml(chapter.chapter_title)}</h1>
         ${chapter.scripture_reference ? `<p class="scripture">${escapeHtml(chapter.scripture_reference)}</p>` : ''}
       </header>
       ${summaryBlock}
@@ -2941,7 +2944,9 @@ function injectReaderViewStyles() {
       #view-reader .reader-flow .text-blue, #view-reader .reader-flow .text-blue strong { color: #355d8d !important; }
       #view-reader .reader-flow .text-gold, #view-reader .reader-flow .text-gold strong { color: #8a6a1f !important; }
       #view-reader .reader-flow .text-purple, #view-reader .reader-flow .text-purple strong { color: #6a4a82 !important; }
-      #view-reader .reader-flow .chapter-head { margin: 0 0 2.05em; padding: 2.05em 0 1.2em; border-bottom: 1px solid rgba(166,143,115,.18); }
+      #view-reader .reader-flow .chapter-head { margin: 0 0 2.05em; padding: 2.05em 0 1.2em; border-bottom: 1px solid rgba(166,143,115,.18); text-align: center; }
+      #view-reader .reader-flow .chapter-kicker { margin: 0 0 .72em; color: #7f6a54; font-size: .82em; line-height: 1.5; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
+      #view-reader .reader-flow .chapter-head h1 { margin: 0; font-size: 1.52em; line-height: 1.46; letter-spacing: .01em; }
       #view-reader .reader-flow .chapter-head .scripture { margin: .92em 0 0; }
       #view-reader .reader-flow .scripture { color: #736453; font-size: .95em; line-height: 1.78; letter-spacing: .04em; font-style: italic; }
       #view-reader .reader-flow blockquote { margin: 1.32em 0 1.52em; padding: 1.02em 1.12em 1.02em 1.22em; border-left: 4px solid rgba(155,122,72,.4); border-radius: 0 18px 18px 0; background: linear-gradient(180deg, rgba(247,242,234,.92), rgba(243,236,226,.68)); color: inherit; line-height: 1.9; }
@@ -2970,6 +2975,8 @@ function injectReaderViewStyles() {
       #view-reader .reader-flow p { margin-bottom: 1em; line-height: 1.82; }
       #view-reader .reader-flow hr { width: 46%; margin: 1.7em auto; }
       #view-reader .reader-flow .chapter-head { margin-bottom: 1.75em; padding: 1.75em 0 1.05em; }
+      #view-reader .reader-flow .chapter-kicker { font-size: .78em; letter-spacing: .14em; margin-bottom: .65em; }
+      #view-reader .reader-flow .chapter-head h1 { font-size: 1.34em; line-height: 1.44; }
       #view-reader .reader-flow .chapter-summary { margin-bottom: 1.55em; padding: 1em 1em .96em; }
       #view-reader .reader-footer { grid-template-columns: auto 1fr auto; }
       #view-reader .reader-book-heading h2 { font-size: .95rem; }
