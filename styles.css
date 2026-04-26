@@ -884,7 +884,11 @@ body:not(.auth-locked) .main {
 }
 
 .home-recent-panel .panel-header h2 {
-  font-size: 17px;
+  margin: 0;
+  color: #35585d;
+  font-size: 15px;
+  line-height: 1.35;
+  font-weight: 700;
 }
 
 .home-recent-panel .small {
@@ -1313,7 +1317,7 @@ body.auth-locked .bottom-nav {
   }
 
   .home-recent-panel .panel-header h2 {
-    font-size: 15px;
+    font-size: 14px;
   }
 
   .home-recent-panel .small {
@@ -1527,7 +1531,7 @@ body:not(.auth-locked) .main {
 }
 
 .home-recent-panel .panel-header h2 {
-  font-size: 18px;
+  font-size: 15px;
 }
 
 .recent-note-item {
@@ -1731,7 +1735,7 @@ body:not(.auth-locked) .main {
   }
 
   .home-recent-panel .panel-header h2 {
-    font-size: 16px;
+    font-size: 14px;
   }
 
   .home-recent-panel .small {
@@ -2019,8 +2023,7 @@ body:not(.auth-locked) .topbar {
 }
 
 .home-recent-panel .panel-header h2 {
-  font-size: 17px;
-  line-height: 1.2;
+  font-size: 14px;
 }
 
 .home-recent-panel .small {
