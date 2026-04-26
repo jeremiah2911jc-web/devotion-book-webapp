@@ -554,6 +554,33 @@ input:focus, textarea:focus, select:focus {
   gap: 18px;
   font-size: 17px;
 }
+.note-preview-content h2 {
+  margin: 0;
+  color: #21484c;
+  font-size: 24px;
+  line-height: 1.45;
+}
+.note-preview-content blockquote {
+  margin: 0;
+  padding: 14px 16px;
+  border-left: 4px solid rgba(136, 109, 89, 0.48);
+  border-radius: 0 16px 16px 0;
+  background: rgba(244, 240, 232, 0.82);
+  color: #4f4135;
+  line-height: 1.9;
+}
+.note-preview-content ul {
+  margin: 0;
+  padding-left: 1.4em;
+}
+.note-preview-content li {
+  margin: 0.4em 0;
+  line-height: 1.9;
+}
+.note-preview-content strong {
+  font-weight: 700;
+  color: #27494d;
+}
 .note-preview-empty,
 .note-preview-placeholder {
   color: var(--muted);
@@ -587,6 +614,14 @@ input:focus, textarea:focus, select:focus {
   .note-preview-content {
     gap: 14px;
     font-size: 15px;
+  }
+
+  .note-preview-content h2 {
+    font-size: 20px;
+  }
+
+  .note-preview-content blockquote {
+    padding: 12px 14px;
   }
 
   .note-preview-summary {

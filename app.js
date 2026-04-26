@@ -1416,12 +1416,7 @@ function renderNotePreview() {
   `;
 
   const contentBlocks = content
-    ? String(content)
-      .split(/\n{2,}/)
-      .map(paragraph => paragraph.trim())
-      .filter(Boolean)
-      .map(paragraph => `<p>${escapeHtml(paragraph).replaceAll('\n', '<br/>')}</p>`)
-      .join('')
+    ? renderMarkdownContent(content)
     : '<p class="note-preview-placeholder">尚未輸入內容</p>';
 
   els.notePreview.innerHTML = `
@@ -1434,6 +1429,73 @@ function renderNotePreview() {
       ${contentBlocks}
     </section>
   `;
+}
+
+function renderMarkdownInline(text = '') {
+  const escaped = escapeHtml(String(text || ''));
+  return escaped.replace(/\*\*([^*\n][^*\n]*?)\*\*/g, '<strong>$1</strong>');
+}
+
+function renderMarkdownContent(text = '') {
+  const normalized = String(text || '').replace(/\r\n/g, '\n').trim();
+  if (!normalized) return '';
+
+  const lines = normalized.split('\n');
+  const blocks = [];
+  let index = 0;
+
+  while (index < lines.length) {
+    const line = lines[index];
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      index += 1;
+      continue;
+    }
+
+    if (/^##\s+/.test(trimmed)) {
+      blocks.push(`<h2>${renderMarkdownInline(trimmed.replace(/^##\s+/, '').trim())}</h2>`);
+      index += 1;
+      continue;
+    }
+
+    if (/^>\s?/.test(trimmed)) {
+      const quoteLines = [];
+      while (index < lines.length) {
+        const current = lines[index].trim();
+        if (!current || !/^>\s?/.test(current)) break;
+        quoteLines.push(current.replace(/^>\s?/, ''));
+        index += 1;
+      }
+      blocks.push(`<blockquote>${renderMarkdownInline(quoteLines.join('\n')).replaceAll('\n', '<br/>')}</blockquote>`);
+      continue;
+    }
+
+    if (/^-\s+/.test(trimmed)) {
+      const items = [];
+      while (index < lines.length) {
+        const current = lines[index].trim();
+        if (!current || !/^-\s+/.test(current)) break;
+        items.push(`<li>${renderMarkdownInline(current.replace(/^-\s+/, '').trim())}</li>`);
+        index += 1;
+      }
+      blocks.push(`<ul>${items.join('')}</ul>`);
+      continue;
+    }
+
+    const paragraphLines = [];
+    while (index < lines.length) {
+      const current = lines[index];
+      const currentTrimmed = current.trim();
+      if (!currentTrimmed) break;
+      if (/^##\s+/.test(currentTrimmed) || /^>\s?/.test(currentTrimmed) || /^-\s+/.test(currentTrimmed)) break;
+      paragraphLines.push(current);
+      index += 1;
+    }
+    blocks.push(`<p>${renderMarkdownInline(paragraphLines.join('\n')).replaceAll('\n', '<br/>')}</p>`);
+  }
+
+  return blocks.join('');
 }
 
 function getNoteContentTextarea() {
@@ -2142,7 +2204,7 @@ function buildTemplateCss(templateCode) {
     sermon: ['#f0f3f7', '#253648'],
     testimony: ['#f7ecef', '#5b2f3a'],
   }[templateCode] || ['#f6f0e6', '#44362b'];
-  return `body{font-family:"Noto Serif TC","PingFang TC",serif;line-height:1.8;color:#222;margin:0;padding:0;}main{padding:1.6em;}h1,h2{color:${theme[1]};}a{color:${theme[1]};text-decoration:none;}nav ol{padding-left:1.2em;}.title-page{background:${theme[0]};padding:2em;border-radius:18px;margin-top:2em;} .meta{color:#666;font-size:.95em;} .scripture{margin:.8em 0;color:#555;font-style:italic;} .chapter-summary{margin:1.15em 0 1.6em;padding:1em 1.1em;border:1px solid rgba(160,142,112,.24);border-radius:14px;background:rgba(246,240,230,.68);} .chapter-summary .kicker{display:block;margin-bottom:.45em;color:#7a6753;font-size:.82em;font-weight:700;letter-spacing:.06em;} .chapter-summary p{margin:0;} p{margin:0 0 1em;} `;
+  return `body{font-family:"Noto Serif TC","PingFang TC",serif;line-height:1.8;color:#222;margin:0;padding:0;}main{padding:1.6em;}h1,h2{color:${theme[1]};}h2{margin:1.7em 0 .75em;font-size:1.2em;line-height:1.45;font-weight:700;}a{color:${theme[1]};text-decoration:none;}nav ol{padding-left:1.2em;}.title-page{background:${theme[0]};padding:2em;border-radius:18px;margin-top:2em;} .meta{color:#666;font-size:.95em;} .scripture{margin:.8em 0;color:#555;font-style:italic;} .chapter-summary{margin:1.15em 0 1.6em;padding:1em 1.1em;border:1px solid rgba(160,142,112,.24);border-radius:14px;background:rgba(246,240,230,.68);} .chapter-summary .kicker{display:block;margin-bottom:.45em;color:#7a6753;font-size:.82em;font-weight:700;letter-spacing:.06em;} .chapter-summary p{margin:0;} blockquote{margin:1.15em 0 1.4em;padding:.95em 1.1em;border-left:4px solid rgba(155,122,72,.4);background:rgba(246,240,230,.46);color:#4c4033;} ul{margin:0 0 1.2em;padding-left:1.5em;} li{margin:.35em 0;line-height:1.8;} strong{font-weight:700;color:${theme[1]};} p{margin:0 0 1em;} `;
 }
 
 function containerXml() {
@@ -2161,13 +2223,13 @@ function titlePage(book) {
         <h1>${escapeHtml(book.title)}</h1>
         ${book.subtitle ? `<p class="meta">${escapeHtml(book.subtitle)}</p>` : ''}
         ${book.author_name ? `<p class="meta">作者：${escapeHtml(book.author_name)}</p>` : ''}
-        ${book.description ? `<p>${paragraphs(book.description)}</p>` : ''}
+        ${book.description ? renderMarkdownContent(book.description) : ''}
       </div>
     </main>
   `, false, "../styles/book.css", resolveBookLanguage(book.language));
 }
 function simpleSection(title, content, language = DEFAULT_BOOK_LANGUAGE) {
-  return xhtmlWrap(title, `<main><h1>${escapeHtml(title)}</h1>${paragraphs(content)}</main>`, false, "../styles/book.css", resolveBookLanguage(language));
+  return xhtmlWrap(title, `<main><h1>${escapeHtml(title)}</h1>${renderMarkdownContent(content)}</main>`, false, "../styles/book.css", resolveBookLanguage(language));
 }
 function chapterXhtml(chapter, order, book = {}) {
   const language = resolveBookLanguage(book.language);
@@ -2180,7 +2242,7 @@ function chapterXhtml(chapter, order, book = {}) {
       <h1>第 ${order} 章　${escapeHtml(chapter.chapter_title)}</h1>
       ${chapter.scripture_reference ? `<p class="scripture">${escapeHtml(chapter.scripture_reference)}</p>` : ''}
       ${summaryBlock}
-      ${paragraphs(chapter.content || '')}
+      ${renderMarkdownContent(chapter.content || '')}
     </main>
   `, false, "../styles/book.css", language);
 }
@@ -2250,7 +2312,7 @@ function xhtmlWrap(title, body, includeEpubNs = false, cssPath = "../styles/book
 </html>`;
 }
 function paragraphs(text) {
-  return String(text || '').split(/\n{2,}/).map(part => `<p>${escapeHtml(part).replaceAll('\n', '<br/>')}</p>`).join('');
+  return renderMarkdownContent(text);
 }
 function dataUrlToBytes(dataUrl) {
   const [meta, data] = dataUrl.split(',');
@@ -2741,8 +2803,12 @@ function injectReaderViewStyles() {
       #view-reader .reader-flow img, #view-reader .reader-flow svg, #view-reader .reader-flow video, #view-reader .reader-flow table { max-width: 100%; height: auto; }
       #view-reader .reader-flow pre, #view-reader .reader-flow code { white-space: pre-wrap; overflow-wrap: anywhere; }
       #view-reader .reader-flow h1, #view-reader .reader-flow h2 { margin: 0 0 1.15em; line-height: 1.35; }
+      #view-reader .reader-flow h2 { font-size: 1.18em; color: #21484c; }
       #view-reader .reader-flow p { margin: 0 0 1.05em; }
-      #view-reader .reader-flow .scripture, #view-reader .reader-flow blockquote { margin: 1.15em 0 1.35em; padding-left: 1em; border-left: 3px solid rgba(155,122,72,.35); color: inherit; }
+      #view-reader .reader-flow ul { margin: 0 0 1.15em; padding-left: 1.45em; }
+      #view-reader .reader-flow li { margin: .35em 0; line-height: 1.85; }
+      #view-reader .reader-flow strong { font-weight: 700; color: inherit; }
+      #view-reader .reader-flow .scripture, #view-reader .reader-flow blockquote { margin: 1.15em 0 1.35em; padding: .95em 1.05em .95em 1.15em; border-left: 3px solid rgba(155,122,72,.35); border-radius: 0 16px 16px 0; background: rgba(246,240,230,.45); color: inherit; }
       #view-reader .reader-flow .chapter-summary { margin: 1.15em 0 1.4em; padding: 1em 1.05em; border-radius: 16px; border: 1px solid rgba(160,142,112,.24); background: rgba(246,240,230,.72); }
       #view-reader .reader-flow .chapter-summary .kicker { display: block; margin-bottom: .45em; color: #7a6753; font-size: .82em; font-weight: 700; letter-spacing: .06em; }
       #view-reader .reader-flow .chapter-summary p { margin: 0; }
