@@ -4416,6 +4416,18 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
   line-height: 1.15;
 }
 
+.admin-stat-value-email {
+  font-size: 15px;
+  line-height: 1.55;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+.admin-stat-value-placeholder {
+  font-size: 15px;
+  line-height: 1.45;
+}
+
 .admin-monitoring-stack {
   display: grid;
   gap: 18px;

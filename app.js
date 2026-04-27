@@ -322,6 +322,7 @@ function bindViewTriggers(scope = document) {
 
 function getAdminDashboardStats() {
   const allLibraryBooks = getAllLibraryBooksForView();
+  const importedEpubCount = Array.isArray(importedLibrary?.books) ? importedLibrary.books.length : 0;
   const today = new Date();
   const sevenDaysAgo = new Date(today);
   sevenDaysAgo.setHours(0, 0, 0, 0);
@@ -340,12 +341,48 @@ function getAdminDashboardStats() {
   const todayNewNotes = state.notes.filter(note => isToday(note.created_at || note.updated_at)).length;
   const lastSevenDaysNotes = state.notes.filter(note => isInLastSevenDays(note.created_at || note.updated_at)).length;
   return [
+    {
+      label: '總使用者數',
+      value: '尚未接入',
+      detail: '目前前端無法直接從 Supabase Auth 取得所有使用者清單，需後續安全接入後台 API。',
+      valueClass: 'admin-stat-value-placeholder',
+    },
     { label: '總札記數', value: String(state.notes.length), detail: '目前登入帳號可存取的札記總數' },
     { label: '總書籍數', value: String(allLibraryBooks.length), detail: '書櫃中的已匯出與外部匯入書籍總數' },
     { label: '總選稿編排數', value: String(state.books.length), detail: '目前登入帳號的選稿編排總數' },
     { label: '今日新增札記數', value: String(todayNewNotes), detail: '以札記 created_at / updated_at 推估今日新增' },
     { label: '近 7 天新增札記數', value: String(lastSevenDaysNotes), detail: '最近七天新增或建立的札記數' },
-    { label: '目前登入使用者 email', value: getCurrentUserEmail() || '未登入', detail: state.supabase ? 'Supabase Auth 目前登入帳號' : '目前不是 Supabase 雲端登入模式' },
+    {
+      label: '資料庫目前用量提醒',
+      value: '尚未接入平台 API',
+      detail: '需透過 Supabase 平台 API 或 Dashboard 取得資料庫用量後，才能依比例顯示提醒。',
+      valueClass: 'admin-stat-value-placeholder',
+      healthClass: 'is-normal',
+    },
+    {
+      label: '最近錯誤紀錄',
+      value: '尚無資料',
+      detail: '目前前端沒有集中錯誤紀錄資料來源，後續若接入監控再顯示。',
+      valueClass: 'admin-stat-value-placeholder',
+    },
+    {
+      label: 'Storage 使用提醒',
+      value: '尚未接入平台 API',
+      detail: '需透過 Supabase Storage / 平台 Dashboard 取得用量後，才能依比例顯示提醒。',
+      valueClass: 'admin-stat-value-placeholder',
+      healthClass: 'is-normal',
+    },
+    {
+      label: '匯入 EPUB 數量',
+      value: String(importedEpubCount),
+      detail: '依目前裝置 imported_epub 本機資料統計，可用於查看已匯入 EPUB 數量',
+    },
+    {
+      label: '目前登入使用者 email',
+      value: getCurrentUserEmail() || '未登入',
+      detail: state.supabase ? 'Supabase Auth 目前登入帳號' : '目前不是 Supabase 雲端登入模式',
+      valueClass: 'admin-stat-value-email',
+    },
     { label: '最後同步時間', value: state.lastSyncAt ? formatDate(state.lastSyncAt) : '尚未同步', detail: state.lastSyncAt ? '最後一次同步完成時間' : '目前尚未記錄雲端同步完成時間' },
   ];
 }
@@ -383,7 +420,8 @@ function renderAdminDashboard() {
   summaryContainer.innerHTML = stats.map(item => `
     <article class="admin-stat-card">
       <span class="admin-stat-label">${escapeHtml(item.label)}</span>
-      <strong class="admin-stat-value">${escapeHtml(item.value)}</strong>
+      <strong class="admin-stat-value${item.valueClass ? ` ${item.valueClass}` : ''}">${escapeHtml(item.value)}</strong>
+      ${item.healthClass ? `<span class="admin-health-badge ${item.healthClass}">待接入後可顯示比例警示</span>` : ''}
       <p class="caption">${escapeHtml(item.detail)}</p>
     </article>
   `).join('');
