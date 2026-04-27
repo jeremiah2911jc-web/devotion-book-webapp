@@ -4378,3 +4378,132 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
     font-size: 19px;
   }
 }
+
+.admin-dashboard-panel {
+  display: grid;
+  gap: 22px;
+}
+
+.admin-dashboard-section {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.admin-stat-card,
+.admin-usage-card {
+  border: 1px solid rgba(191, 211, 208, 0.78);
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  display: grid;
+  gap: 8px;
+}
+
+.admin-stat-label {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.admin-stat-value {
+  color: #245e64;
+  font-size: clamp(22px, 2.2vw, 30px);
+  line-height: 1.15;
+}
+
+.admin-monitoring-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.admin-monitoring-group {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(191, 211, 208, 0.72);
+  background: rgba(248, 252, 252, 0.88);
+}
+
+.admin-usage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.admin-usage-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 10px;
+}
+
+.admin-usage-card h4 {
+  margin: 0;
+  color: #244248;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.admin-usage-placeholder {
+  margin: 0;
+  color: #245e64;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.admin-health-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-health-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+.admin-health-badge.is-normal {
+  color: #2d6b54;
+  background: rgba(96, 177, 126, 0.14);
+  border-color: rgba(96, 177, 126, 0.24);
+}
+
+.admin-health-badge.is-attention {
+  color: #8d6800;
+  background: rgba(241, 190, 74, 0.18);
+  border-color: rgba(241, 190, 74, 0.32);
+}
+
+.admin-health-badge.is-warning {
+  color: #a44f16;
+  background: rgba(235, 136, 70, 0.18);
+  border-color: rgba(235, 136, 70, 0.3);
+}
+
+.admin-health-badge.is-critical {
+  color: #9e2e3a;
+  background: rgba(212, 107, 114, 0.16);
+  border-color: rgba(212, 107, 114, 0.32);
+}
+
+@media (max-width: 840px) {
+  .admin-monitoring-group {
+    padding: 16px;
+  }
+
+  .admin-usage-card-head {
+    display: grid;
+  }
+}

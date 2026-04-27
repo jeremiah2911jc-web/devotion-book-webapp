@@ -16,6 +16,7 @@ const TEMPLATE_LABELS = {
 };
 
 const DEFAULT_BOOK_LANGUAGE = 'mul';
+const ADMIN_EMAILS = ['allen680552@gmail.com'];
 
 const DEFAULT_CONFIG = {
   supabaseUrl: 'https://kknyldzvgvuewkpwkwyj.supabase.co',
@@ -295,6 +296,136 @@ function setSyncState({ status, detail, at } = {}) {
 }
 function markCloudSynced(detail = '雲端資料已同步。') {
   setSyncState({ status: '已同步', detail, at: nowIso() });
+}
+
+function getCurrentUserEmail() {
+  return String(state.currentUser?.email || '').trim().toLowerCase();
+}
+
+function isAdminUser() {
+  return !!(state.supabase && state.currentUser && ADMIN_EMAILS.includes(getCurrentUserEmail()));
+}
+
+function isAdminView(viewName = '') {
+  return viewName === 'admin' || viewName === 'admin-dashboard';
+}
+
+function bindViewTriggers(scope = document) {
+  scope.querySelectorAll('[data-view], [data-admin-view]').forEach(button => {
+    if (!(button instanceof HTMLElement) || button.dataset.viewBound === 'true') return;
+    const targetView = button.dataset.adminView || button.dataset.view;
+    if (!targetView) return;
+    button.dataset.viewBound = 'true';
+    button.addEventListener('click', () => setView(targetView));
+  });
+}
+
+function getAdminDashboardStats() {
+  const allLibraryBooks = getAllLibraryBooksForView();
+  const today = new Date();
+  const sevenDaysAgo = new Date(today);
+  sevenDaysAgo.setHours(0, 0, 0, 0);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+  const isToday = (value) => {
+    const date = new Date(value || 0);
+    return !Number.isNaN(date.getTime())
+      && date.getFullYear() === today.getFullYear()
+      && date.getMonth() === today.getMonth()
+      && date.getDate() === today.getDate();
+  };
+  const isInLastSevenDays = (value) => {
+    const date = new Date(value || 0);
+    return !Number.isNaN(date.getTime()) && date >= sevenDaysAgo;
+  };
+  const todayNewNotes = state.notes.filter(note => isToday(note.created_at || note.updated_at)).length;
+  const lastSevenDaysNotes = state.notes.filter(note => isInLastSevenDays(note.created_at || note.updated_at)).length;
+  return [
+    { label: '總札記數', value: String(state.notes.length), detail: '目前登入帳號可存取的札記總數' },
+    { label: '總書籍數', value: String(allLibraryBooks.length), detail: '書櫃中的已匯出與外部匯入書籍總數' },
+    { label: '總選稿編排數', value: String(state.books.length), detail: '目前登入帳號的選稿編排總數' },
+    { label: '今日新增札記數', value: String(todayNewNotes), detail: '以札記 created_at / updated_at 推估今日新增' },
+    { label: '近 7 天新增札記數', value: String(lastSevenDaysNotes), detail: '最近七天新增或建立的札記數' },
+    { label: '目前登入使用者 email', value: getCurrentUserEmail() || '未登入', detail: state.supabase ? 'Supabase Auth 目前登入帳號' : '目前不是 Supabase 雲端登入模式' },
+    { label: '最後同步時間', value: state.lastSyncAt ? formatDate(state.lastSyncAt) : '尚未同步', detail: state.lastSyncAt ? '最後一次同步完成時間' : '目前尚未記錄雲端同步完成時間' },
+  ];
+}
+
+function renderAdminHealthLegend() {
+  return `
+    <div class="admin-health-legend" aria-label="監控警告狀態樣式">
+      <span class="admin-health-badge is-normal">正常：低於 70%</span>
+      <span class="admin-health-badge is-attention">注意：70%～89%</span>
+      <span class="admin-health-badge is-warning">警告：90% 以上</span>
+      <span class="admin-health-badge is-critical">危急：超過上限</span>
+    </div>
+  `;
+}
+
+function renderAdminPlatformCards(items = []) {
+  return items.map(item => `
+    <article class="admin-usage-card" data-health-level="normal">
+      <div class="admin-usage-card-head">
+        <h4>${escapeHtml(item)}</h4>
+        <span class="admin-health-badge is-normal">尚未接入平台 API</span>
+      </div>
+      <p class="admin-usage-placeholder">尚未接入平台 API</p>
+      <p class="caption">此項需透過 Supabase / Vercel 後台 API 或 Dashboard 取得，不能把平台 Token 放在前端。</p>
+    </article>
+  `).join('');
+}
+
+function renderAdminDashboard() {
+  const summaryContainer = document.getElementById('admin-summary-cards');
+  const monitoringContainer = document.getElementById('admin-monitoring-groups');
+  if (!summaryContainer || !monitoringContainer) return;
+
+  const stats = getAdminDashboardStats();
+  summaryContainer.innerHTML = stats.map(item => `
+    <article class="admin-stat-card">
+      <span class="admin-stat-label">${escapeHtml(item.label)}</span>
+      <strong class="admin-stat-value">${escapeHtml(item.value)}</strong>
+      <p class="caption">${escapeHtml(item.detail)}</p>
+    </article>
+  `).join('');
+
+  monitoringContainer.innerHTML = `
+    <section class="admin-monitoring-group">
+      <div class="panel-header">
+        <div>
+          <h3>Supabase</h3>
+          <p class="muted">平台用量監控 UI 佔位，第一階段不直接接 Management API。</p>
+        </div>
+      </div>
+      ${renderAdminHealthLegend()}
+      <div class="admin-usage-grid">
+        ${renderAdminPlatformCards([
+          'Database Size',
+          'Storage 用量',
+          'Bandwidth / Egress',
+          'Auth Users',
+          'API Requests',
+          'Logs / Error Logs',
+        ])}
+      </div>
+    </section>
+    <section class="admin-monitoring-group">
+      <div class="panel-header">
+        <div>
+          <h3>Vercel</h3>
+          <p class="muted">先保留監控卡位置，後續若要接資料，需走後端安全代理，不可把平台 Token 放在前端。</p>
+        </div>
+      </div>
+      ${renderAdminHealthLegend()}
+      <div class="admin-usage-grid">
+        ${renderAdminPlatformCards([
+          'Visitors',
+          'Bandwidth',
+          'Function Usage',
+          'Build / Deployment 狀態',
+        ])}
+      </div>
+    </section>
+  `;
 }
 
 function ensureContentLibraryUi() {
@@ -1447,7 +1578,7 @@ function bindEvents() {
   els.pushLocalToCloudBtn?.addEventListener('click', () => uploadLocalDataToCloud().catch(handleError));
   els.downloadBackupBtn?.addEventListener('click', () => { try { downloadBackupJson(); } catch (error) { handleError(error); } });
 
-  els.viewNavLinks.forEach(btn => btn.addEventListener('click', () => setView(btn.dataset.view)));
+  bindViewTriggers();
   els.quickNewNote.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
   els.quickNewBook.addEventListener('click', () => { setView('books'); clearBookForm(); });
   els.todayDevotionNoteBtn?.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
@@ -1695,6 +1826,103 @@ function resolveBookLanguage(value = '') {
   return lang || DEFAULT_BOOK_LANGUAGE;
 }
 
+function ensureAdminUi() {
+  const canAccessAdmin = isAdminUser();
+  const desktopNav = document.querySelector('.desktop-sidebar-nav');
+  const existingNavLink = document.getElementById('desktop-admin-dashboard-link');
+  if (canAccessAdmin) {
+    if (desktopNav && !existingNavLink) {
+      const settingsLink = desktopNav.querySelector('[data-open-account-settings]');
+      const button = document.createElement('button');
+      button.id = 'desktop-admin-dashboard-link';
+      button.className = 'desktop-sidebar-link';
+      button.type = 'button';
+      button.dataset.view = 'admin-dashboard';
+      button.innerHTML = `
+        <span class="nav-icon asset-icon asset-sprite-system icon-gear" aria-hidden="true"></span>
+        <span>管理後台</span>
+      `;
+      settingsLink?.insertAdjacentElement('beforebegin', button);
+    }
+  } else {
+    existingNavLink?.remove();
+  }
+
+  const accountActionsSection = document.querySelector('#account-settings-modal .account-settings-section:last-of-type');
+  const adminAccessSection = document.getElementById('account-admin-access-section');
+  if (canAccessAdmin) {
+    if (accountActionsSection && !adminAccessSection) {
+      const section = document.createElement('div');
+      section.id = 'account-admin-access-section';
+      section.className = 'account-settings-section';
+      section.innerHTML = `
+        <span class="account-settings-label">管理後台</span>
+        <div class="account-settings-actions">
+          <button id="open-admin-dashboard-btn" class="ghost-btn" type="button" data-admin-view="admin-dashboard">前往管理後台</button>
+        </div>
+        <p class="caption">目前登入帳號已列入第一階段白名單，可進入管理後台。</p>
+      `;
+      accountActionsSection.insertAdjacentElement('beforebegin', section);
+    }
+  } else {
+    adminAccessSection?.remove();
+  }
+
+  const adminView = document.getElementById('view-admin-dashboard');
+  if (canAccessAdmin) {
+    if (!adminView) {
+      const libraryView = document.getElementById('view-library');
+      const section = document.createElement('section');
+      section.id = 'view-admin-dashboard';
+      section.className = 'view admin-dashboard-view';
+      section.innerHTML = `
+        <section class="panel admin-dashboard-panel">
+          <div class="panel-header">
+            <div>
+              <h2>管理後台</h2>
+              <p class="muted">第一階段白名單入口，僅限授權管理者帳號可見。</p>
+            </div>
+          </div>
+          <section class="admin-dashboard-section">
+            <div class="panel-header">
+              <div>
+                <h3>站內內容統計</h3>
+                <p class="muted">使用目前前端 state 與現有 Supabase / 本機資料來源彙整。</p>
+              </div>
+            </div>
+            <div id="admin-summary-cards" class="admin-summary-grid"></div>
+          </section>
+          <section class="admin-dashboard-section">
+            <div class="panel-header">
+              <div>
+                <h3>平台用量監控</h3>
+                <p class="muted">先做監控卡佔位與狀態樣式，暫不直連任何平台 API。</p>
+                <p class="caption">目前尚未接入 Supabase / Vercel 平台 API，因此本區尚非即時監控。後續接入後，將於開啟管理後台時更新，並可依用量比例顯示正常、注意、警告或危急。</p>
+              </div>
+            </div>
+            <div id="admin-monitoring-groups" class="admin-monitoring-stack"></div>
+          </section>
+        </section>
+      `;
+      libraryView?.insertAdjacentElement('beforebegin', section);
+    }
+  } else {
+    adminView?.remove();
+  }
+
+  els.viewNavLinks = [...document.querySelectorAll('.desktop-sidebar-link[data-view], .mobile-bottom-link[data-view], .nav-link[data-view]')];
+  els.views = [...document.querySelectorAll('.view')];
+  bindViewTriggers();
+  const adminEntryButton = document.getElementById('open-admin-dashboard-btn');
+  if (adminEntryButton && adminEntryButton.dataset.adminEntryBound !== 'true') {
+    adminEntryButton.dataset.adminEntryBound = 'true';
+    adminEntryButton.addEventListener('click', () => {
+      els.accountSettingsModal?.classList.add('hidden');
+      els.accountSettingsModal?.setAttribute('aria-hidden', 'true');
+    });
+  }
+}
+
 function sanitizeDisplayText(value, fallback = '') {
   const text = String(value ?? '').replace(/\s+/g, ' ').trim();
   if (!text) return fallback;
@@ -1710,6 +1938,7 @@ function getPrimaryViewLabel(viewName = '') {
     notes: '寫札記',
     'content-library': '札記庫',
     books: '選稿編排',
+    'admin-dashboard': '管理後台',
     library: '書櫃',
     manual: '操作手冊',
   }[viewName] || '';
@@ -1992,7 +2221,11 @@ function refreshUi() {
   ensureWritingWorkspaceUi();
   ensureOperationManualUi();
   ensureBookDraftWorkspaceUi();
+  ensureAdminUi();
   ensureBookExportSettingsUi();
+  if (isAdminView(document.body.dataset.currentView || 'dashboard') && !isAdminUser()) {
+    setView('dashboard');
+  }
   if (els.authModeBadge) els.authModeBadge.textContent = state.supabase ? '雲端模式' : '本機模式';
   if (els.statusStorage) els.statusStorage.textContent = state.supabase ? 'Supabase' : 'Local';
   if (els.statusSync) els.statusSync.textContent = state.syncStatus || '未啟用';
@@ -2046,6 +2279,7 @@ function refreshUi() {
   renderBooks();
   renderSelectedBookPanel();
   renderLibrary();
+  renderAdminDashboard();
   renderReaderSettings();
 }
 
@@ -3814,6 +4048,11 @@ function renderSnapshots() {
 }
 
 function setView(viewName) {
+  if (viewName === 'admin') viewName = 'admin-dashboard';
+  if (isAdminView(viewName) && !isAdminUser()) {
+    showToast('目前帳號沒有管理後台權限。');
+    viewName = 'dashboard';
+  }
   if (viewName === 'snapshots') viewName = 'dashboard';
   if (viewName !== 'books') state.bookDraftModalOpen = false;
   if (viewName !== 'books' && state.bookExportSettingsModalOpen) closeBookExportSettingsModal();
@@ -3823,6 +4062,7 @@ function setView(viewName) {
     notes: ['寫札記', '專注建立與編輯單篇札記。'],
     'content-library': ['札記庫', '從過去寫過的札記中搜尋、篩選並挑選文章，加入目前選稿編排。'],
     books: ['選稿編排', '管理成書前的選稿編排，整理章節順序並銜接成書匯出設定。'],
+    'admin-dashboard': ['管理後台', '第一階段白名單入口，僅授權管理者可使用。'],
     snapshots: ['快照備份', '查看每次建立的書籍快照。'],
     library: ['書櫃', '收藏已輸出的固定版本作品，直接開啟閱讀。'],
     manual: ['操作手冊', '靈修札記成書系統使用說明'],
