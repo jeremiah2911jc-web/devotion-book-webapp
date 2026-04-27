@@ -17,6 +17,14 @@ const TEMPLATE_LABELS = {
 
 const DEFAULT_BOOK_LANGUAGE = 'mul';
 const ADMIN_EMAILS = ['allen680552@gmail.com'];
+const EMPTY_ADMIN_USAGE = {
+  databaseSize: null,
+  databaseLimit: null,
+  storageUsed: null,
+  storageLimit: null,
+  egressUsed: null,
+  egressLimit: null,
+};
 
 const DEFAULT_CONFIG = {
   supabaseUrl: 'https://kknyldzvgvuewkpwkwyj.supabase.co',
@@ -262,6 +270,11 @@ const state = {
   bookExportSettingsModalOpen: false,
   isExporting: false,
   latestExportedBook: null,
+  adminUsage: {
+    status: 'idle',
+    data: { ...EMPTY_ADMIN_USAGE },
+    promise: null,
+  },
 };
 
 function loadJson(key, fallback) {
@@ -398,17 +411,169 @@ function renderAdminHealthLegend() {
   `;
 }
 
+function formatUsageAmount(value) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return null;
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let size = value;
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+  const digits = size >= 100 || Number.isInteger(size) ? 0 : size >= 10 ? 1 : 2;
+  return `${size.toFixed(digits)} ${units[unitIndex]}`;
+}
+
+function getAdminUsageStateClass(ratio) {
+  if (typeof ratio !== 'number' || !Number.isFinite(ratio)) return 'admin-usage-danger';
+  if (ratio > 1) return 'admin-usage-critical';
+  if (ratio >= 0.9) return 'admin-usage-danger';
+  if (ratio >= 0.7) return 'admin-usage-warning';
+  return 'admin-usage-normal';
+}
+
+function getAdminUsageBadgeClass(levelClass = '') {
+  return {
+    'admin-usage-normal': 'is-normal',
+    'admin-usage-warning': 'is-attention',
+    'admin-usage-danger': 'is-warning',
+    'admin-usage-critical': 'is-critical',
+  }[levelClass] || 'is-warning';
+}
+
+function normalizeUsageNumber(value) {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function buildUsageMetricCard(label, used, limit, status = 'ready') {
+  if (status === 'loading') {
+    return {
+      label,
+      value: '讀取中...',
+      detail: '資料將透過後端 /api/admin-usage 安全代理取得，前端不會直接持有平台 Token。',
+      badgeText: '讀取中...',
+      badgeClass: 'is-normal',
+      levelClass: 'admin-usage-normal',
+    };
+  }
+
+  if (
+    typeof used !== 'number'
+    || !Number.isFinite(used)
+    || typeof limit !== 'number'
+    || !Number.isFinite(limit)
+    || limit <= 0
+  ) {
+    return {
+      label,
+      value: '取得失敗',
+      detail: '無法從 /api/admin-usage 取得有效用量資料，請稍後再試或檢查後端環境變數與平台 API 回應。',
+      badgeText: '取得失敗',
+      badgeClass: 'is-warning',
+      levelClass: 'admin-usage-danger',
+    };
+  }
+
+  const ratio = used / limit;
+  const percent = Math.round(ratio * 100);
+  const levelClass = getAdminUsageStateClass(ratio);
+  const levelText = {
+    'admin-usage-normal': '正常',
+    'admin-usage-warning': '注意',
+    'admin-usage-danger': '警告',
+    'admin-usage-critical': '危急',
+  }[levelClass];
+
+  return {
+    label,
+    value: `${formatUsageAmount(used)} / ${formatUsageAmount(limit)}（${percent}%）`,
+    detail: '資料由 /api/admin-usage 透過後端安全代理取得，前端不直接持有 Supabase / Vercel 平台 Token。',
+    badgeText: levelText,
+    badgeClass: getAdminUsageBadgeClass(levelClass),
+    levelClass,
+  };
+}
+
+function getAdminSupabaseUsageCards() {
+  const { status, data } = state.adminUsage;
+  return [
+    buildUsageMetricCard('Database Size', data.databaseSize, data.databaseLimit, status),
+    buildUsageMetricCard('Storage 用量', data.storageUsed, data.storageLimit, status),
+    buildUsageMetricCard('Bandwidth / Egress', data.egressUsed, data.egressLimit, status),
+    {
+      label: 'Auth Users',
+      value: '尚未接入平台 API',
+      detail: '此項需透過 Supabase / Vercel 後台 API 或 Dashboard 取得，不能把平台 Token 放在前端。',
+      badgeText: '尚未接入平台 API',
+      badgeClass: 'is-normal',
+      levelClass: 'admin-usage-normal',
+    },
+    {
+      label: 'API Requests',
+      value: '尚未接入平台 API',
+      detail: '此項需透過 Supabase / Vercel 後台 API 或 Dashboard 取得，不能把平台 Token 放在前端。',
+      badgeText: '尚未接入平台 API',
+      badgeClass: 'is-normal',
+      levelClass: 'admin-usage-normal',
+    },
+    {
+      label: 'Logs / Error Logs',
+      value: '尚未接入平台 API',
+      detail: '此項需透過 Supabase / Vercel 後台 API 或 Dashboard 取得，不能把平台 Token 放在前端。',
+      badgeText: '尚未接入平台 API',
+      badgeClass: 'is-normal',
+      levelClass: 'admin-usage-normal',
+    },
+  ];
+}
+
 function renderAdminPlatformCards(items = []) {
   return items.map(item => `
-    <article class="admin-usage-card" data-health-level="normal">
+    <article class="admin-usage-card ${escapeHtml(item.levelClass || 'admin-usage-normal')}" data-health-level="${escapeHtml(item.levelClass || 'admin-usage-normal')}">
       <div class="admin-usage-card-head">
-        <h4>${escapeHtml(item)}</h4>
-        <span class="admin-health-badge is-normal">尚未接入平台 API</span>
+        <h4>${escapeHtml(item.label)}</h4>
+        <span class="admin-health-badge ${escapeHtml(item.badgeClass || 'is-normal')}">${escapeHtml(item.badgeText || '尚未接入平台 API')}</span>
       </div>
-      <p class="admin-usage-placeholder">尚未接入平台 API</p>
-      <p class="caption">此項需透過 Supabase / Vercel 後台 API 或 Dashboard 取得，不能把平台 Token 放在前端。</p>
+      <p class="admin-usage-placeholder">${escapeHtml(item.value || '尚未接入平台 API')}</p>
+      <p class="caption">${escapeHtml(item.detail || '此項需透過 Supabase / Vercel 後台 API 或 Dashboard 取得，不能把平台 Token 放在前端。')}</p>
     </article>
   `).join('');
+}
+
+async function loadAdminUsage() {
+  if (!isAdminUser()) return { ...EMPTY_ADMIN_USAGE };
+  if (state.adminUsage.status === 'loading' && state.adminUsage.promise) return state.adminUsage.promise;
+
+  const request = (async () => {
+    state.adminUsage.status = 'loading';
+    refreshUi();
+    try {
+      const response = await fetch('/api/admin-usage', { headers: { Accept: 'application/json' } });
+      if (!response.ok) throw new Error(`admin usage request failed: ${response.status}`);
+      const payload = await response.json();
+      state.adminUsage.status = 'ready';
+      state.adminUsage.data = {
+        databaseSize: normalizeUsageNumber(payload?.databaseSize),
+        databaseLimit: normalizeUsageNumber(payload?.databaseLimit),
+        storageUsed: normalizeUsageNumber(payload?.storageUsed),
+        storageLimit: normalizeUsageNumber(payload?.storageLimit),
+        egressUsed: normalizeUsageNumber(payload?.egressUsed),
+        egressLimit: normalizeUsageNumber(payload?.egressLimit),
+      };
+      return state.adminUsage.data;
+    } catch {
+      state.adminUsage.status = 'ready';
+      state.adminUsage.data = { ...EMPTY_ADMIN_USAGE };
+      return state.adminUsage.data;
+    } finally {
+      state.adminUsage.promise = null;
+      refreshUi();
+    }
+  })();
+
+  state.adminUsage.promise = request;
+  return request;
 }
 
 function renderAdminDashboard() {
@@ -431,19 +596,12 @@ function renderAdminDashboard() {
       <div class="panel-header">
         <div>
           <h3>Supabase</h3>
-          <p class="muted">平台用量監控 UI 佔位，第一階段不直接接 Management API。</p>
+          <p class="muted">透過後端 /api/admin-usage 讀取平台用量，前端不直接持有平台 Token。</p>
         </div>
       </div>
       ${renderAdminHealthLegend()}
       <div class="admin-usage-grid">
-        ${renderAdminPlatformCards([
-          'Database Size',
-          'Storage 用量',
-          'Bandwidth / Egress',
-          'Auth Users',
-          'API Requests',
-          'Logs / Error Logs',
-        ])}
+        ${renderAdminPlatformCards(getAdminSupabaseUsageCards())}
       </div>
     </section>
     <section class="admin-monitoring-group">
@@ -456,10 +614,38 @@ function renderAdminDashboard() {
       ${renderAdminHealthLegend()}
       <div class="admin-usage-grid">
         ${renderAdminPlatformCards([
-          'Visitors',
-          'Bandwidth',
-          'Function Usage',
-          'Build / Deployment 狀態',
+          {
+            label: 'Visitors',
+            value: '尚未接入平台 API',
+            detail: '此項需透過 Supabase / Vercel 後台 API 或 Dashboard 取得，不能把平台 Token 放在前端。',
+            badgeText: '尚未接入平台 API',
+            badgeClass: 'is-normal',
+            levelClass: 'admin-usage-normal',
+          },
+          {
+            label: 'Bandwidth',
+            value: '尚未接入平台 API',
+            detail: '此項需透過 Supabase / Vercel 後台 API 或 Dashboard 取得，不能把平台 Token 放在前端。',
+            badgeText: '尚未接入平台 API',
+            badgeClass: 'is-normal',
+            levelClass: 'admin-usage-normal',
+          },
+          {
+            label: 'Function Usage',
+            value: '尚未接入平台 API',
+            detail: '此項需透過 Supabase / Vercel 後台 API 或 Dashboard 取得，不能把平台 Token 放在前端。',
+            badgeText: '尚未接入平台 API',
+            badgeClass: 'is-normal',
+            levelClass: 'admin-usage-normal',
+          },
+          {
+            label: 'Build / Deployment 狀態',
+            value: '尚未接入平台 API',
+            detail: '此項需透過 Supabase / Vercel 後台 API 或 Dashboard 取得，不能把平台 Token 放在前端。',
+            badgeText: '尚未接入平台 API',
+            badgeClass: 'is-normal',
+            levelClass: 'admin-usage-normal',
+          },
         ])}
       </div>
     </section>
@@ -4114,6 +4300,9 @@ function setView(viewName) {
   if (els.viewSubtitle) {
     els.viewSubtitle.textContent = viewTitle[1];
     els.viewSubtitle.classList.toggle('hidden', viewName === 'dashboard');
+  }
+  if (viewName === 'admin-dashboard') {
+    loadAdminUsage().catch(() => {});
   }
   if (isReaderView) {
     document.body.dataset.readerScrollY = String(window.scrollY || 0);
