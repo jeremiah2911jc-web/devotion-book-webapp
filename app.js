@@ -4131,7 +4131,13 @@ function setView(viewName) {
 function formatDate(value) {
   if (!value) return '未記錄';
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  if (Number.isNaN(date.getTime())) return String(value);
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  return `${year}/${month}/${day} ${hour}:${minute}`;
 }
 
 function handleError(error) {
