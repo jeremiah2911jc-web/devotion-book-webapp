@@ -18,12 +18,21 @@ const TEMPLATE_LABELS = {
 const DEFAULT_BOOK_LANGUAGE = 'mul';
 const ADMIN_EMAILS = ['allen680552@gmail.com'];
 const EMPTY_ADMIN_USAGE = {
-  databaseSize: null,
-  databaseLimit: null,
-  storageUsed: null,
-  storageLimit: null,
-  egressUsed: null,
-  egressLimit: null,
+  database: {
+    used: null,
+    limit: null,
+    error: null,
+  },
+  storage: {
+    used: null,
+    limit: null,
+    error: null,
+  },
+  egress: {
+    used: null,
+    limit: null,
+    error: null,
+  },
 };
 
 const DEFAULT_CONFIG = {
@@ -446,7 +455,17 @@ function normalizeUsageNumber(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function buildUsageMetricCard(label, used, limit, status = 'ready') {
+function getAdminUsageErrorText(errorCode = '') {
+  return {
+    unauthorized: '權限錯誤',
+    timeout: '連線逾時',
+    server_error: '伺服器錯誤',
+    query_error: '查詢錯誤',
+    unknown: '未知錯誤',
+  }[errorCode] || '未知錯誤';
+}
+
+function buildUsageMetricCard(label, metric = {}, status = 'ready') {
   if (status === 'loading') {
     return {
       label,
@@ -458,6 +477,21 @@ function buildUsageMetricCard(label, used, limit, status = 'ready') {
     };
   }
 
+  if (metric?.error) {
+    const errorText = getAdminUsageErrorText(metric.error);
+    return {
+      label,
+      value: errorText,
+      detail: '此卡片目前以錯誤狀態為主，不顯示任何用量數值或百分比。請依錯誤類型檢查權限、查詢語法、平台狀態或連線情況。',
+      badgeText: errorText,
+      badgeClass: 'is-warning',
+      levelClass: 'admin-usage-danger',
+    };
+  }
+
+  const used = normalizeUsageNumber(metric?.used);
+  const limit = normalizeUsageNumber(metric?.limit);
+
   if (
     typeof used !== 'number'
     || !Number.isFinite(used)
@@ -467,11 +501,11 @@ function buildUsageMetricCard(label, used, limit, status = 'ready') {
   ) {
     return {
       label,
-      value: '取得失敗',
-      detail: '無法從 /api/admin-usage 取得有效用量資料，請稍後再試或檢查後端環境變數與平台 API 回應。',
-      badgeText: '取得失敗',
-      badgeClass: 'is-warning',
-      levelClass: 'admin-usage-danger',
+      value: '尚無資料',
+      detail: '目前後端尚未回傳這項用量數值；若此指標暫不支援，前端會先保留卡片位置。',
+      badgeText: '尚無資料',
+      badgeClass: 'is-normal',
+      levelClass: 'admin-usage-normal',
     };
   }
 
@@ -498,9 +532,9 @@ function buildUsageMetricCard(label, used, limit, status = 'ready') {
 function getAdminSupabaseUsageCards() {
   const { status, data } = state.adminUsage;
   return [
-    buildUsageMetricCard('Database Size', data.databaseSize, data.databaseLimit, status),
-    buildUsageMetricCard('Storage 用量', data.storageUsed, data.storageLimit, status),
-    buildUsageMetricCard('Bandwidth / Egress', data.egressUsed, data.egressLimit, status),
+    buildUsageMetricCard('Database Size', data.database, status),
+    buildUsageMetricCard('Storage 用量', data.storage, status),
+    buildUsageMetricCard('Bandwidth / Egress', data.egress, status),
     {
       label: 'Auth Users',
       value: '尚未接入平台 API',
@@ -554,12 +588,21 @@ async function loadAdminUsage() {
       const payload = await response.json();
       state.adminUsage.status = 'ready';
       state.adminUsage.data = {
-        databaseSize: normalizeUsageNumber(payload?.databaseSize),
-        databaseLimit: normalizeUsageNumber(payload?.databaseLimit),
-        storageUsed: normalizeUsageNumber(payload?.storageUsed),
-        storageLimit: normalizeUsageNumber(payload?.storageLimit),
-        egressUsed: normalizeUsageNumber(payload?.egressUsed),
-        egressLimit: normalizeUsageNumber(payload?.egressLimit),
+        database: {
+          used: normalizeUsageNumber(payload?.database?.used),
+          limit: normalizeUsageNumber(payload?.database?.limit),
+          error: typeof payload?.database?.error === 'string' ? payload.database.error : null,
+        },
+        storage: {
+          used: normalizeUsageNumber(payload?.storage?.used),
+          limit: normalizeUsageNumber(payload?.storage?.limit),
+          error: typeof payload?.storage?.error === 'string' ? payload.storage.error : null,
+        },
+        egress: {
+          used: normalizeUsageNumber(payload?.egress?.used),
+          limit: normalizeUsageNumber(payload?.egress?.limit),
+          error: typeof payload?.egress?.error === 'string' ? payload.egress.error : null,
+        },
       };
       return state.adminUsage.data;
     } catch {

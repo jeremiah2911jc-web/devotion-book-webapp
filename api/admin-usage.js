@@ -8,12 +8,21 @@ const FALLBACK_LIMITS_MB = {
 
 function emptyUsage() {
   return {
-    databaseSize: null,
-    databaseLimit: FALLBACK_LIMITS_MB.databaseLimit,
-    storageUsed: null,
-    storageLimit: FALLBACK_LIMITS_MB.storageLimit,
-    egressUsed: null,
-    egressLimit: FALLBACK_LIMITS_MB.egressLimit,
+    database: {
+      used: null,
+      limit: FALLBACK_LIMITS_MB.databaseLimit,
+      error: null,
+    },
+    storage: {
+      used: null,
+      limit: FALLBACK_LIMITS_MB.storageLimit,
+      error: null,
+    },
+    egress: {
+      used: null,
+      limit: FALLBACK_LIMITS_MB.egressLimit,
+      error: null,
+    },
   };
 }
 
@@ -33,9 +42,12 @@ function bytesToMb(value) {
 
 async function runReadOnlyQuery(projectRef, accessToken, query, label) {
   const endpoint = `${SUPABASE_API_BASE}/projects/${projectRef}/database/query/read-only`;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort('timeout'), 10000);
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
+      signal: controller.signal,
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: 'application/json',
@@ -47,15 +59,22 @@ async function runReadOnlyQuery(projectRef, accessToken, query, label) {
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
       logUsage(`${label} query failed (${response.status})`, errorText || 'no response body');
-      return null;
+      if (response.status === 401 || response.status === 403) return { payload: null, error: 'unauthorized' };
+      if (response.status >= 500) return { payload: null, error: 'server_error' };
+      return { payload: null, error: 'query_error' };
     }
 
     const payload = await response.json().catch(() => null);
-    logUsage(`${label} query succeeded`);
-    return payload;
+    return { payload, error: null };
   } catch (error) {
+    if (error?.name === 'AbortError' || error === 'timeout') {
+      logUsage(`${label} query timeout`);
+      return { payload: null, error: 'timeout' };
+    }
     logUsage(`${label} query error`, error?.message || String(error));
-    return null;
+    return { payload: null, error: 'unknown' };
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -94,12 +113,14 @@ function findFirstNumericField(payload, candidateKeys = []) {
 }
 
 async function loadDatabaseSize(projectRef, accessToken) {
-  const payload = await runReadOnlyQuery(
+  const result = await runReadOnlyQuery(
     projectRef,
     accessToken,
     'select pg_database_size(current_database()) as database_size_bytes;',
     'databaseSize',
   );
+  if (result?.error) return { used: null, error: result.error };
+  const payload = result?.payload;
 
   const bytes = findFirstNumericField(payload, [
     'database_size_bytes',
@@ -109,16 +130,16 @@ async function loadDatabaseSize(projectRef, accessToken) {
 
   if (bytes === null) {
     logUsage('databaseSize unresolved from read-only query');
-    return null;
+    return { used: null, error: 'unknown' };
   }
 
   const megabytes = bytesToMb(bytes);
-  logUsage(`databaseSize resolved: ${megabytes} MB`);
-  return megabytes;
+  logUsage('databaseSize resolved', { usedMb: megabytes });
+  return { used: megabytes, error: null };
 }
 
 async function loadStorageUsed(projectRef, accessToken) {
-  const payload = await runReadOnlyQuery(
+  const result = await runReadOnlyQuery(
     projectRef,
     accessToken,
     `
@@ -128,37 +149,54 @@ async function loadStorageUsed(projectRef, accessToken) {
     `,
     'storageUsed',
   );
+  if (result?.error) return { used: null, error: result.error };
+  const payload = result?.payload;
 
   const totalBytes = findFirstNumericField(payload, ['total_bytes']);
   if (totalBytes === null) {
     const rows = collectPrimitiveRows(payload);
     const hasNullTotal = rows.some((row) => Object.prototype.hasOwnProperty.call(row, 'total_bytes') && row.total_bytes === null);
     if (hasNullTotal) {
-      logUsage('storageUsed resolved: 0 MB (no files)');
-      return 0;
+      logUsage('storageUsed resolved', { usedMb: 0 });
+      return { used: 0, error: null };
     }
     logUsage('storageUsed unresolved: missing total_bytes');
-    return null;
+    return { used: null, error: 'unknown' };
   }
 
   const megabytes = bytesToMb(totalBytes);
-  logUsage(`storageUsed resolved: ${megabytes} MB`);
-  return megabytes;
+  logUsage('storageUsed resolved', { usedMb: megabytes });
+  return { used: megabytes, error: null };
 }
 
 async function loadSupabaseUsage(accessToken, projectRef) {
-  const [databaseSize, storageUsed] = await Promise.all([
-    loadDatabaseSize(projectRef, accessToken).catch(() => null),
-    loadStorageUsed(projectRef, accessToken).catch(() => null),
+  const [database, storage] = await Promise.all([
+    loadDatabaseSize(projectRef, accessToken).catch((error) => {
+      logUsage('database usage fallback', error?.message || String(error));
+      return { used: null, error: 'unknown' };
+    }),
+    loadStorageUsed(projectRef, accessToken).catch((error) => {
+      logUsage('storage usage fallback', error?.message || String(error));
+      return { used: null, error: 'unknown' };
+    }),
   ]);
 
   return {
-    databaseSize,
-    databaseLimit: FALLBACK_LIMITS_MB.databaseLimit,
-    storageUsed,
-    storageLimit: FALLBACK_LIMITS_MB.storageLimit,
-    egressUsed: null,
-    egressLimit: FALLBACK_LIMITS_MB.egressLimit,
+    database: {
+      used: database?.used ?? null,
+      limit: FALLBACK_LIMITS_MB.databaseLimit,
+      error: database?.error ?? null,
+    },
+    storage: {
+      used: storage?.used ?? null,
+      limit: FALLBACK_LIMITS_MB.storageLimit,
+      error: storage?.error ?? null,
+    },
+    egress: {
+      used: null,
+      limit: FALLBACK_LIMITS_MB.egressLimit,
+      error: null,
+    },
   };
 }
 
@@ -179,14 +217,8 @@ export default async function handler(req, res) {
 
   try {
     const usage = await loadSupabaseUsage(accessToken, projectRef);
-    return res.status(200).json({
-      databaseSize: usage.databaseSize ?? null,
-      databaseLimit: usage.databaseLimit ?? FALLBACK_LIMITS_MB.databaseLimit,
-      storageUsed: usage.storageUsed ?? null,
-      storageLimit: usage.storageLimit ?? FALLBACK_LIMITS_MB.storageLimit,
-      egressUsed: null,
-      egressLimit: usage.egressLimit ?? FALLBACK_LIMITS_MB.egressLimit,
-    });
+    logUsage('usage summary', usage);
+    return res.status(200).json(usage);
   } catch (error) {
     logUsage('handler fallback to empty usage', error?.message || String(error));
     return res.status(200).json(emptyUsage());
