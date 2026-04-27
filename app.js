@@ -291,6 +291,8 @@ const state = {
     backup: null,
     result: null,
   },
+  isRestoring: false,
+  restoreStatusMessage: '',
 };
 
 function loadJson(key, fallback) {
@@ -662,6 +664,7 @@ function renderAdminDashboard() {
         </div>
         <div class="row gap-sm wrap">
           <button id="admin-restore-backup-btn" type="button" class="secondary-btn">開始還原（安全模式）</button>
+          <button id="admin-danger-restore-backup-btn" type="button" class="danger-btn" ${state.isRestoring ? 'disabled' : ''}>${state.isRestoring ? '還原中…' : '覆蓋還原（危險）'}</button>
         </div>
         ${renderBackupImportPreview()}
       </section>
@@ -731,6 +734,9 @@ function renderAdminDashboard() {
   document.getElementById('admin-import-backup-input')?.addEventListener('change', handleBackupImportSelection, { once: true });
   document.getElementById('admin-restore-backup-btn')?.addEventListener('click', () => {
     restoreBackupMerge().catch(handleError);
+  }, { once: true });
+  document.getElementById('admin-danger-restore-backup-btn')?.addEventListener('click', () => {
+    restoreBackupDanger().catch(handleError);
   }, { once: true });
 }
 
@@ -1616,15 +1622,24 @@ function setBackupImportPreview(next = {}) {
 
 function renderBackupImportPreview() {
   const preview = state.backupImportPreview;
+  const restoreStatusBlock = state.restoreStatusMessage
+    ? `<div class="panel compact"><p class="caption">${escapeHtml(state.restoreStatusMessage)}</p></div>`
+    : '';
   if (preview.status === 'error') {
-    return `<div class="empty-state">${escapeHtml(preview.error || '備份格式不正確')}</div>`;
+    return `${restoreStatusBlock}<div class="empty-state">${escapeHtml(preview.error || '備份格式不正確')}</div>`;
   }
   if (preview.status !== 'ready' || !preview.data) {
-    return `<div class="empty-state">尚未選擇備份檔，匯入後會先顯示預覽資訊，不會寫入任何資料。</div>`;
+    return `${restoreStatusBlock}<div class="empty-state">尚未選擇備份檔，匯入後會先顯示預覽資訊，不會寫入任何資料。</div>`;
   }
 
   const data = preview.data;
+  const currentEmail = getCurrentUserEmail();
+  const backupEmail = String(data.user || '').trim().toLowerCase();
+  const userMismatchWarning = currentEmail && backupEmail && currentEmail !== backupEmail
+    ? `<div class="panel compact"><p class="caption">警告：這份備份的使用者是 ${escapeHtml(String(data.user || ''))}，與目前登入帳號 ${escapeHtml(String(state.currentUser?.email || ''))} 不一致。系統不會阻擋，但請再次確認是否要還原。</p></div>`
+    : '';
   return `
+    ${restoreStatusBlock}
     <div class="admin-summary-grid">
       <article class="admin-stat-card">
         <span class="admin-stat-label">version</span>
@@ -1652,6 +1667,7 @@ function renderBackupImportPreview() {
         <p class="caption">generated：${escapeHtml(String(data.generatedCount || 0))}｜imported_epub：${escapeHtml(String(data.importedEpubCount || 0))}</p>
       </article>
     </div>
+    ${userMismatchWarning}
     ${preview.result ? `
       <div class="panel compact">
         <h4>還原結果</h4>
@@ -1795,6 +1811,180 @@ function createRestoredImportedBook(item = {}, suffix = `${Date.now()}`) {
       book_id: restoredId,
     })),
   });
+}
+
+function buildGeneratedLibraryBookRow(item = {}, userId = '') {
+  return {
+    id: item.id,
+    user_id: userId,
+    title: item.title || '未命名書籍',
+    author: item.author || '',
+    description: item.description || '',
+    cover_image_path: item.cover_image_path || '',
+    epub_file_path: item.epub_file_path || '',
+    last_read_at: item.last_read_at || item.lastReadAt || null,
+    reading_progress: Number(item.reading_progress || item.readingProgress || 0),
+    total_chapters: Number(item.total_chapters || item.totalChapters || 0),
+    current_chapter: Number(item.current_chapter || item.currentChapter || 0),
+    source_project_id: item.source_project_id || null,
+    source_compilation_id: item.source_compilation_id || null,
+    version: item.version || '1.0.0',
+    is_archived: !!item.is_archived,
+    created_at: item.created_at || nowIso(),
+    updated_at: item.updated_at || item.created_at || nowIso(),
+  };
+}
+
+function buildGeneratedLibraryChapterRows(item = {}, userId = '') {
+  const chapters = Array.isArray(item.library_book_chapters)
+    ? item.library_book_chapters
+    : (Array.isArray(item.chapters) ? item.chapters : []);
+  return normalizeLibraryChapters(chapters).map((chapter, index) => ({
+    id: String(chapter.id || uid('library_chapter')),
+    user_id: userId,
+    book_id: item.id,
+    title: chapter.title || `第 ${index + 1} 章`,
+    chapter_order: Number(chapter.chapter_order || index),
+    href: chapter.href || chapter.chapter_path || '',
+    chapter_path: chapter.chapter_path || chapter.href || '',
+    progress: Number(chapter.progress || 0),
+  }));
+}
+
+async function clearImportedLibraryBlobs() {
+  const db = await openImportedLibraryDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(importedLibrary.storeName, 'readwrite');
+    tx.objectStore(importedLibrary.storeName).clear();
+    tx.oncomplete = () => { db.close(); resolve(); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
+  });
+}
+
+async function captureImportedLibraryBlobSnapshot(books = []) {
+  const entries = await Promise.all(books.map(async (book) => {
+    const stored = await getImportedBookBlob(book.id);
+    return stored ? { id: book.id, epubBlob: stored.epubBlob || null, coverBlob: stored.coverBlob || null } : null;
+  }));
+  return entries.filter(Boolean);
+}
+
+async function restoreImportedLibraryBlobSnapshot(entries = []) {
+  await clearImportedLibraryBlobs();
+  for (const entry of entries) {
+    if (!entry?.id || !entry.epubBlob) continue;
+    await saveImportedBookBlob(entry.id, entry.epubBlob, entry.coverBlob || null);
+  }
+}
+
+async function captureDangerRestoreSnapshot() {
+  const snapshot = {
+    notes: JSON.parse(JSON.stringify(state.notes || [])),
+    drafts: JSON.parse(JSON.stringify(state.books || [])),
+    generatedLibrary: [],
+    importedLibrary: JSON.parse(JSON.stringify(importedLibrary.books || [])),
+    importedBlobs: await captureImportedLibraryBlobSnapshot(importedLibrary.books || []),
+  };
+  if (state.supabase) {
+    snapshot.generatedLibrary = cloudLibrary.books.map(book => ({
+      ...JSON.parse(JSON.stringify(book || {})),
+      library_book_chapters: JSON.parse(JSON.stringify(cloudLibrary.chapters.get(book.id) || [])),
+      source: 'generated',
+    }));
+  }
+  return snapshot;
+}
+
+async function clearDangerRestoreData(userId = '') {
+  if (state.supabase) {
+    await state.supabase.from('library_book_chapters').delete().eq('user_id', userId);
+    await state.supabase.from('library_books').delete().eq('user_id', userId);
+    await state.supabase.from('devotion_notes').delete().eq('user_id', userId);
+    await state.supabase.from('book_projects').delete().eq('user_id', userId);
+  } else {
+    saveJson(STORAGE_KEYS.notes, loadJson(STORAGE_KEYS.notes, []).filter(item => item.user_id !== userId));
+    saveJson(STORAGE_KEYS.books, loadJson(STORAGE_KEYS.books, []).filter(item => item.user_id !== userId));
+  }
+  saveImportedLibraryBooks([]);
+  await clearImportedLibraryBlobs();
+}
+
+async function writeDangerRestoreNotes(notes = [], userId = '') {
+  const payloadNotes = (Array.isArray(notes) ? notes : []).map(note => ({ ...note, user_id: userId }));
+  if (state.supabase) {
+    if (payloadNotes.length) {
+      const { error } = await state.supabase.from('devotion_notes').insert(payloadNotes);
+      if (error) throw error;
+    }
+  } else {
+    const otherNotes = loadJson(STORAGE_KEYS.notes, []).filter(item => item.user_id !== userId);
+    saveJson(STORAGE_KEYS.notes, [...payloadNotes, ...otherNotes]);
+  }
+}
+
+async function writeDangerRestoreDrafts(drafts = [], userId = '') {
+  const payloadDrafts = (Array.isArray(drafts) ? drafts : []).map(draft => ({ ...draft, user_id: userId }));
+  if (state.supabase) {
+    if (payloadDrafts.length) {
+      const payload = payloadDrafts.map(draft => ({ ...draft, chapters: JSON.stringify(draft.chapters || []) }));
+      const { error } = await state.supabase.from('book_projects').insert(payload);
+      if (error) throw error;
+    }
+  } else {
+    const otherDrafts = loadJson(STORAGE_KEYS.books, []).filter(item => item.user_id !== userId);
+    saveJson(STORAGE_KEYS.books, [...payloadDrafts, ...otherDrafts]);
+  }
+}
+
+async function writeDangerRestoreLibrary(library = [], userId = '') {
+  const list = Array.isArray(library) ? library : [];
+  const generatedLibraryItems = list.filter(item => String(item?.source || 'generated') === 'generated');
+  const importedLibraryItems = list.filter(item => String(item?.source || '') === 'imported_epub').map(item => normalizeImportedBook(item));
+  if (state.supabase) {
+    if (generatedLibraryItems.length) {
+      const bookRows = generatedLibraryItems.map(item => buildGeneratedLibraryBookRow(item, userId));
+      const { error: libraryError } = await state.supabase.from('library_books').insert(bookRows);
+      if (libraryError) throw libraryError;
+      const chapterRows = generatedLibraryItems.flatMap(item => buildGeneratedLibraryChapterRows(item, userId));
+      if (chapterRows.length) {
+        const { error: chapterError } = await state.supabase.from('library_book_chapters').insert(chapterRows);
+        if (chapterError) throw chapterError;
+      }
+    }
+  }
+  saveImportedLibraryBooks(importedLibraryItems);
+}
+
+async function rollbackDangerRestore(snapshot, userId = '') {
+  await clearDangerRestoreData(userId);
+  await writeDangerRestoreNotes(snapshot.notes || [], userId);
+  await writeDangerRestoreDrafts(snapshot.drafts || [], userId);
+  await writeDangerRestoreLibrary([
+    ...(snapshot.generatedLibrary || []),
+    ...(snapshot.importedLibrary || []),
+  ], userId);
+  await restoreImportedLibraryBlobSnapshot(snapshot.importedBlobs || []);
+}
+
+function requestDangerRestoreConfirmation(backup = {}) {
+  const notesCount = Array.isArray(backup.notes) ? backup.notes.length : 0;
+  const draftsCount = Array.isArray(backup.drafts) ? backup.drafts.length : 0;
+  const libraryCount = Array.isArray(backup.library) ? backup.library.length : 0;
+  const currentEmail = getCurrentUserEmail();
+  const backupEmail = String(backup.user || '').trim().toLowerCase();
+  const mismatchWarning = currentEmail && backupEmail && currentEmail !== backupEmail
+    ? `\n警告：備份使用者 ${String(backup.user || '')} 與目前登入帳號 ${String(state.currentUser?.email || '')} 不一致`
+    : '';
+  const value = window.prompt(
+    `⚠ 這個操作會刪除目前所有資料並用備份覆蓋\n請輸入 RESTORE 才能繼續\n\nnotes：${notesCount}\ndrafts：${draftsCount}\nlibrary：${libraryCount}${mismatchWarning}`,
+    '',
+  );
+  return value === 'RESTORE';
+}
+
+function setRestoreStatusMessage(message = '') {
+  state.restoreStatusMessage = String(message || '');
+  refreshUi();
 }
 
 async function restoreBackupMerge() {
@@ -1952,6 +2142,62 @@ async function restoreBackupMerge() {
   refreshUi();
   showToast(`新增 notes：${result.addedNotes}｜跳過 notes：${result.skippedNotes}｜新增 drafts：${result.addedDrafts}｜新增 library：${result.addedLibrary}`);
 }
+
+async function restoreBackupDanger() {
+  requireUser();
+  const backup = state.backupImportPreview.backup;
+  if (!backup || state.backupImportPreview.status !== 'ready') {
+    throw new Error('請先匯入並預覽有效的備份 JSON。');
+  }
+  if (state.isRestoring) {
+    showToast('覆蓋還原進行中，請稍候。');
+    return;
+  }
+  if (!requestDangerRestoreConfirmation(backup)) {
+    showToast('沒有輸入 RESTORE，已取消覆蓋還原。');
+    return;
+  }
+
+  state.isRestoring = true;
+  setRestoreStatusMessage('正在備份目前資料…');
+  let userId = '';
+  let snapshot = null;
+  try {
+    userId = getUserId();
+    snapshot = await captureDangerRestoreSnapshot();
+    setRestoreStatusMessage('正在清除資料…');
+    await clearDangerRestoreData(userId);
+    setRestoreStatusMessage('正在還原 notes…');
+    await writeDangerRestoreNotes(backup.notes || [], userId);
+    setRestoreStatusMessage('正在還原 drafts…');
+    await writeDangerRestoreDrafts(backup.drafts || [], userId);
+    setRestoreStatusMessage('正在還原 library…');
+    await writeDangerRestoreLibrary(backup.library || [], userId);
+    await loadAllData({ silent: true, syncReason: state.supabase ? '覆蓋還原完成。' : '' });
+    setBackupImportPreview({
+      status: 'ready',
+      backup,
+      data: state.backupImportPreview.data,
+      result: null,
+    });
+    state.restoreStatusMessage = '覆蓋還原完成';
+    refreshUi();
+    showToast('覆蓋還原完成');
+  } catch (error) {
+    if (userId && snapshot) {
+      try {
+        await rollbackDangerRestore(snapshot, userId);
+      } catch (rollbackError) {
+        throw new Error(`覆蓋還原失敗，且回復原資料失敗：${rollbackError.message || rollbackError}`);
+      }
+    }
+    throw error;
+  } finally {
+    state.isRestoring = false;
+    refreshUi();
+  }
+}
+
 function escapeHtml(input = '') {
   return input
     .replaceAll('&', '&amp;')
