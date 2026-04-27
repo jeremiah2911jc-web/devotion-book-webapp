@@ -288,6 +288,8 @@ const state = {
     status: 'idle',
     error: '',
     data: null,
+    backup: null,
+    result: null,
   },
 };
 
@@ -658,6 +660,9 @@ function renderAdminDashboard() {
           <h3>備份預覽</h3>
           <p class="muted">只讀取並驗證備份內容，不會寫入任何資料，也不會覆蓋目前系統資料。</p>
         </div>
+        <div class="row gap-sm wrap">
+          <button id="admin-restore-backup-btn" type="button" class="secondary-btn">開始還原（安全模式）</button>
+        </div>
         ${renderBackupImportPreview()}
       </section>
     </section>
@@ -724,6 +729,9 @@ function renderAdminDashboard() {
     document.getElementById('admin-import-backup-input')?.click();
   }, { once: true });
   document.getElementById('admin-import-backup-input')?.addEventListener('change', handleBackupImportSelection, { once: true });
+  document.getElementById('admin-restore-backup-btn')?.addEventListener('click', () => {
+    restoreBackupMerge().catch(handleError);
+  }, { once: true });
 }
 
 function ensureContentLibraryUi() {
@@ -1629,6 +1637,8 @@ function setBackupImportPreview(next = {}) {
     status: next.status || 'idle',
     error: next.error || '',
     data: next.data || null,
+    backup: next.backup || null,
+    result: next.result || null,
   };
 }
 
@@ -1670,6 +1680,14 @@ function renderBackupImportPreview() {
         <p class="caption">generated：${escapeHtml(String(data.generatedCount || 0))}｜imported_epub：${escapeHtml(String(data.importedEpubCount || 0))}</p>
       </article>
     </div>
+    ${preview.result ? `
+      <div class="panel compact">
+        <h4>還原結果</h4>
+        <p class="caption">新增 notes：${escapeHtml(String(preview.result.addedNotes || 0))} 筆｜跳過 notes：${escapeHtml(String(preview.result.skippedNotes || 0))} 筆</p>
+        <p class="caption">新增 drafts：${escapeHtml(String(preview.result.addedDrafts || 0))} 筆｜跳過 drafts：${escapeHtml(String(preview.result.skippedDrafts || 0))} 筆</p>
+        <p class="caption">新增 library：${escapeHtml(String(preview.result.addedLibrary || 0))} 筆｜跳過 library：${escapeHtml(String(preview.result.skippedLibrary || 0))} 筆</p>
+      </div>
+    ` : ''}
   `;
 }
 
@@ -1713,6 +1731,7 @@ function handleBackupImportSelection(event) {
       const importedEpubCount = library.filter(item => String(item?.source || '') === 'imported_epub').length;
       setBackupImportPreview({
         status: 'ready',
+        backup: payload,
         data: {
           version: payload.version,
           exportedAt: payload.exportedAt || '',
@@ -1741,6 +1760,225 @@ function handleBackupImportSelection(event) {
     resetInput();
   };
   reader.readAsText(file, 'utf-8');
+}
+
+async function getExistingNoteIdsForRestore() {
+  const userId = getUserId();
+  if (state.supabase) {
+    const { data, error } = await state.supabase.from('devotion_notes').select('id').eq('user_id', userId);
+    if (error) throw error;
+    return new Set((data || []).map(item => String(item.id || '')).filter(Boolean));
+  }
+  return new Set(
+    loadJson(STORAGE_KEYS.notes, [])
+      .filter(item => item.user_id === userId)
+      .map(item => String(item.id || ''))
+      .filter(Boolean),
+  );
+}
+
+async function getExistingDraftIdsForRestore() {
+  const userId = getUserId();
+  if (state.supabase) {
+    const { data, error } = await state.supabase.from('book_projects').select('id').eq('user_id', userId);
+    if (error) throw error;
+    return new Set((data || []).map(item => String(item.id || '')).filter(Boolean));
+  }
+  return new Set(
+    loadJson(STORAGE_KEYS.books, [])
+      .filter(item => item.user_id === userId)
+      .map(item => String(item.id || ''))
+      .filter(Boolean),
+  );
+}
+
+async function getExistingGeneratedLibraryIdsForRestore() {
+  const userId = getUserId();
+  if (state.supabase) {
+    const { data, error } = await state.supabase.from('library_books').select('id').eq('user_id', userId);
+    if (error) throw error;
+    return new Set((data || []).map(item => String(item.id || '')).filter(Boolean));
+  }
+  return new Set(cloudLibrary.books.map(book => String(book.id || '')).filter(Boolean));
+}
+
+async function getExistingLibraryChapterIdsForRestore() {
+  const userId = getUserId();
+  if (!state.supabase) return new Set();
+  const { data, error } = await state.supabase.from('library_book_chapters').select('id').eq('user_id', userId);
+  if (error) throw error;
+  return new Set((data || []).map(item => String(item.id || '')).filter(Boolean));
+}
+
+function createRestoredImportedBook(item = {}, suffix = `${Date.now()}`) {
+  const originalId = String(item?.id || createImportedBookId());
+  const restoredId = `${originalId}-restored-${suffix}`;
+  const chapters = Array.isArray(item?.chapters) ? item.chapters : [];
+  return normalizeImportedBook({
+    ...item,
+    id: restoredId,
+    chapters: chapters.map((chapter, index) => ({
+      ...chapter,
+      id: `${String(chapter?.id || `imported_chapter_${originalId}_${index}`)}-restored-${suffix}`,
+      book_id: restoredId,
+    })),
+  });
+}
+
+async function restoreBackupMerge() {
+  requireUser();
+  const backup = state.backupImportPreview.backup;
+  if (!backup || state.backupImportPreview.status !== 'ready') {
+    throw new Error('請先匯入並預覽有效的備份 JSON。');
+  }
+
+  const userId = getUserId();
+  const result = {
+    addedNotes: 0,
+    skippedNotes: 0,
+    addedDrafts: 0,
+    skippedDrafts: 0,
+    addedLibrary: 0,
+    skippedLibrary: 0,
+  };
+
+  const backupNotes = Array.isArray(backup.notes) ? backup.notes : [];
+  const backupDrafts = Array.isArray(backup.drafts) ? backup.drafts : [];
+  const backupLibrary = Array.isArray(backup.library) ? backup.library : [];
+
+  const existingNoteIds = await getExistingNoteIdsForRestore();
+  const newNotes = backupNotes
+    .filter(note => {
+      const id = String(note?.id || '');
+      const exists = !id || existingNoteIds.has(id);
+      if (exists) result.skippedNotes += 1;
+      if (!exists) existingNoteIds.add(id);
+      return !exists;
+    })
+    .map(note => ({ ...note, user_id: userId }));
+  result.addedNotes = newNotes.length;
+
+  if (newNotes.length) {
+    if (state.supabase) {
+      const { error } = await state.supabase.from('devotion_notes').insert(newNotes);
+      if (error) throw error;
+    } else {
+      const notes = loadJson(STORAGE_KEYS.notes, []);
+      saveJson(STORAGE_KEYS.notes, [...newNotes, ...notes]);
+    }
+  }
+
+  const existingDraftIds = await getExistingDraftIdsForRestore();
+  const newDrafts = backupDrafts
+    .filter(draft => {
+      const id = String(draft?.id || '');
+      const exists = !id || existingDraftIds.has(id);
+      if (exists) result.skippedDrafts += 1;
+      if (!exists) existingDraftIds.add(id);
+      return !exists;
+    })
+    .map(draft => ({ ...draft, user_id: userId }));
+  result.addedDrafts = newDrafts.length;
+
+  if (newDrafts.length) {
+    if (state.supabase) {
+      const payload = newDrafts.map(draft => ({ ...draft, chapters: JSON.stringify(draft.chapters || []) }));
+      const { error } = await state.supabase.from('book_projects').insert(payload);
+      if (error) throw error;
+    } else {
+      const books = loadJson(STORAGE_KEYS.books, []);
+      saveJson(STORAGE_KEYS.books, [...newDrafts, ...books]);
+    }
+  }
+
+  const generatedLibraryItems = backupLibrary.filter(item => String(item?.source || 'generated') === 'generated');
+  const importedLibraryItems = backupLibrary.filter(item => String(item?.source || '') === 'imported_epub');
+
+  const existingGeneratedIds = await getExistingGeneratedLibraryIdsForRestore();
+  const newGeneratedBooks = generatedLibraryItems.filter(item => {
+    const id = String(item?.id || '');
+    const exists = !id || existingGeneratedIds.has(id);
+    if (exists) result.skippedLibrary += 1;
+    if (!exists) existingGeneratedIds.add(id);
+    return !exists;
+  });
+
+  if (newGeneratedBooks.length && state.supabase) {
+    const existingChapterIds = await getExistingLibraryChapterIdsForRestore();
+    const bookRows = newGeneratedBooks.map(item => ({
+      id: item.id,
+      user_id: userId,
+      title: item.title || '未命名書籍',
+      author: item.author || '',
+      description: item.description || '',
+      cover_image_path: item.cover_image_path || '',
+      epub_file_path: item.epub_file_path || '',
+      last_read_at: item.last_read_at || null,
+      reading_progress: Number(item.reading_progress || 0),
+      total_chapters: Number(item.total_chapters || item.totalChapters || 0),
+      current_chapter: Number(item.current_chapter || item.currentChapter || 0),
+      source_project_id: item.source_project_id || null,
+      source_compilation_id: item.source_compilation_id || null,
+      version: item.version || '1.0.0',
+      is_archived: !!item.is_archived,
+      created_at: item.created_at || nowIso(),
+      updated_at: item.updated_at || item.created_at || nowIso(),
+    }));
+    const { error: libraryError } = await state.supabase.from('library_books').insert(bookRows);
+    if (libraryError) throw libraryError;
+
+    const chapterRows = newGeneratedBooks.flatMap(item => {
+      const chapters = Array.isArray(item.library_book_chapters)
+        ? item.library_book_chapters
+        : (Array.isArray(item.chapters) ? item.chapters : []);
+      return normalizeLibraryChapters(chapters).flatMap((chapter, index) => {
+        const chapterId = String(chapter.id || uid('library_chapter'));
+        if (existingChapterIds.has(chapterId)) return [];
+        existingChapterIds.add(chapterId);
+        return [{
+          id: chapterId,
+          user_id: userId,
+          book_id: item.id,
+          title: chapter.title || `第 ${index + 1} 章`,
+          chapter_order: Number(chapter.chapter_order || index),
+          href: chapter.href || chapter.chapter_path || '',
+          chapter_path: chapter.chapter_path || chapter.href || '',
+          progress: Number(chapter.progress || 0),
+        }];
+      });
+    });
+    if (chapterRows.length) {
+      const { error: chapterError } = await state.supabase.from('library_book_chapters').insert(chapterRows);
+      if (chapterError) throw chapterError;
+    }
+    result.addedLibrary += newGeneratedBooks.length;
+  } else {
+    result.skippedLibrary += newGeneratedBooks.length;
+  }
+
+  const existingImportedIds = new Set(importedLibrary.books.map(book => String(book.id || '')));
+  const restoreSuffix = `${Date.now()}`;
+  const newImportedBooks = importedLibraryItems.map((item, index) => {
+    const id = String(item?.id || '');
+    if (!id) return createRestoredImportedBook(item, `${restoreSuffix}-${index}`);
+    if (existingImportedIds.has(id)) return createRestoredImportedBook(item, `${restoreSuffix}-${index}`);
+    existingImportedIds.add(id);
+    return normalizeImportedBook(item);
+  });
+  if (newImportedBooks.length) {
+    saveImportedLibraryBooks([...newImportedBooks, ...importedLibrary.books]);
+    result.addedLibrary += newImportedBooks.length;
+  }
+
+  await loadAllData({ silent: true, syncReason: state.supabase ? '備份安全還原完成。' : '' });
+  setBackupImportPreview({
+    status: 'ready',
+    backup,
+    data: state.backupImportPreview.data,
+    result,
+  });
+  refreshUi();
+  showToast(`新增 notes：${result.addedNotes}｜跳過 notes：${result.skippedNotes}｜新增 drafts：${result.addedDrafts}｜新增 library：${result.addedLibrary}`);
 }
 function escapeHtml(input = '') {
   return input
