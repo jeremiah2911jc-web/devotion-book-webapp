@@ -258,6 +258,7 @@ const state = {
   bookArrangementSaving: false,
   bookArrangementDrafts: {},
   bookDraftModalOpen: false,
+  bookExportSettingsModalOpen: false,
   isExporting: false,
   latestExportedBook: null,
 };
@@ -301,13 +302,13 @@ function ensureContentLibraryUi() {
   if (desktopNav && !desktopNav.querySelector('[data-view="content-library"]')) {
     const booksLink = desktopNav.querySelector('[data-view="books"]');
     const button = document.createElement('button');
-    button.className = 'desktop-sidebar-link';
-    button.type = 'button';
-    button.dataset.view = 'content-library';
-    button.innerHTML = `
-      <span class="nav-icon asset-icon asset-sprite-system icon-note" aria-hidden="true"></span>
-      <span>內容庫</span>
-    `;
+      button.className = 'desktop-sidebar-link';
+      button.type = 'button';
+      button.dataset.view = 'content-library';
+      button.innerHTML = `
+        <span class="nav-icon asset-icon asset-sprite-system icon-note" aria-hidden="true"></span>
+        <span>札記庫</span>
+      `;
     booksLink?.insertAdjacentElement('beforebegin', button);
   }
 
@@ -315,13 +316,13 @@ function ensureContentLibraryUi() {
   if (mobileNav && !mobileNav.querySelector('[data-view="content-library"]')) {
     const booksLink = mobileNav.querySelector('[data-view="books"]');
     const button = document.createElement('button');
-    button.className = 'nav-link mobile-bottom-link';
-    button.type = 'button';
-    button.dataset.view = 'content-library';
-    button.innerHTML = `
-      <span class="nav-icon asset-icon asset-sprite-system icon-note" aria-hidden="true"></span>
-      <span>內容庫</span>
-    `;
+      button.className = 'nav-link mobile-bottom-link';
+      button.type = 'button';
+      button.dataset.view = 'content-library';
+      button.innerHTML = `
+        <span class="nav-icon asset-icon asset-sprite-system icon-note" aria-hidden="true"></span>
+        <span>札記庫</span>
+      `;
     booksLink?.insertAdjacentElement('beforebegin', button);
   }
 
@@ -331,13 +332,13 @@ function ensureContentLibraryUi() {
     section.id = 'view-content-library';
     section.className = 'view';
     section.innerHTML = `
-      <section class="panel">
-        <div class="panel-header">
-          <div>
-            <h2>內容庫</h2>
+        <section class="panel">
+          <div class="panel-header">
+            <div>
+            <h2>札記庫</h2>
             <p class="muted">從過去寫過的札記中搜尋、篩選並挑選文章，加入選稿草稿。</p>
+            </div>
           </div>
-        </div>
         <div class="row gap-sm wrap">
           <input id="content-library-search" class="search" placeholder="搜尋標題、摘要、內容、經文" />
           <label class="compact-control">
@@ -383,6 +384,9 @@ function ensureContentLibraryUi() {
   els.contentLibraryAddSelected = document.getElementById('content-library-add-selected');
   els.contentLibraryClearSelection = document.getElementById('content-library-clear-selection');
   els.contentLibraryList = document.getElementById('content-library-list');
+
+  document.querySelector('#view-content-library .panel-header h2')?.replaceChildren(document.createTextNode('札記庫'));
+  document.querySelector('#view-content-library .panel-header .muted')?.replaceChildren(document.createTextNode('從過去寫過的札記中搜尋、篩選並挑選文章，加入目前選稿草稿。'));
 
   if (els.contentLibrarySearch && !els.contentLibrarySearch.dataset.bound) {
     els.contentLibrarySearch.dataset.bound = 'true';
@@ -441,6 +445,589 @@ function ensureContentLibraryUi() {
     els.contentLibraryAddSelected.dataset.bound = 'true';
     els.contentLibraryAddSelected.addEventListener('click', () => addSelectedNotesToCurrentBookDraft().catch(handleError));
   }
+}
+
+function ensureOperationManualUi() {
+  const desktopNav = document.querySelector('.desktop-sidebar-nav');
+  if (desktopNav && !desktopNav.querySelector('[data-view="manual"]')) {
+    const settingsLink = desktopNav.querySelector('[data-open-account-settings]');
+    const button = document.createElement('button');
+    button.className = 'desktop-sidebar-link';
+    button.type = 'button';
+    button.dataset.view = 'manual';
+    button.innerHTML = `
+      <span class="nav-icon asset-icon asset-sprite-system icon-book" aria-hidden="true"></span>
+      <span>操作手冊</span>
+    `;
+    settingsLink?.insertAdjacentElement('beforebegin', button);
+  }
+
+  if (!document.getElementById('view-manual')) {
+    const libraryView = document.getElementById('view-library');
+    const section = document.createElement('section');
+    section.id = 'view-manual';
+    section.className = 'view manual-view';
+    section.innerHTML = `
+      <section class="panel manual-panel">
+        <div class="panel-header manual-panel-header">
+          <div>
+            <h2>操作手冊</h2>
+            <p class="muted">靈修札記成書系統使用說明</p>
+          </div>
+        </div>
+
+        <section class="manual-hero">
+          <p class="manual-kicker">流程導覽</p>
+          <h1>靈修札記成書系統使用操作手冊</h1>
+          <p>這份手冊依照目前系統最新命名整理，建議你用這條主流程理解整個操作：寫札記 → 札記庫挑選文章 → 選稿草稿整理章節 → 成書匯出 → 書櫃閱讀。</p>
+        </section>
+
+        <section class="manual-toc" aria-labelledby="manual-toc-title">
+          <h3 id="manual-toc-title">目錄</h3>
+          <ul>
+            <li><a href="#manual-purpose">一、系統用途</a></li>
+            <li><a href="#manual-areas">二、主要功能區說明</a></li>
+            <li><a href="#manual-flow">三、從寫札記到成書的完整操作流程</a></li>
+            <li><a href="#manual-bookshelf">四、書櫃閱讀操作</a></li>
+            <li><a href="#manual-import">五、匯入外部 EPUB</a></li>
+            <li><a href="#manual-recommendations">六、建議的使用方式</a></li>
+            <li><a href="#manual-writing">七、寫作與排版建議</a></li>
+            <li><a href="#manual-faq">八、常見問題</a></li>
+            <li><a href="#manual-habits">九、推薦操作習慣</a></li>
+            <li><a href="#manual-example">十、完整流程範例</a></li>
+            <li><a href="#manual-summary">十一、使用流程總結</a></li>
+          </ul>
+        </section>
+
+        <article class="manual-article">
+          <section id="manual-purpose" class="manual-section">
+            <h2>一、系統用途</h2>
+            <p>靈修札記成書系統是一套協助使用者整理每日靈修內容、累積屬靈文章、編排成電子書，並在書櫃中閱讀與管理的工具。</p>
+            <p>使用者可以從一篇札記開始，逐步累積內容。當文章數量增加後，可以從札記庫搜尋、篩選並挑選適合的文章，加入目前選稿草稿，再整理章節順序，最後進入成書匯出，產生 EPUB 電子書。</p>
+            <div class="manual-callout">
+              <strong>整體使用流程</strong>
+              <p>寫札記 → 札記庫挑選文章 → 選稿草稿整理章節 → 成書匯出 → 書櫃閱讀</p>
+            </div>
+            <p>這套系統的核心目的，是幫助使用者把日常零散的靈修文字，逐步整理成可以保存、閱讀與分享的屬靈作品。</p>
+          </section>
+
+          <section id="manual-areas" class="manual-section">
+            <h2>二、主要功能區說明</h2>
+            <p>系統左側或底部導覽會依裝置顯示主要功能。各功能用途如下：</p>
+            <h3>1. 總覽</h3>
+            <p>總覽是進入系統後的首頁。</p>
+            <p>這裡會顯示目前札記、選稿草稿、書籍等整體狀態，幫助使用者快速掌握目前進度。</p>
+            <ul>
+              <li>目前累積多少札記</li>
+              <li>是否已有選稿草稿</li>
+              <li>是否已有完成或匯入的電子書</li>
+              <li>最近編輯過哪些札記</li>
+              <li>最近整理過哪些草稿</li>
+              <li>目前是否需要同步資料</li>
+            </ul>
+            <h3>2. 寫札記</h3>
+            <p>寫札記是建立與編輯單篇靈修內容的主要頁面。</p>
+            <p>使用者可以在這裡輸入：</p>
+            <ul>
+              <li>札記標題</li>
+              <li>經文範圍</li>
+              <li>分類</li>
+              <li>標籤</li>
+              <li>摘要</li>
+              <li>札記全文</li>
+            </ul>
+            <p>寫札記頁面適合用來完成每日靈修、主日信息整理、小組查經心得、講章筆記、屬靈文章草稿等內容。</p>
+            <p>若使用者從札記庫點選「編輯」，系統會回到寫札記頁，並載入該篇既有札記。儲存時會更新原本那篇札記，不會新增成另一篇。</p>
+            <h3>3. 札記庫</h3>
+            <p>札記庫是所有已儲存札記的集中管理區。</p>
+            <p>使用者可以在這裡：</p>
+            <ul>
+              <li>查看過去寫過的札記</li>
+              <li>搜尋札記標題、摘要、內容或經文</li>
+              <li>依日期、分類、標籤篩選札記</li>
+              <li>編輯既有札記</li>
+              <li>勾選適合成書的文章</li>
+              <li>將文章加入目前選稿草稿</li>
+            </ul>
+            <p>札記庫的主要用途，是保存、搜尋、篩選、編輯與挑選原始文章。</p>
+            <p>當某篇札記適合收進未來的書中，可以直接從札記庫勾選該篇文章，加入目前選稿草稿。</p>
+            <h3>4. 選稿草稿</h3>
+            <p>選稿草稿是成書前最重要的整理工作區。</p>
+            <p>使用者可以建立一本書的草稿，並把札記庫中的文章加入目前草稿。</p>
+            <p>在選稿草稿中，可以進行：</p>
+            <ul>
+              <li>建立新草稿</li>
+              <li>設定目前草稿</li>
+              <li>查看草稿內容</li>
+              <li>整理章節順序</li>
+              <li>移除不適合的章節</li>
+              <li>確認哪些文章會進入成書內容</li>
+              <li>開啟成書匯出設定</li>
+            </ul>
+            <p>這個區域可以理解為「一本書正式輸出之前的編排桌」。</p>
+            <p>空草稿建立後，系統會引導使用者前往札記庫加入文章。已有章節的草稿，則可以進入章節整理，調整順序、移除章節或確認是否列入目錄。</p>
+            <h3>5. 成書匯出</h3>
+            <p>成書匯出是把選稿草稿整理成正式電子書的階段。</p>
+            <p>使用者完成草稿章節整理後，可以進入成書匯出設定，確認或補充：</p>
+            <ul>
+              <li>書名</li>
+              <li>副標</li>
+              <li>作者</li>
+              <li>書籍簡介</li>
+              <li>模板</li>
+              <li>封面圖片</li>
+              <li>前言</li>
+              <li>後記</li>
+            </ul>
+            <p>成書設定儲存後，不會立即匯出 EPUB。使用者可以先補齊正式成書資訊，確認章節順序與內容後，再進行 EPUB 匯出。</p>
+            <p>匯出完成後，電子書可以下載，也可以加入系統內的書櫃閱讀。</p>
+            <h3>6. 書櫃</h3>
+            <p>書櫃是閱讀與管理電子書的地方。</p>
+            <p>書櫃中會顯示：</p>
+            <ul>
+              <li>自己從系統匯出的電子書</li>
+              <li>外部匯入的 EPUB 電子書</li>
+            </ul>
+            <p>使用者可以在書櫃中：</p>
+            <ul>
+              <li>打開書籍</li>
+              <li>閱讀章節</li>
+              <li>下載電子書</li>
+              <li>刪除不需要的書籍</li>
+              <li>匯入外部 EPUB</li>
+            </ul>
+            <p>書櫃適合用來保存已完成的成書結果，也適合閱讀外部匯入的 EPUB。</p>
+            <h3>7. 標籤</h3>
+            <p>標籤頁面用來查看札記中使用過的標籤。</p>
+            <p>適合用來整理主題，例如：</p>
+            <ul>
+              <li>禱告</li>
+              <li>信心</li>
+              <li>悔改</li>
+              <li>恩典</li>
+              <li>苦難</li>
+              <li>福音</li>
+              <li>教會</li>
+              <li>家庭</li>
+            </ul>
+            <p>當札記逐漸累積，標籤可以幫助使用者回頭查找同類型文章。</p>
+            <h3>8. 統計</h3>
+            <p>統計頁面用來查看整體寫作與整理狀態。</p>
+            <p>例如：</p>
+            <ul>
+              <li>札記累積數量</li>
+              <li>分類分布</li>
+              <li>標籤使用狀況</li>
+              <li>近期寫作狀況</li>
+              <li>成書整理進度</li>
+            </ul>
+            <p>這個頁面可以幫助使用者看見自己長期累積的成果。</p>
+            <h3>9. 操作手冊</h3>
+            <p>操作手冊提供系統使用說明。</p>
+            <p>使用者可以在這裡了解完整流程、各頁面用途、寫作建議、成書流程、書櫃閱讀方式與常見問題。</p>
+            <h3>10. 設定</h3>
+            <p>設定入口用來管理帳號、同步或其他系統相關選項。</p>
+            <p>實際功能會依目前版本而定。</p>
+          </section>
+
+          <section id="manual-flow" class="manual-section">
+            <h2>三、從寫札記到成書的完整操作流程</h2>
+            <h3>第一步：建立一篇札記</h3>
+            <p>進入「寫札記」頁面。</p>
+            <p>依序輸入：</p>
+            <ul>
+              <li>札記標題</li>
+              <li>經文範圍</li>
+              <li>分類</li>
+              <li>標籤</li>
+              <li>摘要</li>
+              <li>札記全文</li>
+            </ul>
+            <p>例如：</p>
+            <p>經文範圍可以輸入：詩篇 105:23-36。</p>
+            <p>分類可以使用：靈修、主日信息、小組查經、神學反思。</p>
+            <p>標籤可以使用：信心、悔改、神的信實、苦難、盼望。</p>
+            <p>完成後，點選儲存札記。</p>
+            <p>建議使用方式：</p>
+            <ul>
+              <li>標題盡量寫成正式文章標題，方便日後成書使用。</li>
+              <li>摘要可以等文章完成後再寫，避免一開始被摘要限制內容方向。</li>
+              <li>標籤不用一次加太多，建議抓住二到四個核心主題即可。</li>
+              <li>文章內容可以先完整寫下來，後續再透過札記庫回來編輯。</li>
+            </ul>
+            <h3>第二步：使用 Markdown 工具整理文章格式</h3>
+            <p>寫札記時，可以使用工具列快速插入基本格式。</p>
+            <p>目前支援的格式包括：</p>
+            <ul>
+              <li>小標題</li>
+              <li>粗體</li>
+              <li>引用</li>
+              <li>經文區塊</li>
+              <li>清單</li>
+              <li>分隔線</li>
+              <li>紅字、藍字、金字、紫字重點標記</li>
+            </ul>
+            <p>常用格式如下：</p>
+            <p>小標題：</p>
+            <p><code>## 標題文字</code></p>
+            <p>粗體：</p>
+            <p><code>**重點文字**</code></p>
+            <p>引用：</p>
+            <p><code>&gt; 引用內容</code></p>
+            <p>清單：</p>
+            <ol>
+              <li>第一點</li>
+              <li>第二點</li>
+            </ol>
+            <p>分隔線：</p>
+            <p><code>---</code></p>
+            <p>顏色標記：</p>
+            <p><code>{red}紅色重點{/red}</code></p>
+            <p><code>{blue}藍色重點{/blue}</code></p>
+            <p><code>{gold}金色重點{/gold}</code></p>
+            <p><code>{purple}紫色重點{/purple}</code></p>
+            <p>若要讓標題套用顏色，建議使用這種格式：</p>
+            <p><code>## {purple}標題文字{/purple}</code></p>
+            <h3>第三步：預覽札記</h3>
+            <p>完成內容後，可以使用預覽功能檢查文章呈現效果。</p>
+            <p>預覽會顯示：</p>
+            <ol>
+              <li>標題</li>
+              <li>經文</li>
+              <li>分類與標籤</li>
+              <li>摘要</li>
+              <li>札記全文</li>
+              <li>Markdown 格式效果</li>
+            </ol>
+            <p>預覽時建議確認：</p>
+            <ul>
+              <li>標題是否清楚</li>
+              <li>段落是否太長</li>
+              <li>小標題是否明顯</li>
+              <li>經文與默想內容是否容易閱讀</li>
+              <li>重點色是否使用適度</li>
+              <li>分隔線是否放在合適的位置</li>
+            </ul>
+            <h3>第四步：到札記庫管理文章</h3>
+            <p>儲存後，可以前往「札記庫」查看已建立的札記。</p>
+            <p>在札記庫中可以進行：</p>
+            <ul>
+              <li>搜尋札記</li>
+              <li>篩選札記</li>
+              <li>編輯札記</li>
+              <li>勾選札記</li>
+              <li>將札記加入目前選稿草稿</li>
+            </ul>
+            <p>如果發現某篇札記需要修改，可以直接在札記庫點選「編輯」，系統會回到寫札記頁，並載入該篇札記。</p>
+            <p>修改後再儲存，會更新原本那篇札記，不會另外新增一篇。</p>
+            <h3>第五步：建立選稿草稿</h3>
+            <p>進入「選稿草稿」。</p>
+            <p>若還沒有草稿，可以建立一個新的草稿。</p>
+            <p>建立草稿時，可以先設定：</p>
+            <ul>
+              <li>草稿代稱</li>
+              <li>整理說明</li>
+            </ul>
+            <p>草稿代稱可以用來標記目前整理方向，例如：</p>
+            <ul>
+              <li>詩篇靈修札記</li>
+              <li>苦難中的信心</li>
+              <li>福音與悔改</li>
+              <li>清教徒靈修默想</li>
+              <li>主日信息整理</li>
+              <li>每日靈修選集</li>
+              <li>五月份靈修選稿</li>
+            </ul>
+            <p>建立完成後，系統會將新草稿設為目前選稿草稿。</p>
+            <p>目前選稿草稿代表：接下來從札記庫加入的文章，會優先進入這一份草稿。</p>
+            <h3>第六步：從札記庫加入文章到目前選稿草稿</h3>
+            <p>前往「札記庫」。</p>
+            <p>找到想要放入書中的文章。</p>
+            <p>可以使用：</p>
+            <ul>
+              <li>搜尋</li>
+              <li>日期篩選</li>
+              <li>分類篩選</li>
+              <li>標籤篩選</li>
+            </ul>
+            <p>找到文章後，勾選文章，點選「加入目前選稿草稿」。</p>
+            <p>加入後，該文章會成為目前選稿草稿中的一個章節。</p>
+            <p>若文章尚未整理成熟，可以先留在札記庫中，不急著加入草稿。</p>
+            <p>建議使用方式：</p>
+            <ul>
+              <li>不需要每一篇札記都加入選稿草稿。</li>
+              <li>可以只挑選主題完整、文字成熟、適合公開閱讀的文章。</li>
+              <li>同一主題的文章可以集中加入同一份選稿草稿，日後整理成一本書。</li>
+            </ul>
+            <h3>第七步：整理草稿章節</h3>
+            <p>回到「選稿草稿」。</p>
+            <p>找到目前要整理的草稿，點選「整理章節」。</p>
+            <p>在目前選稿草稿視窗中，可以整理章節順序。</p>
+            <p>常見操作包括：</p>
+            <ul>
+              <li>上移章節</li>
+              <li>下移章節</li>
+              <li>移除章節</li>
+              <li>確認章節是否列入目錄</li>
+              <li>儲存編排</li>
+            </ul>
+            <p>整理章節時，建議用讀者的閱讀順序來安排。</p>
+            <p>例如：</p>
+            <ul>
+              <li>先放主題導入</li>
+              <li>再放經文默想</li>
+              <li>接著放個人反思</li>
+              <li>最後放總結性文章</li>
+            </ul>
+            <p>若是靈修合集，可以按經文順序、日期順序或主題順序排列。</p>
+            <h3>第八步：設定成書匯出資料</h3>
+            <p>在目前選稿草稿視窗中，可以點選「成書匯出設定」。</p>
+            <p>這裡可以補齊正式成書資訊：</p>
+            <ul>
+              <li>書名</li>
+              <li>副標</li>
+              <li>作者</li>
+              <li>書籍簡介</li>
+              <li>模板</li>
+              <li>封面圖片</li>
+              <li>前言</li>
+              <li>後記</li>
+            </ul>
+            <p>這些資料會用於後續成書匯出。</p>
+            <p>儲存成書設定後，系統不會立即產生 EPUB。使用者可以先完成資料設定，再回到草稿繼續整理章節。</p>
+            <p>匯出前建議檢查：</p>
+            <ul>
+              <li>書名是否清楚</li>
+              <li>作者是否正確</li>
+              <li>書籍簡介是否能說明主題</li>
+              <li>前言是否需要補充</li>
+              <li>後記是否需要保留</li>
+              <li>章節順序是否合理</li>
+              <li>章節標題是否一致</li>
+              <li>是否有空白章節</li>
+              <li>經文格式是否清楚</li>
+              <li>重點色是否過多</li>
+            </ul>
+            <h3>第九步：成書匯出</h3>
+            <p>當選稿草稿整理完成，成書設定也確認後，可以進入「成書匯出」。</p>
+            <p>在成書匯出階段，使用者可以確認書籍資料、章節內容與輸出結果。</p>
+            <p>確認無誤後，可以匯出 EPUB 電子書。</p>
+            <p>匯出完成後，可以下載 EPUB 檔案，也可以加入系統書櫃閱讀。</p>
+            <h3>第十步：下載或加入書櫃</h3>
+            <p>匯出完成後，使用者可以下載 EPUB 檔案。</p>
+            <p>也可以把書加入系統書櫃，直接在系統中閱讀。</p>
+            <p>下載後的 EPUB 可用手機或平板閱讀。</p>
+            <p>iPhone 使用者可以用 iOS 內建的「書籍 App」開啟。</p>
+            <p>Android 使用者可以用「Google Play 圖書 App」上傳並閱讀。</p>
+            <p>也可以使用其他支援 EPUB 的閱讀 App。</p>
+          </section>
+
+          <section id="manual-bookshelf" class="manual-section">
+            <h2>四、書櫃閱讀操作</h2>
+            <p>進入「書櫃」後，可以看到目前已有的電子書。</p>
+            <p>書籍來源可能包括：</p>
+            <ul>
+              <li>系統匯出的電子書</li>
+              <li>外部匯入的 EPUB 電子書</li>
+            </ul>
+            <p>點選書籍後，可以進入閱讀模式。</p>
+            <p>閱讀模式會依書籍章節顯示內容，並保留適合閱讀的排版，例如：</p>
+            <ul>
+              <li>標題</li>
+              <li>段落</li>
+              <li>引用</li>
+              <li>清單</li>
+              <li>分隔線</li>
+              <li>重點色</li>
+            </ul>
+            <p>在書櫃中，使用者可以：</p>
+            <ul>
+              <li>開啟書籍</li>
+              <li>閱讀章節</li>
+              <li>下載電子書</li>
+              <li>刪除書籍</li>
+            </ul>
+            <p>外部匯入的 EPUB 會以本機資料保存，不會影響系統自行產生的書籍。</p>
+          </section>
+
+          <section id="manual-import" class="manual-section">
+            <h2>五、匯入外部 EPUB</h2>
+            <p>書櫃支援匯入外部 EPUB。</p>
+            <p>操作方式：</p>
+            <ol>
+              <li>進入「書櫃」。</li>
+              <li>點選「匯入 EPUB」。</li>
+              <li>選擇手機或電腦中的 EPUB 檔案。</li>
+              <li>系統完成解析後，書籍會出現在書櫃中。</li>
+              <li>點選書籍即可閱讀。</li>
+            </ol>
+            <p>外部匯入書籍會顯示為「外部匯入」。</p>
+            <p>注意事項：</p>
+            <ul>
+              <li>目前僅支援 EPUB。</li>
+              <li>PDF、MOBI、AZW3 暫不支援。</li>
+              <li>有 DRM 保護的電子書可能無法匯入。</li>
+              <li>不同來源的 EPUB 結構可能不同，若檔案格式特殊，可能會出現無法解析的情況。</li>
+              <li>匯入的外部 EPUB 主要保存在目前裝置中，更換裝置後不一定會同步。</li>
+            </ul>
+          </section>
+
+          <section id="manual-recommendations" class="manual-section">
+            <h2>六、建議的使用方式</h2>
+            <h3>1. 每日使用方式</h3>
+            <p>每天完成一篇靈修後，進入「寫札記」。</p>
+            <p>寫下經文、默想、回應與禱告。</p>
+            <p>使用分類與標籤標記主題。</p>
+            <p>儲存後先留在札記庫。</p>
+            <p>這樣做可以先累積素材，不需要一開始就考慮成書。</p>
+            <h3>2. 每週整理方式</h3>
+            <p>每週可以花一段時間打開札記庫。</p>
+            <p>回顧最近寫過的內容。</p>
+            <p>挑選較完整、較有主題性的文章，加入目前選稿草稿。</p>
+            <p>這樣可以讓札記逐漸形成成書素材。</p>
+            <h3>3. 每月成書整理方式</h3>
+            <p>每月可以建立一本選稿草稿。</p>
+            <p>從札記庫挑選適合的文章加入草稿。</p>
+            <p>整理章節順序與書籍方向。</p>
+            <p>補齊成書匯出設定。</p>
+            <p>確認後匯出 EPUB。</p>
+            <p>這樣可以把零散札記逐步整理成可閱讀、可分享、可保存的電子書。</p>
+          </section>
+
+          <section id="manual-writing" class="manual-section">
+            <h2>七、寫作與排版建議</h2>
+            <h3>1. 標題建議</h3>
+            <p>標題應盡量清楚、穩重、適合成書。</p>
+            <p>例如：</p>
+            <ul>
+              <li>在困境中仍然記念神的信實</li>
+              <li>當神的帶領經過漫長等待</li>
+              <li>苦難沒有奪走神的應許</li>
+              <li>悔改從看見神的聖潔開始</li>
+              <li>在軟弱中學習倚靠神</li>
+            </ul>
+            <p>避免只寫太短或太模糊的標題，例如：</p>
+            <ul>
+              <li>今天心得</li>
+              <li>靈修筆記</li>
+              <li>詩篇感想</li>
+            </ul>
+            <h3>2. 摘要建議</h3>
+            <p>摘要可以放在文章完成後再寫。</p>
+            <p>摘要的功能是幫助日後預覽、挑選與成書整理。</p>
+            <p>建議摘要控制在二到四句內，說清楚這篇文章的核心重點。</p>
+            <h3>3. 段落建議</h3>
+            <p>每段不宜太長。</p>
+            <p>手機閱讀時，建議一段控制在三到五行內。</p>
+            <p>若內容較深，可以使用小標題分段，讓讀者更容易跟上文章脈絡。</p>
+            <h3>4. 重點色建議</h3>
+            <p>紅字、藍字、金字、紫字適合用來標記重點。</p>
+            <p>建議一篇文章中少量使用。</p>
+            <p>若整篇文章太多顏色，閱讀時會變得雜亂。</p>
+            <h3>5. 分隔線建議</h3>
+            <p>分隔線適合用在文章段落轉折處。</p>
+            <p>例如：</p>
+            <ul>
+              <li>經文觀察結束後，進入個人反思</li>
+              <li>信息內容結束後，進入禱告回應</li>
+              <li>文章前半段與後半段主題明顯轉換</li>
+            </ul>
+          </section>
+
+          <section id="manual-faq" class="manual-section">
+            <h2>八、常見問題</h2>
+            <h3>1. 我寫完札記後，為什麼書裡還沒有出現？</h3>
+            <p>札記儲存後會先留在札記庫。</p>
+            <p>若要放進書中，需要先建立或選擇目前選稿草稿，再從札記庫勾選文章加入目前選稿草稿。</p>
+            <p>接著回到選稿草稿整理章節，最後進入成書匯出。</p>
+            <h3>2. 札記庫和選稿草稿有什麼差別？</h3>
+            <p>札記庫是所有已儲存札記的集中管理區。</p>
+            <p>選稿草稿是正式編排一本書之前的整理工作區。</p>
+            <p>使用者可以先在札記庫保存大量札記，再從中挑選適合的文章加入某一本選稿草稿。</p>
+            <h3>3. 我可以建立多本草稿嗎？</h3>
+            <p>可以。</p>
+            <p>不同主題可以建立不同草稿，例如一本是詩篇靈修，一本是主日信息整理。</p>
+            <p>使用時需要設定目前草稿，方便札記庫知道文章要加入哪一本草稿。</p>
+            <h3>4. 空草稿建立後要做什麼？</h3>
+            <p>空草稿建立後，可以點選「前往札記庫加入文章」。</p>
+            <p>系統會把該草稿設為目前選稿草稿，使用者接著可以在札記庫勾選文章加入草稿。</p>
+            <h3>5. 成書匯出設定會立刻產生 EPUB 嗎？</h3>
+            <p>不會。</p>
+            <p>成書匯出設定只是補齊正式成書資訊，例如書名、副標、作者、簡介、前言與後記。</p>
+            <p>儲存後不會立即匯出 EPUB。</p>
+            <h3>6. 匯出的 EPUB 可以傳給別人嗎？</h3>
+            <p>可以。</p>
+            <p>EPUB 檔案可以下載後傳給他人，對方可以用支援 EPUB 的閱讀 App 開啟。</p>
+            <p>例如 iPhone 的「書籍 App」、Android 的「Google Play 圖書 App」，或其他 EPUB 閱讀器。</p>
+            <h3>7. 書櫃裡的外部 EPUB 會同步到雲端嗎？</h3>
+            <p>目前外部匯入 EPUB 主要保存在目前裝置中。</p>
+            <p>若更換裝置或清除瀏覽器資料，外部匯入書籍可能會消失。</p>
+            <h3>8. 為什麼外部 EPUB 匯入失敗？</h3>
+            <p>可能原因包括：</p>
+            <ul>
+              <li>檔案不是 EPUB 格式</li>
+              <li>EPUB 有 DRM 保護</li>
+              <li>EPUB 結構特殊</li>
+              <li>壓縮格式不支援</li>
+              <li>檔案損壞</li>
+            </ul>
+            <p>可以先改用其他 EPUB 檔案測試，確認是否為單一檔案問題。</p>
+            <h3>9. 為什麼舊書沒有顯示新的排版效果？</h3>
+            <p>部分排版功能需要重新匯出書籍後才會套用。</p>
+            <p>若書籍是在舊版本匯出的，建議重新從草稿匯出一次。</p>
+          </section>
+
+          <section id="manual-habits" class="manual-section">
+            <h2>九、推薦操作習慣</h2>
+            <ul>
+              <li>每天先專心寫札記，不急著成書。</li>
+              <li>每週回顧札記庫，把成熟文章加入目前選稿草稿。</li>
+              <li>每月建立或整理選稿草稿。</li>
+              <li>成書前先預覽內容與章節順序。</li>
+              <li>成書匯出前先補齊書名、作者、簡介、前言與後記。</li>
+              <li>匯出 EPUB 後，實際用手機閱讀一次，確認閱讀體驗。</li>
+              <li>重要書籍建議下載備份，不要只放在瀏覽器書櫃中。</li>
+              <li>外部 EPUB 若很重要，也建議另外保留原始檔案。</li>
+            </ul>
+          </section>
+
+          <section id="manual-example" class="manual-section">
+            <h2>十、完整流程範例</h2>
+            <p>假設使用者想把一個月的詩篇靈修整理成一本電子書，可以這樣操作：</p>
+            <ol>
+              <li>第一天到第三十天，每天在「寫札記」建立一篇詩篇靈修。</li>
+              <li>每篇札記都填寫標題、經文、分類、標籤、摘要與全文。</li>
+              <li>每週進入「札記庫」，挑選文字較完整的文章。</li>
+              <li>月底進入「選稿草稿」，建立一本草稿，命名為「詩篇靈修札記」。</li>
+              <li>前往「札記庫」，把適合的文章加入目前選稿草稿。</li>
+              <li>回到「選稿草稿」，整理章節順序。</li>
+              <li>確認每篇文章標題、段落、小標題與經文格式。</li>
+              <li>開啟「成書匯出設定」，填寫書名、作者、書籍簡介、前言與後記。</li>
+              <li>進入「成書匯出」，確認內容後匯出 EPUB。</li>
+              <li>匯出後加入書櫃，打開閱讀檢查。</li>
+              <li>確認無誤後，下載 EPUB 保存，也可以分享給他人閱讀。</li>
+            </ol>
+          </section>
+
+          <section id="manual-summary" class="manual-section">
+            <h2>十一、使用流程總結</h2>
+            <p>靈修札記成書系統的核心精神，是幫助使用者把每天零散的靈修文字，逐步整理成長期可保存、可閱讀、可分享的屬靈作品。</p>
+            <p>最重要的操作順序可以記成：</p>
+            <p>先寫下來。</p>
+            <p>再整理出來。</p>
+            <p>再挑選出來。</p>
+            <p>再編排成書。</p>
+            <p>最後保存與閱讀。</p>
+            <p>只要持續累積，原本分散的靈修札記，就能逐漸成為一本有主題、有章節、有閱讀價值的電子書。</p>
+          </section>
+        </article>
+      </section>
+    `;
+    libraryView?.insertAdjacentElement('beforebegin', section);
+  }
+
+  els.viewNavLinks = [...document.querySelectorAll('.desktop-sidebar-link[data-view], .mobile-bottom-link[data-view], .nav-link[data-view]')];
+  els.views = [...document.querySelectorAll('.view')];
 }
 function teardownCloudRealtime() {
   if (!state.realtimeChannel || !state.supabase) {
@@ -779,6 +1366,7 @@ async function clearConnectionSettings() {
 async function bootstrap() {
   removeRetiredInterfaceElements();
   ensureContentLibraryUi();
+  ensureOperationManualUi();
   ensureBookDraftWorkspaceUi();
   document.body.dataset.currentView = document.querySelector('.view.active')?.id?.replace('view-', '') || 'dashboard';
   syncConfigInputs();
@@ -895,6 +1483,7 @@ function bindEvents() {
     if (event.key === 'Escape' && !els.authInlinePanel?.classList.contains('hidden')) closeAuthInline();
     if (event.key === 'Escape' && !els.notePreviewModal?.classList.contains('hidden')) closeNotePreview();
     if (event.key === 'Escape' && state.bookDraftModalOpen) closeBookDraftModal();
+    if (event.key === 'Escape' && state.bookExportSettingsModalOpen) closeBookExportSettingsModal();
   });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && state.supabase && state.currentUser) {
@@ -1104,11 +1693,224 @@ function sanitizeDisplayText(value, fallback = '') {
 function getPrimaryViewLabel(viewName = '') {
   return {
     dashboard: '總覽',
-    notes: '札記',
-    'content-library': '內容庫',
+    notes: '寫札記',
+    'content-library': '札記庫',
     books: '選稿草稿',
     library: '書櫃',
+    manual: '操作手冊',
   }[viewName] || '';
+}
+
+function ensureWritingWorkspaceUi() {
+  const notesView = document.getElementById('view-notes');
+  if (!notesView) return;
+  notesView.classList.add('note-writing-workspace');
+  const panels = notesView.querySelectorAll('.panel');
+  const [editorPanel, listPanel] = panels;
+  editorPanel?.classList.add('note-writing-form-panel');
+  listPanel?.classList.add('note-writing-list-panel', 'hidden');
+  editorPanel?.querySelector('.panel-header h2')?.replaceChildren(document.createTextNode('寫札記'));
+}
+
+function getBookExportSettingsElements() {
+  return {
+    modal: document.getElementById('book-export-settings-modal'),
+    backdrop: document.getElementById('book-export-settings-backdrop'),
+    title: document.getElementById('book-export-settings-title'),
+    intro: document.getElementById('book-export-settings-intro'),
+    closeBtn: document.getElementById('close-book-export-settings-btn'),
+    dismissBtn: document.getElementById('dismiss-book-export-settings-btn'),
+    form: document.getElementById('book-export-settings-form'),
+    bookTitle: document.getElementById('book-export-settings-book-title'),
+    subtitle: document.getElementById('book-export-settings-subtitle'),
+    author: document.getElementById('book-export-settings-author'),
+    description: document.getElementById('book-export-settings-description'),
+    template: document.getElementById('book-export-settings-template'),
+    cover: document.getElementById('book-export-settings-cover'),
+    coverPreview: document.getElementById('book-export-settings-cover-preview'),
+    preface: document.getElementById('book-export-settings-preface'),
+    afterword: document.getElementById('book-export-settings-afterword'),
+    saveBtn: document.getElementById('save-book-export-settings-btn'),
+  };
+}
+
+function renderBookExportCoverPreview(coverDataUrl = '', fallbackTitle = '目前封面') {
+  const { coverPreview } = getBookExportSettingsElements();
+  if (!coverPreview) return;
+  if (coverDataUrl) {
+    coverPreview.innerHTML = `
+      <img src="${coverDataUrl}" alt="${escapeHtml(fallbackTitle)}" />
+      <div class="book-export-settings-cover-copy">
+        <strong>目前封面</strong>
+        <span>已沿用既有封面欄位</span>
+      </div>
+    `;
+    coverPreview.classList.remove('is-empty');
+    return;
+  }
+  coverPreview.innerHTML = `
+    <div class="book-export-settings-cover-copy">
+      <strong>尚未設定封面</strong>
+      <span>可沿用既有封面欄位，上傳後只更新目前草稿設定。</span>
+    </div>
+  `;
+  coverPreview.classList.add('is-empty');
+}
+
+function closeBookExportSettingsModal() {
+  const { modal, form } = getBookExportSettingsElements();
+  state.bookExportSettingsModalOpen = false;
+  modal?.classList.add('hidden');
+  modal?.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('book-export-settings-open');
+  if (form) form.dataset.bookId = '';
+}
+
+function populateBookExportSettingsModal(book) {
+  const modalEls = getBookExportSettingsElements();
+  if (!book || !modalEls.form) return;
+  modalEls.form.dataset.bookId = book.id;
+  modalEls.form.dataset.coverDataUrl = book.cover_data_url || '';
+  modalEls.title.textContent = '成書匯出設定';
+  modalEls.intro.textContent = `設定「${getBookDraftLabel(book)}」的正式成書資訊，儲存後不會立即匯出 EPUB。`;
+  modalEls.bookTitle.value = book.title || '';
+  modalEls.subtitle.value = book.subtitle || '';
+  modalEls.author.value = book.author_name || '';
+  modalEls.description.value = book.description || '';
+  modalEls.template.value = book.template_code || 'devotion';
+  modalEls.preface.value = book.preface || '';
+  modalEls.afterword.value = book.afterword || '';
+  modalEls.cover.value = '';
+  renderBookExportCoverPreview(book.cover_data_url || '', getBookDraftLabel(book));
+}
+
+function openBookExportSettingsModal(bookId = '') {
+  if (bookId) state.selectedBookId = bookId;
+  const book = getSelectedBook();
+  if (!book) throw new Error('請先選取一份選稿草稿。');
+  ensureBookExportSettingsUi();
+  populateBookExportSettingsModal(book);
+  const { modal } = getBookExportSettingsElements();
+  state.bookExportSettingsModalOpen = true;
+  modal?.classList.remove('hidden');
+  modal?.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('book-export-settings-open');
+}
+
+async function saveBookExportSettings() {
+  const modalEls = getBookExportSettingsElements();
+  const bookId = modalEls.form?.dataset.bookId || '';
+  const book = state.books.find(item => item.id === bookId);
+  if (!book) throw new Error('找不到要更新的選稿草稿。');
+  const existingCover = modalEls.form?.dataset.coverDataUrl || book.cover_data_url || '';
+  const coverDataUrl = modalEls.cover?.files?.[0] ? await fileToDataUrl(modalEls.cover.files[0]) : existingCover;
+  const nextTitle = modalEls.bookTitle.value.trim();
+  if (!nextTitle) throw new Error('請先輸入書名。');
+  if (modalEls.saveBtn) {
+    modalEls.saveBtn.disabled = true;
+    modalEls.saveBtn.textContent = '儲存中...';
+  }
+  try {
+    await persistBookChanges(bookId, {
+      title: nextTitle,
+      subtitle: modalEls.subtitle.value.trim(),
+      author_name: modalEls.author.value.trim(),
+      description: modalEls.description.value.trim(),
+      template_code: modalEls.template.value,
+      cover_data_url: coverDataUrl,
+      preface: modalEls.preface.value.trim(),
+      afterword: modalEls.afterword.value.trim(),
+    });
+    state.selectedBookId = bookId;
+    closeBookExportSettingsModal();
+    refreshUi();
+    showToast(`已儲存「${nextTitle}」的成書設定。`);
+  } finally {
+    if (modalEls.saveBtn) {
+      modalEls.saveBtn.disabled = false;
+      modalEls.saveBtn.textContent = '儲存成書設定';
+    }
+  }
+}
+
+function ensureBookExportSettingsUi() {
+  if (document.getElementById('book-export-settings-modal')) return;
+  const modal = document.createElement('div');
+  modal.id = 'book-export-settings-modal';
+  modal.className = 'modal book-export-settings-modal hidden';
+  modal.setAttribute('aria-hidden', 'true');
+  modal.innerHTML = `
+    <div id="book-export-settings-backdrop" class="modal-backdrop"></div>
+    <div class="modal-card book-export-settings-card" role="dialog" aria-modal="true" aria-labelledby="book-export-settings-title">
+      <div class="panel-header book-export-settings-header">
+        <div>
+          <h2 id="book-export-settings-title">成書匯出設定</h2>
+          <p id="book-export-settings-intro" class="modal-intro">設定目前草稿的正式成書資訊，儲存後不會立即匯出 EPUB。</p>
+        </div>
+        <button id="close-book-export-settings-btn" class="ghost-btn small" type="button">關閉</button>
+      </div>
+      <form id="book-export-settings-form" class="book-export-settings-form">
+        <div class="book-export-settings-scroll">
+          <div class="book-export-settings-grid">
+            <label>書名
+              <input id="book-export-settings-book-title" required placeholder="例：五月靈修選集" />
+            </label>
+            <label>副標
+              <input id="book-export-settings-subtitle" placeholder="例：安靜同行的三十天" />
+            </label>
+            <label>作者
+              <input id="book-export-settings-author" placeholder="例：Jeremiah" />
+            </label>
+            <label>模板
+              <select id="book-export-settings-template">
+                <option value="devotion">靈修札記版</option>
+                <option value="sermon">講章整理版</option>
+                <option value="testimony">見證合集版</option>
+              </select>
+            </label>
+            <label class="book-export-settings-span-2">書籍簡介
+              <textarea id="book-export-settings-description" rows="4" placeholder="介紹這本書的主題、收錄範圍與閱讀方向"></textarea>
+            </label>
+            <div class="book-export-settings-span-2 book-export-settings-cover-block">
+              <div id="book-export-settings-cover-preview" class="book-export-settings-cover-preview is-empty"></div>
+              <label>封面圖片
+                <input id="book-export-settings-cover" type="file" accept="image/*" />
+              </label>
+            </div>
+            <label class="book-export-settings-span-2">前言
+              <textarea id="book-export-settings-preface" rows="5" placeholder="寫下這本書的前言"></textarea>
+            </label>
+            <label class="book-export-settings-span-2">後記
+              <textarea id="book-export-settings-afterword" rows="5" placeholder="寫下這本書的後記"></textarea>
+            </label>
+          </div>
+        </div>
+        <div class="book-export-settings-actions">
+          <button id="save-book-export-settings-btn" class="secondary-btn" type="submit">儲存成書設定</button>
+          <button id="dismiss-book-export-settings-btn" class="ghost-btn" type="button">關閉</button>
+        </div>
+      </form>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  const modalEls = getBookExportSettingsElements();
+  modalEls.backdrop?.addEventListener('click', closeBookExportSettingsModal);
+  modalEls.closeBtn?.addEventListener('click', closeBookExportSettingsModal);
+  modalEls.dismissBtn?.addEventListener('click', closeBookExportSettingsModal);
+  modalEls.form?.addEventListener('submit', event => {
+    event.preventDefault();
+    saveBookExportSettings().catch(handleError);
+  });
+  modalEls.cover?.addEventListener('change', async event => {
+    const file = event.target.files?.[0];
+    const fallbackTitle = modalEls.bookTitle?.value?.trim() || '目前封面';
+    if (!file) {
+      renderBookExportCoverPreview(modalEls.form?.dataset.coverDataUrl || '', fallbackTitle);
+      return;
+    }
+    const dataUrl = await fileToDataUrl(file);
+    renderBookExportCoverPreview(dataUrl, fallbackTitle);
+  });
 }
 
 function syncDesktopDashboardStaticCopy() {
@@ -1148,7 +1950,10 @@ function syncDesktopDashboardStaticCopy() {
 function refreshUi() {
   const accountEmail = String(state.currentUser?.email || state.currentUser?.id || '').trim() || '未顯示帳號';
   syncDesktopDashboardStaticCopy();
+  ensureWritingWorkspaceUi();
+  ensureOperationManualUi();
   ensureBookDraftWorkspaceUi();
+  ensureBookExportSettingsUi();
   if (els.authModeBadge) els.authModeBadge.textContent = state.supabase ? '雲端模式' : '本機模式';
   if (els.statusStorage) els.statusStorage.textContent = state.supabase ? 'Supabase' : 'Local';
   if (els.statusSync) els.statusSync.textContent = state.syncStatus || '未啟用';
@@ -1302,7 +2107,7 @@ function renderContentLibrary() {
   if (els.contentLibraryBookHint) {
     els.contentLibraryBookHint.textContent = selectedBook
       ? `目前草稿：${getBookDraftLabel(selectedBook)}${hasBookArrangementDraft(selectedBook.id) ? '（尚未儲存）' : ''}`
-      : '請先建立或開啟一份草稿';
+      : '請先建立或開啟一份選稿草稿';
   }
   if (els.contentLibraryAddSelected) {
     els.contentLibraryAddSelected.disabled = !selectedBook || !selectedCount || state.bookArrangementSaving;
@@ -1337,6 +2142,9 @@ function renderContentLibrary() {
           <span>${escapeHtml(formatDate(note.updated_at || note.created_at))}</span>
         </div>
         <div>${escapeHtml((note.summary || note.content || '').slice(0, 160) || '尚未填寫摘要。')}</div>
+        <div class="card-actions">
+          <button class="secondary-btn" type="button" data-content-library-edit-note="${note.id}">編輯</button>
+        </div>
       </article>
     `;
   }).join('');
@@ -1349,6 +2157,7 @@ function renderContentLibrary() {
     state.contentLibrarySelectedNoteIds = [...next];
     renderContentLibrary();
   }));
+  els.contentLibraryList.querySelectorAll('[data-content-library-edit-note]').forEach(btn => btn.addEventListener('click', () => populateNoteForm(btn.dataset.contentLibraryEditNote)));
 }
 
 function getBookDraftLabel(book) {
@@ -1456,7 +2265,7 @@ function ensureBookDraftWorkspaceUi() {
   document.querySelector('#view-books .chapter-list-heading')?.classList.add('book-draft-chapter-heading');
 
   draftFormPanel?.querySelector('.panel-header h2')?.replaceChildren(document.createTextNode('建立選稿草稿'));
-  if (els.newBookBtn) els.newBookBtn.textContent = '建立新草稿';
+  els.newBookBtn?.classList.add('hidden');
   const titleLabel = els.bookTitle?.closest('label');
   if (titleLabel) {
     titleLabel.childNodes[0].textContent = '草稿代稱';
@@ -1497,7 +2306,7 @@ function ensureBookDraftWorkspaceUi() {
       goLibraryBtn.id = 'go-content-library-btn';
       goLibraryBtn.type = 'button';
       goLibraryBtn.className = 'secondary-btn';
-      goLibraryBtn.textContent = '前往內容庫加入文章';
+      goLibraryBtn.textContent = '前往札記庫加入文章';
       goLibraryBtn.addEventListener('click', () => goToContentLibraryForBookDraft(state.selectedBookId));
 
       const focusChaptersBtn = document.createElement('button');
@@ -1560,6 +2369,16 @@ function ensureBookDraftWorkspaceUi() {
     rightBody.appendChild(els.chaptersList);
     const arrangementStatus = document.getElementById('book-arrangement-status');
     if (arrangementStatus) rightFooter.appendChild(arrangementStatus);
+    let exportSettingsBtn = document.getElementById('open-book-export-settings-btn');
+    if (!exportSettingsBtn) {
+      exportSettingsBtn = document.createElement('button');
+      exportSettingsBtn.id = 'open-book-export-settings-btn';
+      exportSettingsBtn.type = 'button';
+      exportSettingsBtn.className = 'ghost-btn';
+      exportSettingsBtn.textContent = '成書匯出設定';
+      exportSettingsBtn.addEventListener('click', () => openBookExportSettingsModal(state.selectedBookId));
+    }
+    rightFooter.prepend(exportSettingsBtn);
     const saveBtn = document.getElementById('save-book-arrangement-btn');
     if (saveBtn) rightFooter.prepend(saveBtn);
     const focusBtn = document.getElementById('focus-draft-chapters-btn');
@@ -2398,7 +3217,7 @@ function renderBooks() {
     const chapterCount = getBookDisplayChapters(book).length;
     const isEmptyDraft = chapterCount === 0;
     const description = (book.description || '').slice(0, 140)
-      || (isEmptyDraft ? '尚未收錄札記，請先前往內容庫加入文章。' : '尚未填寫整理說明');
+      || (isEmptyDraft ? '尚未收錄札記，請先前往札記庫加入文章。' : '尚未填寫整理說明');
     return `
       <article class="card book-draft-card ${book.id === state.selectedBookId ? 'selected' : ''}">
         <div class="book-draft-card-header">
@@ -2414,14 +3233,14 @@ function renderBooks() {
         <div class="card-actions book-draft-actions">
           ${isEmptyDraft
             ? `
-              <button class="secondary-btn" data-go-content-library="${book.id}">前往內容庫加入文章</button>
+              <button class="secondary-btn" data-go-content-library="${book.id}">前往札記庫加入文章</button>
               <button class="ghost-btn" data-select-book="${book.id}">設為目前草稿</button>
               <button class="ghost-btn" data-open-book-draft="${book.id}">查看草稿</button>
             `
             : `
               <button class="secondary-btn" data-open-book-draft="${book.id}">整理章節</button>
               <button class="ghost-btn" data-select-book="${book.id}">設為目前草稿</button>
-              <button class="ghost-btn" data-go-content-library="${book.id}">前往內容庫加入文章</button>
+              <button class="ghost-btn" data-go-content-library="${book.id}">前往札記庫加入文章</button>
             `}
         </div>
       </article>
@@ -2507,14 +3326,14 @@ async function saveBook() {
   clearBookForm();
   state.selectedBookId = payload.id;
   if (els.bookSaveFeedback) {
-    els.bookSaveFeedback.textContent = isNewDraft ? '草稿已建立，請前往內容庫加入文章。' : '草稿已儲存';
+    els.bookSaveFeedback.textContent = isNewDraft ? '草稿已建立，請前往札記庫加入文章。' : '草稿已儲存';
     els.bookSaveFeedback.classList.remove('hidden');
   }
   await loadAllData({ silent: true, syncReason: state.supabase ? '草稿儲存後同步' : '' });
   state.selectedBookId = payload.id;
   setView('books');
   showToast(isNewDraft
-    ? `已建立「${payload.title}」，請前往內容庫加入文章。`
+    ? `已建立「${payload.title}」，請前往札記庫加入文章。`
     : '草稿已儲存');
 }
 
@@ -2706,11 +3525,11 @@ function renderChaptersList(book) {
     }
     const draftLabel = getBookDraftLabel(book);
     els.chaptersList.innerHTML = `
-      <div class="book-draft-empty-guide">
-        <h4>這份選稿草稿目前還沒有收錄文章。</h4>
-        <p>請先到內容庫挑選札記，加入目前選稿草稿。</p>
-        <button type="button" class="secondary-btn" data-empty-draft-go-library="${book.id}">前往內容庫加入文章</button>
-      </div>
+        <div class="book-draft-empty-guide">
+          <h4>這份選稿草稿目前還沒有收錄文章。</h4>
+          <p>請先到札記庫挑選札記，加入目前選稿草稿。</p>
+          <button type="button" class="secondary-btn" data-empty-draft-go-library="${book.id}">前往札記庫加入文章</button>
+        </div>
     `;
     els.chaptersList.querySelector('[data-empty-draft-go-library]')?.addEventListener('click', () => {
       showToast(`請先為「${draftLabel}」加入文章。`);
@@ -2948,14 +3767,16 @@ function renderSnapshots() {
 function setView(viewName) {
   if (viewName === 'snapshots') viewName = 'dashboard';
   if (viewName !== 'books') state.bookDraftModalOpen = false;
+  if (viewName !== 'books' && state.bookExportSettingsModalOpen) closeBookExportSettingsModal();
   const isReaderView = viewName === 'reader';
   const titleMap = {
     dashboard: ['總覽', ''],
-    notes: ['札記庫', '建立、編輯並整理靈修札記。'],
-    'content-library': ['內容庫', '從過去寫過的札記中搜尋、篩選並挑選文章，加入選稿草稿。'],
-    books: ['成書草稿', '整理選稿中的內容草稿，準備後續章節編排與成書設定。'],
+    notes: ['寫札記', '專注建立與編輯單篇札記。'],
+    'content-library': ['札記庫', '從過去寫過的札記中搜尋、篩選並挑選文章，加入目前選稿草稿。'],
+    books: ['選稿草稿', '管理成書前的選稿草稿，整理章節順序並銜接成書匯出設定。'],
     snapshots: ['快照備份', '查看每次建立的書籍快照。'],
     library: ['書櫃', '收藏已輸出的固定版本作品，直接開啟閱讀。'],
+    manual: ['操作手冊', '靈修札記成書系統使用說明'],
     reader: ['閱讀模式', '安靜閱讀已加入書櫃的 EPUB。'],
   };
   document.body.dataset.currentView = viewName;
