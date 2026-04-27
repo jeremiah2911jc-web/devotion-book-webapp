@@ -7,6 +7,8 @@
   importedLibraryBooks: 'devotion-app-imported-library-books',
   accounts: 'devotion-app-local-accounts',
   deviceId: 'devotion-app-device-id',
+  autoBackupMeta: 'devotion-auto-backup-meta',
+  autoBackups: 'devotion-auto-backups',
 };
 
 const TEMPLATE_LABELS = {
@@ -39,6 +41,8 @@ const DEFAULT_CONFIG = {
   supabaseUrl: 'https://kknyldzvgvuewkpwkwyj.supabase.co',
   supabaseAnonKey: 'sb_publishable_7dOBDTLOfsppsElw5tTIrQ_luCT8vVh',
 };
+
+const AUTO_BACKUP_SLOTS = ['08', '14', '20'];
 
 function buildMergedConfig(raw = null) {
   const next = raw && typeof raw === 'object' ? raw : {};
@@ -293,6 +297,7 @@ const state = {
   },
   isRestoring: false,
   restoreStatusMessage: '',
+  isAutoBackingUp: false,
 };
 
 function loadJson(key, fallback) {
@@ -656,7 +661,7 @@ function renderAdminDashboard() {
           <input id="admin-import-backup-input" type="file" accept=".json,application/json" class="hidden" />
         </div>
       </div>
-      <p class="caption">匯出內容包含 notes、books、drafts、library；若某資料目前不存在，會以空陣列輸出。</p>
+      <p class="caption">匯出內容包含 notes、drafts、library；若某資料目前不存在，會以空陣列輸出。</p>
       <section class="admin-dashboard-section">
         <div>
           <h3>備份預覽</h3>
@@ -668,6 +673,7 @@ function renderAdminDashboard() {
         </div>
         ${renderBackupImportPreview()}
       </section>
+      ${renderAutoBackupSection()}
     </section>
     <section class="admin-monitoring-group">
       <div class="panel-header">
@@ -738,6 +744,15 @@ function renderAdminDashboard() {
   document.getElementById('admin-danger-restore-backup-btn')?.addEventListener('click', () => {
     restoreBackupDanger().catch(handleError);
   }, { once: true });
+  document.querySelectorAll('[data-download-auto-backup]').forEach(button => {
+    button.addEventListener('click', () => {
+      try {
+        downloadAutoBackupById(button.dataset.downloadAutoBackup || '');
+      } catch (error) {
+        handleError(error);
+      }
+    }, { once: true });
+  });
 }
 
 function ensureContentLibraryUi() {
@@ -1570,8 +1585,7 @@ async function uploadLocalDataToCloud() {
   await loadAllData({ silent: true, syncReason: '本機資料已上傳到雲端。' });
   showToast(`已上傳：札記 ${notesToUpload.length}、書籍 ${booksToUpload.length}`);
 }
-function downloadBackupJson() {
-  requireUser();
+function buildBackupPayload(exportedAtIso = nowIso()) {
   const drafts = Array.isArray(state.books) ? state.books : [];
   const library = getAllLibraryBooksForView().map(book => {
     const source = book.source === 'imported_epub' ? 'imported_epub' : 'generated';
@@ -1581,8 +1595,7 @@ function downloadBackupJson() {
       source,
     };
   });
-  const exportedAtIso = nowIso();
-  const payload = {
+  return {
     version: 'v1',
     exportedAt: formatDate(exportedAtIso),
     user: state.currentUser?.email || '',
@@ -1590,13 +1603,163 @@ function downloadBackupJson() {
     drafts,
     library: Array.isArray(library) ? library : [],
   };
-  const date = new Date(exportedAtIso);
+}
+
+function getBackupFilename(prefix = 'devotion-backup', stampSource = nowIso()) {
+  const date = new Date(stampSource);
   const stamp = Number.isNaN(date.getTime())
     ? 'backup'
     : `${String(date.getFullYear())}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}-${String(date.getHours()).padStart(2, '0')}${String(date.getMinutes()).padStart(2, '0')}`;
+  return `${prefix}-${stamp}.json`;
+}
+
+function downloadBackupJson() {
+  requireUser();
+  const exportedAtIso = nowIso();
+  const payload = buildBackupPayload(exportedAtIso);
+  const date = new Date(exportedAtIso);
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
-  downloadBlob(`devotion-backup-${stamp}.json`, blob);
+  downloadBlob(getBackupFilename('devotion-backup', date), blob);
   showToast('備份 JSON 已下載。');
+}
+
+function loadAutoBackupMeta() {
+  const raw = loadJson(STORAGE_KEYS.autoBackupMeta, {});
+  return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+}
+
+function saveAutoBackupMeta(meta = {}) {
+  saveJson(STORAGE_KEYS.autoBackupMeta, meta && typeof meta === 'object' ? meta : {});
+}
+
+function trimAutoBackupMeta(meta = {}, now = new Date()) {
+  const next = meta && typeof meta === 'object' && !Array.isArray(meta) ? { ...meta } : {};
+  const base = new Date(now);
+  base.setHours(0, 0, 0, 0);
+  const keep = new Set();
+  for (let index = 0; index < 7; index += 1) {
+    const current = new Date(base);
+    current.setDate(base.getDate() - index);
+    keep.add(`${String(current.getFullYear())}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`);
+  }
+  Object.keys(next).forEach((dateKey) => {
+    if (!keep.has(dateKey)) delete next[dateKey];
+  });
+  return next;
+}
+
+function loadAutoBackups() {
+  const raw = loadJson(STORAGE_KEYS.autoBackups, []);
+  if (!Array.isArray(raw)) return [];
+  return raw.filter(entry => {
+    if (!entry || typeof entry !== 'object') return false;
+    if (!entry.data || typeof entry.data !== 'object') return false;
+    return isValidBackupJson(entry.data);
+  });
+}
+
+function saveAutoBackups(backups = []) {
+  const list = Array.isArray(backups) ? backups.slice(-10) : [];
+  saveJson(STORAGE_KEYS.autoBackups, list);
+}
+
+function getCurrentAutoBackupSlot(date = new Date()) {
+  const hour = Number(date.getHours());
+  if (hour >= 20) return '20';
+  if (hour >= 14) return '14';
+  if (hour >= 8) return '08';
+  return '';
+}
+
+function performAutoBackup(slot = '') {
+  if (!slot || !state.currentUser) return false;
+  const exportedAtIso = nowIso();
+  const payload = buildBackupPayload(exportedAtIso);
+  const backups = loadAutoBackups();
+  backups.push({
+    id: Date.now(),
+    exportedAt: payload.exportedAt,
+    user: payload.user || '',
+    slot,
+    data: payload,
+  });
+  saveAutoBackups(backups);
+  return true;
+}
+
+function runAutoBackupCheck() {
+  if (!state.currentUser || state.isAutoBackingUp) return;
+  const now = new Date();
+  const slot = getCurrentAutoBackupSlot(now);
+  if (!slot) return;
+  const currentUserEmail = String(state.currentUser?.email || '').trim().toLowerCase();
+  if (!currentUserEmail) return;
+  const currentDate = `${String(now.getFullYear())}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  state.isAutoBackingUp = true;
+  try {
+    const meta = trimAutoBackupMeta(loadAutoBackupMeta(), now);
+    const dayMeta = meta[currentDate] && typeof meta[currentDate] === 'object' && !Array.isArray(meta[currentDate])
+      ? { ...meta[currentDate] }
+      : {};
+    const userMeta = dayMeta[currentUserEmail] && typeof dayMeta[currentUserEmail] === 'object' && !Array.isArray(dayMeta[currentUserEmail])
+      ? { ...dayMeta[currentUserEmail] }
+      : { '08': false, '14': false, '20': false };
+    if (userMeta[slot]) return;
+    const saved = performAutoBackup(slot);
+    if (!saved) return;
+    userMeta[slot] = true;
+    dayMeta[currentUserEmail] = userMeta;
+    meta[currentDate] = dayMeta;
+    saveAutoBackupMeta(trimAutoBackupMeta(meta, now));
+  } finally {
+    state.isAutoBackingUp = false;
+  }
+}
+
+function downloadAutoBackupById(backupId = '') {
+  const item = loadAutoBackups().find(entry => String(entry.id || '') === String(backupId || ''));
+  if (!item?.data) throw new Error('找不到指定的自動備份資料。');
+  const blob = new Blob([JSON.stringify(item.data, null, 2)], { type: 'application/json;charset=utf-8' });
+  downloadBlob(getBackupFilename('devotion-auto-backup', item.id || item.exportedAt || nowIso()), blob);
+}
+
+function renderAutoBackupSection() {
+  const backups = loadAutoBackups().slice().reverse();
+  if (!backups.length) {
+    return `
+      <section class="admin-dashboard-section">
+        <div>
+          <h3>自動備份（每日三次）</h3>
+          <p class="muted">系統會在 08:00 / 14:00 / 20:00 自動備份（需開啟網站）。</p>
+        </div>
+        <div class="empty-state">尚無自動備份</div>
+      </section>
+    `;
+  }
+  return `
+    <section class="admin-dashboard-section">
+      <div>
+        <h3>自動備份（每日三次）</h3>
+        <p class="muted">系統會在 08:00 / 14:00 / 20:00 自動備份（需開啟網站）。</p>
+      </div>
+      <div class="list-stack">
+        ${backups.map(item => `
+          <article class="card">
+            <div class="card-main">
+              <strong>${escapeHtml(String(item.exportedAt || '未記錄'))}</strong>
+              <div class="card-meta">
+                <span>${escapeHtml(String(item.user || '未顯示帳號'))}</span>
+                <span>slot ${escapeHtml(String(item.slot || ''))}</span>
+              </div>
+            </div>
+            <div class="card-actions">
+              <button class="ghost-btn" type="button" data-download-auto-backup="${escapeHtml(String(item.id || ''))}">下載</button>
+            </div>
+          </article>
+        `).join('')}
+      </div>
+    </section>
+  `;
 }
 
 function isValidBackupJson(payload) {
@@ -2442,6 +2605,7 @@ async function bootstrap() {
     setSyncState({ status: '本機模式', detail: '目前資料只保存在這台裝置。', at: '' });
   }
   await loadAllData({ silent: true });
+  runAutoBackupCheck();
   refreshUi();
   renderNotePreview();
 }
@@ -3166,6 +3330,7 @@ function syncDesktopDashboardStaticCopy() {
 }
 
 function refreshUi() {
+  runAutoBackupCheck();
   const accountEmail = String(state.currentUser?.email || state.currentUser?.id || '').trim() || '未顯示帳號';
   syncDesktopDashboardStaticCopy();
   ensureWritingWorkspaceUi();
