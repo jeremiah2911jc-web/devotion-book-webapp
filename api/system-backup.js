@@ -8,7 +8,7 @@ const TABLE_QUERIES = {
   library_book_chapters: 'select * from public.library_book_chapters order by book_id asc, chapter_order asc, created_at asc nulls last;',
 };
 
-const REQUIRED_ENV_KEYS = ['SUPABASE_ACCESS_TOKEN', 'SUPABASE_PROJECT_REF'];
+const REQUIRED_ENV_KEYS = ['SUPABASE_ACCESS_TOKEN', 'SUPABASE_PROJECT_REF', 'SUPABASE_ANON_KEY'];
 
 function emptyDbBackup() {
   return {
@@ -39,8 +39,10 @@ function getMissingEnv() {
 
 async function verifyAdminUser(projectRef, accessToken) {
   const endpoint = `https://${projectRef}.supabase.co/auth/v1/user`;
+  const anonKey = String(process.env.SUPABASE_ANON_KEY || '').trim();
   const response = await fetch(endpoint, {
     headers: {
+      apikey: anonKey,
       Authorization: `Bearer ${accessToken}`,
       Accept: 'application/json',
     },
