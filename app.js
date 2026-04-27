@@ -233,6 +233,12 @@ const state = {
   snapshots: [],
   selectedBookId: null,
   noteSearch: '',
+  contentLibrarySearch: '',
+  contentLibraryCategory: '',
+  contentLibraryTag: '',
+  contentLibraryDateFrom: '',
+  contentLibraryDateTo: '',
+  contentLibrarySelectedNoteIds: [],
   scriptureCache: new Map(),
   scriptureFetchTimer: null,
   scriptureAbortController: null,
@@ -287,6 +293,153 @@ function setSyncState({ status, detail, at } = {}) {
 }
 function markCloudSynced(detail = '雲端資料已同步。') {
   setSyncState({ status: '已同步', detail, at: nowIso() });
+}
+
+function ensureContentLibraryUi() {
+  const desktopNav = document.querySelector('.desktop-sidebar-nav');
+  if (desktopNav && !desktopNav.querySelector('[data-view="content-library"]')) {
+    const booksLink = desktopNav.querySelector('[data-view="books"]');
+    const button = document.createElement('button');
+    button.className = 'desktop-sidebar-link';
+    button.type = 'button';
+    button.dataset.view = 'content-library';
+    button.innerHTML = `
+      <span class="nav-icon asset-icon asset-sprite-system icon-note" aria-hidden="true"></span>
+      <span>內容庫</span>
+    `;
+    booksLink?.insertAdjacentElement('beforebegin', button);
+  }
+
+  const mobileNav = document.querySelector('.bottom-nav');
+  if (mobileNav && !mobileNav.querySelector('[data-view="content-library"]')) {
+    const booksLink = mobileNav.querySelector('[data-view="books"]');
+    const button = document.createElement('button');
+    button.className = 'nav-link mobile-bottom-link';
+    button.type = 'button';
+    button.dataset.view = 'content-library';
+    button.innerHTML = `
+      <span class="nav-icon asset-icon asset-sprite-system icon-note" aria-hidden="true"></span>
+      <span>內容庫</span>
+    `;
+    booksLink?.insertAdjacentElement('beforebegin', button);
+  }
+
+  if (!document.getElementById('view-content-library')) {
+    const booksView = document.getElementById('view-books');
+    const section = document.createElement('section');
+    section.id = 'view-content-library';
+    section.className = 'view';
+    section.innerHTML = `
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h2>內容庫</h2>
+            <p class="muted">從過去寫過的札記中搜尋、篩選並挑選文章，加入書籍草稿。</p>
+          </div>
+        </div>
+        <div class="row gap-sm wrap">
+          <input id="content-library-search" class="search" placeholder="搜尋標題、摘要、內容、經文" />
+          <label class="compact-control">
+            <span class="caption">日期起</span>
+            <input id="content-library-date-from" type="date" />
+          </label>
+          <label class="compact-control">
+            <span class="caption">日期迄</span>
+            <input id="content-library-date-to" type="date" />
+          </label>
+          <label class="compact-control">
+            <span class="caption">分類</span>
+            <select id="content-library-category"></select>
+          </label>
+          <label class="compact-control">
+            <span class="caption">標籤</span>
+            <select id="content-library-tag"></select>
+          </label>
+          <button id="content-library-clear-filters" class="ghost-btn" type="button">清除篩選</button>
+        </div>
+        <div class="row gap-sm wrap mt-md">
+          <strong id="content-library-selection-count">已選 0 篇</strong>
+          <span id="content-library-book-hint" class="caption">請先到成書工作台建立或選擇一本書。</span>
+          <button id="content-library-add-selected" class="secondary-btn" type="button">加入目前書籍草稿</button>
+          <button id="content-library-clear-selection" class="ghost-btn" type="button">清除選取</button>
+        </div>
+        <div id="content-library-list" class="list-stack mt-md empty-state">目前還沒有可整理的札記。</div>
+      </section>
+    `;
+    booksView?.insertAdjacentElement('beforebegin', section);
+  }
+
+  els.viewNavLinks = [...document.querySelectorAll('.desktop-sidebar-link[data-view], .mobile-bottom-link[data-view], .nav-link[data-view]')];
+  els.views = [...document.querySelectorAll('.view')];
+  els.contentLibrarySearch = document.getElementById('content-library-search');
+  els.contentLibraryDateFrom = document.getElementById('content-library-date-from');
+  els.contentLibraryDateTo = document.getElementById('content-library-date-to');
+  els.contentLibraryCategory = document.getElementById('content-library-category');
+  els.contentLibraryTag = document.getElementById('content-library-tag');
+  els.contentLibraryClearFilters = document.getElementById('content-library-clear-filters');
+  els.contentLibrarySelectionCount = document.getElementById('content-library-selection-count');
+  els.contentLibraryBookHint = document.getElementById('content-library-book-hint');
+  els.contentLibraryAddSelected = document.getElementById('content-library-add-selected');
+  els.contentLibraryClearSelection = document.getElementById('content-library-clear-selection');
+  els.contentLibraryList = document.getElementById('content-library-list');
+
+  if (els.contentLibrarySearch && !els.contentLibrarySearch.dataset.bound) {
+    els.contentLibrarySearch.dataset.bound = 'true';
+    els.contentLibrarySearch.addEventListener('input', event => {
+      state.contentLibrarySearch = String(event.target.value || '');
+      renderContentLibrary();
+    });
+  }
+  if (els.contentLibraryDateFrom && !els.contentLibraryDateFrom.dataset.bound) {
+    els.contentLibraryDateFrom.dataset.bound = 'true';
+    els.contentLibraryDateFrom.addEventListener('change', event => {
+      state.contentLibraryDateFrom = String(event.target.value || '');
+      renderContentLibrary();
+    });
+  }
+  if (els.contentLibraryDateTo && !els.contentLibraryDateTo.dataset.bound) {
+    els.contentLibraryDateTo.dataset.bound = 'true';
+    els.contentLibraryDateTo.addEventListener('change', event => {
+      state.contentLibraryDateTo = String(event.target.value || '');
+      renderContentLibrary();
+    });
+  }
+  if (els.contentLibraryCategory && !els.contentLibraryCategory.dataset.bound) {
+    els.contentLibraryCategory.dataset.bound = 'true';
+    els.contentLibraryCategory.addEventListener('change', event => {
+      state.contentLibraryCategory = String(event.target.value || '');
+      renderContentLibrary();
+    });
+  }
+  if (els.contentLibraryTag && !els.contentLibraryTag.dataset.bound) {
+    els.contentLibraryTag.dataset.bound = 'true';
+    els.contentLibraryTag.addEventListener('change', event => {
+      state.contentLibraryTag = String(event.target.value || '');
+      renderContentLibrary();
+    });
+  }
+  if (els.contentLibraryClearFilters && !els.contentLibraryClearFilters.dataset.bound) {
+    els.contentLibraryClearFilters.dataset.bound = 'true';
+    els.contentLibraryClearFilters.addEventListener('click', () => {
+      state.contentLibrarySearch = '';
+      state.contentLibraryCategory = '';
+      state.contentLibraryTag = '';
+      state.contentLibraryDateFrom = '';
+      state.contentLibraryDateTo = '';
+      renderContentLibrary();
+    });
+  }
+  if (els.contentLibraryClearSelection && !els.contentLibraryClearSelection.dataset.bound) {
+    els.contentLibraryClearSelection.dataset.bound = 'true';
+    els.contentLibraryClearSelection.addEventListener('click', () => {
+      state.contentLibrarySelectedNoteIds = [];
+      renderContentLibrary();
+    });
+  }
+  if (els.contentLibraryAddSelected && !els.contentLibraryAddSelected.dataset.bound) {
+    els.contentLibraryAddSelected.dataset.bound = 'true';
+    els.contentLibraryAddSelected.addEventListener('click', () => addSelectedNotesToCurrentBookDraft().catch(handleError));
+  }
 }
 function teardownCloudRealtime() {
   if (!state.realtimeChannel || !state.supabase) {
@@ -624,6 +777,7 @@ async function clearConnectionSettings() {
 
 async function bootstrap() {
   removeRetiredInterfaceElements();
+  ensureContentLibraryUi();
   document.body.dataset.currentView = document.querySelector('.view.active')?.id?.replace('view-', '') || 'dashboard';
   syncConfigInputs();
   initSupabase();
@@ -917,6 +1071,11 @@ async function loadAllData({ silent = false, syncReason = '' } = {}) {
   if (!state.books.find(b => b.id === state.selectedBookId)) {
     state.selectedBookId = state.books[0]?.id || null;
   }
+  const validBookIds = new Set(state.books.map(book => book.id));
+  Object.keys(state.bookArrangementDrafts).forEach(bookId => {
+    if (!validBookIds.has(bookId)) delete state.bookArrangementDrafts[bookId];
+  });
+  syncBookArrangementState(state.selectedBookId || '');
   refreshUi();
 }
 
@@ -1027,6 +1186,7 @@ function refreshUi() {
   renderDesktopBookshelfCard();
   renderTodayDevotionCard();
   renderNotes();
+  renderContentLibrary();
   renderBooks();
   renderSelectedBookPanel();
   renderLibrary();
@@ -1058,6 +1218,152 @@ function renderRecentCards() {
         <div>${escapeHtml(summary.slice(0, 90))}</div>
       </div>`;
   }, '目前還沒有書籍。');
+}
+
+function getContentLibraryNoteDateValue(note) {
+  const raw = note?.updated_at || note?.created_at || '';
+  if (!raw) return '';
+  const match = String(raw).match(/^(\d{4}-\d{2}-\d{2})/);
+  if (match) return match[1];
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
+}
+
+function getNoteTagList(note) {
+  if (Array.isArray(note?.tags)) return note.tags.map(tag => String(tag || '').trim()).filter(Boolean);
+  if (typeof note?.tags === 'string') return note.tags.split(',').map(tag => tag.trim()).filter(Boolean);
+  return [];
+}
+
+function getContentLibraryFilteredNotes() {
+  const query = state.contentLibrarySearch.trim().toLowerCase();
+  return state.notes.filter(note => {
+    const searchHaystack = [
+      note.title,
+      note.content,
+      note.summary,
+      note.scripture_reference,
+    ].join(' ').toLowerCase();
+    if (query && !searchHaystack.includes(query)) return false;
+    if (state.contentLibraryCategory && String(note.category || '').trim() !== state.contentLibraryCategory) return false;
+    if (state.contentLibraryTag && !getNoteTagList(note).includes(state.contentLibraryTag)) return false;
+    const noteDate = getContentLibraryNoteDateValue(note);
+    if (state.contentLibraryDateFrom && (!noteDate || noteDate < state.contentLibraryDateFrom)) return false;
+    if (state.contentLibraryDateTo && (!noteDate || noteDate > state.contentLibraryDateTo)) return false;
+    return true;
+  });
+}
+
+function renderContentLibrary() {
+  if (!els.contentLibraryList) return;
+  const categories = [...new Set(state.notes.map(note => String(note.category || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+  const tags = [...new Set(state.notes.flatMap(note => getNoteTagList(note)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+  const validNoteIds = new Set(state.notes.map(note => note.id));
+  state.contentLibrarySelectedNoteIds = state.contentLibrarySelectedNoteIds.filter(id => validNoteIds.has(id));
+
+  if (els.contentLibrarySearch && els.contentLibrarySearch.value !== state.contentLibrarySearch) els.contentLibrarySearch.value = state.contentLibrarySearch;
+  if (els.contentLibraryDateFrom && els.contentLibraryDateFrom.value !== state.contentLibraryDateFrom) els.contentLibraryDateFrom.value = state.contentLibraryDateFrom;
+  if (els.contentLibraryDateTo && els.contentLibraryDateTo.value !== state.contentLibraryDateTo) els.contentLibraryDateTo.value = state.contentLibraryDateTo;
+  if (els.contentLibraryCategory) {
+    els.contentLibraryCategory.innerHTML = ['<option value="">全部分類</option>', ...categories.map(category => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`)].join('');
+    els.contentLibraryCategory.value = state.contentLibraryCategory;
+  }
+  if (els.contentLibraryTag) {
+    els.contentLibraryTag.innerHTML = ['<option value="">全部標籤</option>', ...tags.map(tag => `<option value="${escapeHtml(tag)}">${escapeHtml(tag)}</option>`)].join('');
+    els.contentLibraryTag.value = state.contentLibraryTag;
+  }
+
+  const selectedBook = getSelectedBook();
+  const chapterSourceIds = new Set(getBookDisplayChapters(selectedBook).map(chapter => chapter.source_note_id).filter(Boolean));
+  const filteredNotes = getContentLibraryFilteredNotes();
+  const selectedCount = state.contentLibrarySelectedNoteIds.length;
+  if (els.contentLibrarySelectionCount) els.contentLibrarySelectionCount.textContent = `已選 ${selectedCount} 篇`;
+  if (els.contentLibraryBookHint) {
+    els.contentLibraryBookHint.textContent = selectedBook
+      ? `目前書籍草稿：${selectedBook.title || '未命名書籍'}`
+      : '請先到成書工作台建立或選擇一本書';
+  }
+  if (els.contentLibraryAddSelected) {
+    els.contentLibraryAddSelected.disabled = !selectedBook || !selectedCount || state.bookArrangementSaving;
+  }
+  if (els.contentLibraryClearSelection) els.contentLibraryClearSelection.disabled = !selectedCount;
+
+  if (!filteredNotes.length) {
+    els.contentLibraryList.className = 'list-stack empty-state';
+    els.contentLibraryList.textContent = state.notes.length ? '找不到符合條件的文章。' : '目前還沒有可整理的札記。';
+    return;
+  }
+
+  els.contentLibraryList.className = 'list-stack';
+  els.contentLibraryList.innerHTML = filteredNotes.map(note => {
+    const tagsText = getNoteTagList(note).join('、');
+    const isSelected = state.contentLibrarySelectedNoteIds.includes(note.id);
+    const inBook = chapterSourceIds.has(note.id);
+    return `
+      <article class="card">
+        <div class="row gap-sm wrap">
+          <label class="checkbox-row">
+            <input type="checkbox" data-content-library-note="${note.id}" ${isSelected ? 'checked' : ''} />
+            <span>選取</span>
+          </label>
+          ${inBook ? '<span class="badge">已在書中</span>' : ''}
+        </div>
+        <h3>${escapeHtml(note.title || '未命名札記')}</h3>
+        <div class="card-meta">
+          <span>${escapeHtml(note.scripture_reference || '未填經文')}</span>
+          <span>${escapeHtml(note.category || '未分類')}</span>
+          <span>${escapeHtml(tagsText || '未設標籤')}</span>
+          <span>${escapeHtml(formatDate(note.updated_at || note.created_at))}</span>
+        </div>
+        <div>${escapeHtml((note.summary || note.content || '').slice(0, 160) || '尚未填寫摘要。')}</div>
+      </article>
+    `;
+  }).join('');
+
+  els.contentLibraryList.querySelectorAll('[data-content-library-note]').forEach(input => input.addEventListener('change', event => {
+    const noteId = event.target.dataset.contentLibraryNote;
+    if (!noteId) return;
+    const next = new Set(state.contentLibrarySelectedNoteIds);
+    if (event.target.checked) next.add(noteId); else next.delete(noteId);
+    state.contentLibrarySelectedNoteIds = [...next];
+    renderContentLibrary();
+  }));
+}
+
+async function addSelectedNotesToCurrentBookDraft() {
+  const book = getSelectedBook();
+  if (!book) throw new Error('請先到成書工作台建立或選擇一本書。');
+  if (!state.contentLibrarySelectedNoteIds.length) throw new Error('請先勾選至少一篇文章。');
+  if (state.bookArrangementSaving) return;
+  const selectedNotes = state.notes.filter(note => state.contentLibrarySelectedNoteIds.includes(note.id));
+  const baseChapters = getBookArrangementDraft(book.id) || cloneBookChapters(book.chapters || []);
+  const existingSourceIds = new Set(baseChapters.map(chapter => chapter.source_note_id).filter(Boolean));
+  const nextChapters = cloneBookChapters(baseChapters);
+  let addedCount = 0;
+  let skippedCount = 0;
+  selectedNotes.forEach(note => {
+    if (existingSourceIds.has(note.id)) {
+      skippedCount += 1;
+      return;
+    }
+    nextChapters.push({
+      id: uid('chapter'),
+      source_note_id: note.id,
+      chapter_title: note.title,
+      include_in_toc: true,
+    });
+    existingSourceIds.add(note.id);
+    addedCount += 1;
+  });
+  if (!addedCount) {
+    throw new Error(skippedCount ? '所選文章都已在目前書籍草稿中。' : '沒有可加入的文章。');
+  }
+  setBookArrangementDraft(book.id, nextChapters);
+  state.contentLibrarySelectedNoteIds = [];
+  refreshUi();
+  showToast(skippedCount
+    ? `已加入 ${addedCount} 篇文章到目前書籍草稿，略過 ${skippedCount} 篇已在書中的文章。`
+    : `已加入 ${addedCount} 篇文章到目前書籍草稿。`);
 }
 function renderCardList(container, items, renderer, emptyText = '還沒有資料。') {
   if (!items.length) {
@@ -2326,6 +2632,7 @@ function setView(viewName) {
   const titleMap = {
     dashboard: ['總覽', ''],
     notes: ['札記庫', '建立、編輯並整理靈修札記。'],
+    'content-library': ['內容庫', '從過去寫過的札記中搜尋、篩選並挑選文章，加入書籍草稿。'],
     books: ['書籍專案', '設定書籍並編排章節與匯出。'],
     snapshots: ['快照備份', '查看每次建立的書籍快照。'],
     library: ['書櫃', '收藏已輸出的固定版本作品，直接開啟閱讀。'],
