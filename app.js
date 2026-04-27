@@ -248,6 +248,8 @@ const state = {
   todayDevotions: null,
   todayDevotionsStatus: 'idle',
   todayDevotionsPromise: null,
+  bookActionBusy: false,
+  isExporting: false,
   latestExportedBook: null,
 };
 
@@ -1996,6 +1998,7 @@ function renderSelectedBookPanel() {
   const chapterCount = (book?.chapters || []).length;
   if (els.statusCurrentBook) els.statusCurrentBook.textContent = book?.title || '未選取';
   if (els.statusChapterCount) els.statusChapterCount.textContent = String(chapterCount);
+  syncExportButtonState();
   els.selectedBookEmpty.classList.toggle('hidden', !!book);
   els.selectedBookPanel.classList.toggle('hidden', !book);
   if (!book) {
@@ -2020,9 +2023,10 @@ function renderSelectedBookPanel() {
 
 function renderChaptersList(book) {
   const chapters = book.chapters || [];
+  const actionDisabled = state.bookActionBusy ? 'disabled' : '';
   if (!chapters.length) {
     els.chaptersList.className = 'list-stack empty-state';
-    els.chaptersList.textContent = '尚未加入任何章節。';
+    els.chaptersList.textContent = state.bookActionBusy ? '正在更新章節順序...' : '尚未加入任何章節。';
     return;
   }
   els.chaptersList.className = 'list-stack';
@@ -2031,14 +2035,14 @@ function renderChaptersList(book) {
       <div class="chapter-row">
         <input value="${escapeHtml(chapter.chapter_title || '')}" data-chapter-title="${chapter.id}" />
         <div class="chapter-controls">
-          <button class="ghost-btn small" data-move-up="${chapter.id}" ${index === 0 ? 'disabled' : ''}>上移</button>
-          <button class="ghost-btn small" data-move-down="${chapter.id}" ${index === chapters.length - 1 ? 'disabled' : ''}>下移</button>
-          <button class="danger-btn small" data-remove-chapter="${chapter.id}">移除</button>
+          <button class="ghost-btn small" data-move-up="${chapter.id}" ${index === 0 || state.bookActionBusy ? 'disabled' : ''}>上移</button>
+          <button class="ghost-btn small" data-move-down="${chapter.id}" ${index === chapters.length - 1 || state.bookActionBusy ? 'disabled' : ''}>下移</button>
+          <button class="danger-btn small" data-remove-chapter="${chapter.id}" ${actionDisabled}>移除</button>
         </div>
       </div>
       <div class="chapter-meta-row">
         <div class="caption">來源札記：${escapeHtml(getNoteById(chapter.source_note_id)?.title || '手動章節')}</div>
-        <label class="checkbox-row"><input type="checkbox" data-chapter-toc="${chapter.id}" ${chapter.include_in_toc ? 'checked' : ''} /><span>列入目錄</span></label>
+        <label class="checkbox-row"><input type="checkbox" data-chapter-toc="${chapter.id}" ${chapter.include_in_toc ? 'checked' : ''} ${actionDisabled} /><span>列入目錄</span></label>
       </div>
     </div>
   `).join('');
@@ -2084,23 +2088,46 @@ async function updateChapterToc(chapterId, checked) {
   await persistBookChanges(book.id, { chapters: nextChapters });
 }
 
+function syncExportButtonState() {
+  if (!els.exportEpubBtn) return;
+  els.exportEpubBtn.disabled = state.isExporting;
+  els.exportEpubBtn.textContent = state.isExporting ? '匯出中...' : '匯出 EPUB';
+}
+
+async function runBookChapterAction(task, pendingMessage = '正在更新章節順序...') {
+  if (state.bookActionBusy) return;
+  state.bookActionBusy = true;
+  refreshUi();
+  showToast(pendingMessage);
+  try {
+    await task();
+  } finally {
+    state.bookActionBusy = false;
+    refreshUi();
+  }
+}
+
 async function moveChapter(chapterId, direction) {
-  const book = getSelectedBook();
-  if (!book) return;
-  const chapters = [...book.chapters];
-  const index = chapters.findIndex(ch => ch.id === chapterId);
-  const target = index + direction;
-  if (index < 0 || target < 0 || target >= chapters.length) return;
-  [chapters[index], chapters[target]] = [chapters[target], chapters[index]];
-  await persistBookChanges(book.id, { chapters });
+  await runBookChapterAction(async () => {
+    const book = getSelectedBook();
+    if (!book) return;
+    const chapters = [...book.chapters];
+    const index = chapters.findIndex(ch => ch.id === chapterId);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= chapters.length) return;
+    [chapters[index], chapters[target]] = [chapters[target], chapters[index]];
+    await persistBookChanges(book.id, { chapters });
+  });
 }
 
 async function removeChapter(chapterId) {
-  const book = getSelectedBook();
-  if (!book) return;
-  const nextChapters = book.chapters.filter(ch => ch.id !== chapterId);
-  await persistBookChanges(book.id, { chapters: nextChapters });
-  showToast('章節已移除。');
+  await runBookChapterAction(async () => {
+    const book = getSelectedBook();
+    if (!book) return;
+    const nextChapters = book.chapters.filter(ch => ch.id !== chapterId);
+    await persistBookChanges(book.id, { chapters: nextChapters });
+    showToast('章節已移除。');
+  }, '正在移除章節...');
 }
 
 async function persistBookChanges(bookId, changes) {
@@ -2250,33 +2277,43 @@ function handleError(error) {
 }
 
 async function exportSelectedBookEpub() {
+  if (state.isExporting) return;
   requireUser();
   const book = getSelectedBook();
   if (!book) throw new Error('\u8acb\u5148\u9078\u64c7\u8981\u532f\u51fa\u7684\u66f8\u7c4d\u3002');
   if (!getBookProjectChapters(book).length) throw new Error('\u8acb\u81f3\u5c11\u52a0\u5165\u4e00\u7ae0\u5167\u5bb9\u5f8c\u518d\u532f\u51fa EPUB\u3002');
-  const snapshot = buildBookSnapshot(book);
-  const epubBlob = await buildEpub(snapshot);
-  const exportFilename = `${slugifyFilename(book.title || 'devotion-book')}.epub`;
-  let libraryBook = null;
-  let exportMessage = 'EPUB 已完成，請點選下載 EPUB 保存檔案。';
-  if (state.supabase && state.currentUser) {
-    try {
-      libraryBook = await createCloudLibraryBook(book, snapshot, epubBlob);
-      exportMessage = 'EPUB 已完成，並已加入書櫃。';
-    } catch (error) {
-      console.warn('cloud library sync skipped after EPUB export', error);
-      exportMessage = `EPUB 已完成，但加入書櫃失敗：${error.message}`;
+  state.isExporting = true;
+  syncExportButtonState();
+  renderExportSuccessActions(null);
+  showToast('正在匯出 EPUB...');
+  try {
+    const snapshot = buildBookSnapshot(book);
+    const epubBlob = await buildEpub(snapshot);
+    const exportFilename = `${slugifyFilename(book.title || 'devotion-book')}.epub`;
+    let libraryBook = null;
+    let exportMessage = 'EPUB 已完成，請點選下載 EPUB 保存檔案。';
+    if (state.supabase && state.currentUser) {
+      try {
+        libraryBook = await createCloudLibraryBook(book, snapshot, epubBlob);
+        exportMessage = 'EPUB 已完成，並已加入書櫃。';
+      } catch (error) {
+        console.warn('cloud library sync skipped after EPUB export', error);
+        exportMessage = `EPUB 已完成，但加入書櫃失敗：${error.message}`;
+      }
     }
+    state.latestExportedBook = {
+      sourceBookId: book.id,
+      filename: exportFilename,
+      blob: epubBlob,
+      libraryBookId: libraryBook?.id || '',
+      message: exportMessage,
+    };
+    renderExportSuccessActions(state.latestExportedBook);
+    showToast(exportMessage);
+  } finally {
+    state.isExporting = false;
+    syncExportButtonState();
   }
-  state.latestExportedBook = {
-    sourceBookId: book.id,
-    filename: exportFilename,
-    blob: epubBlob,
-    libraryBookId: libraryBook?.id || '',
-    message: exportMessage,
-  };
-  renderExportSuccessActions(state.latestExportedBook);
-  showToast(exportMessage);
 }
 
 function slugifyFilename(value = '') {
