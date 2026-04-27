@@ -284,6 +284,11 @@ const state = {
     data: { ...EMPTY_ADMIN_USAGE },
     promise: null,
   },
+  backupImportPreview: {
+    status: 'idle',
+    error: '',
+    data: null,
+  },
 };
 
 function loadJson(key, fallback) {
@@ -641,9 +646,20 @@ function renderAdminDashboard() {
           <h3>資料備份</h3>
           <p class="muted">下載目前登入使用者的札記、選稿編排與書櫃資料 JSON 備份。</p>
         </div>
-        <button id="admin-export-backup-btn" type="button" class="secondary-btn">匯出備份（JSON）</button>
+        <div class="row gap-sm wrap">
+          <button id="admin-export-backup-btn" type="button" class="secondary-btn">匯出備份（JSON）</button>
+          <button id="admin-import-backup-btn" type="button" class="ghost-btn">匯入備份（JSON）</button>
+          <input id="admin-import-backup-input" type="file" accept=".json,application/json" class="hidden" />
+        </div>
       </div>
       <p class="caption">匯出內容包含 notes、books、drafts、library；若某資料目前不存在，會以空陣列輸出。</p>
+      <section class="admin-dashboard-section">
+        <div>
+          <h3>備份預覽</h3>
+          <p class="muted">只讀取並驗證備份內容，不會寫入任何資料，也不會覆蓋目前系統資料。</p>
+        </div>
+        ${renderBackupImportPreview()}
+      </section>
     </section>
     <section class="admin-monitoring-group">
       <div class="panel-header">
@@ -704,6 +720,10 @@ function renderAdminDashboard() {
     </section>
   `;
   document.getElementById('admin-export-backup-btn')?.addEventListener('click', () => downloadBackupJson(), { once: true });
+  document.getElementById('admin-import-backup-btn')?.addEventListener('click', () => {
+    document.getElementById('admin-import-backup-input')?.click();
+  }, { once: true });
+  document.getElementById('admin-import-backup-input')?.addEventListener('change', handleBackupImportSelection, { once: true });
 }
 
 function ensureContentLibraryUi() {
@@ -1591,6 +1611,136 @@ function downloadBackupJson() {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
   downloadBlob(`devotion-backup-${stamp}.json`, blob);
   showToast('備份 JSON 已下載。');
+}
+
+function isValidBackupJson(payload) {
+  return !!(
+    payload
+    && typeof payload === 'object'
+    && typeof payload.version === 'string'
+    && Array.isArray(payload.notes)
+    && Array.isArray(payload.drafts)
+    && Array.isArray(payload.library)
+  );
+}
+
+function setBackupImportPreview(next = {}) {
+  state.backupImportPreview = {
+    status: next.status || 'idle',
+    error: next.error || '',
+    data: next.data || null,
+  };
+}
+
+function renderBackupImportPreview() {
+  const preview = state.backupImportPreview;
+  if (preview.status === 'error') {
+    return `<div class="empty-state">${escapeHtml(preview.error || '備份格式不正確')}</div>`;
+  }
+  if (preview.status !== 'ready' || !preview.data) {
+    return `<div class="empty-state">尚未選擇備份檔，匯入後會先顯示預覽資訊，不會寫入任何資料。</div>`;
+  }
+
+  const data = preview.data;
+  return `
+    <div class="admin-summary-grid">
+      <article class="admin-stat-card">
+        <span class="admin-stat-label">version</span>
+        <strong class="admin-stat-value admin-stat-value-placeholder">${escapeHtml(String(data.version || ''))}</strong>
+      </article>
+      <article class="admin-stat-card">
+        <span class="admin-stat-label">exportedAt</span>
+        <strong class="admin-stat-value admin-stat-value-placeholder">${escapeHtml(String(data.exportedAt || '未記錄'))}</strong>
+      </article>
+      <article class="admin-stat-card">
+        <span class="admin-stat-label">user</span>
+        <strong class="admin-stat-value admin-stat-value-email">${escapeHtml(String(data.user || ''))}</strong>
+      </article>
+      <article class="admin-stat-card">
+        <span class="admin-stat-label">notes</span>
+        <strong class="admin-stat-value">${escapeHtml(String(data.notesCount || 0))}</strong>
+      </article>
+      <article class="admin-stat-card">
+        <span class="admin-stat-label">drafts</span>
+        <strong class="admin-stat-value">${escapeHtml(String(data.draftsCount || 0))}</strong>
+      </article>
+      <article class="admin-stat-card">
+        <span class="admin-stat-label">library</span>
+        <strong class="admin-stat-value">${escapeHtml(String(data.libraryCount || 0))}</strong>
+        <p class="caption">generated：${escapeHtml(String(data.generatedCount || 0))}｜imported_epub：${escapeHtml(String(data.importedEpubCount || 0))}</p>
+      </article>
+    </div>
+  `;
+}
+
+function handleBackupImportSelection(event) {
+  const input = event?.target;
+  const file = input?.files?.[0];
+  if (!file) return;
+
+  const resetInput = () => {
+    if (input) input.value = '';
+  };
+
+  if (!/\.json$/i.test(file.name)) {
+    setBackupImportPreview({ status: 'error', error: '備份格式不正確' });
+    refreshUi();
+    showToast('備份格式不正確');
+    resetInput();
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const payload = JSON.parse(String(reader.result || '{}'));
+      if (!isValidBackupJson(payload)) {
+        setBackupImportPreview({ status: 'error', error: '備份格式不正確' });
+        refreshUi();
+        showToast('備份格式不正確');
+        resetInput();
+        return;
+      }
+      if (payload.version !== 'v1') {
+        setBackupImportPreview({ status: 'error', error: '不支援的備份版本' });
+        refreshUi();
+        showToast('不支援的備份版本');
+        resetInput();
+        return;
+      }
+      const library = Array.isArray(payload.library) ? payload.library : [];
+      const generatedCount = library.filter(item => String(item?.source || 'generated') === 'generated').length;
+      const importedEpubCount = library.filter(item => String(item?.source || '') === 'imported_epub').length;
+      setBackupImportPreview({
+        status: 'ready',
+        data: {
+          version: payload.version,
+          exportedAt: payload.exportedAt || '',
+          user: payload.user || '',
+          notesCount: Array.isArray(payload.notes) ? payload.notes.length : 0,
+          draftsCount: Array.isArray(payload.drafts) ? payload.drafts.length : 0,
+          libraryCount: library.length,
+          generatedCount,
+          importedEpubCount,
+        },
+      });
+      refreshUi();
+      showToast('已載入備份預覽。');
+    } catch {
+      setBackupImportPreview({ status: 'error', error: '備份格式不正確' });
+      refreshUi();
+      showToast('備份格式不正確');
+    } finally {
+      resetInput();
+    }
+  };
+  reader.onerror = () => {
+    setBackupImportPreview({ status: 'error', error: '備份格式不正確' });
+    refreshUi();
+    showToast('備份格式不正確');
+    resetInput();
+  };
+  reader.readAsText(file, 'utf-8');
 }
 function escapeHtml(input = '') {
   return input
