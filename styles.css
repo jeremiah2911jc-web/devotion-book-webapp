@@ -431,6 +431,14 @@ input:focus, textarea:focus, select:focus {
   min-height: 40px;
   padding-inline: 14px;
 }
+.book-draft-delete-btn {
+  color: #8b4f56;
+  border-color: rgba(217, 120, 127, 0.36);
+  background: rgba(255, 249, 249, 0.88);
+}
+.book-draft-delete-btn:hover {
+  background: rgba(255, 241, 242, 0.98);
+}
 .empty-state { color: var(--muted); border: 1px dashed rgba(191,211,208,0.9); border-radius: 16px; padding: 24px; text-align: center; background: rgba(255,255,255,0.45); }
 .summary-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .summary-card { border: 1px solid rgba(191,211,208,0.8); border-radius: 16px; padding: 14px 16px; background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(246,251,251,0.85)); display: flex; justify-content: space-between; align-items: center; gap: 12px; }
