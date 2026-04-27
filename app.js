@@ -638,6 +638,16 @@ function renderAdminDashboard() {
     <section class="admin-monitoring-group">
       <div class="panel-header">
         <div>
+          <h3>資料備份</h3>
+          <p class="muted">下載目前登入使用者的札記、選稿編排與書櫃資料 JSON 備份。</p>
+        </div>
+        <button id="admin-export-backup-btn" type="button" class="secondary-btn">匯出備份（JSON）</button>
+      </div>
+      <p class="caption">匯出內容包含 notes、books、drafts、library；若某資料目前不存在，會以空陣列輸出。</p>
+    </section>
+    <section class="admin-monitoring-group">
+      <div class="panel-header">
+        <div>
           <h3>Supabase</h3>
           <p class="muted">透過後端 /api/admin-usage 讀取平台用量，前端不直接持有平台 Token。</p>
         </div>
@@ -693,6 +703,7 @@ function renderAdminDashboard() {
       </div>
     </section>
   `;
+  document.getElementById('admin-export-backup-btn')?.addEventListener('click', () => downloadBackupJson(), { once: true });
 }
 
 function ensureContentLibraryUi() {
@@ -1555,15 +1566,28 @@ async function uploadLocalDataToCloud() {
 }
 function downloadBackupJson() {
   requireUser();
+  const drafts = Array.isArray(state.books) ? state.books : [];
+  const library = getAllLibraryBooksForView().map(book => {
+    const source = book.source === 'imported_epub' ? 'imported_epub' : 'generated';
+    const clone = JSON.parse(JSON.stringify(book || {}));
+    return {
+      ...clone,
+      source,
+    };
+  });
+  const exportedAtIso = nowIso();
   const payload = {
-    exported_at: nowIso(),
-    device_id: state.deviceId,
-    user: { id: state.currentUser?.id, email: state.currentUser?.email || '' },
-    notes: state.notes,
-    books: state.books,
-    snapshots: state.snapshots,
+    version: 'v1',
+    exportedAt: formatDate(exportedAtIso),
+    user: state.currentUser?.email || '',
+    notes: Array.isArray(state.notes) ? state.notes : [],
+    drafts,
+    library: Array.isArray(library) ? library : [],
   };
-  const stamp = nowIso().slice(0, 19).replace(/[T:]/g, '-');
+  const date = new Date(exportedAtIso);
+  const stamp = Number.isNaN(date.getTime())
+    ? 'backup'
+    : `${String(date.getFullYear())}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}-${String(date.getHours()).padStart(2, '0')}${String(date.getMinutes()).padStart(2, '0')}`;
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
   downloadBlob(`devotion-backup-${stamp}.json`, blob);
   showToast('備份 JSON 已下載。');
