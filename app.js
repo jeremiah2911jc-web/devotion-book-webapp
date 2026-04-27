@@ -462,6 +462,20 @@ function ensureOperationManualUi() {
     settingsLink?.insertAdjacentElement('beforebegin', button);
   }
 
+  const mobileNav = document.querySelector('.bottom-nav');
+  if (mobileNav && !mobileNav.querySelector('[data-view="manual"]')) {
+    const libraryLink = mobileNav.querySelector('[data-view="library"]');
+    const button = document.createElement('button');
+    button.className = 'nav-link mobile-bottom-link';
+    button.type = 'button';
+    button.dataset.view = 'manual';
+    button.innerHTML = `
+      <span class="nav-icon asset-icon asset-sprite-system icon-book" aria-hidden="true"></span>
+      <span>操作手冊</span>
+    `;
+    libraryLink?.insertAdjacentElement('afterend', button);
+  }
+
   if (!document.getElementById('view-manual')) {
     const libraryView = document.getElementById('view-library');
     const section = document.createElement('section');
@@ -1716,6 +1730,7 @@ function getBookExportSettingsElements() {
   return {
     modal: document.getElementById('book-export-settings-modal'),
     backdrop: document.getElementById('book-export-settings-backdrop'),
+    body: document.getElementById('book-export-settings-body'),
     title: document.getElementById('book-export-settings-title'),
     intro: document.getElementById('book-export-settings-intro'),
     closeBtn: document.getElementById('close-book-export-settings-btn'),
@@ -1731,6 +1746,7 @@ function getBookExportSettingsElements() {
     preface: document.getElementById('book-export-settings-preface'),
     afterword: document.getElementById('book-export-settings-afterword'),
     saveBtn: document.getElementById('save-book-export-settings-btn'),
+    saveAndExportBtn: document.getElementById('save-and-export-book-btn'),
   };
 }
 
@@ -1758,12 +1774,13 @@ function renderBookExportCoverPreview(coverDataUrl = '', fallbackTitle = '目前
 }
 
 function closeBookExportSettingsModal() {
-  const { modal, form } = getBookExportSettingsElements();
+  const { modal, form, body } = getBookExportSettingsElements();
   state.bookExportSettingsModalOpen = false;
   modal?.classList.add('hidden');
   modal?.setAttribute('aria-hidden', 'true');
   document.body.classList.remove('book-export-settings-open');
   if (form) form.dataset.bookId = '';
+  if (body) body.scrollTop = 0;
 }
 
 function populateBookExportSettingsModal(book) {
@@ -1790,14 +1807,28 @@ function openBookExportSettingsModal(bookId = '') {
   if (!book) throw new Error('請先選取一份選稿草稿。');
   ensureBookExportSettingsUi();
   populateBookExportSettingsModal(book);
-  const { modal } = getBookExportSettingsElements();
+  const { modal, body } = getBookExportSettingsElements();
   state.bookExportSettingsModalOpen = true;
   modal?.classList.remove('hidden');
   modal?.setAttribute('aria-hidden', 'false');
   document.body.classList.add('book-export-settings-open');
+  if (body) body.scrollTop = 0;
 }
 
-async function saveBookExportSettings() {
+function syncBookExportSettingsActionState(mode = 'idle') {
+  const modalEls = getBookExportSettingsElements();
+  const isBusy = mode !== 'idle';
+  if (modalEls.saveBtn) {
+    modalEls.saveBtn.disabled = isBusy;
+    modalEls.saveBtn.textContent = mode === 'saving' ? '儲存中...' : '儲存設定';
+  }
+  if (modalEls.saveAndExportBtn) {
+    modalEls.saveAndExportBtn.disabled = isBusy;
+    modalEls.saveAndExportBtn.textContent = mode === 'exporting' ? '儲存並匯出中...' : '儲存並匯出 EPUB';
+  }
+}
+
+async function saveBookExportSettings({ closeAfterSave = false, silent = false, actionMode = 'saving' } = {}) {
   const modalEls = getBookExportSettingsElements();
   const bookId = modalEls.form?.dataset.bookId || '';
   const book = state.books.find(item => item.id === bookId);
@@ -1806,10 +1837,7 @@ async function saveBookExportSettings() {
   const coverDataUrl = modalEls.cover?.files?.[0] ? await fileToDataUrl(modalEls.cover.files[0]) : existingCover;
   const nextTitle = modalEls.bookTitle.value.trim();
   if (!nextTitle) throw new Error('請先輸入書名。');
-  if (modalEls.saveBtn) {
-    modalEls.saveBtn.disabled = true;
-    modalEls.saveBtn.textContent = '儲存中...';
-  }
+  syncBookExportSettingsActionState(actionMode);
   try {
     await persistBookChanges(bookId, {
       title: nextTitle,
@@ -1822,15 +1850,22 @@ async function saveBookExportSettings() {
       afterword: modalEls.afterword.value.trim(),
     });
     state.selectedBookId = bookId;
-    closeBookExportSettingsModal();
     refreshUi();
-    showToast(`已儲存「${nextTitle}」的成書設定。`);
-  } finally {
-    if (modalEls.saveBtn) {
-      modalEls.saveBtn.disabled = false;
-      modalEls.saveBtn.textContent = '儲存成書設定';
+    const refreshedBook = getSelectedBook();
+    if (refreshedBook && state.bookExportSettingsModalOpen && !closeAfterSave) {
+      populateBookExportSettingsModal(refreshedBook);
     }
+    if (closeAfterSave) closeBookExportSettingsModal();
+    if (!silent) showToast(`已儲存「${nextTitle}」的成書設定。`);
+    return refreshedBook || book;
+  } finally {
+    syncBookExportSettingsActionState('idle');
   }
+}
+
+async function saveBookExportSettingsAndExport() {
+  await saveBookExportSettings({ closeAfterSave: true, silent: true, actionMode: 'exporting' });
+  await exportSelectedBookEpub();
 }
 
 function ensureBookExportSettingsUi() {
@@ -1850,7 +1885,7 @@ function ensureBookExportSettingsUi() {
         <button id="close-book-export-settings-btn" class="ghost-btn small" type="button">關閉</button>
       </div>
       <form id="book-export-settings-form" class="book-export-settings-form">
-        <div class="book-export-settings-scroll">
+        <div id="book-export-settings-body" class="book-export-settings-scroll">
           <div class="book-export-settings-grid">
             <label>書名
               <input id="book-export-settings-book-title" required placeholder="例：五月靈修選集" />
@@ -1885,9 +1920,12 @@ function ensureBookExportSettingsUi() {
             </label>
           </div>
         </div>
-        <div class="book-export-settings-actions">
-          <button id="save-book-export-settings-btn" class="secondary-btn" type="submit">儲存成書設定</button>
-          <button id="dismiss-book-export-settings-btn" class="ghost-btn" type="button">關閉</button>
+        <div class="book-export-settings-actions" role="group" aria-label="成書匯出設定操作">
+          <button id="dismiss-book-export-settings-btn" class="ghost-btn" type="button">取消 / 關閉</button>
+          <div class="book-export-settings-actions-primary">
+            <button id="save-book-export-settings-btn" class="secondary-btn" type="submit">儲存設定</button>
+            <button id="save-and-export-book-btn" class="primary-btn" type="button">儲存並匯出 EPUB</button>
+          </div>
         </div>
       </form>
     </div>
@@ -1901,6 +1939,7 @@ function ensureBookExportSettingsUi() {
     event.preventDefault();
     saveBookExportSettings().catch(handleError);
   });
+  modalEls.saveAndExportBtn?.addEventListener('click', () => saveBookExportSettingsAndExport().catch(handleError));
   modalEls.cover?.addEventListener('change', async event => {
     const file = event.target.files?.[0];
     const fallbackTitle = modalEls.bookTitle?.value?.trim() || '目前封面';
