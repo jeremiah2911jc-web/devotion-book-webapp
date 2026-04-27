@@ -217,11 +217,30 @@ async function verifyAuthModal(page, triggerSelector, expectedTitle, expectedSub
   results.push(`${expectedTitle} modal 已驗證 Email / Password / 主按鈕 / 重設密碼 / 關閉按鈕，且無 Magic Link`);
 }
 
+async function launchSmokeBrowser() {
+  try {
+    return await chromium.launch({ headless: true });
+  } catch (error) {
+    const message = String(error?.message || error || '');
+    const missingChromium = (
+      message.includes('Executable doesn\'t exist')
+      || message.includes('Please run the following command')
+      || message.includes('Failed to launch')
+    );
+    if (missingChromium) {
+      throw new Error([
+        'Playwright Chromium 尚未安裝或目前無法找到 Chromium 執行檔。',
+        '請先執行：npx playwright install chromium',
+        '',
+        `原始錯誤：${message}`,
+      ].join('\n'));
+    }
+    throw error;
+  }
+}
+
 async function run() {
-  const browser = await chromium.launch({
-    headless: true,
-    executablePath: 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-  });
+  const browser = await launchSmokeBrowser();
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
     userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
