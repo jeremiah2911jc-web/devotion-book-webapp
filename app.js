@@ -657,6 +657,7 @@ function renderAdminDashboard() {
         </div>
         <div class="row gap-sm wrap">
           <button id="admin-export-backup-btn" type="button" class="secondary-btn">匯出備份（JSON）</button>
+          <button id="admin-export-system-backup-btn" type="button" class="secondary-btn">下載系統備份</button>
           <button id="admin-import-backup-btn" type="button" class="ghost-btn">匯入備份（JSON）</button>
           <input id="admin-import-backup-input" type="file" accept=".json,application/json" class="hidden" />
         </div>
@@ -734,6 +735,9 @@ function renderAdminDashboard() {
     </section>
   `;
   document.getElementById('admin-export-backup-btn')?.addEventListener('click', () => downloadBackupJson(), { once: true });
+  document.getElementById('admin-export-system-backup-btn')?.addEventListener('click', () => {
+    downloadSystemBackup().catch(handleError);
+  }, { once: true });
   document.getElementById('admin-import-backup-btn')?.addEventListener('click', () => {
     document.getElementById('admin-import-backup-input')?.click();
   }, { once: true });
@@ -1617,10 +1621,51 @@ function downloadBackupJson() {
   requireUser();
   const exportedAtIso = nowIso();
   const payload = buildBackupPayload(exportedAtIso);
-  const date = new Date(exportedAtIso);
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
-  downloadBlob(getBackupFilename('devotion-backup', date), blob);
+  downloadBlob(getBackupFilename('devotion-backup', exportedAtIso), blob);
   showToast('備份 JSON 已下載。');
+}
+
+async function downloadSystemBackup() {
+  requireUser();
+  if (!isAdminUser()) throw new Error('只有管理者可以下載系統備份。');
+  if (!state.supabase) throw new Error('系統備份需要 Supabase 雲端模式。');
+  const { data } = await state.supabase.auth.getSession();
+  const sessionAccessToken = String(data?.session?.access_token || '').trim();
+  if (!sessionAccessToken) throw new Error('目前找不到有效的登入 session，請重新登入後再試。');
+  const exportedAtIso = nowIso();
+  const response = await fetch('/api/system-backup', {
+    headers: {
+      Accept: 'application/json',
+      Authorization: `Bearer ${sessionAccessToken}`,
+    },
+  });
+  if (!response.ok) throw new Error(`系統備份下載失敗（${response.status}）`);
+  const payload = await response.json().catch(() => ({}));
+  const dbBackup = payload?.dbBackup && typeof payload.dbBackup === 'object' ? payload.dbBackup : {
+    devotion_notes: [],
+    book_projects: [],
+    library_books: [],
+    library_book_chapters: [],
+  };
+  const bundle = {
+    systemInfo: {
+      version: 'v1',
+      exportedAt: formatDate(exportedAtIso),
+      project: 'devotion-book',
+      note: 'System backup bundle',
+    },
+    envTemplate: {
+      SUPABASE_URL: '',
+      SUPABASE_ANON_KEY: '',
+      SUPABASE_PROJECT_REF: '',
+    },
+    appBackup: buildBackupPayload(exportedAtIso),
+    dbBackup,
+  };
+  const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json;charset=utf-8' });
+  downloadBlob(getBackupFilename('devotion-system-backup', exportedAtIso), blob);
+  showToast('系統備份已下載。');
 }
 
 function loadAutoBackupMeta() {
