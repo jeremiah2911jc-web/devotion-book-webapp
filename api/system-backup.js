@@ -8,6 +8,8 @@ const TABLE_QUERIES = {
   library_book_chapters: 'select * from public.library_book_chapters order by book_id asc, chapter_order asc, created_at asc nulls last;',
 };
 
+const REQUIRED_ENV_KEYS = ['SUPABASE_ACCESS_TOKEN', 'SUPABASE_PROJECT_REF'];
+
 function emptyDbBackup() {
   return {
     devotion_notes: [],
@@ -31,6 +33,10 @@ function getBearerToken(req) {
   return header.slice(7).trim();
 }
 
+function getMissingEnv() {
+  return REQUIRED_ENV_KEYS.filter((key) => !String(process.env[key] || '').trim());
+}
+
 async function verifyAdminUser(projectRef, accessToken) {
   const endpoint = `https://${projectRef}.supabase.co/auth/v1/user`;
   const response = await fetch(endpoint, {
@@ -45,8 +51,10 @@ async function verifyAdminUser(projectRef, accessToken) {
   }
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`auth verify failed (${response.status}): ${errorText || 'no response body'}`);
+    const error = new Error(`auth verify failed (${response.status})`);
+    error.code = 'auth_verification_failed';
+    error.status = response.status;
+    throw error;
   }
 
   const user = await response.json().catch(() => null);
@@ -69,8 +77,12 @@ async function runReadOnlyQuery(projectRef, accessToken, query, label) {
   });
 
   if (!response.ok) {
-    const errorText = await response.text().catch(() => '');
-    throw new Error(`${label} query failed (${response.status}): ${errorText || 'no response body'}`);
+    const message = `${label} query failed (${response.status})`;
+    const error = new Error(message);
+    error.code = 'db_backup_query_failed';
+    error.table = label;
+    error.status = response.status;
+    throw error;
   }
 
   return response.json().catch(() => null);
@@ -97,29 +109,25 @@ function extractRowsFromPayload(payload) {
 }
 
 async function loadTable(projectRef, accessToken, tableName, query) {
-  try {
-    const payload = await runReadOnlyQuery(projectRef, accessToken, query, tableName);
-    const rows = extractRowsFromPayload(payload);
-    logSystemBackup(`${tableName} loaded`, { rows: rows.length });
-    return rows;
-  } catch (error) {
-    logSystemBackup(`${tableName} failed`, error?.message || String(error));
-    return [];
-  }
+  const payload = await runReadOnlyQuery(projectRef, accessToken, query, tableName);
+  const rows = extractRowsFromPayload(payload);
+  logSystemBackup(`${tableName} loaded`, { rows: rows.length });
+  return rows;
 }
 
 async function loadDbBackup(projectRef, accessToken) {
-  const entries = await Promise.all(
-    Object.entries(TABLE_QUERIES).map(async ([tableName, query]) => [tableName, await loadTable(projectRef, accessToken, tableName, query)]),
-  );
-  return Object.fromEntries(entries);
+  const dbBackup = emptyDbBackup();
+  for (const [tableName, query] of Object.entries(TABLE_QUERIES)) {
+    dbBackup[tableName] = await loadTable(projectRef, accessToken, tableName, query);
+  }
+  return dbBackup;
 }
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
 
   if (req.method !== 'GET') {
-    return res.status(405).json({ dbBackup: emptyDbBackup() });
+    return res.status(405).json({ error: 'method_not_allowed', dbBackup: emptyDbBackup() });
   }
 
   const accessToken = process.env.SUPABASE_ACCESS_TOKEN;
@@ -131,9 +139,10 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'unauthorized', dbBackup: emptyDbBackup() });
   }
 
-  if (!accessToken || !projectRef) {
-    logSystemBackup('missing SUPABASE_ACCESS_TOKEN or SUPABASE_PROJECT_REF');
-    return res.status(500).json({ error: 'server_misconfigured', dbBackup: emptyDbBackup() });
+  const missingEnv = getMissingEnv();
+  if (missingEnv.length) {
+    logSystemBackup('missing required env', missingEnv);
+    return res.status(500).json({ error: 'missing_env', missing: missingEnv, dbBackup: emptyDbBackup() });
   }
 
   try {
@@ -149,7 +158,24 @@ export default async function handler(req, res) {
     const dbBackup = await loadDbBackup(projectRef, accessToken);
     return res.status(200).json({ dbBackup });
   } catch (error) {
-    logSystemBackup('handler fallback to empty db backup', error?.message || String(error));
-    return res.status(200).json({ dbBackup: emptyDbBackup() });
+    const errorCode = String(error?.code || '');
+    const errorMessage = error?.message || String(error);
+
+    if (errorCode === 'db_backup_query_failed') {
+      logSystemBackup('db backup query failed', { table: error?.table || '', message: errorMessage });
+      return res.status(502).json({
+        error: 'db_backup_query_failed',
+        table: String(error?.table || ''),
+        message: errorMessage,
+        dbBackup: emptyDbBackup(),
+      });
+    }
+
+    logSystemBackup('auth verify or handler failure', errorMessage);
+    return res.status(502).json({
+      error: 'auth_verification_failed',
+      message: 'auth verification failed',
+      dbBackup: emptyDbBackup(),
+    });
   }
 }

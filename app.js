@@ -1640,8 +1640,33 @@ async function downloadSystemBackup() {
       Authorization: `Bearer ${sessionAccessToken}`,
     },
   });
-  if (!response.ok) throw new Error(`系統備份下載失敗（${response.status}）`);
   const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const missing = Array.isArray(payload?.missing)
+      ? payload.missing.filter(item => typeof item === 'string' && item.trim())
+      : [];
+    const table = String(payload?.table || '').trim();
+    const errorCode = String(payload?.error || '').trim();
+    let detail = '';
+
+    if (errorCode === 'missing_env' && missing.length) {
+      detail = `缺少環境變數 ${missing.join(', ')}`;
+    } else if (errorCode === 'db_backup_query_failed' && table) {
+      detail = `資料表 ${table} 查詢失敗`;
+    } else if (response.status === 403 || errorCode === 'forbidden') {
+      detail = '權限不足';
+    } else if (response.status === 401 || errorCode === 'unauthorized') {
+      detail = '登入已失效或驗證失敗';
+    } else if (errorCode === 'auth_verification_failed') {
+      detail = '管理者驗證失敗';
+    } else if (typeof payload?.message === 'string' && payload.message.trim()) {
+      detail = payload.message.trim();
+    } else {
+      detail = `HTTP ${response.status}`;
+    }
+
+    throw new Error(`系統備份下載失敗：${detail}`);
+  }
   const dbBackup = payload?.dbBackup && typeof payload.dbBackup === 'object' ? payload.dbBackup : {
     devotion_notes: [],
     book_projects: [],
