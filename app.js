@@ -2094,13 +2094,39 @@ function syncExportButtonState() {
   els.exportEpubBtn.textContent = state.isExporting ? '匯出中...' : '匯出 EPUB';
 }
 
-async function runBookChapterAction(task, pendingMessage = '正在更新章節順序...') {
+function cloneBookChapters(chapters = []) {
+  return (chapters || []).map(chapter => ({ ...chapter }));
+}
+
+function normalizeBookChapters(chapters = []) {
+  return cloneBookChapters(chapters).map((chapter, index) => ({ ...chapter, chapter_order: index }));
+}
+
+function applyLocalBookChapters(bookId, chapters) {
+  const book = state.books.find(item => item.id === bookId);
+  if (!book) return;
+  book.chapters = normalizeBookChapters(chapters);
+  book.updated_at = nowIso();
+}
+
+async function runBookChapterAction(updater, pendingMessage = '正在更新章節順序...') {
   if (state.bookActionBusy) return;
+  const book = getSelectedBook();
+  if (!book) return;
+  const previousChapters = cloneBookChapters(book.chapters || []);
+  const nextChapters = updater(cloneBookChapters(previousChapters));
+  if (!Array.isArray(nextChapters)) return;
+  const normalizedNextChapters = normalizeBookChapters(nextChapters);
   state.bookActionBusy = true;
+  applyLocalBookChapters(book.id, normalizedNextChapters);
   refreshUi();
-  showToast(pendingMessage);
+  if (pendingMessage) showToast(pendingMessage);
   try {
-    await task();
+    await persistBookChanges(book.id, { chapters: normalizedNextChapters });
+  } catch (error) {
+    applyLocalBookChapters(book.id, previousChapters);
+    refreshUi();
+    throw error;
   } finally {
     state.bookActionBusy = false;
     refreshUi();
@@ -2108,26 +2134,21 @@ async function runBookChapterAction(task, pendingMessage = '正在更新章節�
 }
 
 async function moveChapter(chapterId, direction) {
-  await runBookChapterAction(async () => {
-    const book = getSelectedBook();
-    if (!book) return;
-    const chapters = [...book.chapters];
+  await runBookChapterAction(chapters => {
     const index = chapters.findIndex(ch => ch.id === chapterId);
     const target = index + direction;
-    if (index < 0 || target < 0 || target >= chapters.length) return;
+    if (index < 0 || target < 0 || target >= chapters.length) return null;
     [chapters[index], chapters[target]] = [chapters[target], chapters[index]];
-    await persistBookChanges(book.id, { chapters });
+    return chapters;
   });
 }
 
 async function removeChapter(chapterId) {
-  await runBookChapterAction(async () => {
-    const book = getSelectedBook();
-    if (!book) return;
-    const nextChapters = book.chapters.filter(ch => ch.id !== chapterId);
-    await persistBookChanges(book.id, { chapters: nextChapters });
-    showToast('章節已移除。');
+  await runBookChapterAction(chapters => {
+    const nextChapters = chapters.filter(ch => ch.id !== chapterId);
+    return nextChapters.length === chapters.length ? null : nextChapters;
   }, '正在移除章節...');
+  showToast('章節已移除。');
 }
 
 async function persistBookChanges(bookId, changes) {
