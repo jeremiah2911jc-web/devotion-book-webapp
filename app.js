@@ -1235,6 +1235,10 @@ function getNoteTagList(note) {
   return [];
 }
 
+function getChapterSourceNoteId(chapter = {}) {
+  return String(chapter?.source_note_id || chapter?.note_id || '').trim();
+}
+
 function getContentLibraryFilteredNotes() {
   const query = state.contentLibrarySearch.trim().toLowerCase();
   return state.notes.filter(note => {
@@ -1274,13 +1278,18 @@ function renderContentLibrary() {
   }
 
   const selectedBook = getSelectedBook();
-  const chapterSourceIds = new Set(getBookDisplayChapters(selectedBook).map(chapter => chapter.source_note_id).filter(Boolean));
+  const displayChapters = getBookDisplayChapters(selectedBook);
+  const chapterSourceIds = new Set(displayChapters.map(chapter => getChapterSourceNoteId(chapter)).filter(Boolean));
   const filteredNotes = getContentLibraryFilteredNotes();
   const selectedCount = state.contentLibrarySelectedNoteIds.length;
-  if (els.contentLibrarySelectionCount) els.contentLibrarySelectionCount.textContent = `已選 ${selectedCount} 篇`;
+  if (els.contentLibrarySelectionCount) {
+    els.contentLibrarySelectionCount.textContent = selectedBook
+      ? `已選 ${selectedCount} 篇，目前草稿 ${displayChapters.length} 章`
+      : `已選 ${selectedCount} 篇`;
+  }
   if (els.contentLibraryBookHint) {
     els.contentLibraryBookHint.textContent = selectedBook
-      ? `目前書籍草稿：${selectedBook.title || '未命名書籍'}`
+      ? `目前書籍草稿：${selectedBook.title || '未命名書籍'}${hasBookArrangementDraft(selectedBook.id) ? '（尚未儲存）' : ''}`
       : '請先到成書工作台建立或選擇一本書';
   }
   if (els.contentLibraryAddSelected) {
@@ -1336,8 +1345,8 @@ async function addSelectedNotesToCurrentBookDraft() {
   if (!state.contentLibrarySelectedNoteIds.length) throw new Error('請先勾選至少一篇文章。');
   if (state.bookArrangementSaving) return;
   const selectedNotes = state.notes.filter(note => state.contentLibrarySelectedNoteIds.includes(note.id));
-  const baseChapters = getBookArrangementDraft(book.id) || cloneBookChapters(book.chapters || []);
-  const existingSourceIds = new Set(baseChapters.map(chapter => chapter.source_note_id).filter(Boolean));
+  const baseChapters = getBookDisplayChapters(book);
+  const existingSourceIds = new Set(baseChapters.map(chapter => getChapterSourceNoteId(chapter)).filter(Boolean));
   const nextChapters = cloneBookChapters(baseChapters);
   let addedCount = 0;
   let skippedCount = 0;
@@ -1349,6 +1358,7 @@ async function addSelectedNotesToCurrentBookDraft() {
     nextChapters.push({
       id: uid('chapter'),
       source_note_id: note.id,
+      note_id: note.id,
       chapter_title: note.title,
       include_in_toc: true,
     });
@@ -1361,9 +1371,11 @@ async function addSelectedNotesToCurrentBookDraft() {
   setBookArrangementDraft(book.id, nextChapters);
   state.contentLibrarySelectedNoteIds = [];
   refreshUi();
+  const totalChapters = getBookArrangementDraft(book.id)?.length || nextChapters.length;
+  const bookTitle = book.title || '未命名書籍';
   showToast(skippedCount
-    ? `已加入 ${addedCount} 篇文章到目前書籍草稿，略過 ${skippedCount} 篇已在書中的文章。`
-    : `已加入 ${addedCount} 篇文章到目前書籍草稿。`);
+    ? `已加入 ${addedCount} 篇到「${bookTitle}」，目前草稿共 ${totalChapters} 章，略過 ${skippedCount} 篇已在書中的文章。`
+    : `已加入 ${addedCount} 篇到「${bookTitle}」，目前草稿共 ${totalChapters} 章。`);
 }
 function renderCardList(container, items, renderer, emptyText = '還沒有資料。') {
   if (!items.length) {
@@ -2416,7 +2428,7 @@ function renderChaptersList(book) {
         </div>
       </div>
       <div class="chapter-meta-row">
-        <div class="caption">來源札記：${escapeHtml(getNoteById(chapter.source_note_id)?.title || '手動章節')}</div>
+        <div class="caption">來源札記：${escapeHtml(getNoteById(getChapterSourceNoteId(chapter))?.title || '手動章節')}</div>
         <label class="checkbox-row"><input type="checkbox" data-chapter-toc="${chapter.id}" ${chapter.include_in_toc ? 'checked' : ''} ${fieldDisabled} /><span>列入目錄</span></label>
       </div>
     </div>
@@ -2474,7 +2486,11 @@ function cloneBookChapters(chapters = []) {
 }
 
 function normalizeBookChapters(chapters = []) {
-  return cloneBookChapters(chapters).map((chapter, index) => ({ ...chapter, chapter_order: index }));
+  return cloneBookChapters(chapters).map((chapter, index) => ({
+    ...chapter,
+    source_note_id: getChapterSourceNoteId(chapter),
+    chapter_order: index,
+  }));
 }
 
 function stageBookArrangementChange(updater, pendingMessage = '章節編排尚未儲存') {
@@ -2582,12 +2598,13 @@ function buildBookSnapshot(book) {
       cover_data_url: book.cover_data_url,
     },
     chapters: chapters.map(chapter => {
-      const note = getNoteById(chapter.source_note_id);
+      const sourceNoteId = getChapterSourceNoteId(chapter);
+      const note = getNoteById(sourceNoteId);
       return {
         id: chapter.id,
         chapter_title: chapter.chapter_title,
         include_in_toc: chapter.include_in_toc,
-        source_note_id: chapter.source_note_id,
+        source_note_id: sourceNoteId,
         note_title: note?.title || '',
         scripture_reference: note?.scripture_reference || '',
         summary: note?.summary || '',
