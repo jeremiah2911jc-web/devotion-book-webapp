@@ -248,7 +248,9 @@ const state = {
   todayDevotions: null,
   todayDevotionsStatus: 'idle',
   todayDevotionsPromise: null,
-  bookActionBusy: false,
+  bookArrangementDirty: false,
+  bookArrangementSaving: false,
+  bookArrangementDrafts: {},
   isExporting: false,
   latestExportedBook: null,
 };
@@ -1826,7 +1828,7 @@ function renderBooks() {
       <div class="card-meta">
         <span>${escapeHtml(book.author_name || '未填作者')}</span>
         <span>${escapeHtml(TEMPLATE_LABELS[book.template_code] || '模板')}</span>
-        <span>${(book.chapters || []).length} 章</span>
+        <span>${getBookDisplayChapters(book).length} 章</span>
       </div>
       <div>${escapeHtml((book.description || '').slice(0, 120) || '尚未填寫書籍簡介')}</div>
       <div class="card-actions">
@@ -1993,8 +1995,72 @@ function getSelectedBook() {
   return state.books.find(book => book.id === state.selectedBookId) || null;
 }
 
-function renderSelectedBookPanel() {
+function getBookArrangementDraft(bookId = '') {
+  if (!bookId) return null;
+  const draft = state.bookArrangementDrafts[bookId];
+  return Array.isArray(draft) ? cloneBookChapters(draft) : null;
+}
+
+function hasBookArrangementDraft(bookId = '') {
+  return Array.isArray(state.bookArrangementDrafts[bookId]);
+}
+
+function syncBookArrangementState(bookId = state.selectedBookId) {
+  state.bookArrangementDirty = !!(bookId && hasBookArrangementDraft(bookId));
+}
+
+function getBookDisplayChapters(book) {
+  if (!book) return [];
+  return getBookArrangementDraft(book.id) || normalizeBookChapters(book.chapters || []);
+}
+
+function getSelectedBookForDisplay() {
   const book = getSelectedBook();
+  if (!book) return null;
+  return { ...book, chapters: getBookDisplayChapters(book) };
+}
+
+function setBookArrangementDraft(bookId, chapters) {
+  if (!bookId) return;
+  state.bookArrangementDrafts[bookId] = normalizeBookChapters(chapters);
+  syncBookArrangementState(bookId);
+}
+
+function clearBookArrangementDraft(bookId) {
+  if (!bookId) return;
+  delete state.bookArrangementDrafts[bookId];
+  syncBookArrangementState(bookId);
+}
+
+function ensureBookArrangementControls() {
+  const actionRow = els.exportEpubBtn?.parentElement;
+  if (!actionRow || !actionRow.parentElement) return;
+  let saveBtn = document.getElementById('save-book-arrangement-btn');
+  if (!saveBtn) {
+    saveBtn = document.createElement('button');
+    saveBtn.id = 'save-book-arrangement-btn';
+    saveBtn.type = 'button';
+    saveBtn.className = 'secondary-btn';
+    saveBtn.addEventListener('click', () => saveBookArrangement().catch(handleError));
+    actionRow.insertBefore(saveBtn, els.exportEpubBtn);
+  }
+  let statusText = document.getElementById('book-arrangement-status');
+  if (!statusText) {
+    statusText = document.createElement('p');
+    statusText.id = 'book-arrangement-status';
+    statusText.className = 'caption hidden';
+    actionRow.insertAdjacentElement('afterend', statusText);
+  }
+  saveBtn.disabled = !state.bookArrangementDirty || state.bookArrangementSaving;
+  saveBtn.textContent = state.bookArrangementSaving ? '儲存中...' : '儲存編排';
+  statusText.textContent = state.bookArrangementSaving ? '正在儲存章節編排...' : '章節編排尚未儲存';
+  statusText.classList.toggle('hidden', !(state.bookArrangementDirty || state.bookArrangementSaving));
+}
+
+function renderSelectedBookPanel() {
+  const rawBook = getSelectedBook();
+  syncBookArrangementState(rawBook?.id || '');
+  const book = getSelectedBookForDisplay();
   const chapterCount = (book?.chapters || []).length;
   if (els.statusCurrentBook) els.statusCurrentBook.textContent = book?.title || '未選取';
   if (els.statusChapterCount) els.statusChapterCount.textContent = String(chapterCount);
@@ -2005,6 +2071,8 @@ function renderSelectedBookPanel() {
     renderExportSuccessActions(null);
     return;
   }
+  ensureBookArrangementControls();
+  if (els.addChapterBtn) els.addChapterBtn.disabled = state.bookArrangementDirty || state.bookArrangementSaving;
   updateChapterSourceOptions();
   els.bookCoverPreview.innerHTML = `
     ${book.cover_data_url ? `<img src="${book.cover_data_url}" alt="封面" />` : ''}
@@ -2023,26 +2091,27 @@ function renderSelectedBookPanel() {
 
 function renderChaptersList(book) {
   const chapters = book.chapters || [];
-  const actionDisabled = state.bookActionBusy ? 'disabled' : '';
+  const actionDisabled = state.bookArrangementSaving ? 'disabled' : '';
+  const fieldDisabled = state.bookArrangementDirty || state.bookArrangementSaving ? 'disabled' : '';
   if (!chapters.length) {
     els.chaptersList.className = 'list-stack empty-state';
-    els.chaptersList.textContent = state.bookActionBusy ? '正在更新章節順序...' : '尚未加入任何章節。';
+    els.chaptersList.textContent = state.bookArrangementSaving ? '正在儲存章節編排...' : '尚未加入任何章節。';
     return;
   }
   els.chaptersList.className = 'list-stack';
   els.chaptersList.innerHTML = chapters.map((chapter, index) => `
     <div class="chapter-item">
       <div class="chapter-row">
-        <input value="${escapeHtml(chapter.chapter_title || '')}" data-chapter-title="${chapter.id}" />
+        <input value="${escapeHtml(chapter.chapter_title || '')}" data-chapter-title="${chapter.id}" ${fieldDisabled} />
         <div class="chapter-controls">
-          <button class="ghost-btn small" data-move-up="${chapter.id}" ${index === 0 || state.bookActionBusy ? 'disabled' : ''}>上移</button>
-          <button class="ghost-btn small" data-move-down="${chapter.id}" ${index === chapters.length - 1 || state.bookActionBusy ? 'disabled' : ''}>下移</button>
+          <button class="ghost-btn small" data-move-up="${chapter.id}" ${index === 0 || state.bookArrangementSaving ? 'disabled' : ''}>上移</button>
+          <button class="ghost-btn small" data-move-down="${chapter.id}" ${index === chapters.length - 1 || state.bookArrangementSaving ? 'disabled' : ''}>下移</button>
           <button class="danger-btn small" data-remove-chapter="${chapter.id}" ${actionDisabled}>移除</button>
         </div>
       </div>
       <div class="chapter-meta-row">
         <div class="caption">來源札記：${escapeHtml(getNoteById(chapter.source_note_id)?.title || '手動章節')}</div>
-        <label class="checkbox-row"><input type="checkbox" data-chapter-toc="${chapter.id}" ${chapter.include_in_toc ? 'checked' : ''} ${actionDisabled} /><span>列入目錄</span></label>
+        <label class="checkbox-row"><input type="checkbox" data-chapter-toc="${chapter.id}" ${chapter.include_in_toc ? 'checked' : ''} ${fieldDisabled} /><span>列入目錄</span></label>
       </div>
     </div>
   `).join('');
@@ -2102,39 +2171,38 @@ function normalizeBookChapters(chapters = []) {
   return cloneBookChapters(chapters).map((chapter, index) => ({ ...chapter, chapter_order: index }));
 }
 
-function applyLocalBookChapters(bookId, chapters) {
-  const book = state.books.find(item => item.id === bookId);
-  if (!book) return;
-  book.chapters = normalizeBookChapters(chapters);
-  book.updated_at = nowIso();
-}
-
-async function runBookChapterAction(updater, pendingMessage = '正在更新章節順序...') {
-  if (state.bookActionBusy) return;
+function stageBookArrangementChange(updater, pendingMessage = '章節編排尚未儲存') {
+  if (state.bookArrangementSaving) return;
   const book = getSelectedBook();
   if (!book) return;
-  const previousChapters = cloneBookChapters(book.chapters || []);
-  const nextChapters = updater(cloneBookChapters(previousChapters));
+  const baseChapters = getBookArrangementDraft(book.id) || cloneBookChapters(book.chapters || []);
+  const nextChapters = updater(cloneBookChapters(baseChapters));
   if (!Array.isArray(nextChapters)) return;
-  const normalizedNextChapters = normalizeBookChapters(nextChapters);
-  state.bookActionBusy = true;
-  applyLocalBookChapters(book.id, normalizedNextChapters);
+  setBookArrangementDraft(book.id, nextChapters);
   refreshUi();
   if (pendingMessage) showToast(pendingMessage);
+}
+
+async function saveBookArrangement() {
+  if (state.bookArrangementSaving) return;
+  const book = getSelectedBook();
+  if (!book) return;
+  if (!hasBookArrangementDraft(book.id)) return;
+  const draftChapters = getBookArrangementDraft(book.id) || [];
+  state.bookArrangementSaving = true;
+  refreshUi();
   try {
-    await persistBookChanges(book.id, { chapters: normalizedNextChapters });
-  } catch (error) {
-    applyLocalBookChapters(book.id, previousChapters);
-    refreshUi();
-    throw error;
+    await persistBookChanges(book.id, { chapters: normalizeBookChapters(draftChapters) });
+    clearBookArrangementDraft(book.id);
+    showToast('章節編排已儲存。');
   } finally {
-    state.bookActionBusy = false;
+    state.bookArrangementSaving = false;
     refreshUi();
   }
 }
 
 async function moveChapter(chapterId, direction) {
-  await runBookChapterAction(chapters => {
+  stageBookArrangementChange(chapters => {
     const index = chapters.findIndex(ch => ch.id === chapterId);
     const target = index + direction;
     if (index < 0 || target < 0 || target >= chapters.length) return null;
@@ -2144,11 +2212,10 @@ async function moveChapter(chapterId, direction) {
 }
 
 async function removeChapter(chapterId) {
-  await runBookChapterAction(chapters => {
+  stageBookArrangementChange(chapters => {
     const nextChapters = chapters.filter(ch => ch.id !== chapterId);
     return nextChapters.length === chapters.length ? null : nextChapters;
-  }, '正在移除章節...');
-  showToast('章節已移除。');
+  }, '章節編排尚未儲存');
 }
 
 async function persistBookChanges(bookId, changes) {
