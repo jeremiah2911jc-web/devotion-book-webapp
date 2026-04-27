@@ -1101,18 +1101,26 @@ function sanitizeDisplayText(value, fallback = '') {
   return text;
 }
 
+function getPrimaryViewLabel(viewName = '') {
+  return {
+    dashboard: '總覽',
+    notes: '札記',
+    'content-library': '內容庫',
+    books: '選稿草稿',
+    library: '書櫃',
+  }[viewName] || '';
+}
+
 function syncDesktopDashboardStaticCopy() {
   document.querySelector('.sidebar-brand-copy h1')?.replaceChildren(document.createTextNode('我的靈修書房'));
   document.querySelector('.sidebar-brand-copy .muted')?.replaceChildren(document.createTextNode('Desktop Dashboard'));
-  document.querySelectorAll('.desktop-sidebar-link').forEach(link => {
+  document.querySelectorAll('.desktop-sidebar-link, .mobile-bottom-link, .nav-link[data-view]').forEach(link => {
     const label = link.querySelector('span:last-child');
     if (!label) return;
-    const copy = {
-      dashboard: '總覽',
-      notes: '札記',
-      books: '書籍',
-      library: '書櫃',
-    }[link.dataset.view] || (link.classList.contains('is-muted') ? ['標籤', '統計', '匯出'][[...link.parentElement.querySelectorAll('.desktop-sidebar-link.is-muted')].indexOf(link)] : '設定');
+    const copy = getPrimaryViewLabel(link.dataset.view)
+      || (link.classList.contains('is-muted')
+        ? ['標籤', '統計', '成書匯出'][[...link.parentElement.querySelectorAll('.desktop-sidebar-link.is-muted')].indexOf(link)]
+        : (link.dataset.openAccountSettings != null ? '設定' : '設定'));
     label.textContent = copy;
   });
   document.querySelector('.desktop-sidebar-footer-label')?.replaceChildren(document.createTextNode('帳號'));
@@ -1411,9 +1419,22 @@ function focusSelectedDraftPanel(bookId = '') {
   openBookDraftModal(bookId, { focusChapters: true });
 }
 
+function setCurrentBookDraft(bookId = '') {
+  if (!bookId) return;
+  state.selectedBookId = bookId;
+  refreshUi();
+}
+
+function goToContentLibraryForBookDraft(bookId = '') {
+  if (bookId) state.selectedBookId = bookId;
+  state.bookDraftModalOpen = false;
+  setView('content-library');
+  refreshUi();
+}
+
 function ensureBookDraftWorkspaceUi() {
   document.querySelectorAll('[data-view="books"] span:last-child').forEach(label => {
-    label.textContent = '草稿';
+    label.textContent = '選稿草稿';
   });
   els.quickNewBook?.replaceChildren(document.createTextNode('建立草稿'));
 
@@ -1471,20 +1492,20 @@ function ensureBookDraftWorkspaceUi() {
   els.exportEpubBtn?.classList.add('hidden');
   els.exportSuccessActions?.classList.add('hidden');
 
-  if (!document.getElementById('go-content-library-btn') && els.createSnapshotBtn?.parentElement) {
-    const goLibraryBtn = document.createElement('button');
-    goLibraryBtn.id = 'go-content-library-btn';
-    goLibraryBtn.type = 'button';
-    goLibraryBtn.className = 'secondary-btn';
-    goLibraryBtn.textContent = '前往內容庫加入文章';
-    goLibraryBtn.addEventListener('click', () => setView('content-library'));
+    if (!document.getElementById('go-content-library-btn') && els.createSnapshotBtn?.parentElement) {
+      const goLibraryBtn = document.createElement('button');
+      goLibraryBtn.id = 'go-content-library-btn';
+      goLibraryBtn.type = 'button';
+      goLibraryBtn.className = 'secondary-btn';
+      goLibraryBtn.textContent = '前往內容庫加入文章';
+      goLibraryBtn.addEventListener('click', () => goToContentLibraryForBookDraft(state.selectedBookId));
 
-    const focusChaptersBtn = document.createElement('button');
-    focusChaptersBtn.id = 'focus-draft-chapters-btn';
-    focusChaptersBtn.type = 'button';
-    focusChaptersBtn.className = 'ghost-btn';
-    focusChaptersBtn.textContent = '進入章節編排';
-    focusChaptersBtn.addEventListener('click', () => focusSelectedDraftPanel());
+      const focusChaptersBtn = document.createElement('button');
+      focusChaptersBtn.id = 'focus-draft-chapters-btn';
+      focusChaptersBtn.type = 'button';
+      focusChaptersBtn.className = 'ghost-btn';
+      focusChaptersBtn.textContent = '整理章節';
+      focusChaptersBtn.addEventListener('click', () => focusSelectedDraftPanel());
 
     els.createSnapshotBtn.parentElement.prepend(focusChaptersBtn);
     els.createSnapshotBtn.parentElement.prepend(goLibraryBtn);
@@ -2373,30 +2394,41 @@ function renderBooks() {
     return;
   }
   els.booksList.className = 'list-stack';
-  els.booksList.innerHTML = state.books.map(book => `
-    <article class="card book-draft-card ${book.id === state.selectedBookId ? 'selected' : ''}">
-      <div class="book-draft-card-header">
-        <h3>${escapeHtml(getBookDraftLabel(book))}</h3>
-        <span class="badge book-draft-status-badge ${getBookDraftStatusTone(book)}">${escapeHtml(getBookDraftStatus(book))}</span>
-      </div>
-      <div class="card-meta book-draft-meta-row">
-        <span>已收錄 ${getBookDisplayChapters(book).length} 篇札記</span>
-        <span>更新於 ${escapeHtml(formatDate(book.updated_at || book.created_at))}</span>
-      </div>
-      <div class="book-draft-scope">${escapeHtml(getBookDraftScopeSummary(book))}</div>
-      <div class="caption book-draft-description">${escapeHtml((book.description || '').slice(0, 140) || '尚未填寫整理說明')}</div>
-      <div class="card-actions book-draft-actions">
-        <button class="secondary-btn" data-edit-book="${book.id}">繼續整理</button>
-        <button class="ghost-btn" data-select-book="${book.id}">設為目前草稿</button>
-        <button class="ghost-btn" data-open-book-draft="${book.id}">進入章節編排</button>
-      </div>
-    </article>
-  `).join('');
-  els.booksList.querySelectorAll('[data-edit-book]').forEach(btn => btn.addEventListener('click', () => {
-    populateBookForm(btn.dataset.editBook);
-    openBookDraftModal(btn.dataset.editBook);
-  }));
-  els.booksList.querySelectorAll('[data-select-book]').forEach(btn => btn.addEventListener('click', () => { state.selectedBookId = btn.dataset.selectBook; refreshUi(); }));
+  els.booksList.innerHTML = state.books.map(book => {
+    const chapterCount = getBookDisplayChapters(book).length;
+    const isEmptyDraft = chapterCount === 0;
+    const description = (book.description || '').slice(0, 140)
+      || (isEmptyDraft ? '尚未收錄札記，請先前往內容庫加入文章。' : '尚未填寫整理說明');
+    return `
+      <article class="card book-draft-card ${book.id === state.selectedBookId ? 'selected' : ''}">
+        <div class="book-draft-card-header">
+          <h3>${escapeHtml(getBookDraftLabel(book))}</h3>
+          <span class="badge book-draft-status-badge ${getBookDraftStatusTone(book)}">${escapeHtml(getBookDraftStatus(book))}</span>
+        </div>
+        <div class="card-meta book-draft-meta-row">
+          <span>已收錄 ${chapterCount} 篇札記</span>
+          <span>更新於 ${escapeHtml(formatDate(book.updated_at || book.created_at))}</span>
+        </div>
+        <div class="book-draft-scope">${escapeHtml(getBookDraftScopeSummary(book))}</div>
+        <div class="caption book-draft-description ${isEmptyDraft ? 'is-empty-hint' : ''}">${escapeHtml(description)}</div>
+        <div class="card-actions book-draft-actions">
+          ${isEmptyDraft
+            ? `
+              <button class="secondary-btn" data-go-content-library="${book.id}">前往內容庫加入文章</button>
+              <button class="ghost-btn" data-select-book="${book.id}">設為目前草稿</button>
+              <button class="ghost-btn" data-open-book-draft="${book.id}">查看草稿</button>
+            `
+            : `
+              <button class="secondary-btn" data-open-book-draft="${book.id}">整理章節</button>
+              <button class="ghost-btn" data-select-book="${book.id}">設為目前草稿</button>
+              <button class="ghost-btn" data-go-content-library="${book.id}">前往內容庫加入文章</button>
+            `}
+        </div>
+      </article>
+    `;
+  }).join('');
+  els.booksList.querySelectorAll('[data-select-book]').forEach(btn => btn.addEventListener('click', () => setCurrentBookDraft(btn.dataset.selectBook)));
+  els.booksList.querySelectorAll('[data-go-content-library]').forEach(btn => btn.addEventListener('click', () => goToContentLibraryForBookDraft(btn.dataset.goContentLibrary)));
   els.booksList.querySelectorAll('[data-open-book-draft]').forEach(btn => btn.addEventListener('click', () => focusSelectedDraftPanel(btn.dataset.openBookDraft)));
 }
 
@@ -2441,6 +2473,7 @@ function clearBookForm() {
 async function saveBook() {
   requireUser();
   const existing = state.books.find(item => item.id === els.bookId.value);
+  const isNewDraft = !existing;
   const coverDataUrl = els.bookCover.files[0] ? await fileToDataUrl(els.bookCover.files[0]) : (existing?.cover_data_url || '');
   const payload = {
     id: els.bookId.value || uid('book'),
@@ -2474,12 +2507,15 @@ async function saveBook() {
   clearBookForm();
   state.selectedBookId = payload.id;
   if (els.bookSaveFeedback) {
-    els.bookSaveFeedback.textContent = '草稿已儲存';
+    els.bookSaveFeedback.textContent = isNewDraft ? '草稿已建立，請前往內容庫加入文章。' : '草稿已儲存';
     els.bookSaveFeedback.classList.remove('hidden');
   }
   await loadAllData({ silent: true, syncReason: state.supabase ? '草稿儲存後同步' : '' });
+  state.selectedBookId = payload.id;
   setView('books');
-  showToast('草稿已儲存');
+  showToast(isNewDraft
+    ? `已建立「${payload.title}」，請前往內容庫加入文章。`
+    : '草稿已儲存');
 }
 
 async function deleteBook() {
@@ -2664,8 +2700,23 @@ function renderChaptersList(book) {
   const fieldDisabled = state.bookArrangementDirty || state.bookArrangementSaving ? 'disabled' : '';
   if (!chapters.length) {
     els.chaptersList.className = 'list-stack empty-state';
-    els.chaptersList.textContent = state.bookArrangementSaving ? '正在儲存章節編排...' : '尚未加入任何章節。';
-    return;
+    if (state.bookArrangementSaving) {
+      els.chaptersList.textContent = '正在儲存章節編排...';
+      return;
+    }
+    const draftLabel = getBookDraftLabel(book);
+    els.chaptersList.innerHTML = `
+      <div class="book-draft-empty-guide">
+        <h4>這份選稿草稿目前還沒有收錄文章。</h4>
+        <p>請先到內容庫挑選札記，加入目前選稿草稿。</p>
+        <button type="button" class="secondary-btn" data-empty-draft-go-library="${book.id}">前往內容庫加入文章</button>
+      </div>
+    `;
+    els.chaptersList.querySelector('[data-empty-draft-go-library]')?.addEventListener('click', () => {
+      showToast(`請先為「${draftLabel}」加入文章。`);
+      goToContentLibraryForBookDraft(book.id);
+    });
+      return;
   }
   els.chaptersList.className = 'list-stack';
   els.chaptersList.innerHTML = chapters.map((chapter, index) => `
