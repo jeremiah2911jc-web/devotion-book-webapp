@@ -749,20 +749,6 @@ function ensureContentLibraryUi() {
     booksLink?.insertAdjacentElement('beforebegin', button);
   }
 
-  const mobileNav = document.querySelector('.bottom-nav');
-  if (mobileNav && !mobileNav.querySelector('[data-view="content-library"]')) {
-    const booksLink = mobileNav.querySelector('[data-view="books"]');
-    const button = document.createElement('button');
-      button.className = 'nav-link mobile-bottom-link';
-      button.type = 'button';
-      button.dataset.view = 'content-library';
-      button.innerHTML = `
-        <span class="nav-icon asset-icon asset-sprite-system icon-note" aria-hidden="true"></span>
-        <span>札記庫</span>
-      `;
-    booksLink?.insertAdjacentElement('beforebegin', button);
-  }
-
   if (!document.getElementById('view-content-library')) {
     const booksView = document.getElementById('view-books');
     const section = document.createElement('section');
@@ -897,20 +883,6 @@ function ensureOperationManualUi() {
       <span>操作手冊</span>
     `;
     settingsLink?.insertAdjacentElement('beforebegin', button);
-  }
-
-  const mobileNav = document.querySelector('.bottom-nav');
-  if (mobileNav && !mobileNav.querySelector('[data-view="manual"]')) {
-    const libraryLink = mobileNav.querySelector('[data-view="library"]');
-    const button = document.createElement('button');
-    button.className = 'nav-link mobile-bottom-link';
-    button.type = 'button';
-    button.dataset.view = 'manual';
-    button.innerHTML = `
-      <span class="nav-icon asset-icon asset-sprite-system icon-book" aria-hidden="true"></span>
-      <span>操作手冊</span>
-    `;
-    libraryLink?.insertAdjacentElement('afterend', button);
   }
 
   if (!document.getElementById('view-manual')) {
@@ -2092,6 +2064,7 @@ function getAuthCredentials() {
 async function completeLocalAuth(user, successMessage) {
   setLocalUser(user);
   state.currentUser = user;
+  ensureAdminUi();
   settleMobileViewport();
   await loadAllData();
   refreshUi();
@@ -2158,12 +2131,14 @@ async function applyConnectionSettings({ supabaseUrl = '', supabaseAnonKey = '' 
   if (state.supabase) {
     const { data } = await state.supabase.auth.getSession();
     state.currentUser = data.session?.user || null;
+    ensureAdminUi();
     if (state.currentUser) setupCloudRealtime();
     if (!state.currentUser) {
       setSyncState({ status: '尚未登入', detail: '雲端已啟用，但目前還沒有登入帳號。', at: '' });
     }
   } else {
     state.currentUser = getLocalUser();
+    ensureAdminUi();
     setSyncState({ status: '本機模式', detail: '目前資料只保存在這台裝置。', at: '' });
   }
 
@@ -2181,6 +2156,7 @@ async function clearConnectionSettings() {
   initSupabase();
 
   state.currentUser = getLocalUser();
+  ensureAdminUi();
   setSyncState({ status: '本機模式', detail: '目前資料只保存在這台裝置。', at: '' });
   await loadAllData({ silent: true, syncReason: '已切回本機模式。' });
   refreshUi();
@@ -2199,9 +2175,11 @@ async function bootstrap() {
   if (state.supabase) {
     const { data } = await state.supabase.auth.getSession();
     state.currentUser = data.session?.user || null;
+    ensureAdminUi();
     if (state.currentUser) setupCloudRealtime();
     state.supabase.auth.onAuthStateChange((_event, session) => {
       state.currentUser = session?.user || null;
+      ensureAdminUi();
       if (state.currentUser) settleMobileViewport();
       teardownCloudRealtime();
       if (state.currentUser) {
@@ -2214,6 +2192,7 @@ async function bootstrap() {
     });
   } else {
     state.currentUser = getLocalUser();
+    ensureAdminUi();
     setSyncState({ status: '本機模式', detail: '目前資料只保存在這台裝置。', at: '' });
   }
   await loadAllData({ silent: true });
@@ -2623,6 +2602,52 @@ function getPrimaryViewLabel(viewName = '') {
   }[viewName] || '';
 }
 
+function getPrimaryViewIconClass(viewName = '') {
+  return {
+    dashboard: 'icon-home',
+    notes: 'icon-note',
+    'content-library': 'icon-note',
+    books: 'icon-book',
+    library: 'icon-library',
+    manual: 'icon-book',
+    'admin-dashboard': 'icon-gear',
+  }[viewName] || 'icon-home';
+}
+
+function getMobileBottomNavItems() {
+  const items = [
+    { view: 'dashboard', label: '總覽' },
+    { view: 'notes', label: '寫札記' },
+    { view: 'content-library', label: '札記庫' },
+    { view: 'books', label: '選稿編排' },
+    { view: 'library', label: '書櫃' },
+    { view: 'manual', label: '操作手冊' },
+  ];
+  if (isAdminUser()) {
+    items.push({ view: 'admin-dashboard', label: '管理', id: 'mobile-admin-dashboard-link' });
+  }
+  return items;
+}
+
+function renderMobileBottomNav() {
+  const mobileNav = document.querySelector('.bottom-nav');
+  if (!mobileNav) return;
+  const currentView = document.body.dataset.currentView || document.querySelector('.view.active')?.id?.replace('view-', '') || 'dashboard';
+  mobileNav.innerHTML = getMobileBottomNavItems().map(item => `
+    <button
+      ${item.id ? `id="${item.id}"` : ''}
+      class="nav-link mobile-bottom-link ${item.view === currentView ? 'active' : ''}"
+      data-view="${escapeHtml(item.view)}"
+      type="button"
+    >
+      <span class="nav-icon asset-icon asset-sprite-system ${escapeHtml(getPrimaryViewIconClass(item.view))}" aria-hidden="true"></span>
+      <span>${escapeHtml(item.label)}</span>
+    </button>
+  `).join('');
+  els.viewNavLinks = [...document.querySelectorAll('.desktop-sidebar-link[data-view], .mobile-bottom-link[data-view], .nav-link[data-view]')];
+  bindViewTriggers(mobileNav);
+}
+
 function ensureWritingWorkspaceUi() {
   const notesView = document.getElementById('view-notes');
   if (!notesView) return;
@@ -2900,6 +2925,7 @@ function refreshUi() {
   ensureWritingWorkspaceUi();
   ensureOperationManualUi();
   ensureBookDraftWorkspaceUi();
+  renderMobileBottomNav();
   ensureAdminUi();
   ensureBookExportSettingsUi();
   if (isAdminView(document.body.dataset.currentView || 'dashboard') && !isAdminUser()) {
