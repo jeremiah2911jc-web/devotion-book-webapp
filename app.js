@@ -1372,6 +1372,12 @@ function ensureOperationManualUi() {
                   <li>或從瀏覽器選單選擇「安裝此網站」或「建立捷徑」。</li>
                 </ol>
               </section>
+              <section class="manual-install-card" aria-labelledby="manual-install-mac">
+                <h3 id="manual-install-mac">Mac 使用者</h3>
+                <p><strong>Safari：</strong>使用 Safari 開啟網站後，可從「檔案」或分享選單選擇「加入 Dock」。加入後，就可以像 App 一樣從 Dock 開啟。</p>
+                <p><strong>Chrome / Edge：</strong>使用 Chrome 或 Edge 開啟網站後，若網址列出現安裝圖示，可點選安裝；也可以從右上角選單選擇「安裝此網站」或「建立捷徑」。</p>
+                <p><strong>提醒：</strong>網站內容會隨正式站更新；若圖示或名稱沒有更新，可移除舊捷徑後重新加入。</p>
+              </section>
             </div>
           </section>
 
