@@ -1654,7 +1654,7 @@ async function uploadLocalDataToCloud() {
 }
 function buildBackupPayload(exportedAtIso = nowIso()) {
   const drafts = Array.isArray(state.books) ? state.books : [];
-  const library = getAllLibraryBooksForView().map(book => {
+  const library = getAllLibraryBooksForView({ includeSystem: false }).map(book => {
     const source = book.source === 'imported_epub' ? 'imported_epub' : 'generated';
     const clone = JSON.parse(JSON.stringify(book || {}));
     return {
@@ -3748,7 +3748,7 @@ function refreshUi() {
   els.summaryNotesCount.textContent = state.notes.length;
   els.summaryBooksCount.textContent = state.books.length;
   const libraryCount = document.getElementById('library-count');
-  if (libraryCount) libraryCount.textContent = String(cloudLibrary.books.length);
+  if (libraryCount) libraryCount.textContent = String(getAllLibraryBooksForView().length);
   renderRecentCards();
   renderDesktopBookshelfCard();
   renderTodayDevotionCard();
@@ -4213,7 +4213,7 @@ function renderCardList(container, items, renderer, emptyText = '還沒有資料
 
 function renderDesktopBookshelfCard() {
   if (!els.desktopBookshelfList) return;
-  const books = state.books.slice(0, 4);
+  const books = getAllLibraryBooksForView().slice(0, 4);
   if (!books.length) {
     els.desktopBookshelfList.innerHTML = `
       <div class="bookshelf-empty-state">
@@ -4225,11 +4225,20 @@ function renderDesktopBookshelfCard() {
   const snapshotBookIds = new Set(state.snapshots.map(snapshot => snapshot.book_id).filter(Boolean));
   els.desktopBookshelfList.innerHTML = books.map((book, index) => {
     const title = sanitizeDisplayText(book.title, `書籍 ${index + 1}`);
-    const chapterCount = Array.isArray(book.chapters) ? book.chapters.length : 0;
-    const status = snapshotBookIds.has(book.id) ? '已完成' : (chapterCount > 0 ? '整理中' : '已建立');
+    const chapterCount = Number(book.total_chapters || book.totalChapters || (Array.isArray(book.chapters) ? book.chapters.length : 0));
+    const status = isSystemLibraryBook(book)
+      ? '系統預設'
+      : book.source === 'imported_epub'
+        ? '外部匯入'
+        : snapshotBookIds.has(book.id)
+          ? '已完成'
+          : (chapterCount > 0 ? '整理中' : '已建立');
+    const coverUrl = getLibraryCoverUrl(book);
     return `
       <article class="bookshelf-book-card">
-        <div class="bookshelf-cover-placeholder" aria-hidden="true">封面</div>
+        ${coverUrl
+          ? `<img class="bookshelf-cover-thumb" src="${coverUrl}" alt="${escapeHtml(title)}封面" />`
+          : `<div class="bookshelf-cover-placeholder" aria-hidden="true">封面</div>`}
         <div class="bookshelf-book-copy">
           <strong>${escapeHtml(title)}</strong>
           <div class="bookshelf-book-meta">
@@ -5926,6 +5935,31 @@ const cloudLibrary = {
   readerSettings: loadJson('devotion-app-reader-settings', { fontSize: 18, lineHeight: 1.8, theme: 'light' }),
 };
 
+const systemLibrary = {
+  progressKey: 'devotion-system-library-progress',
+  bible: Object.freeze({
+    id: 'system-bible',
+    source: 'system',
+    system_book_key: 'bible',
+    is_default: true,
+    title: '聖經',
+    author: '和合本',
+    description: '系統預設聖經電子書，可作為靈修閱讀參考。',
+    cover_image_path: '/assets/default-books/bible-cover.png',
+    epub_file_path: '/assets/default-books/bible.epub',
+    version: 'system',
+    total_chapters: 0,
+    current_chapter: 0,
+    reading_progress: 0,
+    last_read_at: null,
+    created_at: '1970-01-01T00:00:00.000Z',
+    updated_at: '1970-01-01T00:00:00.000Z',
+    source_project_id: null,
+    source_compilation_id: null,
+    is_archived: false,
+  }),
+};
+
 function clearCloudLibrary(message = '') {
   cloudLibrary.books = [];
   cloudLibrary.chapters = new Map();
@@ -5958,6 +5992,49 @@ function revokeImportedCoverUrls() {
     if (url) URL.revokeObjectURL(url);
   });
   importedLibrary.coverUrls = new Map();
+}
+
+function getSystemLibraryProgressMap() {
+  return loadJson(systemLibrary.progressKey, {});
+}
+
+function saveSystemLibraryProgress(bookId, payload = {}) {
+  const progressMap = getSystemLibraryProgressMap();
+  progressMap[bookId] = {
+    ...(progressMap[bookId] || {}),
+    ...payload,
+  };
+  saveJson(systemLibrary.progressKey, progressMap);
+}
+
+function isSystemLibraryBook(book) {
+  return String(book?.source || '') === 'system'
+    || String(book?.system_book_key || '') === 'bible'
+    || String(book?.id || '') === systemLibrary.bible.id;
+}
+
+function buildSystemLibraryBook() {
+  const saved = getSystemLibraryProgressMap()[systemLibrary.bible.id] || {};
+  return normalizeLibraryBook({
+    ...systemLibrary.bible,
+    ...saved,
+    source: 'system',
+    system_book_key: 'bible',
+    is_default: true,
+    total_chapters: Number(saved.total_chapters || systemLibrary.bible.total_chapters || 0),
+    current_chapter: Number(saved.current_chapter || systemLibrary.bible.current_chapter || 0),
+    reading_progress: Number(saved.reading_progress || systemLibrary.bible.reading_progress || 0),
+    last_read_at: saved.last_read_at || systemLibrary.bible.last_read_at || null,
+    updated_at: saved.updated_at || systemLibrary.bible.updated_at,
+  });
+}
+
+function getSystemLibraryBooks() {
+  return [buildSystemLibraryBook()];
+}
+
+function getSystemLibraryBook(bookId) {
+  return getSystemLibraryBooks().find(book => book.id === bookId) || null;
 }
 
 function normalizeImportedChapter(chapter = {}, index = 0, bookId = '') {
@@ -6122,10 +6199,39 @@ async function refreshImportedLibraryState() {
   }
 }
 
-function getAllLibraryBooksForView() {
-  const generatedBooks = cloudLibrary.books.map(book => ({ ...book, source: 'generated' }));
+function getAllLibraryBooksForView(options = {}) {
+  const includeSystem = options.includeSystem !== false;
+  const generatedBooks = cloudLibrary.books
+    .filter(book => !isSystemLibraryBook(book))
+    .map(book => ({ ...book, source: 'generated' }));
   const importedBooks = importedLibrary.books.map(book => ({ ...book, source: 'imported_epub' }));
-  return [...generatedBooks, ...importedBooks];
+  const merged = includeSystem ? [...getSystemLibraryBooks(), ...generatedBooks, ...importedBooks] : [...generatedBooks, ...importedBooks];
+  const seen = new Set();
+  return merged.filter(book => {
+    const id = String(book?.id || '');
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
+function compareLibraryBooks(a, b, sortMode = 'recent-read') {
+  const priorityA = isSystemLibraryBook(a) ? 0 : 1;
+  const priorityB = isSystemLibraryBook(b) ? 0 : 1;
+  if (priorityA !== priorityB) return priorityA - priorityB;
+  if (sortMode === 'title') return String(a.title || '').localeCompare(String(b.title || ''), 'zh-Hant');
+  if (sortMode === 'recent-created') {
+    return String((b.updated_at || b.created_at || b.importedAt || ''))
+      .localeCompare(String(a.updated_at || a.created_at || a.importedAt || ''));
+  }
+  return String((b.last_read_at || b.created_at || b.importedAt || ''))
+    .localeCompare(String(a.last_read_at || a.created_at || a.importedAt || ''));
+}
+
+function getLibraryCoverUrl(book) {
+  if (!book) return '';
+  if (book.source === 'imported_epub') return importedLibrary.coverUrls.get(book.id) || '';
+  return cloudLibrary.coverUrls.get(book.id) || book.cover_image_path || '';
 }
 
 function buildLibrarySetupError(error) {
@@ -6145,6 +6251,7 @@ function requireCloudLibrary() {
 function normalizeLibraryBook(book) {
   return {
     ...book,
+    source: book.source || 'generated',
     title: book.title || '未命名書籍',
     author: book.author || '',
     description: book.description || '',
@@ -6285,18 +6392,22 @@ function dataUrlToUpload(dataUrl) {
 }
 
 function getLibraryBook(bookId) {
-  return cloudLibrary.books.find(book => book.id === bookId) || null;
+  return getAllLibraryBooksForView().find(book => book.id === bookId) || null;
 }
 
 async function refreshLibraryCoverUrls() {
-  if (!(state.supabase && state.currentUser)) return;
-  const entries = await Promise.all(cloudLibrary.books.map(async book => {
-    if (!book.cover_image_path) return [book.id, ''];
-    const { data, error } = await state.supabase.storage.from(cloudLibrary.bucket).createSignedUrl(book.cover_image_path, 60 * 20);
-    return [book.id, error ? '' : data?.signedUrl || ''];
-  }));
+  const entries = getSystemLibraryBooks().map(book => [book.id, book.cover_image_path || '']);
+  if (state.supabase && state.currentUser) {
+    const cloudEntries = await Promise.all(cloudLibrary.books.map(async book => {
+      if (!book.cover_image_path) return [book.id, ''];
+      const { data, error } = await state.supabase.storage.from(cloudLibrary.bucket).createSignedUrl(book.cover_image_path, 60 * 20);
+      return [book.id, error ? '' : data?.signedUrl || ''];
+    }));
+    entries.push(...cloudEntries);
+  }
   cloudLibrary.coverUrls = new Map(entries);
   renderLibrary();
+  renderDesktopBookshelfCard();
 }
 
 function renderLibrary() {
@@ -6316,30 +6427,36 @@ function renderLibrary() {
     return;
   }
   const sortMode = document.getElementById('library-sort')?.value || 'recent-read';
-  const books = [...booksForView].sort((a, b) => sortMode === 'title'
-    ? String(a.title).localeCompare(String(b.title), 'zh-Hant')
-    : sortMode === 'recent-created'
-      ? String((b.updated_at || b.created_at || b.importedAt || '')).localeCompare(String(a.updated_at || a.created_at || a.importedAt || ''))
-      : String((b.last_read_at || b.created_at || b.importedAt || '')).localeCompare(String(a.last_read_at || a.created_at || a.importedAt || '')));
+  const books = [...booksForView].sort((a, b) => compareLibraryBooks(a, b, sortMode));
   list.className = 'library-list';
   list.innerHTML = books.map(book => {
-    const coverUrl = book.source === 'imported_epub'
-      ? (importedLibrary.coverUrls.get(book.id) || '')
-      : (cloudLibrary.coverUrls.get(book.id) || '');
+    const coverUrl = getLibraryCoverUrl(book);
     const progress = Math.max(0, Math.min(1, book.reading_progress || 0));
     const sourceBadge = book.source === 'imported_epub'
       ? '<span class="library-badge library-badge-imported">外部匯入</span>'
-      : '';
+      : isSystemLibraryBook(book)
+        ? '<span class="library-badge library-badge-system">系統預設</span>'
+        : '';
     const createdAt = book.created_at || book.importedAt || '';
     const selected = book.id === cloudLibrary.selectedBookId || book.id === cloudLibrary.readerBook?.id;
     const description = book.description
       || (book.source === 'imported_epub'
         ? '這本 EPUB 已匯入本機書櫃，可直接開啟閱讀。'
+        : isSystemLibraryBook(book)
+          ? '這是系統內建的聖經電子書，可直接開啟閱讀。'
         : '這本書已保存於雲端書櫃，可在登入後跨裝置閱讀。');
     const fallbackCover = book.source === 'imported_epub'
       ? `<div class="library-cover-fallback"><strong>${escapeHtml((book.title || '書').slice(0, 18))}</strong><small>EPUB 匯入書</small></div>`
       : `<span>${escapeHtml((book.title || '書').slice(0, 2))}</span>`;
-    return `<article class="library-book ${selected ? 'selected' : ''} ${book.source === 'imported_epub' ? 'imported-book' : ''}"><div class="library-cover">${coverUrl ? `<img src="${coverUrl}" alt="${escapeHtml(book.title)}封面" />` : fallbackCover}</div><div class="library-book-main"><div><div class="library-book-top"><h3>${escapeHtml(book.title)}</h3>${sourceBadge}</div><div class="card-meta"><span>${escapeHtml(book.author || '未填作者')}</span><span>建立：${createdAt ? formatDate(createdAt) : '未記錄'}</span><span>最後閱讀：${book.last_read_at ? formatDate(book.last_read_at) : '尚未閱讀'}</span><span>${book.source === 'imported_epub' ? `檔案 ${(book.fileSize / 1024 / 1024 || 0).toFixed(1)} MB` : `版本 ${escapeHtml(book.version)}`}</span></div><p>${escapeHtml(description)}</p></div><div class="library-progress"><span>${Math.round(progress * 100)}%</span><div><i style="width:${Math.round(progress * 100)}%"></i></div></div><div class="card-actions"><button class="primary-btn" data-open-library-book="${book.id}" data-library-source="${book.source}">開啟閱讀</button><button class="ghost-btn" data-download-library-epub="${book.id}" data-library-source="${book.source}">下載 EPUB</button><button class="danger-btn" data-delete-library-book="${book.id}" data-library-source="${book.source}">刪除書籍</button></div></div></article>`;
+    const detailLabel = book.source === 'imported_epub'
+      ? `檔案 ${(book.fileSize / 1024 / 1024 || 0).toFixed(1)} MB`
+      : isSystemLibraryBook(book)
+        ? '系統內建電子書'
+        : `版本 ${escapeHtml(book.version)}`;
+    const deleteAction = isSystemLibraryBook(book)
+      ? ''
+      : `<button class="danger-btn" data-delete-library-book="${book.id}" data-library-source="${book.source}">刪除書籍</button>`;
+    return `<article class="library-book ${selected ? 'selected' : ''} ${book.source === 'imported_epub' ? 'imported-book' : ''}"><div class="library-cover">${coverUrl ? `<img src="${coverUrl}" alt="${escapeHtml(book.title)}封面" />` : fallbackCover}</div><div class="library-book-main"><div><div class="library-book-top"><h3>${escapeHtml(book.title)}</h3>${sourceBadge}</div><div class="card-meta"><span>${escapeHtml(book.author || '未填作者')}</span><span>建立：${createdAt ? formatDate(createdAt) : '未記錄'}</span><span>最後閱讀：${book.last_read_at ? formatDate(book.last_read_at) : '尚未閱讀'}</span><span>${detailLabel}</span></div><p>${escapeHtml(description)}</p></div><div class="library-progress"><span>${Math.round(progress * 100)}%</span><div><i style="width:${Math.round(progress * 100)}%"></i></div></div><div class="card-actions"><button class="primary-btn" data-open-library-book="${book.id}" data-library-source="${book.source}">開啟閱讀</button><button class="ghost-btn" data-download-library-epub="${book.id}" data-library-source="${book.source}">下載 EPUB</button>${deleteAction}</div></div></article>`;
   }).join('');
 }
 
@@ -6393,6 +6510,45 @@ async function openLibraryBook(bookId) {
   await openReaderChapter(Math.min(book.current_chapter || 0, Math.max(cloudLibrary.readerChapters.length - 1, 0)), { restoreProgress: true });
 }
 
+async function fetchPublicAssetBlob(assetPath, errorPrefix = '下載檔案失敗') {
+  const response = await fetch(assetPath, { cache: 'force-cache' });
+  if (!response.ok) throw new Error(`${errorPrefix}：HTTP ${response.status}`);
+  return response.blob();
+}
+
+async function loadSystemLibraryEpub(book) {
+  const cached = await getCachedEpub(book.id);
+  if (cached) return cached;
+  if (!book.epub_file_path) throw new Error('這本系統書籍沒有 EPUB 路徑。');
+  const blob = await fetchPublicAssetBlob(book.epub_file_path, '下載 EPUB 失敗');
+  await cacheEpubBlob(book.id, blob);
+  return blob;
+}
+
+async function openSystemLibraryBook(bookId) {
+  const book = getSystemLibraryBook(bookId);
+  if (!book) throw new Error('找不到這本系統預設書籍。');
+  const epubBlob = await loadSystemLibraryEpub(book);
+  const parsed = await parseExternalEpub(epubBlob);
+  const chapters = normalizeLibraryChapters((parsed.chapters || []).map((chapter, index) => ({
+    ...chapter,
+    id: `${book.id}_chapter_${index}`,
+    book_id: book.id,
+  })));
+  const readerBook = {
+    ...book,
+    total_chapters: chapters.length,
+    totalChapters: chapters.length,
+    source: 'system',
+  };
+  cloudLibrary.selectedBookId = book.id;
+  cloudLibrary.readerBook = readerBook;
+  cloudLibrary.readerChapters = await readEpubChapters(epubBlob, chapters, { source: 'system' });
+  setView('reader');
+  renderReaderShell();
+  await openReaderChapter(Math.min(book.current_chapter || 0, Math.max(cloudLibrary.readerChapters.length - 1, 0)), { restoreProgress: true });
+}
+
 async function openImportedLibraryBook(bookId) {
   const book = getImportedBook(bookId);
   if (!book) throw new Error('找不到這本外部 EPUB。');
@@ -6416,6 +6572,15 @@ async function downloadLibraryBookEpub(bookId) {
   if (error) throw new Error(buildStorageError(error, '下載 EPUB 失敗'));
   const safeTitle = String(book.title || 'book').replace(/[\\/:*?"<>|]+/g, '').trim() || 'book';
   downloadBlob(`${safeTitle}.epub`, data);
+  showToast('EPUB 已下載。');
+}
+
+async function downloadSystemLibraryBookEpub(bookId) {
+  const book = getSystemLibraryBook(bookId);
+  if (!book) throw new Error('找不到這本系統預設書籍。');
+  const epubBlob = await loadSystemLibraryEpub(book);
+  const safeTitle = String(book.title || 'book').replace(/[\\/:*?"<>|]+/g, '').trim() || 'book';
+  downloadBlob(`${safeTitle}.epub`, epubBlob);
   showToast('EPUB 已下載。');
 }
 
@@ -6445,7 +6610,7 @@ function renderReaderShell() {
   ensureReaderViewShell();
   document.getElementById('reader-title').textContent = book.title;
   const metaParts = [book.author || '未填作者'];
-  metaParts.push(book.source === 'imported_epub' ? '外部匯入 EPUB' : `版本 ${book.version}`);
+  metaParts.push(book.source === 'imported_epub' ? '外部匯入 EPUB' : (book.source === 'system' ? '系統預設聖經' : `版本 ${book.version}`));
   document.getElementById('reader-meta').textContent = metaParts.join(' · ');
   document.getElementById('reader-chapter-nav').innerHTML = cloudLibrary.readerChapters.map((chapter, index) => `<option value="${index}">${escapeHtml(chapter.title || `第 ${index + 1} 章`)}</option>`).join('');
   hideReaderControls();
@@ -6988,6 +7153,14 @@ function toggleReaderControls() {
 
 async function persistReadingProgress(bookId, currentChapter, readingProgress) {
   const payload = { current_chapter: currentChapter, reading_progress: readingProgress, last_read_at: nowIso(), updated_at: nowIso() };
+  const systemBook = getSystemLibraryBook(bookId);
+  if (systemBook) {
+    saveSystemLibraryProgress(bookId, payload);
+    if (cloudLibrary.readerBook?.id === bookId) Object.assign(cloudLibrary.readerBook, payload);
+    renderLibrary();
+    renderDesktopBookshelfCard();
+    return;
+  }
   const importedBook = getImportedBook(bookId);
   if (importedBook) {
     importedBook.current_chapter = payload.current_chapter;
@@ -7438,16 +7611,22 @@ function getLibrarySourceAction(element) {
 }
 
 async function openLibraryBookBySource(bookId, source = 'generated') {
+  if (source === 'system') return openSystemLibraryBook(bookId);
   if (source === 'imported_epub') return openImportedLibraryBook(bookId);
   return openLibraryBook(bookId);
 }
 
 async function downloadLibraryBookBySource(bookId, source = 'generated') {
+  if (source === 'system') return downloadSystemLibraryBookEpub(bookId);
   if (source === 'imported_epub') return downloadImportedLibraryBookEpub(bookId);
   return downloadLibraryBookEpub(bookId);
 }
 
 async function deleteLibraryBookBySource(bookId, source = 'generated') {
+  if (source === 'system') {
+    showToast('系統預設書籍無法刪除。');
+    return;
+  }
   if (source === 'imported_epub') return deleteImportedLibraryBook(bookId);
   return deleteLibraryBook(bookId);
 }

@@ -1667,6 +1667,10 @@ body.account-settings-open {
   background: rgba(88, 110, 141, 0.12);
   color: #526a87;
 }
+.library-badge-system {
+  background: rgba(15, 92, 92, 0.12);
+  color: #0f5c5c;
+}
 .library-progress { display: grid; grid-template-columns: 44px 1fr; gap: 10px; align-items: center; color: var(--muted); font-size: 13px; }
 .library-progress div, .reader-progress div { height: 8px; border-radius: 999px; background: rgba(191,211,208,0.45); overflow: hidden; }
 .library-progress i, .reader-progress i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(135deg, var(--primary), #7cc6c2); }
@@ -4785,6 +4789,16 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
     place-items: center;
     font-size: 11px;
     font-weight: 700;
+  }
+
+  .bookshelf-cover-thumb {
+    width: 56px;
+    height: 74px;
+    border-radius: 14px;
+    border: 1px solid rgba(191, 211, 208, 0.82);
+    object-fit: cover;
+    display: block;
+    background: #fff;
   }
 
   .bookshelf-book-copy {
