@@ -767,6 +767,14 @@ input:focus, textarea:focus, select:focus {
   flex-wrap: wrap;
 }
 .modal-intro { margin: 0 0 14px; line-height: 1.75; color: #496468; }
+body.account-settings-open {
+  overflow: hidden;
+}
+#account-settings-modal {
+  padding: 20px;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
 .support-info {
   display: grid; gap: 10px; padding: 16px; border-radius: 18px; background: linear-gradient(180deg, #fff7fa, #f5fcfb);
   border: 1px solid rgba(191,211,208,0.75);
@@ -2206,6 +2214,26 @@ body:not(.auth-locked) .main {
 
 .account-settings-card {
   width: min(92vw, 560px);
+  max-height: 90vh;
+  max-height: min(90vh, calc(100dvh - 32px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.account-settings-card > .panel-header {
+  flex: 0 0 auto;
+  margin-bottom: 0;
+  padding-bottom: 14px;
+}
+
+.account-settings-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+  padding-bottom: max(2px, env(safe-area-inset-bottom));
+  scrollbar-gutter: stable;
 }
 
 .account-settings-section {
@@ -2229,6 +2257,27 @@ body:not(.auth-locked) .main {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.account-password-message {
+  margin: 0;
+}
+
+.account-settings-signout-section {
+  padding-bottom: 2px;
+}
+
+@media (max-width: 640px) {
+  #account-settings-modal {
+    padding: 14px;
+  }
+
+  .account-settings-card {
+    width: min(100%, 560px);
+    max-height: 92vh;
+    max-height: min(92vh, calc(100dvh - 20px));
+    padding: 18px;
+  }
 }
 
 .site-footer {

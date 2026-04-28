@@ -634,42 +634,47 @@
       <div class="panel-header">
         <div>
           <h2 id="account-settings-title">帳號設定</h2>
-          <p class="modal-intro">把同步、備份與帳號操作收在這裡，首頁只保留最重要的閱讀入口。</p>
         </div>
         <button id="close-account-settings-btn" class="ghost-btn small" type="button">關閉</button>
       </div>
-      <div class="account-settings-section">
-        <span class="account-settings-label">目前帳號</span>
-        <strong id="account-settings-email">-</strong>
-      </div>
-      <div class="account-settings-section">
-        <span class="account-settings-label">修改密碼</span>
-        <div class="form-stack">
-          <label>新密碼
-            <input id="account-new-password" type="password" placeholder="至少 6 碼" autocomplete="new-password" />
-          </label>
-          <label>確認新密碼
-            <input id="account-confirm-password" type="password" placeholder="再次輸入新密碼" autocomplete="new-password" />
-          </label>
+      <div class="account-settings-body">
+        <div class="account-settings-section">
+          <span class="account-settings-label">目前帳號</span>
+          <strong id="account-settings-email">-</strong>
+        </div>
+        <div class="account-settings-section">
+          <span class="account-settings-label">修改密碼</span>
           <div class="account-settings-actions">
-            <button id="account-update-password-btn" class="primary-btn" type="button">更新密碼</button>
+            <button id="account-password-toggle-btn" class="ghost-btn" type="button" aria-expanded="false" aria-controls="account-password-form">修改密碼</button>
           </div>
-          <p class="caption">更新成功後會登出，請使用新密碼重新登入。</p>
+          <div id="account-password-form" class="form-stack hidden">
+            <label>新密碼
+              <input id="account-new-password" type="password" placeholder="至少 6 碼" autocomplete="new-password" />
+            </label>
+            <label>確認新密碼
+              <input id="account-confirm-password" type="password" placeholder="再次輸入新密碼" autocomplete="new-password" />
+            </label>
+            <div class="account-settings-actions">
+              <button id="account-update-password-btn" class="primary-btn" type="button">更新密碼</button>
+              <button id="account-cancel-password-btn" class="ghost-btn" type="button">取消</button>
+            </div>
+            <p id="account-password-message" class="caption account-password-message hidden" aria-live="polite"></p>
+          </div>
         </div>
-      </div>
-      <div id="account-cloud-actions" class="account-settings-section">
-        <span class="account-settings-label">雲端資料</span>
-        <div class="account-settings-actions">
-          <button id="push-local-to-cloud-btn" class="ghost-btn" type="button">上傳本機資料</button>
-          <button id="download-backup-btn" class="ghost-btn" type="button">下載雲端備份</button>
+        <div id="account-cloud-actions" class="account-settings-section">
+          <span class="account-settings-label">雲端資料</span>
+          <div class="account-settings-actions">
+            <button id="push-local-to-cloud-btn" class="ghost-btn" type="button">上傳本機資料</button>
+            <button id="download-backup-btn" class="ghost-btn" type="button">下載雲端備份</button>
+          </div>
+          <p id="account-cloud-hint" class="caption">登入雲端帳號後，可把本機資料上傳或下載雲端備份。</p>
         </div>
-        <p id="account-cloud-hint" class="caption">登入雲端帳號後，可把本機資料上傳或下載雲端備份。</p>
-      </div>
-      <div class="account-settings-section">
-        <span class="account-settings-label">其他</span>
-        <div class="account-settings-actions">
-          <button id="go-snapshots-btn" class="ghost-btn" type="button">查看快照備份</button>
-          <button id="signout-btn" class="danger-btn" type="button">登出</button>
+        <div class="account-settings-section account-settings-signout-section">
+          <span class="account-settings-label">登出</span>
+          <p class="caption">登出後可再次使用帳號登入。</p>
+          <div class="account-settings-actions">
+            <button id="signout-btn" class="danger-btn" type="button">登出</button>
+          </div>
         </div>
       </div>
     </div>

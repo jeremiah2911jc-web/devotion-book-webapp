@@ -213,9 +213,13 @@ const els = {
   accountSettingsBackdrop: document.getElementById('account-settings-backdrop'),
   closeAccountSettingsBtn: document.getElementById('close-account-settings-btn'),
   accountSettingsEmail: document.getElementById('account-settings-email'),
+  accountPasswordToggleBtn: document.getElementById('account-password-toggle-btn'),
+  accountPasswordForm: document.getElementById('account-password-form'),
   accountNewPassword: document.getElementById('account-new-password'),
   accountConfirmPassword: document.getElementById('account-confirm-password'),
   accountUpdatePasswordBtn: document.getElementById('account-update-password-btn'),
+  accountCancelPasswordBtn: document.getElementById('account-cancel-password-btn'),
+  accountPasswordMessage: document.getElementById('account-password-message'),
   accountCloudActions: document.getElementById('account-cloud-actions'),
   accountCloudHint: document.getElementById('account-cloud-hint'),
   goSnapshotsBtn: document.getElementById('go-snapshots-btn'),
@@ -2723,6 +2727,29 @@ function syncAccountSettingsModal() {
 function clearAccountPasswordFields() {
   if (els.accountNewPassword) els.accountNewPassword.value = '';
   if (els.accountConfirmPassword) els.accountConfirmPassword.value = '';
+  clearAccountPasswordMessage();
+}
+function clearAccountPasswordMessage() {
+  if (!els.accountPasswordMessage) return;
+  els.accountPasswordMessage.textContent = '';
+  els.accountPasswordMessage.classList.add('hidden');
+  els.accountPasswordMessage.classList.remove('error-text');
+}
+function showAccountPasswordMessage(message) {
+  if (!els.accountPasswordMessage) return;
+  els.accountPasswordMessage.textContent = message;
+  els.accountPasswordMessage.classList.remove('hidden');
+  els.accountPasswordMessage.classList.add('error-text');
+}
+function setAccountPasswordFormExpanded(expanded = false) {
+  els.accountPasswordForm?.classList.toggle('hidden', !expanded);
+  els.accountPasswordToggleBtn?.classList.toggle('hidden', expanded);
+  els.accountPasswordToggleBtn?.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+  if (!expanded) {
+    clearAccountPasswordFields();
+    return;
+  }
+  els.accountNewPassword?.focus();
 }
 function openAccountSettingsModal() {
   if (!state.currentUser) {
@@ -2730,12 +2757,14 @@ function openAccountSettingsModal() {
     return;
   }
   syncAccountSettingsModal();
-  clearAccountPasswordFields();
+  setAccountPasswordFormExpanded(false);
+  document.body.classList.add('account-settings-open');
   els.accountSettingsModal?.classList.remove('hidden');
   els.accountSettingsModal?.setAttribute('aria-hidden', 'false');
 }
 function closeAccountSettingsModal() {
-  clearAccountPasswordFields();
+  setAccountPasswordFormExpanded(false);
+  document.body.classList.remove('account-settings-open');
   els.accountSettingsModal?.classList.add('hidden');
   els.accountSettingsModal?.setAttribute('aria-hidden', 'true');
 }
@@ -2866,6 +2895,8 @@ function bindEvents() {
   els.openAccountSettingsButtons.forEach(button => button.addEventListener('click', openAccountSettingsModal));
   els.accountSettingsBackdrop?.addEventListener('click', closeAccountSettingsModal);
   els.closeAccountSettingsBtn?.addEventListener('click', closeAccountSettingsModal);
+  els.accountPasswordToggleBtn?.addEventListener('click', () => setAccountPasswordFormExpanded(true));
+  els.accountCancelPasswordBtn?.addEventListener('click', () => setAccountPasswordFormExpanded(false));
   els.accountUpdatePasswordBtn?.addEventListener('click', () => handleAccountPasswordUpdate().catch(handleError));
   els.signoutBtn.addEventListener('click', () => handleSignOut().catch(handleError));
   els.accountSignoutBtn?.addEventListener('click', () => handleSignOut().catch(handleError));
@@ -3048,8 +3079,15 @@ async function handleAccountPasswordUpdate() {
   if (!state.supabase || !state.currentUser) throw new Error('請先登入後再修改密碼。');
   const newPassword = els.accountNewPassword?.value?.trim() || '';
   const confirmPassword = els.accountConfirmPassword?.value?.trim() || '';
-  if (!newPassword || newPassword.length < 6) throw new Error('密碼至少需要 6 碼。');
-  if (newPassword !== confirmPassword) throw new Error('新密碼與確認新密碼不一致。');
+  clearAccountPasswordMessage();
+  if (!newPassword || newPassword.length < 6) {
+    showAccountPasswordMessage('密碼至少需要 6 碼。');
+    return;
+  }
+  if (newPassword !== confirmPassword) {
+    showAccountPasswordMessage('新密碼與確認新密碼不一致。');
+    return;
+  }
   const { error } = await state.supabase.auth.updateUser({ password: newPassword });
   if (error) throw createAuthError(error);
   clearAccountPasswordFields();
