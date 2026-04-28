@@ -2485,6 +2485,10 @@ function localizeAuthError(error, fallback = '操作失敗，請稍後再試。'
   if (text.includes('password should be at least 6 characters')
     || text.includes('password too short')
     || text.includes('weak_password')) return '密碼至少需要 6 碼。';
+  if (text.includes('same password')
+    || text.includes('new password should be different')
+    || text.includes('password should be different')
+    || text.includes('different from the old password')) return '新密碼不可與目前密碼相同，請改用另一組新密碼。';
   if (text.includes('recovery token expired')
     || text.includes('invalid token')
     || text.includes('otp expired')

@@ -2077,6 +2077,7 @@ body:not(.auth-locked) .main {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  flex-wrap: wrap;
   margin-bottom: 38px;
   padding: 16px 18px;
 }
@@ -2126,6 +2127,15 @@ body:not(.auth-locked) .main {
   margin: 0;
   color: var(--muted);
   font-size: 11px;
+}
+
+.account-summary-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
 }
 
 .account-settings-trigger {
@@ -5088,5 +5098,50 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
 
   .admin-usage-card-head {
     display: grid;
+  }
+}
+
+@media (max-width: 720px) {
+  .account-summary-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 8px;
+  }
+
+  .account-summary-main,
+  .account-summary-copy {
+    display: contents;
+  }
+
+  .account-summary-card .account-avatar {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    align-self: start;
+  }
+
+  .account-summary-copy strong {
+    grid-column: 2 / 4;
+    grid-row: 1;
+    align-self: end;
+  }
+
+  .account-summary-copy p {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: center;
+    font-size: 11px;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .account-summary-actions {
+    grid-column: 3;
+    grid-row: 2;
+    width: auto;
+    justify-content: flex-end;
+    align-self: center;
   }
 }
