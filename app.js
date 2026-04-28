@@ -193,6 +193,8 @@ const els = {
   authInlineBackdrop: document.getElementById('auth-inline-backdrop'),
   gateAuthEmail: document.getElementById('gate-auth-email'),
   gateAuthPassword: document.getElementById('gate-auth-password'),
+  gateAuthPasswordConfirmLabel: document.getElementById('gate-auth-password-confirm-label'),
+  gateAuthPasswordConfirm: document.getElementById('gate-auth-password-confirm'),
   gateSubmitBtn: document.getElementById('gate-submit-btn'),
   gateResetPasswordBtn: document.getElementById('gate-reset-password-btn'),
   authSettingsSheet: document.getElementById('auth-settings-sheet'),
@@ -232,6 +234,9 @@ function removeRetiredInterfaceElements() {
   document.getElementById('view-snapshots')?.remove();
   document.getElementById('summary-snapshots-count')?.closest('.summary-card')?.remove();
   document.getElementById('create-snapshot-btn')?.remove();
+  document.querySelectorAll('.desktop-sidebar-nav > [data-open-account-settings]').forEach(element => element.remove());
+  document.getElementById('gate-reset-password-btn')?.replaceChildren(document.createTextNode('忘記密碼'));
+  document.getElementById('reset-password-btn')?.replaceChildren(document.createTextNode('忘記密碼'));
   document.querySelector('.sidebar h1 + .muted')?.remove();
   const authCopy = document.querySelector('.auth-gate-copy');
   if (authCopy) authCopy.textContent = '建立免費帳戶後，可在手機與桌機間同步資料。';
@@ -267,6 +272,7 @@ const state = {
   scriptureLastAppliedBlock: '',
   scriptureAppliedBlocks: [],
   authInlineMode: 'register',
+  passwordRecoveryActive: false,
   deviceId: getOrCreateDeviceId(),
   realtimeChannel: null,
   syncStatus: '本機模式',
@@ -907,7 +913,11 @@ function ensureOperationManualUi() {
       <span class="nav-icon asset-icon asset-sprite-system icon-book" aria-hidden="true"></span>
       <span>操作手冊</span>
     `;
-    settingsLink?.insertAdjacentElement('beforebegin', button);
+    if (settingsLink) {
+      settingsLink.insertAdjacentElement('beforebegin', button);
+    } else {
+      desktopNav.appendChild(button);
+    }
   }
 
   if (!document.getElementById('view-manual')) {
@@ -2527,6 +2537,7 @@ function syncAuthInputs({ email = '', password = '' } = {}) {
   if (typeof password === 'string') {
     if (els.authPassword) els.authPassword.value = password;
     if (els.gateAuthPassword) els.gateAuthPassword.value = password;
+    if (els.gateAuthPasswordConfirm && password === '') els.gateAuthPasswordConfirm.value = '';
   }
 }
 function getAuthCredentials() {
@@ -2561,27 +2572,105 @@ function settleMobileViewport() {
 function openAuthInline(mode = 'register') {
   state.authInlineMode = mode;
   const isRegister = mode === 'register';
+  const isPasswordRecovery = mode === 'password-recovery';
   els.authInlinePanel?.classList.remove('hidden');
   els.authInlinePanel?.setAttribute('aria-hidden', 'false');
-  if (els.authInlineTitle) els.authInlineTitle.textContent = isRegister ? '建立帳戶' : '登入';
+  if (els.authInlineTitle) {
+    els.authInlineTitle.textContent = isPasswordRecovery ? '設定新密碼' : (isRegister ? '建立帳戶' : '登入');
+  }
   const intro = document.getElementById('auth-inline-intro');
-  if (intro) intro.textContent = isRegister
-    ? '輸入 Email 與密碼後即可建立帳戶。'
-    : '輸入 Email 與密碼後即可登入。';
+  if (intro) {
+    intro.textContent = isPasswordRecovery
+      ? '請輸入新密碼，更新後會回到登入頁。'
+      : (isRegister ? '輸入 Email 與密碼後即可建立帳戶。' : '輸入 Email 與密碼後即可登入。');
+  }
+  syncPasswordRecoveryForm(isPasswordRecovery);
   if (els.gateSubmitBtn) {
-    els.gateSubmitBtn.textContent = isRegister ? '建立帳戶' : '登入';
-    els.gateSubmitBtn.classList.toggle('secondary-btn', !isRegister);
-    els.gateSubmitBtn.classList.toggle('primary-btn', isRegister);
+    els.gateSubmitBtn.textContent = isPasswordRecovery ? '更新密碼' : (isRegister ? '建立帳戶' : '登入');
+    els.gateSubmitBtn.classList.toggle('secondary-btn', !isRegister && !isPasswordRecovery);
+    els.gateSubmitBtn.classList.toggle('primary-btn', isRegister || isPasswordRecovery);
   }
   if (els.gateResetPasswordBtn) {
-    els.gateResetPasswordBtn.classList.remove('hidden');
-    els.gateResetPasswordBtn.textContent = '忘記密碼 / 重設密碼';
+    els.gateResetPasswordBtn.classList.toggle('hidden', isPasswordRecovery);
+    els.gateResetPasswordBtn.textContent = '忘記密碼';
   }
-  els.gateAuthEmail?.focus();
+  els.closeAuthInlineBtn?.classList.toggle('hidden', isPasswordRecovery);
+  (isPasswordRecovery ? els.gateAuthPassword : els.gateAuthEmail)?.focus();
 }
 function closeAuthInline() {
+  if (state.passwordRecoveryActive) return;
   els.authInlinePanel?.classList.add('hidden');
   els.authInlinePanel?.setAttribute('aria-hidden', 'true');
+}
+function setLabelTextForInput(input, text) {
+  const label = input?.closest('label');
+  const node = label ? [...label.childNodes].find(item => item.nodeType === Node.TEXT_NODE) : null;
+  if (node) node.textContent = `${text}\n                `;
+}
+function syncPasswordRecoveryForm(isPasswordRecovery = false) {
+  els.gateAuthEmail?.closest('label')?.classList.toggle('hidden', isPasswordRecovery);
+  els.gateAuthPasswordConfirmLabel?.classList.toggle('hidden', !isPasswordRecovery);
+  if (els.gateAuthPassword) {
+    els.gateAuthPassword.value = '';
+    els.gateAuthPassword.autocomplete = isPasswordRecovery ? 'new-password' : 'current-password';
+    els.gateAuthPassword.placeholder = isPasswordRecovery ? '至少 6 碼' : '至少 6 碼';
+    setLabelTextForInput(els.gateAuthPassword, isPasswordRecovery ? '新密碼' : 'Password');
+  }
+  if (els.gateAuthPasswordConfirm) els.gateAuthPasswordConfirm.value = '';
+}
+function getPasswordRecoveryUrlState() {
+  const hashParams = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+  const searchParams = new URLSearchParams((window.location.search || '').replace(/^\?/, ''));
+  const type = hashParams.get('type') || searchParams.get('type') || '';
+  const error = hashParams.get('error') || searchParams.get('error') || hashParams.get('error_code') || searchParams.get('error_code') || '';
+  const errorDescription = hashParams.get('error_description') || searchParams.get('error_description') || '';
+  return {
+    isRecovery: type === 'recovery',
+    hasError: !!error,
+    error,
+    errorDescription,
+  };
+}
+function clearAuthRecoveryUrl() {
+  if (!window.history?.replaceState) return;
+  window.history.replaceState({}, document.title, `${window.location.origin}${window.location.pathname}`);
+}
+function enterPasswordRecoveryMode() {
+  state.passwordRecoveryActive = true;
+  state.currentUser = null;
+  teardownCloudRealtime();
+  setSyncState({ status: '尚未登入', detail: '請先設定新密碼後再重新登入。', at: '' });
+  clearAuthRecoveryUrl();
+  refreshUi();
+  openAuthInline('password-recovery');
+}
+function showInvalidPasswordRecoveryLink() {
+  state.passwordRecoveryActive = false;
+  state.currentUser = null;
+  teardownCloudRealtime();
+  setSyncState({ status: '尚未登入', detail: '重設密碼連結已失效，請重新寄送忘記密碼信。', at: '' });
+  clearAuthRecoveryUrl();
+  refreshUi();
+  openAuthInline('login');
+  showToast('重設密碼連結已失效，請重新寄送忘記密碼信');
+}
+function handleSupabaseAuthStateChange(event, session) {
+  if (event === 'PASSWORD_RECOVERY') {
+    enterPasswordRecoveryMode();
+    return;
+  }
+  if (state.passwordRecoveryActive) return;
+  state.currentUser = session?.user || null;
+  ensureAdminUi();
+  if (state.currentUser) settleMobileViewport();
+  teardownCloudRealtime();
+  if (state.currentUser) {
+    setupCloudRealtime();
+  } else if (state.supabase) {
+    setSyncState({ status: '尚未登入', detail: '已設定雲端，但目前還沒有登入帳號。', at: '' });
+  }
+  refreshUi();
+  loadAllData({ silent: true, syncReason: session?.user ? '已連線到雲端帳號。' : '已登出雲端帳號。' }).catch(console.error);
 }
 function openAuthSettings() {
   syncConfigInputs();
@@ -2652,31 +2741,32 @@ async function bootstrap() {
   initSupabase();
   bindEvents();
   if (state.supabase) {
-    const { data } = await state.supabase.auth.getSession();
-    state.currentUser = data.session?.user || null;
-    ensureAdminUi();
-    if (state.currentUser) setupCloudRealtime();
-    state.supabase.auth.onAuthStateChange((_event, session) => {
-      state.currentUser = session?.user || null;
-      ensureAdminUi();
-      if (state.currentUser) settleMobileViewport();
-      teardownCloudRealtime();
-      if (state.currentUser) {
-        setupCloudRealtime();
-      } else if (state.supabase) {
-        setSyncState({ status: '尚未登入', detail: '已設定雲端，但目前還沒有登入帳號。', at: '' });
-      }
-      refreshUi();
-      loadAllData({ silent: true, syncReason: session?.user ? '已連線到雲端帳號。' : '已登出雲端帳號。' }).catch(console.error);
+    const recoveryUrlState = getPasswordRecoveryUrlState();
+    if (recoveryUrlState.isRecovery) state.passwordRecoveryActive = true;
+    state.supabase.auth.onAuthStateChange((event, session) => {
+      handleSupabaseAuthStateChange(event, session);
     });
+    const { data } = await state.supabase.auth.getSession();
+    if (recoveryUrlState.isRecovery) {
+      if (recoveryUrlState.hasError || !data.session) {
+        showInvalidPasswordRecoveryLink();
+      } else {
+        enterPasswordRecoveryMode();
+      }
+    } else if (!state.passwordRecoveryActive) {
+      state.currentUser = data.session?.user || null;
+      ensureAdminUi();
+      if (state.currentUser) setupCloudRealtime();
+    }
   } else {
     state.currentUser = getLocalUser();
     ensureAdminUi();
     setSyncState({ status: '本機模式', detail: '目前資料只保存在這台裝置。', at: '' });
   }
-  await loadAllData({ silent: true });
+  if (!state.passwordRecoveryActive) await loadAllData({ silent: true });
   runAutoBackupCheck();
   refreshUi();
+  if (state.passwordRecoveryActive) openAuthInline('password-recovery');
   renderNotePreview();
 }
 
@@ -2699,7 +2789,12 @@ function bindEvents() {
   els.openLoginBtn?.addEventListener('click', () => openAuthInline('login'));
   els.closeAuthInlineBtn?.addEventListener('click', closeAuthInline);
   els.authInlineBackdrop?.addEventListener('click', closeAuthInline);
-  els.gateSubmitBtn?.addEventListener('click', () => (state.authInlineMode === 'register' ? handleRegister() : handleLogin()).catch(handleError));
+  els.gateSubmitBtn?.addEventListener('click', () => {
+    const action = state.authInlineMode === 'password-recovery'
+      ? handleUpdateRecoveryPassword
+      : (state.authInlineMode === 'register' ? handleRegister : handleLogin);
+    action().catch(handleError);
+  });
   els.gateResetPasswordBtn?.addEventListener('click', () => handleResetPassword().catch(handleError));
   els.resetPasswordBtn?.addEventListener('click', () => handleResetPassword().catch(handleError));
   els.gateSaveConfigBtn?.addEventListener('click', () => applyConnectionSettings({
@@ -2861,6 +2956,28 @@ async function handleResetPassword() {
   showToast('\u91cd\u8a2d\u5bc6\u78bc\u4fe1\u5df2\u5bc4\u51fa\uff0c\u8acb\u6aa2\u67e5\u4fe1\u7bb1\u3002');
 }
 
+async function handleUpdateRecoveryPassword() {
+  if (!state.supabase || !state.passwordRecoveryActive) {
+    throw new Error('重設密碼連結已失效，請重新寄送忘記密碼信');
+  }
+  const newPassword = els.gateAuthPassword?.value?.trim() || '';
+  const confirmPassword = els.gateAuthPasswordConfirm?.value?.trim() || '';
+  if (!newPassword || newPassword.length < 6) throw new Error('新密碼至少需要 6 碼。');
+  if (newPassword !== confirmPassword) throw new Error('新密碼與確認新密碼不一致。');
+  const { error } = await state.supabase.auth.updateUser({ password: newPassword });
+  if (error) {
+    throw new Error('重設密碼連結已失效，請重新寄送忘記密碼信');
+  }
+  state.passwordRecoveryActive = false;
+  state.currentUser = null;
+  syncAuthInputs({ password: '' });
+  showToast('密碼已更新，請重新登入');
+  await state.supabase.auth.signOut();
+  setSyncState({ status: '尚未登入', detail: '密碼已更新，請使用新密碼重新登入。', at: '' });
+  refreshUi();
+  openAuthInline('login');
+}
+
 async function handleMagicLink() {
   const { email } = getAuthCredentials();
   if (!email) throw new Error('\u8acb\u5148\u8f38\u5165 Email\u3002');
@@ -2970,7 +3087,6 @@ function ensureAdminUi() {
   const existingNavLink = document.getElementById('desktop-admin-dashboard-link');
   if (canAccessAdmin) {
     if (desktopNav && !existingNavLink) {
-      const settingsLink = desktopNav.querySelector('[data-open-account-settings]');
       const button = document.createElement('button');
       button.id = 'desktop-admin-dashboard-link';
       button.className = 'desktop-sidebar-link';
@@ -2980,7 +3096,7 @@ function ensureAdminUi() {
         <span class="nav-icon asset-icon asset-sprite-system icon-gear" aria-hidden="true"></span>
         <span>管理後台</span>
       `;
-      settingsLink?.insertAdjacentElement('beforebegin', button);
+      desktopNav.appendChild(button);
     }
   } else {
     existingNavLink?.remove();
@@ -3401,6 +3517,8 @@ function syncDesktopDashboardStaticCopy() {
 
 function refreshUi() {
   runAutoBackupCheck();
+  const isPasswordRecovery = state.passwordRecoveryActive;
+  const isSignedIn = !!state.currentUser && !isPasswordRecovery;
   const accountEmail = String(state.currentUser?.email || state.currentUser?.id || '').trim() || '未顯示帳號';
   syncDesktopDashboardStaticCopy();
   ensureWritingWorkspaceUi();
@@ -3415,16 +3533,16 @@ function refreshUi() {
   if (els.authModeBadge) els.authModeBadge.textContent = state.supabase ? '雲端模式' : '本機模式';
   if (els.statusStorage) els.statusStorage.textContent = state.supabase ? 'Supabase' : 'Local';
   if (els.statusSync) els.statusSync.textContent = state.syncStatus || '未啟用';
-  els.authForms.classList.toggle('hidden', !!state.currentUser);
-  els.authUser.classList.toggle('hidden', !state.currentUser);
-  els.currentUserText.textContent = state.currentUser ? `目前使用者：${accountEmail}` : '尚未登入';
+  els.authForms.classList.toggle('hidden', isSignedIn);
+  els.authUser.classList.toggle('hidden', !isSignedIn);
+  els.currentUserText.textContent = isSignedIn ? `目前使用者：${accountEmail}` : '尚未登入';
   if (els.accountEmail) els.accountEmail.textContent = accountEmail;
-  if (els.desktopAccountEmail) els.desktopAccountEmail.textContent = state.currentUser ? accountEmail : '尚未登入';
-  els.accountSignoutBtn?.toggleAttribute('disabled', !state.currentUser);
-  els.desktopSidebarSignoutBtn?.toggleAttribute('disabled', !state.currentUser);
-  document.body.classList.toggle('auth-locked', !state.currentUser);
-  els.authGate?.classList.toggle('hidden', !!state.currentUser);
-  els.authGate?.setAttribute('aria-hidden', state.currentUser ? 'true' : 'false');
+  if (els.desktopAccountEmail) els.desktopAccountEmail.textContent = isSignedIn ? accountEmail : '尚未登入';
+  els.accountSignoutBtn?.toggleAttribute('disabled', !isSignedIn);
+  els.desktopSidebarSignoutBtn?.toggleAttribute('disabled', !isSignedIn);
+  document.body.classList.toggle('auth-locked', !isSignedIn);
+  els.authGate?.classList.toggle('hidden', isSignedIn);
+  els.authGate?.setAttribute('aria-hidden', isSignedIn ? 'true' : 'false');
   if (els.authInlineHint) {
     els.authInlineHint.textContent = state.supabase
       ? '\u76ee\u524d\u4f7f\u7528 Supabase Auth\uff0c\u8acb\u4f7f\u7528\u4fe1\u7bb1\u8207\u5bc6\u78bc\u767b\u5165\uff0c\u6216\u6539\u7528 Magic Link\u3002'
@@ -3434,9 +3552,9 @@ function refreshUi() {
     els.authInlineResetHint.classList.toggle('hidden', state.authInlineMode !== 'login');
   }
   if (els.gateSupabaseUrl && document.activeElement !== els.gateSupabaseUrl && document.activeElement !== els.gateSupabaseAnonKey) syncConfigInputs();
-  const showSyncPanel = !!state.currentUser;
+  const showSyncPanel = isSignedIn;
   els.cloudSyncPanel?.classList.toggle('hidden', !showSyncPanel);
-  const cloudActionsAvailable = !!(state.supabase && state.currentUser);
+  const cloudActionsAvailable = !!(state.supabase && isSignedIn);
   els.accountCloudActions?.classList.remove('hidden');
   els.pushLocalToCloudBtn?.toggleAttribute('disabled', !cloudActionsAvailable);
   els.downloadBackupBtn?.toggleAttribute('disabled', !cloudActionsAvailable);
@@ -3448,7 +3566,7 @@ function refreshUi() {
   if (els.syncStatusText) els.syncStatusText.textContent = state.syncStatus || '未啟用';
   if (els.syncLastTime) els.syncLastTime.textContent = state.lastSyncAt ? formatDate(state.lastSyncAt) : '尚未同步';
   if (els.syncDetailText) els.syncDetailText.textContent = state.syncDetail || '登入同一個雲端帳號後，可在多裝置同步。';
-  if (state.currentUser) {
+  if (isSignedIn) {
     closeAuthInline();
     closeAuthSettings();
     syncAuthInputs({ email: state.currentUser.email || '', password: '' });
