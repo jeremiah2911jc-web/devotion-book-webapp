@@ -1595,9 +1595,11 @@ body.account-settings-open {
   gap: 14px;
 }
 .manual-install-card {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  align-content: start;
   gap: 10px;
-  padding: 18px;
+  padding: 16px 18px;
   border-radius: 18px;
   border: 1px solid rgba(191, 211, 208, 0.72);
   background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,252,251,0.9));
@@ -1605,8 +1607,17 @@ body.account-settings-open {
 .manual-install-card h3 {
   margin: 0;
 }
+.manual-install-card p {
+  margin: 0;
+}
 .manual-install-card ol {
   margin: 0;
+}
+.manual-install-note {
+  margin: 2px 0 0;
+  color: #5f7375;
+  font-size: 14px;
+  line-height: 1.75;
 }
 .library-book { display: grid; grid-template-columns: 112px 1fr; gap: 16px; padding: 14px; border: 1px solid rgba(191,211,208,0.78); border-radius: 16px; background: rgba(255,255,255,0.9); }
 .library-book.selected { border-color: rgba(90,166,166,0.62); box-shadow: 0 12px 28px rgba(90,166,166,0.12); }
