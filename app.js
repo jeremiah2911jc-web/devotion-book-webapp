@@ -212,6 +212,10 @@ const els = {
   accountSettingsModal: document.getElementById('account-settings-modal'),
   accountSettingsBackdrop: document.getElementById('account-settings-backdrop'),
   closeAccountSettingsBtn: document.getElementById('close-account-settings-btn'),
+  accountSettingsEmail: document.getElementById('account-settings-email'),
+  accountNewPassword: document.getElementById('account-new-password'),
+  accountConfirmPassword: document.getElementById('account-confirm-password'),
+  accountUpdatePasswordBtn: document.getElementById('account-update-password-btn'),
   accountCloudActions: document.getElementById('account-cloud-actions'),
   accountCloudHint: document.getElementById('account-cloud-hint'),
   goSnapshotsBtn: document.getElementById('go-snapshots-btn'),
@@ -2455,6 +2459,38 @@ function showToast(message) {
   clearTimeout(showToast.timer);
   showToast.timer = setTimeout(() => els.toast.classList.add('hidden'), 2600);
 }
+function getErrorText(error) {
+  return String([
+    error?.message,
+    error?.code,
+    error?.name,
+    error?.status,
+    error?.error_description,
+  ].filter(Boolean).join(' ')).toLowerCase();
+}
+function localizeAuthError(error, fallback = '操作失敗，請稍後再試。') {
+  const text = getErrorText(error);
+  if (!text) return fallback;
+  if (text.includes('invalid login credentials')) return 'Email 或密碼錯誤，請重新輸入。';
+  if (text.includes('email not confirmed') || text.includes('email_not_confirmed')) return '此 Email 尚未完成驗證，請先完成信箱驗證。';
+  if (text.includes('email rate limit')
+    || text.includes('rate limit exceeded')
+    || text.includes('too many requests')
+    || text.includes('over_email_send_rate_limit')) return '重設密碼信寄送過於頻繁，請稍後再試。';
+  if (text.includes('user not found') || text.includes('user_not_found')) return '找不到此帳號，請確認 Email 是否正確。';
+  if (text.includes('password should be at least 6 characters')
+    || text.includes('password too short')
+    || text.includes('weak_password')) return '密碼至少需要 6 碼。';
+  if (text.includes('recovery token expired')
+    || text.includes('invalid token')
+    || text.includes('otp expired')
+    || text.includes('otp_expired')
+    || text.includes('link is invalid')) return '重設密碼連結已失效，請重新寄送忘記密碼信。';
+  return fallback;
+}
+function createAuthError(error, fallback) {
+  return new Error(localizeAuthError(error, fallback));
+}
 function downloadBlob(filename, blob) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -2679,6 +2715,30 @@ function openAuthSettings() {
 function closeAuthSettings() {
   els.authSettingsSheet?.classList.add('hidden');
 }
+function syncAccountSettingsModal() {
+  if (els.accountSettingsEmail) {
+    els.accountSettingsEmail.textContent = state.currentUser?.email || '尚未登入';
+  }
+}
+function clearAccountPasswordFields() {
+  if (els.accountNewPassword) els.accountNewPassword.value = '';
+  if (els.accountConfirmPassword) els.accountConfirmPassword.value = '';
+}
+function openAccountSettingsModal() {
+  if (!state.currentUser) {
+    showToast('請先登入後再進入帳號設定。');
+    return;
+  }
+  syncAccountSettingsModal();
+  clearAccountPasswordFields();
+  els.accountSettingsModal?.classList.remove('hidden');
+  els.accountSettingsModal?.setAttribute('aria-hidden', 'false');
+}
+function closeAccountSettingsModal() {
+  clearAccountPasswordFields();
+  els.accountSettingsModal?.classList.add('hidden');
+  els.accountSettingsModal?.setAttribute('aria-hidden', 'true');
+}
 async function applyConnectionSettings({ supabaseUrl = '', supabaseAnonKey = '' } = {}, successMessage = '') {
   teardownCloudRealtime();
 
@@ -2802,6 +2862,11 @@ function bindEvents() {
     supabaseAnonKey: els.gateSupabaseAnonKey.value,
   }, 'Supabase 設定已儲存。').then(closeAuthSettings).catch(handleError));
   els.gateClearConfigBtn?.addEventListener('click', () => clearConnectionSettings().then(closeAuthSettings).catch(handleError));
+  els.openAccountSettingsBtn?.addEventListener('click', openAccountSettingsModal);
+  els.openAccountSettingsButtons.forEach(button => button.addEventListener('click', openAccountSettingsModal));
+  els.accountSettingsBackdrop?.addEventListener('click', closeAccountSettingsModal);
+  els.closeAccountSettingsBtn?.addEventListener('click', closeAccountSettingsModal);
+  els.accountUpdatePasswordBtn?.addEventListener('click', () => handleAccountPasswordUpdate().catch(handleError));
   els.signoutBtn.addEventListener('click', () => handleSignOut().catch(handleError));
   els.accountSignoutBtn?.addEventListener('click', () => handleSignOut().catch(handleError));
   els.desktopSidebarSignoutBtn?.addEventListener('click', () => handleSignOut().catch(handleError));
@@ -2859,6 +2924,7 @@ function bindEvents() {
     if (event.key === 'Escape' && !els.supportModal?.classList.contains('hidden')) closeSupportModal();
     if (event.key === 'Escape' && !els.authSettingsSheet?.classList.contains('hidden')) closeAuthSettings();
     if (event.key === 'Escape' && !els.authInlinePanel?.classList.contains('hidden')) closeAuthInline();
+    if (event.key === 'Escape' && !els.accountSettingsModal?.classList.contains('hidden')) closeAccountSettingsModal();
     if (event.key === 'Escape' && !els.notePreviewModal?.classList.contains('hidden')) closeNotePreview();
     if (event.key === 'Escape' && state.bookDraftModalOpen) closeBookDraftModal();
     if (event.key === 'Escape' && state.bookExportSettingsModalOpen) closeBookExportSettingsModal();
@@ -2913,7 +2979,7 @@ async function handleRegister() {
     });
     if (error) {
       if (isDuplicateRegistrationError(error)) throw new Error('\u6b64\u5e33\u865f\u5df2\u8a3b\u518a\u3002');
-      throw error;
+      throw createAuthError(error);
     }
     if (Array.isArray(data?.user?.identities) && data.user.identities.length === 0) {
       throw new Error('\u6b64\u5e33\u865f\u5df2\u8a3b\u518a\u3002');
@@ -2935,7 +3001,7 @@ async function handleLogin() {
   if (!email) throw new Error('\u8acb\u5148\u8f38\u5165 Email\u3002');
   if (state.supabase) {
     const { error } = await state.supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
+    if (error) throw createAuthError(error);
     showToast('\u767b\u5165\u6210\u529f\u3002');
     return;
   }
@@ -2952,7 +3018,7 @@ async function handleResetPassword() {
   const { error } = await state.supabase.auth.resetPasswordForEmail(email, {
     redirectTo: window.location.origin + window.location.pathname,
   });
-  if (error) throw error;
+  if (error) throw createAuthError(error);
   showToast('\u91cd\u8a2d\u5bc6\u78bc\u4fe1\u5df2\u5bc4\u51fa\uff0c\u8acb\u6aa2\u67e5\u4fe1\u7bb1\u3002');
 }
 
@@ -2966,7 +3032,7 @@ async function handleUpdateRecoveryPassword() {
   if (newPassword !== confirmPassword) throw new Error('新密碼與確認新密碼不一致。');
   const { error } = await state.supabase.auth.updateUser({ password: newPassword });
   if (error) {
-    throw new Error('重設密碼連結已失效，請重新寄送忘記密碼信');
+    throw createAuthError(error, '重設密碼連結已失效，請重新寄送忘記密碼信。');
   }
   state.passwordRecoveryActive = false;
   state.currentUser = null;
@@ -2974,6 +3040,25 @@ async function handleUpdateRecoveryPassword() {
   showToast('密碼已更新，請重新登入');
   await state.supabase.auth.signOut();
   setSyncState({ status: '尚未登入', detail: '密碼已更新，請使用新密碼重新登入。', at: '' });
+  refreshUi();
+  openAuthInline('login');
+}
+
+async function handleAccountPasswordUpdate() {
+  if (!state.supabase || !state.currentUser) throw new Error('請先登入後再修改密碼。');
+  const newPassword = els.accountNewPassword?.value?.trim() || '';
+  const confirmPassword = els.accountConfirmPassword?.value?.trim() || '';
+  if (!newPassword || newPassword.length < 6) throw new Error('密碼至少需要 6 碼。');
+  if (newPassword !== confirmPassword) throw new Error('新密碼與確認新密碼不一致。');
+  const { error } = await state.supabase.auth.updateUser({ password: newPassword });
+  if (error) throw createAuthError(error);
+  clearAccountPasswordFields();
+  closeAccountSettingsModal();
+  showToast('密碼已更新，請重新登入。');
+  await state.supabase.auth.signOut();
+  state.currentUser = null;
+  setSyncState({ status: '尚未登入', detail: '密碼已更新，請使用新密碼重新登入。', at: '' });
+  await loadAllData({ silent: true });
   refreshUi();
   openAuthInline('login');
 }
@@ -2986,7 +3071,7 @@ async function handleMagicLink() {
     email,
     options: { emailRedirectTo: window.location.origin + window.location.pathname },
   });
-  if (error) throw error;
+  if (error) throw createAuthError(error);
   showToast('Magic Link \u5df2\u5bc4\u51fa\u3002');
 }
 
@@ -2996,9 +3081,10 @@ async function handleForgotPassword() {
 
 async function handleSignOut() {
   teardownCloudRealtime();
+  closeAccountSettingsModal();
   if (state.supabase) {
     const { error } = await state.supabase.auth.signOut();
-    if (error) throw error;
+    if (error) throw createAuthError(error);
   } else {
     clearLocalUser();
     state.currentUser = null;
@@ -3538,6 +3624,7 @@ function refreshUi() {
   els.currentUserText.textContent = isSignedIn ? `目前使用者：${accountEmail}` : '尚未登入';
   if (els.accountEmail) els.accountEmail.textContent = accountEmail;
   if (els.desktopAccountEmail) els.desktopAccountEmail.textContent = isSignedIn ? accountEmail : '尚未登入';
+  syncAccountSettingsModal();
   els.accountSignoutBtn?.toggleAttribute('disabled', !isSignedIn);
   els.desktopSidebarSignoutBtn?.toggleAttribute('disabled', !isSignedIn);
   document.body.classList.toggle('auth-locked', !isSignedIn);

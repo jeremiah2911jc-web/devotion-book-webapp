@@ -642,6 +642,21 @@
         <span class="account-settings-label">目前帳號</span>
         <strong id="account-settings-email">-</strong>
       </div>
+      <div class="account-settings-section">
+        <span class="account-settings-label">修改密碼</span>
+        <div class="form-stack">
+          <label>新密碼
+            <input id="account-new-password" type="password" placeholder="至少 6 碼" autocomplete="new-password" />
+          </label>
+          <label>確認新密碼
+            <input id="account-confirm-password" type="password" placeholder="再次輸入新密碼" autocomplete="new-password" />
+          </label>
+          <div class="account-settings-actions">
+            <button id="account-update-password-btn" class="primary-btn" type="button">更新密碼</button>
+          </div>
+          <p class="caption">更新成功後會登出，請使用新密碼重新登入。</p>
+        </div>
+      </div>
       <div id="account-cloud-actions" class="account-settings-section">
         <span class="account-settings-label">雲端資料</span>
         <div class="account-settings-actions">
