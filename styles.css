@@ -1228,6 +1228,9 @@ body.account-settings-open {
   align-items: end;
   gap: 10px 10px;
   margin-bottom: 10px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 #view-content-library .panel > .row.gap-sm.wrap:has(#content-library-selection-count) {
@@ -1239,9 +1242,11 @@ body.account-settings-open {
 }
 
 #view-content-library .compact-control {
+  width: 100%;
   min-width: 0;
-  max-width: none;
+  max-width: 100%;
   gap: 5px;
+  box-sizing: border-box;
 }
 
 #view-content-library .compact-control .caption {
@@ -1255,12 +1260,16 @@ body.account-settings-open {
 #content-library-category,
 #content-library-tag {
   width: 100%;
+  inline-size: 100%;
   min-width: 0;
-  max-width: none;
+  max-width: 100%;
+  max-inline-size: 100%;
   min-height: 48px;
   padding: 9px 12px;
   border-radius: 14px;
   font-size: 15px;
+  box-sizing: border-box;
+  display: block;
 }
 
 #content-library-search {
@@ -1286,10 +1295,12 @@ body.account-settings-open {
 #content-library-clear-filters {
   grid-column: 11 / span 2;
   width: 100%;
+  max-width: 100%;
   min-height: 48px;
   padding: 9px 14px;
   border-radius: 14px;
   white-space: nowrap;
+  box-sizing: border-box;
 }
 
 #content-library-selection-count {
@@ -1413,26 +1424,28 @@ body.account-settings-open {
 
 @media (max-width: 479px) {
   #view-content-library .panel > .row.gap-sm.wrap:has(#content-library-search) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
-  #view-content-library .compact-control:has(#content-library-date-from),
+  #view-content-library .compact-control:has(#content-library-date-from) {
+    grid-column: 1 / span 3;
+  }
+
   #view-content-library .compact-control:has(#content-library-date-to) {
-    grid-column: 1 / -1;
+    grid-column: 4 / span 3;
   }
 
   #view-content-library .compact-control:has(#content-library-category) {
-    grid-column: 1;
+    grid-column: 1 / span 2;
   }
 
   #view-content-library .compact-control:has(#content-library-tag) {
-    grid-column: 2;
+    grid-column: 3 / span 2;
   }
 
   #content-library-clear-filters {
-    grid-column: 3;
-    width: auto;
-    min-width: fit-content;
+    grid-column: 5 / span 2;
+    min-width: 0;
     padding-inline: 8px;
     font-size: 13px;
   }
