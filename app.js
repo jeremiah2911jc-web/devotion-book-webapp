@@ -5930,6 +5930,7 @@ const cloudLibrary = {
   readerPageCount: 1,
   readerChapterPageCounts: [],
   readerChapterPages: [],
+  readerPaginationSignature: '',
   readerControlsVisible: false,
   readerControlsTimer: null,
   readerSettings: loadJson('devotion-app-reader-settings', { fontSize: 18, lineHeight: 1.8, theme: 'light' }),
@@ -5973,6 +5974,7 @@ function clearCloudLibrary(message = '') {
   cloudLibrary.readerPageCount = 1;
   cloudLibrary.readerChapterPageCounts = [];
   cloudLibrary.readerChapterPages = [];
+  cloudLibrary.readerPaginationSignature = '';
   cloudLibrary.readerControlsVisible = false;
   clearTimeout(cloudLibrary.readerControlsTimer);
   cloudLibrary.readerControlsTimer = null;
@@ -6502,12 +6504,15 @@ async function openLibraryBook(bookId) {
   const chapters = cloudLibrary.chapters.get(book.id) || [];
   if (!chapters.length) throw new Error('找不到章節 metadata，請重新匯出 EPUB。');
   const epubBlob = await loadEpubForReading(book);
+  resetReaderPaginationCache();
   cloudLibrary.selectedBookId = book.id;
   cloudLibrary.readerBook = book;
   cloudLibrary.readerChapters = await readEpubChapters(epubBlob, chapters);
   setView('reader');
   renderReaderShell();
+  await waitForReaderLayout();
   await openReaderChapter(Math.min(book.current_chapter || 0, Math.max(cloudLibrary.readerChapters.length - 1, 0)), { restoreProgress: true });
+  await stabilizeReaderAfterOpen();
 }
 
 async function fetchPublicAssetBlob(assetPath, errorPrefix = '下載檔案失敗') {
@@ -6541,12 +6546,15 @@ async function openSystemLibraryBook(bookId) {
     totalChapters: chapters.length,
     source: 'system',
   };
+  resetReaderPaginationCache();
   cloudLibrary.selectedBookId = book.id;
   cloudLibrary.readerBook = readerBook;
   cloudLibrary.readerChapters = await readEpubChapters(epubBlob, chapters, { source: 'system' });
   setView('reader');
   renderReaderShell();
+  await waitForReaderLayout();
   await openReaderChapter(Math.min(book.current_chapter || 0, Math.max(cloudLibrary.readerChapters.length - 1, 0)), { restoreProgress: true });
+  await stabilizeReaderAfterOpen();
 }
 
 async function openImportedLibraryBook(bookId) {
@@ -6555,12 +6563,15 @@ async function openImportedLibraryBook(bookId) {
   if (!book.chapters?.length) throw new Error('這本 EPUB 沒有可讀章節，可能是格式不支援。');
   const stored = await getImportedBookBlob(bookId);
   if (!stored?.epubBlob) throw new Error('找不到這本 EPUB 的本機檔案，請重新匯入。');
+  resetReaderPaginationCache();
   cloudLibrary.selectedBookId = book.id;
   cloudLibrary.readerBook = { ...book, source: 'imported_epub' };
   cloudLibrary.readerChapters = await readEpubChapters(stored.epubBlob, book.chapters, { source: 'imported_epub' });
   setView('reader');
   renderReaderShell();
+  await waitForReaderLayout();
   await openReaderChapter(Math.min(book.current_chapter || 0, Math.max(cloudLibrary.readerChapters.length - 1, 0)), { restoreProgress: true });
+  await stabilizeReaderAfterOpen();
 }
 
 async function downloadLibraryBookEpub(bookId) {
@@ -6778,7 +6789,10 @@ function renderReaderSettings() {
   content.style.fontSize = `${settings.fontSize}px`;
   content.style.lineHeight = String(settings.lineHeight);
   document.getElementById('view-reader')?.classList.toggle('reader-dark', settings.theme === 'dark');
-  paginateCurrentReaderChapter();
+  if (cloudLibrary.readerBook) {
+    const hasExistingPagination = cloudLibrary.readerChapterPageCounts.some(count => Number(count) > 0);
+    paginateCurrentReaderChapter(false, { allChapters: true, preserveProgress: hasExistingPagination, force: true });
+  }
 }
 
 function updateReaderSetting(key, value) {
@@ -6786,6 +6800,62 @@ function updateReaderSetting(key, value) {
   saveJson(cloudLibrary.readerSettingsKey, cloudLibrary.readerSettings);
   renderReaderSettings();
   showReaderControls();
+}
+
+function waitForReaderLayout() {
+  return new Promise(resolve => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  });
+}
+
+async function stabilizeReaderAfterOpen() {
+  await waitForReaderLayout();
+  paginateCurrentReaderChapter(false, { allChapters: true, preserveProgress: true, force: true });
+}
+
+function resetReaderPaginationCache() {
+  cloudLibrary.readerChapterPages = [];
+  cloudLibrary.readerChapterPageCounts = [];
+  cloudLibrary.readerPaginationSignature = '';
+}
+
+function getReaderPaginationSignature() {
+  const viewport = document.querySelector('#reader-page-viewport .reader-page-clip') || document.getElementById('reader-page-viewport');
+  const pageViewport = document.getElementById('reader-page-viewport');
+  const settings = { fontSize: 18, lineHeight: 1.8, theme: 'light', ...cloudLibrary.readerSettings };
+  const width = Math.max(1, Math.round(pageViewport?.clientWidth || viewport?.clientWidth || window.innerWidth || 1));
+  const height = Math.max(1, Math.round(viewport?.clientHeight || window.innerHeight || 1));
+  return [
+    isSinglePageReaderLayout() ? 'single' : 'spread',
+    width,
+    height,
+    Number(settings.fontSize || 18),
+    Number(settings.lineHeight || 1.8),
+  ].join('|');
+}
+
+function syncReaderPageCount() {
+  cloudLibrary.readerPageCount = Math.max(1, cloudLibrary.readerChapterPageCounts[cloudLibrary.readerChapterIndex] || 1);
+}
+
+function buildAllReaderChapterPages() {
+  if (isMobileReaderLayout()) {
+    cloudLibrary.readerChapterPages = cloudLibrary.readerChapters.map(chapter => buildMobileReaderPages(chapter.html || '<p>這個章節目前沒有內容。</p>'));
+  } else {
+    cloudLibrary.readerChapterPages = cloudLibrary.readerChapters.map(chapter => buildDesktopReaderPages(chapter.html || '<p>這個章節目前沒有內容。</p>'));
+  }
+  cloudLibrary.readerChapterPageCounts = cloudLibrary.readerChapterPages.map(pages => Math.max(1, pages.length));
+}
+
+function ensureReaderPagination(options = {}) {
+  const signature = getReaderPaginationSignature();
+  const shouldRebuild = !!options.force
+    || cloudLibrary.readerPaginationSignature !== signature
+    || cloudLibrary.readerChapterPages.length !== cloudLibrary.readerChapters.length;
+  if (shouldRebuild) {
+    cloudLibrary.readerPaginationSignature = signature;
+    buildAllReaderChapterPages();
+  }
 }
 
 async function openReaderChapter(index, options = {}) {
@@ -6796,34 +6866,29 @@ async function openReaderChapter(index, options = {}) {
   cloudLibrary.readerPageIndex = Number(options.pageIndex || 0);
   document.getElementById('reader-chapter-nav').value = String(index);
   document.getElementById('reader-content').innerHTML = chapter.html || '<p>這個章節目前沒有內容。</p>';
-  paginateCurrentReaderChapter(options.restoreProgress);
+  paginateCurrentReaderChapter(options.restoreProgress, {
+    allChapters: !!options.restoreProgress,
+    force: !!options.restoreProgress,
+  });
   await persistCurrentReaderProgress();
 }
 
-function paginateCurrentReaderChapter(restoreProgress = false) {
+function paginateCurrentReaderChapter(restoreProgress = false, options = {}) {
   const viewport = document.getElementById('reader-page-viewport');
   const content = document.getElementById('reader-content');
   if (!viewport || !content || !cloudLibrary.readerBook) return;
-  if (isMobileReaderLayout()) {
-    cloudLibrary.readerChapterPages = cloudLibrary.readerChapters.map(chapter => buildMobileReaderPages(chapter.html || '<p>這個章節目前沒有內容。</p>'));
-    cloudLibrary.readerChapterPageCounts = cloudLibrary.readerChapterPages.map(pages => Math.max(1, pages.length));
-    cloudLibrary.readerPageCount = cloudLibrary.readerChapterPageCounts[cloudLibrary.readerChapterIndex] || 1;
-    if (restoreProgress) {
-      restoreReaderPageFromProgress(cloudLibrary.readerBook.reading_progress || 0);
-    }
-    cloudLibrary.readerPageIndex = normalizeReaderPageIndex(cloudLibrary.readerPageIndex);
-    renderMobileReaderPage();
-    applyReaderPagePosition();
-    return;
-  }
-  cloudLibrary.readerChapterPages = cloudLibrary.readerChapters.map(chapter => buildDesktopReaderPages(chapter.html || '<p>這個章節目前沒有內容。</p>'));
-  cloudLibrary.readerChapterPageCounts = cloudLibrary.readerChapterPages.map(pages => Math.max(1, pages.length));
-  cloudLibrary.readerPageCount = cloudLibrary.readerChapterPageCounts[cloudLibrary.readerChapterIndex] || 1;
+  const currentProgress = (restoreProgress || !!options.preserveProgress) ? getCurrentReaderProgress() : null;
+  ensureReaderPagination({ force: !!options.force || restoreProgress || !!options.allChapters });
   if (restoreProgress) {
     restoreReaderPageFromProgress(cloudLibrary.readerBook.reading_progress || 0);
+    syncReaderPageCount();
+  } else if (typeof currentProgress === 'number') {
+    restoreReaderPageFromProgress(currentProgress);
+    syncReaderPageCount();
+  } else {
+    syncReaderPageCount();
   }
   cloudLibrary.readerPageIndex = normalizeReaderPageIndex(cloudLibrary.readerPageIndex);
-  renderDesktopReaderSpread();
   applyReaderPagePosition();
 }
 
@@ -7716,7 +7781,7 @@ window.addEventListener('resize', () => {
   if (!document.getElementById('view-reader')?.classList.contains('active')) return;
   clearTimeout(readerResizeTimer);
   readerResizeTimer = setTimeout(() => {
-    paginateCurrentReaderChapter();
+    paginateCurrentReaderChapter(false, { allChapters: true, preserveProgress: true, force: true });
     persistCurrentReaderProgress().catch(console.error);
   }, 120);
 });
