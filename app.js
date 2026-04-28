@@ -956,12 +956,13 @@ function ensureOperationManualUi() {
               <li><a href="#manual-flow">三、從寫札記到成書的完整操作流程</a></li>
             <li><a href="#manual-bookshelf">四、書櫃閱讀操作</a></li>
             <li><a href="#manual-import">五、匯入外部 EPUB</a></li>
-            <li><a href="#manual-recommendations">六、建議的使用方式</a></li>
-            <li><a href="#manual-writing">七、寫作與排版建議</a></li>
-            <li><a href="#manual-faq">八、常見問題</a></li>
-            <li><a href="#manual-habits">九、推薦操作習慣</a></li>
-            <li><a href="#manual-example">十、完整流程範例</a></li>
-            <li><a href="#manual-summary">十一、使用流程總結</a></li>
+            <li><a href="#manual-install">六、加入主畫面與桌面捷徑</a></li>
+            <li><a href="#manual-recommendations">七、建議的使用方式</a></li>
+            <li><a href="#manual-writing">八、寫作與排版建議</a></li>
+            <li><a href="#manual-faq">九、常見問題</a></li>
+            <li><a href="#manual-habits">十、推薦操作習慣</a></li>
+            <li><a href="#manual-example">十一、完整流程範例</a></li>
+            <li><a href="#manual-summary">十二、使用流程總結</a></li>
           </ul>
         </section>
 
@@ -1338,8 +1339,44 @@ function ensureOperationManualUi() {
             </ul>
           </section>
 
+          <section id="manual-install" class="manual-section">
+            <h2>六、加入主畫面與桌面捷徑</h2>
+            <div class="manual-callout manual-install-callout">
+              <strong>把靈修札記加入主畫面</strong>
+              <p>加入主畫面後，可以像 App 一樣從手機桌面開啟。資料仍透過網站同步，不需要另外安裝 App Store 或 Play 商店版本。</p>
+              <p>小提醒：網站無法自動替你建立捷徑，需依照手機或瀏覽器提示完成加入。</p>
+            </div>
+            <div class="manual-install-grid">
+              <section class="manual-install-card" aria-labelledby="manual-install-ios">
+                <h3 id="manual-install-ios">iPhone / iPad</h3>
+                <ol>
+                  <li>用 Safari 開啟網站。</li>
+                  <li>點下方分享按鈕。</li>
+                  <li>選擇「加入主畫面」。</li>
+                  <li>按「新增」。</li>
+                </ol>
+              </section>
+              <section class="manual-install-card" aria-labelledby="manual-install-android">
+                <h3 id="manual-install-android">Android</h3>
+                <ol>
+                  <li>用 Chrome 開啟網站。</li>
+                  <li>點右上角選單。</li>
+                  <li>選擇「新增至主畫面」或「安裝應用程式」。</li>
+                  <li>按提示確認。</li>
+                </ol>
+              </section>
+              <section class="manual-install-card" aria-labelledby="manual-install-desktop">
+                <h3 id="manual-install-desktop">桌機 Chrome / Edge</h3>
+                <ol>
+                  <li>開啟網站後，若網址列出現安裝圖示，可點選安裝。</li>
+                  <li>或從瀏覽器選單選擇「安裝此網站」或「建立捷徑」。</li>
+                </ol>
+              </section>
+            </div>
+          </section>
+
           <section id="manual-recommendations" class="manual-section">
-            <h2>六、建議的使用方式</h2>
+            <h2>七、建議的使用方式</h2>
             <h3>1. 每日使用方式</h3>
             <p>每天完成一篇靈修後，進入「寫札記」。</p>
             <p>寫下經文、默想、回應與禱告。</p>
@@ -1361,7 +1398,7 @@ function ensureOperationManualUi() {
           </section>
 
           <section id="manual-writing" class="manual-section">
-            <h2>七、寫作與排版建議</h2>
+            <h2>八、寫作與排版建議</h2>
             <h3>1. 標題建議</h3>
             <p>標題應盡量清楚、穩重、適合成書。</p>
             <p>例如：</p>
@@ -1401,7 +1438,7 @@ function ensureOperationManualUi() {
           </section>
 
           <section id="manual-faq" class="manual-section">
-            <h2>八、常見問題</h2>
+            <h2>九、常見問題</h2>
             <h3>1. 我寫完札記後，為什麼書裡還沒有出現？</h3>
             <p>札記儲存後會先留在札記庫。</p>
             <p>若要放進書中，需要先建立或選擇目前選稿編排，再從札記庫勾選文章加入目前選稿編排。</p>
@@ -1444,7 +1481,7 @@ function ensureOperationManualUi() {
           </section>
 
           <section id="manual-habits" class="manual-section">
-            <h2>九、推薦操作習慣</h2>
+            <h2>十、推薦操作習慣</h2>
             <ul>
               <li>每天先專心寫札記，不急著成書。</li>
               <li>每週回顧札記庫，把成熟文章加入目前選稿編排。</li>
@@ -1458,7 +1495,7 @@ function ensureOperationManualUi() {
           </section>
 
           <section id="manual-example" class="manual-section">
-            <h2>十、完整流程範例</h2>
+            <h2>十一、完整流程範例</h2>
             <p>假設使用者想把一個月的詩篇靈修整理成一本電子書，可以這樣操作：</p>
             <ol>
               <li>第一天到第三十天，每天在「寫札記」建立一篇詩篇靈修。</li>
@@ -1476,7 +1513,7 @@ function ensureOperationManualUi() {
           </section>
 
           <section id="manual-summary" class="manual-section">
-            <h2>十一、使用流程總結</h2>
+            <h2>十二、使用流程總結</h2>
             <p>靈修札記成書系統的核心精神，是幫助使用者把每天零散的靈修文字，逐步整理成長期可保存、可閱讀、可分享的屬靈作品。</p>
             <p>最重要的操作順序可以記成：</p>
             <p>先寫下來。</p>

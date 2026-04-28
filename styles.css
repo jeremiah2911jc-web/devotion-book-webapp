@@ -1589,6 +1589,25 @@ body.account-settings-open {
 .manual-callout p {
   color: #365e61;
 }
+.manual-install-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.manual-install-card {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(191, 211, 208, 0.72);
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,252,251,0.9));
+}
+.manual-install-card h3 {
+  margin: 0;
+}
+.manual-install-card ol {
+  margin: 0;
+}
 .library-book { display: grid; grid-template-columns: 112px 1fr; gap: 16px; padding: 14px; border: 1px solid rgba(191,211,208,0.78); border-radius: 16px; background: rgba(255,255,255,0.9); }
 .library-book.selected { border-color: rgba(90,166,166,0.62); box-shadow: 0 12px 28px rgba(90,166,166,0.12); }
 .library-book.imported-book { border-color: rgba(110, 141, 181, 0.38); }
@@ -1656,7 +1675,7 @@ body.account-settings-open {
 .reader-content p { margin: 0 0 1em; }
 .reader-content .title-page { background: rgba(255,255,255,0.55); border-radius: 12px; padding: 1.4em; }
 .reader-dark .reader-content .title-page { background: rgba(255,255,255,0.08); }
-@media (max-width: 840px) { .library-panel-actions { width: 100%; justify-content: stretch; } .library-panel-actions > * { flex: 1 1 100%; } .manual-panel { gap: 18px; } .manual-hero, .manual-toc, .manual-section { padding: 20px 18px; border-radius: 18px; } .manual-section h2 { font-size: 22px; } .manual-section h3 { font-size: 17px; } .library-book { grid-template-columns: 88px 1fr; } .reader-view { margin: -18px; } .reader-layout { grid-template-columns: 1fr; } .reader-sidebar { border-right: none; border-bottom: 1px solid rgba(191,211,208,0.55); } .reader-page { padding: 28px 20px 60px; } .reader-header { display: grid; } }
+@media (max-width: 840px) { .library-panel-actions { width: 100%; justify-content: stretch; } .library-panel-actions > * { flex: 1 1 100%; } .manual-panel { gap: 18px; } .manual-hero, .manual-toc, .manual-section { padding: 20px 18px; border-radius: 18px; } .manual-section h2 { font-size: 22px; } .manual-section h3 { font-size: 17px; } .manual-install-grid { grid-template-columns: 1fr; } .library-book { grid-template-columns: 88px 1fr; } .reader-view { margin: -18px; } .reader-layout { grid-template-columns: 1fr; } .reader-sidebar { border-right: none; border-bottom: 1px solid rgba(191,211,208,0.55); } .reader-page { padding: 28px 20px 60px; } .reader-header { display: grid; } }
 
 /* 4/24 homepage redesign overrides */
 :root {
