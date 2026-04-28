@@ -32,9 +32,13 @@ body.auth-locked .app-shell { display: none; }
 .auth-gate {
   min-height: 100vh;
   padding: 24px 18px 28px;
-  background:
-    linear-gradient(180deg, rgba(252, 247, 237, 0.64) 0%, rgba(249, 242, 229, 0.34) 48%, rgba(247, 239, 224, 0.12) 100%),
-    url("./assets/ui/auth-hero-background.png") center top / cover no-repeat;
+  background-image:
+    linear-gradient(90deg, rgba(255, 252, 246, 0.82) 0%, rgba(255, 252, 246, 0.56) 42%, rgba(255, 252, 246, 0.12) 100%),
+    linear-gradient(180deg, rgba(252, 247, 237, 0.36) 0%, rgba(249, 242, 229, 0.18) 48%, rgba(247, 239, 224, 0.08) 100%),
+    url("./assets/ui/auth-bg-portrait.jpg");
+  background-position: center, center, 58% center;
+  background-size: cover, cover, cover;
+  background-repeat: no-repeat;
 }
 .auth-gate.hidden { display: none; }
 .auth-gate-shell {
@@ -828,7 +832,7 @@ body.account-settings-open {
     padding-inline: 16px;
     padding-top: 22px;
     padding-bottom: 22px;
-    background-position: 54% top;
+    background-position: center, center, 60% center;
   }
   .auth-gate-shell {
     width: min(100%, 430px);
@@ -859,6 +863,38 @@ body.account-settings-open {
     min-height: 60px;
     padding: 16px 20px;
     font-size: 17px;
+  }
+}
+
+@media (orientation: landscape) {
+  .auth-gate {
+    background-image:
+      linear-gradient(90deg, rgba(255, 252, 246, 0.84) 0%, rgba(255, 252, 246, 0.52) 42%, rgba(255, 252, 246, 0.08) 100%),
+      linear-gradient(180deg, rgba(252, 247, 237, 0.28) 0%, rgba(249, 242, 229, 0.14) 48%, rgba(247, 239, 224, 0.06) 100%),
+      url("./assets/ui/auth-bg-landscape.jpg");
+    background-position: center, center, center center;
+  }
+}
+
+@media (orientation: landscape) and (min-width: 768px) {
+  .auth-gate-copy {
+    max-width: none;
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 1024px) {
+  .auth-gate {
+    background-image:
+      linear-gradient(90deg, rgba(255, 252, 246, 0.84) 0%, rgba(255, 252, 246, 0.5) 40%, rgba(255, 252, 246, 0.06) 100%),
+      linear-gradient(180deg, rgba(252, 247, 237, 0.24) 0%, rgba(249, 242, 229, 0.12) 48%, rgba(247, 239, 224, 0.05) 100%),
+      url("./assets/ui/auth-bg-landscape.jpg");
+    background-position: center, center, center center;
+  }
+
+  .auth-gate-copy {
+    max-width: none;
+    white-space: nowrap;
   }
 }
 
@@ -4061,6 +4097,14 @@ body:not(.auth-locked) .main {
     gap: 16px;
     border-right: 1px solid rgba(191, 211, 208, 0.55);
     border-bottom: none;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(236, 248, 245, 0.98) 0%,
+        rgba(239, 249, 246, 0.96) 32%,
+        rgba(248, 252, 250, 0.94) 68%,
+        #ffffff 100%
+      );
     overflow: auto;
   }
 
