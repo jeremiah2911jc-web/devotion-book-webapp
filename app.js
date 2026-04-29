@@ -6718,6 +6718,9 @@ function injectReaderViewStyles() {
     #view-reader .reader-spread { width: 100%; height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--reader-spread-gap, 44px); }
     #view-reader .reader-page-surface { height: 100%; min-width: 0; box-sizing: border-box; overflow: hidden; padding: var(--reader-page-padding-top, 64px) var(--reader-page-padding-x, 56px) var(--reader-page-padding-bottom, 54px); background: transparent; }
     #view-reader .reader-page-surface.is-empty { opacity: .35; }
+    #view-reader .reader-column-page { width: 100%; height: var(--reader-page-body-height, 1px); overflow: hidden; }
+    #view-reader .reader-column-flow { width: var(--reader-page-body-width, 1px); height: var(--reader-page-body-height, 1px); column-width: var(--reader-page-body-width, 1px); column-gap: 0; column-fill: auto; overflow: visible; transition: transform .18s ease; will-change: transform; }
+    #view-reader .reader-column-flow > * { max-width: var(--reader-page-body-width, 100%); }
       #view-reader .reader-flow * { box-sizing: border-box; max-width: 100%; }
       #view-reader .reader-flow img, #view-reader .reader-flow svg, #view-reader .reader-flow video, #view-reader .reader-flow table { max-width: 100%; height: auto; }
       #view-reader .reader-flow pre, #view-reader .reader-flow code { white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -6839,11 +6842,7 @@ function syncReaderPageCount() {
 }
 
 function buildAllReaderChapterPages() {
-  if (isMobileReaderLayout()) {
-    cloudLibrary.readerChapterPages = cloudLibrary.readerChapters.map(chapter => buildMobileReaderPages(chapter.html || '<p>這個章節目前沒有內容。</p>'));
-  } else {
-    cloudLibrary.readerChapterPages = cloudLibrary.readerChapters.map(chapter => buildDesktopReaderPages(chapter.html || '<p>這個章節目前沒有內容。</p>'));
-  }
+  cloudLibrary.readerChapterPages = cloudLibrary.readerChapters.map(chapter => buildReaderColumnPages(chapter.html || '<p>這個章節目前沒有內容。</p>'));
   cloudLibrary.readerChapterPageCounts = cloudLibrary.readerChapterPages.map(pages => Math.max(1, pages.length));
 }
 
@@ -6918,83 +6917,46 @@ function getReaderVisibleEndPageIndex() {
   );
 }
 
-function buildMobileReaderPages(html) {
+function buildReaderColumnPages(html) {
   const content = document.getElementById('reader-content');
   if (!content) return [html];
-  applyReaderPageMetrics();
-  const template = document.createElement('template');
-  template.innerHTML = html;
-  const rootNodes = [...template.content.childNodes].filter(node => node.textContent?.trim() || node.nodeType === Node.ELEMENT_NODE);
-  const wrapper = rootNodes.length === 1 && rootNodes[0].nodeType === Node.ELEMENT_NODE ? rootNodes[0] : null;
-  const nodes = wrapper && /^(main|article|section|div)$/i.test(wrapper.tagName) && wrapper.childNodes.length
-    ? [...wrapper.childNodes].filter(node => node.textContent?.trim() || node.nodeType === Node.ELEMENT_NODE)
-    : rootNodes;
-  if (!nodes.length) return ['<p>這個章節目前沒有內容。</p>'];
-
-  const pages = [];
+  const metrics = applyReaderPageMetrics();
+  const bodyWidth = Math.max(1, metrics.bodyWidth || metrics.width || 1);
   content.innerHTML = '';
   content.style.transform = 'none';
-  nodes.forEach(node => {
-    const clone = node.cloneNode(true);
-    content.appendChild(clone);
-    if (content.scrollHeight > content.clientHeight + 1 && content.childNodes.length > 1) {
-      content.removeChild(clone);
-      pages.push(content.innerHTML);
-      content.innerHTML = '';
-      content.appendChild(clone);
-    }
-  });
-  if (content.innerHTML.trim()) pages.push(content.innerHTML);
-  return pages.length ? pages : ['<p>這個章節目前沒有內容。</p>'];
+  content.innerHTML = renderReaderPageColumn(html, 0, false, bodyWidth);
+  const flow = content.querySelector('.reader-column-flow');
+  const scrollWidth = Math.max(bodyWidth, Math.ceil(flow?.scrollWidth || bodyWidth));
+  const pageCount = Math.max(1, Math.ceil((scrollWidth - 1) / bodyWidth));
+  content.innerHTML = '';
+  return Array.from({ length: pageCount }, (_, pageIndex) => ({ html, pageIndex }));
 }
 
-function getReaderPageNodes(html) {
-  const template = document.createElement('template');
-  template.innerHTML = html;
-  const rootNodes = [...template.content.childNodes].filter(node => node.textContent?.trim() || node.nodeType === Node.ELEMENT_NODE);
-  const wrapper = rootNodes.length === 1 && rootNodes[0].nodeType === Node.ELEMENT_NODE ? rootNodes[0] : null;
-  return wrapper && /^(main|article|section|div)$/i.test(wrapper.tagName) && wrapper.childNodes.length
-    ? [...wrapper.childNodes].filter(node => node.textContent?.trim() || node.nodeType === Node.ELEMENT_NODE)
-    : rootNodes;
+function getReaderPageHtml(page) {
+  if (!page) return '';
+  return typeof page === 'string' ? page : page.html || '';
 }
 
-function buildDesktopReaderPages(html) {
-  const content = document.getElementById('reader-content');
-  if (!content) return [html];
-  const { width, height } = applyReaderPageMetrics();
-  const nodes = getReaderPageNodes(html);
-  if (!nodes.length) return ['<p>這個章節目前沒有內容。</p>'];
-
-  const pages = [];
-  content.innerHTML = '';
-  content.style.transform = 'none';
-  const page = document.createElement('article');
-  page.className = 'reader-page-surface';
-  page.style.width = `${width}px`;
-  page.style.height = `${height}px`;
-  content.appendChild(page);
-
-  nodes.forEach(node => {
-    const clone = node.cloneNode(true);
-    page.appendChild(clone);
-    if (page.scrollHeight > page.clientHeight + 1 && page.childNodes.length > 1) {
-      page.removeChild(clone);
-      pages.push(page.innerHTML);
-      page.innerHTML = '';
-      page.appendChild(clone);
-    }
-  });
-  if (page.innerHTML.trim()) pages.push(page.innerHTML);
-  content.innerHTML = '';
-  return pages.length ? pages : ['<p>這個章節目前沒有內容。</p>'];
+function renderReaderPageColumn(html, pageIndex = 0, empty = false, bodyWidth = 1) {
+  if (empty) return '';
+  const safeIndex = Math.max(0, Number(pageIndex) || 0);
+  const offset = Math.max(0, Math.round((Number(bodyWidth) || 1) * safeIndex));
+  return `
+    <div class="reader-column-page">
+      <div class="reader-column-flow" style="transform: translateX(-${offset}px);">
+        ${html || '<p>這個章節目前沒有內容。</p>'}
+      </div>
+    </div>
+  `;
 }
 
 function renderMobileReaderPage() {
   const content = document.getElementById('reader-content');
   if (!content) return;
   const pages = cloudLibrary.readerChapterPages[cloudLibrary.readerChapterIndex] || [];
-  content.innerHTML = pages[cloudLibrary.readerPageIndex] || '<p>這個章節目前沒有內容。</p>';
-  applyReaderPageMetrics();
+  const metrics = applyReaderPageMetrics();
+  const page = pages[cloudLibrary.readerPageIndex] || pages[0] || { html: '<p>這個章節目前沒有內容。</p>', pageIndex: 0 };
+  content.innerHTML = renderReaderPageColumn(getReaderPageHtml(page), page.pageIndex || 0, false, metrics.bodyWidth);
 }
 
 function renderDesktopReaderSpread() {
@@ -7002,12 +6964,15 @@ function renderDesktopReaderSpread() {
   if (!content) return;
   const pages = cloudLibrary.readerChapterPages[cloudLibrary.readerChapterIndex] || [];
   const leftIndex = normalizeReaderPageIndex(cloudLibrary.readerPageIndex);
-  const leftPage = pages[leftIndex] || '<p>這個章節目前沒有內容。</p>';
-  const rightPage = pages[leftIndex + 1] || '';
+  const leftPage = pages[leftIndex] || pages[0] || { html: '<p>這個章節目前沒有內容。</p>', pageIndex: 0 };
+  const rightPage = pages[leftIndex + 1] || null;
+  const leftHtml = getReaderPageHtml(leftPage);
+  const rightHtml = getReaderPageHtml(rightPage);
+  const metrics = applyReaderPageMetrics();
   content.innerHTML = `
     <div class="reader-spread">
-      <article class="reader-page-surface reader-page-left">${leftPage}</article>
-      <article class="reader-page-surface reader-page-right${rightPage ? '' : ' is-empty'}">${rightPage}</article>
+      <article class="reader-page-surface reader-page-left">${renderReaderPageColumn(leftHtml, leftPage.pageIndex || 0, false, metrics.bodyWidth)}</article>
+      <article class="reader-page-surface reader-page-right${rightHtml ? '' : ' is-empty'}">${renderReaderPageColumn(rightHtml, rightPage?.pageIndex || 0, !rightHtml, metrics.bodyWidth)}</article>
     </div>
   `;
   applyReaderPageMetrics();
@@ -7041,6 +7006,8 @@ function applyReaderPageMetrics() {
   const horizontalPadding = Math.max(24, Math.min(74, Math.round(width * 0.1)));
   const topPadding = Math.max(34, Math.min(72, Math.round(height * 0.09)));
   const bottomPadding = Math.max(30, Math.min(64, Math.round(height * 0.08)));
+  const bodyWidth = Math.max(1, width - (horizontalPadding * 2));
+  const bodyHeight = Math.max(1, height - topPadding - bottomPadding);
   view?.classList.toggle('reader-spread-mode', !singlePage);
   content.style.height = `${height}px`;
   content.style.width = singlePage ? `${width}px` : `${spreadWidth}px`;
@@ -7051,6 +7018,8 @@ function applyReaderPageMetrics() {
   content.style.setProperty('--reader-page-padding-top', `${topPadding}px`);
   content.style.setProperty('--reader-page-padding-x', `${horizontalPadding}px`);
   content.style.setProperty('--reader-page-padding-bottom', `${bottomPadding}px`);
+  content.style.setProperty('--reader-page-body-width', `${bodyWidth}px`);
+  content.style.setProperty('--reader-page-body-height', `${bodyHeight}px`);
   if (singlePage) {
     content.style.columnWidth = 'auto';
     content.style.columnCount = 'auto';
@@ -7065,15 +7034,7 @@ function applyReaderPageMetrics() {
   }
   content.style.transform = 'translateX(0)';
   viewport.scrollLeft = 0;
-  return { width, height, pageStep: width + spreadGap, spreadGap, spreadWidth };
-}
-
-function measureReaderHtmlPageCount(html) {
-  const content = document.getElementById('reader-content');
-  if (!content) return 1;
-  content.innerHTML = html;
-  const { pageStep, spreadGap } = applyReaderPageMetrics();
-  return Math.max(1, Math.ceil((content.scrollWidth + (spreadGap || 0)) / pageStep));
+  return { width, height, pageStep: width + spreadGap, spreadGap, spreadWidth, bodyWidth, bodyHeight };
 }
 
 function getReaderTotalPages() {
