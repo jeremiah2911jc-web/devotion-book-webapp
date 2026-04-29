@@ -5934,6 +5934,8 @@ const cloudLibrary = {
   readerActivePanel: null,
   readerControlsVisible: false,
   readerControlsTimer: null,
+  readerProgressKey: 'devotion-reader-progress-v1',
+  readerBookmarksKey: 'devotion-reader-bookmarks-v1',
   readerSettings: loadJson('devotion-app-reader-settings', { fontSize: 18, lineHeight: 1.8, theme: 'light' }),
 };
 
@@ -6513,7 +6515,9 @@ async function openLibraryBook(bookId) {
   setView('reader');
   renderReaderShell();
   await waitForReaderLayout();
-  await openReaderChapter(Math.min(book.current_chapter || 0, Math.max(cloudLibrary.readerChapters.length - 1, 0)), { restoreProgress: true });
+  const savedProgress = getValidReaderProgress(book);
+  const startChapter = savedProgress?.chapterIndex ?? Math.min(book.current_chapter || 0, Math.max(cloudLibrary.readerChapters.length - 1, 0));
+  await openReaderChapter(startChapter, savedProgress ? { pageIndex: savedProgress.pageIndex } : { restoreProgress: true });
   await stabilizeReaderAfterOpen();
 }
 
@@ -6555,7 +6559,9 @@ async function openSystemLibraryBook(bookId) {
   setView('reader');
   renderReaderShell();
   await waitForReaderLayout();
-  await openReaderChapter(Math.min(book.current_chapter || 0, Math.max(cloudLibrary.readerChapters.length - 1, 0)), { restoreProgress: true });
+  const savedProgress = getValidReaderProgress(readerBook);
+  const startChapter = savedProgress?.chapterIndex ?? Math.min(book.current_chapter || 0, Math.max(cloudLibrary.readerChapters.length - 1, 0));
+  await openReaderChapter(startChapter, savedProgress ? { pageIndex: savedProgress.pageIndex } : { restoreProgress: true });
   await stabilizeReaderAfterOpen();
 }
 
@@ -6572,7 +6578,9 @@ async function openImportedLibraryBook(bookId) {
   setView('reader');
   renderReaderShell();
   await waitForReaderLayout();
-  await openReaderChapter(Math.min(book.current_chapter || 0, Math.max(cloudLibrary.readerChapters.length - 1, 0)), { restoreProgress: true });
+  const savedProgress = getValidReaderProgress(cloudLibrary.readerBook);
+  const startChapter = savedProgress?.chapterIndex ?? Math.min(book.current_chapter || 0, Math.max(cloudLibrary.readerChapters.length - 1, 0));
+  await openReaderChapter(startChapter, savedProgress ? { pageIndex: savedProgress.pageIndex } : { restoreProgress: true });
   await stabilizeReaderAfterOpen();
 }
 
@@ -6772,18 +6780,18 @@ function injectReaderViewStyles() {
     #view-reader.reader-dark .reader-action-menu { border-color: rgba(255,255,255,.12); background: rgba(31,31,31,.96); box-shadow: 0 18px 44px rgba(0,0,0,.36); }
     #view-reader .reader-action-menu-item { width: 100%; min-height: 42px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; color: inherit; font-weight: 700; text-align: left; }
     #view-reader .reader-action-menu-item:hover, #view-reader .reader-action-menu-item:focus-visible { background: rgba(63,152,144,.13); outline: none; }
-    #view-reader .reader-panel { position: absolute; top: 24px; right: clamp(16px, 4vw, 48px); bottom: calc(var(--reader-stage-bottom) + 20px); z-index: 8; width: min(430px, calc(100vw - 32px)); display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(80,70,55,.14); border-radius: 18px; background: rgba(255,253,248,.98); color: #2f2a24; box-shadow: 0 24px 60px rgba(45,35,25,.24); pointer-events: auto; backdrop-filter: blur(18px); }
+    #view-reader .reader-panel { position: absolute; top: 24px; right: clamp(16px, 4vw, 48px); bottom: calc(var(--reader-stage-bottom) + 20px); z-index: 8; width: min(430px, calc(100vw - 32px)); max-height: calc(100dvh - var(--reader-stage-bottom) - 44px); display: flex; flex-direction: column; overflow: hidden; overscroll-behavior: contain; border: 1px solid rgba(80,70,55,.14); border-radius: 18px; background: rgba(255,253,248,.98); color: #2f2a24; box-shadow: 0 24px 60px rgba(45,35,25,.24); pointer-events: auto; backdrop-filter: blur(18px); }
     #view-reader.reader-dark .reader-panel { border-color: rgba(255,255,255,.12); background: rgba(28,28,28,.98); color: #eee7dd; box-shadow: 0 24px 60px rgba(0,0,0,.4); }
     #view-reader .reader-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 16px 18px; border-bottom: 1px solid rgba(80,70,55,.12); }
     #view-reader.reader-dark .reader-panel-header { border-color: rgba(255,255,255,.12); }
     #view-reader .reader-panel-title { margin: 0; font-size: 1rem; line-height: 1.35; color: inherit; }
     #view-reader .reader-panel-close { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: rgba(63,152,144,.12); color: inherit; font-weight: 800; }
-    #view-reader .reader-panel-body { min-height: 0; flex: 1; overflow: auto; padding: 16px 18px 20px; }
+    #view-reader .reader-panel-body { min-height: 0; flex: 1; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; padding: 16px 18px 20px; }
     #view-reader .reader-panel-book-title { margin: 0 0 4px; color: #21484c; font-weight: 800; }
     #view-reader.reader-dark .reader-panel-book-title { color: #dcefeb; }
     #view-reader .reader-panel-muted { margin: 0 0 14px; color: #74675d; font-size: .9rem; line-height: 1.55; }
     #view-reader.reader-dark .reader-panel-muted { color: #b8aea4; }
-    #view-reader .reader-panel-toc { display: grid; gap: 6px; }
+    #view-reader .reader-panel-toc { display: grid; gap: 6px; min-height: 0; padding-bottom: 10px; overscroll-behavior: contain; }
     #view-reader .reader-panel-toc-item { width: 100%; min-height: 42px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 12px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: inherit; text-align: left; }
     #view-reader .reader-panel-toc-item.active { border-color: rgba(63,152,144,.35); background: rgba(63,152,144,.13); color: #21484c; font-weight: 800; }
     #view-reader.reader-dark .reader-panel-toc-item.active { color: #dcefeb; }
@@ -6802,6 +6810,17 @@ function injectReaderViewStyles() {
     #view-reader .reader-bookmark-summary { display: grid; gap: 8px; padding: 14px; border-radius: 12px; background: rgba(63,152,144,.1); color: inherit; }
     #view-reader .reader-bookmark-summary strong { color: #21484c; }
     #view-reader.reader-dark .reader-bookmark-summary strong { color: #dcefeb; }
+    #view-reader .reader-bookmark-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 16px; }
+    #view-reader .reader-bookmark-action { min-height: 40px; padding: 0 14px; border: 0; border-radius: 999px; background: #3f9890; color: #fff; font-weight: 800; }
+    #view-reader .reader-bookmark-action.is-remove { background: rgba(138,59,59,.12); color: #8a3b3b; }
+    #view-reader.reader-dark .reader-bookmark-action.is-remove { background: rgba(255,130,130,.14); color: #ffd1d1; }
+    #view-reader .reader-bookmark-list { display: grid; gap: 8px; margin-top: 12px; }
+    #view-reader .reader-bookmark-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 10px; border: 1px solid rgba(80,70,55,.14); border-radius: 12px; background: rgba(255,255,255,.48); }
+    #view-reader.reader-dark .reader-bookmark-item { border-color: rgba(255,255,255,.12); background: rgba(255,255,255,.06); }
+    #view-reader .reader-bookmark-jump { min-width: 0; border: 0; background: transparent; color: inherit; text-align: left; font-weight: 800; }
+    #view-reader .reader-bookmark-jump small { display: block; margin-top: 4px; color: #7a6d62; font-weight: 600; line-height: 1.45; }
+    #view-reader.reader-dark .reader-bookmark-jump small { color: #aaa099; }
+    #view-reader .reader-bookmark-remove { min-width: 34px; min-height: 34px; border: 0; border-radius: 999px; background: rgba(80,70,55,.08); color: inherit; font-weight: 800; }
     @media (max-width: 1023px) {
       body.reader-active #view-reader.reader-view.active { inset: 0; }
       #view-reader .reader-stage { padding: 0; }
@@ -6820,7 +6839,7 @@ function injectReaderViewStyles() {
       #view-reader .reader-action-button { right: 14px; bottom: calc(var(--reader-stage-bottom) + 14px); min-height: 42px; padding-inline: 14px; }
       #view-reader .reader-close-button { top: 10px; right: 10px; min-height: 34px; padding-inline: 12px; font-size: .82rem; }
       #view-reader .reader-action-menu { right: 8px; bottom: calc(var(--reader-stage-bottom) + 62px); }
-      #view-reader .reader-panel { top: auto; right: 10px; bottom: calc(var(--reader-stage-bottom) + 10px); left: 10px; width: auto; max-height: min(78dvh, 620px); border-radius: 18px 18px 12px 12px; }
+      #view-reader .reader-panel { top: auto; right: 10px; bottom: calc(var(--reader-stage-bottom) + 10px); left: 10px; width: auto; height: min(78dvh, calc(100dvh - var(--reader-stage-bottom) - 20px)); max-height: min(78dvh, calc(100dvh - var(--reader-stage-bottom) - 20px)); border-radius: 18px 18px 12px 12px; }
       #view-reader .reader-book-heading h2 { font-size: .95rem; }
       #view-reader .reader-turn-zone { width: 28%; }
     }
@@ -6859,6 +6878,160 @@ function getReaderCurrentChapterTitle() {
 
 function getReaderCurrentPageLabel() {
   return document.getElementById('reader-page-text')?.textContent || `第 ${cloudLibrary.readerPageIndex + 1} 頁`;
+}
+
+function getReaderBookKey(book = cloudLibrary.readerBook) {
+  if (!book) return '';
+  if (book.id === 'system-bible' || book.source === 'system') return 'system-bible';
+  if (book.source === 'imported_epub') return `imported:${book.id}`;
+  return `cloud:${book.id}`;
+}
+
+function getReaderBookSource(book = cloudLibrary.readerBook) {
+  if (!book) return 'generated';
+  if (book.id === 'system-bible' || book.source === 'system') return 'system';
+  if (book.source === 'imported_epub') return 'imported_epub';
+  return book.source || 'generated';
+}
+
+function loadReaderProgressMap() {
+  const data = loadJson(cloudLibrary.readerProgressKey, {});
+  return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+}
+
+function saveReaderProgressMap(map) {
+  saveJson(cloudLibrary.readerProgressKey, map && typeof map === 'object' ? map : {});
+}
+
+function getReaderProgress(bookKey) {
+  const key = bookKey || getReaderBookKey();
+  if (!key) return null;
+  const progress = loadReaderProgressMap()[key];
+  return progress && typeof progress === 'object' ? progress : null;
+}
+
+function getValidReaderProgress(book = cloudLibrary.readerBook) {
+  const progress = getReaderProgress(getReaderBookKey(book));
+  if (!progress) return null;
+  const chapterCount = cloudLibrary.readerChapters.length;
+  const chapterIndex = Math.trunc(Number(progress.chapterIndex));
+  const pageIndex = Math.trunc(Number(progress.pageIndex));
+  if (!Number.isFinite(chapterIndex) || chapterIndex < 0 || chapterIndex >= chapterCount) return null;
+  return {
+    ...progress,
+    chapterIndex,
+    pageIndex: Number.isFinite(pageIndex) && pageIndex >= 0 ? pageIndex : 0,
+  };
+}
+
+function saveCurrentReaderProgressLocal() {
+  const book = cloudLibrary.readerBook;
+  const bookKey = getReaderBookKey(book);
+  if (!book || !bookKey) return null;
+  const map = loadReaderProgressMap();
+  const pageCount = Math.max(1, Number(cloudLibrary.readerPageCount || 1));
+  const chapterIndex = Math.max(0, Math.min(Math.trunc(Number(cloudLibrary.readerChapterIndex) || 0), Math.max(0, cloudLibrary.readerChapters.length - 1)));
+  const pageIndex = normalizeReaderPageIndex(cloudLibrary.readerPageIndex, pageCount);
+  const payload = {
+    bookKey,
+    source: getReaderBookSource(book),
+    bookTitle: book.title || '',
+    chapterIndex,
+    pageIndex,
+    updatedAt: nowIso(),
+  };
+  map[bookKey] = payload;
+  saveReaderProgressMap(map);
+  return payload;
+}
+
+function loadReaderBookmarks() {
+  const data = loadJson(cloudLibrary.readerBookmarksKey, []);
+  return Array.isArray(data) ? data.filter(item => item && typeof item === 'object') : [];
+}
+
+function saveReaderBookmarks(bookmarks) {
+  saveJson(cloudLibrary.readerBookmarksKey, Array.isArray(bookmarks) ? bookmarks : []);
+}
+
+function getCurrentBookBookmarks() {
+  const bookKey = getReaderBookKey();
+  if (!bookKey) return [];
+  return loadReaderBookmarks()
+    .filter(bookmark => bookmark.bookKey === bookKey)
+    .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+}
+
+function getCurrentReaderBookmark() {
+  const bookKey = getReaderBookKey();
+  if (!bookKey) return null;
+  const chapterIndex = Math.trunc(Number(cloudLibrary.readerChapterIndex) || 0);
+  const pageIndex = normalizeReaderPageIndex(cloudLibrary.readerPageIndex);
+  return loadReaderBookmarks().find(bookmark =>
+    bookmark.bookKey === bookKey
+    && Number(bookmark.chapterIndex) === chapterIndex
+    && Number(bookmark.pageIndex) === pageIndex
+  ) || null;
+}
+
+function isCurrentReaderPositionBookmarked() {
+  return !!getCurrentReaderBookmark();
+}
+
+function buildCurrentReaderBookmark() {
+  const book = cloudLibrary.readerBook;
+  const bookKey = getReaderBookKey(book);
+  if (!book || !bookKey) return null;
+  const chapterTitle = getReaderCurrentChapterTitle();
+  const pageLabel = getReaderCurrentPageLabel();
+  return {
+    id: uid('reader_bookmark'),
+    bookKey,
+    source: getReaderBookSource(book),
+    bookTitle: book.title || '閱讀模式',
+    chapterIndex: Math.trunc(Number(cloudLibrary.readerChapterIndex) || 0),
+    pageIndex: normalizeReaderPageIndex(cloudLibrary.readerPageIndex),
+    chapterTitle,
+    label: `${chapterTitle} · ${pageLabel}`,
+    createdAt: nowIso(),
+  };
+}
+
+function addCurrentReaderBookmark() {
+  const bookmark = buildCurrentReaderBookmark();
+  if (!bookmark) return null;
+  const bookmarks = loadReaderBookmarks();
+  const exists = bookmarks.some(item =>
+    item.bookKey === bookmark.bookKey
+    && Number(item.chapterIndex) === bookmark.chapterIndex
+    && Number(item.pageIndex) === bookmark.pageIndex
+  );
+  if (!exists) bookmarks.push(bookmark);
+  saveReaderBookmarks(bookmarks);
+  renderReaderPanels();
+  return bookmark;
+}
+
+function removeCurrentReaderBookmark() {
+  const current = getCurrentReaderBookmark();
+  if (!current) return;
+  saveReaderBookmarks(loadReaderBookmarks().filter(bookmark => bookmark.id !== current.id));
+  renderReaderPanels();
+}
+
+function removeReaderBookmark(bookmarkId) {
+  saveReaderBookmarks(loadReaderBookmarks().filter(bookmark => bookmark.id !== bookmarkId));
+  renderReaderPanels();
+}
+
+async function jumpToReaderBookmark(bookmarkId) {
+  const bookmark = loadReaderBookmarks().find(item => item.id === bookmarkId);
+  if (!bookmark || bookmark.bookKey !== getReaderBookKey()) return;
+  const chapterIndex = Math.trunc(Number(bookmark.chapterIndex));
+  if (!Number.isFinite(chapterIndex) || chapterIndex < 0 || chapterIndex >= cloudLibrary.readerChapters.length) return;
+  await openReaderChapter(chapterIndex, { pageIndex: Math.max(0, Number(bookmark.pageIndex) || 0) });
+  closeReaderPanel();
+  showReaderControls();
 }
 
 function getClosestReaderSettingLevel(value, levels) {
@@ -6989,13 +7162,32 @@ function renderReaderSettingsPanel() {
 
 function renderReaderBookmarksPanel() {
   const book = cloudLibrary.readerBook;
+  const currentBookmark = getCurrentReaderBookmark();
+  const bookmarks = getCurrentBookBookmarks();
+  const bookmarkItems = bookmarks.map(bookmark => `
+    <div class="reader-bookmark-item">
+      <button class="reader-bookmark-jump" type="button" data-reader-bookmark-jump="${escapeHtml(bookmark.id)}">
+        ${escapeHtml(bookmark.label || bookmark.chapterTitle || '未命名書籤')}
+        <small>${escapeHtml(bookmark.createdAt ? new Date(bookmark.createdAt).toLocaleString('zh-TW') : '')}</small>
+      </button>
+      <button class="reader-bookmark-remove" type="button" data-reader-bookmark-remove="${escapeHtml(bookmark.id)}" aria-label="移除書籤">×</button>
+    </div>
+  `).join('');
   return `
     <p class="reader-panel-book-title">${escapeHtml(book?.title || '閱讀模式')}</p>
     <div class="reader-bookmark-summary">
       <span>目前位置</span>
       <strong>${escapeHtml(getReaderCurrentChapterTitle())}｜${escapeHtml(getReaderCurrentPageLabel())}</strong>
     </div>
-    <p class="reader-panel-muted">書籤功能將於後續版本加入。本階段先顯示目前閱讀位置，不寫入 Supabase。</p>
+    <div class="reader-bookmark-actions">
+      <button class="reader-bookmark-action${currentBookmark ? ' is-remove' : ''}" type="button" data-reader-bookmark-toggle>
+        ${currentBookmark ? '移除目前位置書籤' : '加入目前位置書籤'}
+      </button>
+    </div>
+    <p class="reader-panel-muted">本機書籤只儲存在此瀏覽器，不寫入 Supabase。</p>
+    <div class="reader-bookmark-list">
+      ${bookmarkItems || '<p class="reader-panel-muted">這本書目前沒有書籤。</p>'}
+    </div>
   `;
 }
 
@@ -7022,6 +7214,7 @@ function updateReaderSetting(key, value) {
   cloudLibrary.readerSettings = { fontSize: 18, lineHeight: 1.8, theme: 'light', ...cloudLibrary.readerSettings, [key]: value };
   saveJson(cloudLibrary.readerSettingsKey, cloudLibrary.readerSettings);
   renderReaderSettings();
+  saveCurrentReaderProgressLocal();
   renderReaderPanels();
   showReaderControls();
 }
@@ -7369,6 +7562,7 @@ async function turnReaderPage(direction) {
 async function persistCurrentReaderProgress() {
   const book = cloudLibrary.readerBook;
   if (!book) return;
+  saveCurrentReaderProgressLocal();
   await persistReadingProgress(book.id, cloudLibrary.readerChapterIndex, getCurrentReaderProgress());
 }
 
@@ -7896,6 +8090,7 @@ document.addEventListener('click', event => {
   if (event.target.id === 'go-library-btn') setView('library');
   if (event.target.id === 'library-empty-action') setView('books');
   if (event.target.id === 'reader-back-library' || event.target.closest('[data-reader-close]')) {
+    persistCurrentReaderProgress().catch(console.error);
     closeReaderPanel();
     setView('library');
     return;
@@ -7927,6 +8122,27 @@ document.addEventListener('click', event => {
     const key = settingOption.dataset.readerSettingOption;
     const value = Number(settingOption.dataset.readerSettingValue);
     if (key && Number.isFinite(value)) updateReaderSetting(key, value);
+    return;
+  }
+  const bookmarkJump = event.target.closest('[data-reader-bookmark-jump]');
+  if (bookmarkJump) {
+    event.preventDefault();
+    event.stopPropagation();
+    jumpToReaderBookmark(bookmarkJump.dataset.readerBookmarkJump).catch(handleError);
+    return;
+  }
+  const bookmarkRemove = event.target.closest('[data-reader-bookmark-remove]');
+  if (bookmarkRemove) {
+    event.preventDefault();
+    event.stopPropagation();
+    removeReaderBookmark(bookmarkRemove.dataset.readerBookmarkRemove);
+    return;
+  }
+  if (event.target.closest('[data-reader-bookmark-toggle]')) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (isCurrentReaderPositionBookmarked()) removeCurrentReaderBookmark();
+    else addCurrentReaderBookmark();
     return;
   }
   const tocItem = event.target.closest('[data-reader-toc-index]');
