@@ -5936,6 +5936,14 @@ const cloudLibrary = {
   readerControlsTimer: null,
   readerProgressKey: 'devotion-reader-progress-v1',
   readerBookmarksKey: 'devotion-reader-bookmarks-v1',
+  readerSearchQuery: '',
+  readerSearchStatus: 'idle',
+  readerSearchResults: [],
+  readerSearchCache: [],
+  readerSearchCacheKey: '',
+  readerSearchTimer: null,
+  readerSearchRunId: 0,
+  readerSearchTruncated: false,
   readerSettings: loadJson('devotion-app-reader-settings', { fontSize: 18, lineHeight: 1.8, theme: 'light' }),
 };
 
@@ -6800,6 +6808,17 @@ function injectReaderViewStyles() {
     #view-reader .reader-search-field, #view-reader .reader-settings-sheet select, #view-reader .reader-settings-sheet input { width: 100%; }
     #view-reader .reader-search-field { min-height: 44px; padding: 0 12px; border: 1px solid rgba(80,70,55,.2); border-radius: 10px; background: #fff; color: #2f2a24; }
     #view-reader.reader-dark .reader-search-field { border-color: rgba(255,255,255,.16); background: #242424; color: #eee7dd; }
+    #view-reader .reader-search-status { margin: 10px 0 12px; color: #74675d; font-size: .88rem; line-height: 1.55; }
+    #view-reader.reader-dark .reader-search-status { color: #b8aea4; }
+    #view-reader .reader-search-results { display: grid; gap: 8px; margin-top: 12px; padding-bottom: 8px; }
+    #view-reader .reader-search-result { width: 100%; display: grid; gap: 5px; padding: 11px 12px; border: 1px solid rgba(80,70,55,.14); border-radius: 12px; background: rgba(255,255,255,.5); color: inherit; text-align: left; }
+    #view-reader.reader-dark .reader-search-result { border-color: rgba(255,255,255,.12); background: rgba(255,255,255,.06); }
+    #view-reader .reader-search-result strong { color: #21484c; font-size: .94rem; line-height: 1.4; }
+    #view-reader.reader-dark .reader-search-result strong { color: #dcefeb; }
+    #view-reader .reader-search-result span { color: #4b4037; font-size: .88rem; line-height: 1.55; }
+    #view-reader.reader-dark .reader-search-result span { color: #d7cec4; }
+    #view-reader .reader-search-result small { color: #7a6d62; font-size: .78rem; line-height: 1.45; }
+    #view-reader.reader-dark .reader-search-result small { color: #aaa099; }
     #view-reader .reader-settings-sheet { display: grid; gap: 16px; }
     #view-reader .reader-settings-sheet label { display: grid; gap: 8px; color: inherit; font-size: .9rem; font-weight: 700; }
     #view-reader .reader-setting-levels { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
@@ -6855,6 +6874,9 @@ function injectReaderViewStyles() {
 const READER_PANEL_TYPES = new Set(['menu', 'toc', 'search', 'settings', 'bookmarks']);
 const READER_FONT_SIZE_LEVELS = [16, 17, 18, 20, 22, 24];
 const READER_LINE_HEIGHT_LEVELS = [1.55, 1.65, 1.75, 1.85, 1.95, 2.05];
+const READER_SEARCH_MIN_LENGTH = 2;
+const READER_SEARCH_DEBOUNCE_MS = 320;
+const READER_SEARCH_RESULT_LIMIT = 50;
 
 function isReaderPanel(panel) {
   return READER_PANEL_TYPES.has(panel);
@@ -6864,6 +6886,7 @@ function openReaderPanel(panel) {
   if (!isReaderPanel(panel)) return;
   cloudLibrary.readerActivePanel = panel;
   renderReaderPanels();
+  if (panel === 'search') focusReaderSearchField();
 }
 
 function closeReaderPanel() {
@@ -7039,6 +7062,177 @@ async function jumpToReaderBookmark(bookmarkId) {
   showReaderControls();
 }
 
+function resetReaderSearchState() {
+  clearTimeout(cloudLibrary.readerSearchTimer);
+  cloudLibrary.readerSearchQuery = '';
+  cloudLibrary.readerSearchStatus = 'idle';
+  cloudLibrary.readerSearchResults = [];
+  cloudLibrary.readerSearchCache = [];
+  cloudLibrary.readerSearchCacheKey = '';
+  cloudLibrary.readerSearchTimer = null;
+  cloudLibrary.readerSearchRunId += 1;
+  cloudLibrary.readerSearchTruncated = false;
+}
+
+function getReaderSearchCacheKey() {
+  const bookKey = getReaderBookKey();
+  const chapters = cloudLibrary.readerChapters || [];
+  const first = chapters[0]?.id || chapters[0]?.href || chapters[0]?.title || '';
+  const lastChapter = chapters[chapters.length - 1] || {};
+  const last = lastChapter.id || lastChapter.href || lastChapter.title || '';
+  return [bookKey, chapters.length, first, last].join('|');
+}
+
+function readerHtmlToPlainText(html = '') {
+  if (!html) return '';
+  const doc = new DOMParser().parseFromString(`<main>${html}</main>`, 'text/html');
+  return (doc.body?.textContent || '').replace(/\s+/g, ' ').trim();
+}
+
+function normalizeReaderSearchText(text = '') {
+  return String(text || '').replace(/\s+/g, ' ').trim().toLocaleLowerCase();
+}
+
+function waitForReaderSearchYield() {
+  return new Promise(resolve => setTimeout(resolve, 0));
+}
+
+async function buildReaderSearchCache(runId) {
+  const cacheKey = getReaderSearchCacheKey();
+  if (cloudLibrary.readerSearchCacheKey === cacheKey && Array.isArray(cloudLibrary.readerSearchCache)) {
+    return cloudLibrary.readerSearchCache;
+  }
+  const chapters = cloudLibrary.readerChapters || [];
+  const cache = [];
+  for (let index = 0; index < chapters.length; index += 1) {
+    if (runId !== cloudLibrary.readerSearchRunId) return [];
+    const chapter = chapters[index] || {};
+    const title = String(chapter.title || `第 ${index + 1} 章`);
+    const text = readerHtmlToPlainText(chapter.html || '');
+    cache.push({
+      chapterIndex: index,
+      chapterTitle: title,
+      text,
+      searchText: normalizeReaderSearchText(`${title} ${text}`),
+    });
+    if (index > 0 && index % 25 === 0) await waitForReaderSearchYield();
+  }
+  if (runId === cloudLibrary.readerSearchRunId) {
+    cloudLibrary.readerSearchCacheKey = cacheKey;
+    cloudLibrary.readerSearchCache = cache;
+  }
+  return cache;
+}
+
+function buildReaderSearchSnippet(item, query) {
+  const title = String(item?.chapterTitle || '');
+  const text = String(item?.text || '');
+  const needle = normalizeReaderSearchText(query);
+  const titleMatch = normalizeReaderSearchText(title).includes(needle);
+  if (titleMatch) return title;
+  const lowerText = text.toLocaleLowerCase();
+  const index = lowerText.indexOf(needle);
+  if (index < 0) return text.slice(0, 90);
+  const start = Math.max(0, index - 42);
+  const end = Math.min(text.length, index + String(query).length + 54);
+  return `${start > 0 ? '...' : ''}${text.slice(start, end)}${end < text.length ? '...' : ''}`;
+}
+
+async function runReaderSearch(query, runId) {
+  const normalizedQuery = String(query || '').trim();
+  if (normalizedQuery.length < READER_SEARCH_MIN_LENGTH) return;
+  try {
+    const cache = await buildReaderSearchCache(runId);
+    if (runId !== cloudLibrary.readerSearchRunId) return;
+    const needle = normalizeReaderSearchText(normalizedQuery);
+    const results = [];
+    let truncated = false;
+    for (let index = 0; index < cache.length; index += 1) {
+      if (runId !== cloudLibrary.readerSearchRunId) return;
+      const item = cache[index];
+      if (item.searchText.includes(needle)) {
+        results.push({
+          chapterIndex: item.chapterIndex,
+          chapterTitle: item.chapterTitle,
+          snippet: buildReaderSearchSnippet(item, normalizedQuery),
+        });
+        if (results.length >= READER_SEARCH_RESULT_LIMIT) {
+          truncated = index < cache.length - 1;
+          break;
+        }
+      }
+      if (index > 0 && index % 80 === 0) await waitForReaderSearchYield();
+    }
+    if (runId !== cloudLibrary.readerSearchRunId) return;
+    cloudLibrary.readerSearchResults = results;
+    cloudLibrary.readerSearchStatus = results.length ? 'done' : 'empty';
+    cloudLibrary.readerSearchTruncated = truncated;
+  } catch (error) {
+    console.error('reader search failed', error);
+    if (runId !== cloudLibrary.readerSearchRunId) return;
+    cloudLibrary.readerSearchResults = [];
+    cloudLibrary.readerSearchStatus = 'error';
+    cloudLibrary.readerSearchTruncated = false;
+  }
+  renderReaderPanels();
+  focusReaderSearchField();
+}
+
+function focusReaderSearchField() {
+  requestAnimationFrame(() => {
+    const input = document.getElementById('reader-search-field');
+    if (!input) return;
+    input.focus({ preventScroll: true });
+    const length = input.value.length;
+    try { input.setSelectionRange(length, length); } catch (error) { /* ignore unsupported inputs */ }
+  });
+}
+
+function scheduleReaderSearch(value) {
+  const query = String(value || '').trim();
+  clearTimeout(cloudLibrary.readerSearchTimer);
+  cloudLibrary.readerSearchQuery = query;
+  cloudLibrary.readerSearchResults = [];
+  cloudLibrary.readerSearchTruncated = false;
+  cloudLibrary.readerSearchRunId += 1;
+  const runId = cloudLibrary.readerSearchRunId;
+  if (!query) {
+    cloudLibrary.readerSearchStatus = 'idle';
+    renderReaderPanels();
+    focusReaderSearchField();
+    return;
+  }
+  if (query.length < READER_SEARCH_MIN_LENGTH) {
+    cloudLibrary.readerSearchStatus = 'too-short';
+    renderReaderPanels();
+    focusReaderSearchField();
+    return;
+  }
+  cloudLibrary.readerSearchStatus = 'searching';
+  renderReaderPanels();
+  focusReaderSearchField();
+  cloudLibrary.readerSearchTimer = setTimeout(() => {
+    runReaderSearch(query, runId).catch(handleError);
+  }, READER_SEARCH_DEBOUNCE_MS);
+}
+
+async function jumpToReaderSearchResult(chapterIndex) {
+  const index = Math.trunc(Number(chapterIndex));
+  if (!Number.isFinite(index) || index < 0 || index >= cloudLibrary.readerChapters.length) return;
+  const chapter = cloudLibrary.readerChapters[index];
+  if (!chapter) return;
+  cloudLibrary.readerChapterIndex = index;
+  cloudLibrary.readerPageIndex = 0;
+  const chapterNav = document.getElementById('reader-chapter-nav');
+  if (chapterNav) chapterNav.value = String(index);
+  const content = document.getElementById('reader-content');
+  if (content) content.innerHTML = chapter.html || '<p>這個章節目前沒有內容。</p>';
+  paginateCurrentReaderChapter(false);
+  saveCurrentReaderProgressLocal();
+  closeReaderPanel();
+  showReaderControls();
+}
+
 function getClosestReaderSettingLevel(value, levels) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return levels[0];
@@ -7138,10 +7332,35 @@ function renderReaderTocPanel() {
 }
 
 function renderReaderSearchPanel() {
+  const query = cloudLibrary.readerSearchQuery || '';
+  const status = cloudLibrary.readerSearchStatus || 'idle';
+  const results = Array.isArray(cloudLibrary.readerSearchResults) ? cloudLibrary.readerSearchResults : [];
+  const resultItems = results.map(result => `
+    <button class="reader-search-result" type="button" data-reader-search-chapter-index="${Number(result.chapterIndex) || 0}">
+      <strong>${escapeHtml(String(result.chapterTitle || `第 ${(Number(result.chapterIndex) || 0) + 1} 章`))}</strong>
+      <span>${escapeHtml(String(result.snippet || ''))}</span>
+      <small>點擊結果會前往該章節。</small>
+    </button>
+  `).join('');
+  const statusText = !query
+    ? '輸入至少 2 個字搜尋本書內容。'
+    : query.length < READER_SEARCH_MIN_LENGTH
+      ? `請再輸入 ${READER_SEARCH_MIN_LENGTH - query.length} 個字後開始搜尋。`
+      : status === 'searching'
+        ? '搜尋中...'
+        : status === 'empty'
+          ? '沒有找到符合的章節。'
+          : status === 'error'
+            ? '搜尋時發生問題，請稍後再試。'
+            : `找到 ${results.length}${cloudLibrary.readerSearchTruncated ? '+' : ''} 筆結果。`;
   return `
     <label class="reader-panel-muted" for="reader-search-field">輸入關鍵字</label>
-    <input id="reader-search-field" class="reader-search-field" type="search" placeholder="搜尋書籍內容" autocomplete="off" />
-    <p class="reader-panel-muted">全文搜尋功能將於後續版本加入。本階段先保留面板入口，不建立全文索引。</p>
+    <input id="reader-search-field" class="reader-search-field" type="search" placeholder="搜尋本書內容" autocomplete="off" value="${escapeHtml(query)}" />
+    <p class="reader-panel-muted">輸入關鍵字搜尋本書內容。第一階段會前往命中的章節，不會精準定位到節號。</p>
+    <p class="reader-search-status" role="status">${escapeHtml(statusText)}</p>
+    <div class="reader-search-results" aria-label="搜尋結果">
+      ${resultItems}
+    </div>
   `;
 }
 
@@ -7248,6 +7467,7 @@ function resetReaderPaginationCache() {
   cloudLibrary.readerChapterPages = [];
   cloudLibrary.readerChapterPageCounts = [];
   cloudLibrary.readerPaginationSignature = '';
+  resetReaderSearchState();
 }
 
 function getReaderPaginationSignature() {
@@ -8159,6 +8379,13 @@ document.addEventListener('click', event => {
     else addCurrentReaderBookmark();
     return;
   }
+  const searchResult = event.target.closest('[data-reader-search-chapter-index]');
+  if (searchResult) {
+    event.preventDefault();
+    event.stopPropagation();
+    jumpToReaderSearchResult(searchResult.dataset.readerSearchChapterIndex).catch(handleError);
+    return;
+  }
   const tocItem = event.target.closest('[data-reader-toc-index]');
   if (tocItem) {
     event.preventDefault();
@@ -8198,6 +8425,11 @@ document.addEventListener('change', event => {
 });
 
 document.addEventListener('input', event => {
+  if (event.target.id === 'reader-search-field') {
+    event.stopPropagation();
+    scheduleReaderSearch(event.target.value);
+    return;
+  }
   if (event.target.id === 'reader-font-size') updateReaderSetting('fontSize', Number(event.target.value));
   if (event.target.id === 'reader-line-height') updateReaderSetting('lineHeight', Number(event.target.value));
   if (event.target.dataset.readerSetting === 'fontSize') updateReaderSetting('fontSize', Number(event.target.value));
