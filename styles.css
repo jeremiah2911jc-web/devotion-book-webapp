@@ -5549,6 +5549,64 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
   }
 }
 
+@media (max-width: 1023px) {
+  body:not(.auth-locked)[data-current-view="books"] .main,
+  body:not(.auth-locked)[data-current-view="content-library"] .main {
+    padding-bottom: max(184px, calc(148px + env(safe-area-inset-bottom)));
+  }
+
+  #view-books.book-draft-workspace,
+  #view-content-library {
+    padding-bottom: max(112px, calc(96px + env(safe-area-inset-bottom)));
+  }
+
+  #view-books.book-draft-workspace > .grid.layout-books {
+    padding-bottom: max(112px, calc(96px + env(safe-area-inset-bottom)));
+  }
+}
+
+@media (max-width: 720px) {
+  body:not(.auth-locked)[data-current-view="books"] .main,
+  body:not(.auth-locked)[data-current-view="content-library"] .main {
+    padding-bottom: max(204px, calc(168px + env(safe-area-inset-bottom)));
+  }
+
+  #view-books.book-draft-workspace,
+  #view-content-library,
+  #view-books.book-draft-workspace > .grid.layout-books {
+    padding-bottom: max(124px, calc(104px + env(safe-area-inset-bottom)));
+  }
+
+  .book-draft-actions {
+    gap: 9px;
+  }
+
+  .book-draft-actions > button {
+    flex: 1 1 132px;
+    min-width: 0;
+  }
+
+  #content-library-add-selected:disabled {
+    min-height: 38px;
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+
+  .book-draft-modal-shell.is-open {
+    max-height: calc(100dvh - 132px - env(safe-area-inset-bottom));
+    padding-bottom: max(22px, calc(16px + env(safe-area-inset-bottom)));
+  }
+
+  .book-draft-overview-body {
+    max-height: calc(100dvh - 206px - env(safe-area-inset-bottom));
+    padding-bottom: max(20px, calc(14px + env(safe-area-inset-bottom)));
+  }
+
+  .book-draft-modal-right-footer {
+    padding-bottom: max(16px, calc(12px + env(safe-area-inset-bottom)));
+  }
+}
+
 @media (min-width: 721px) and (max-width: 1023px) {
   body:not(.auth-locked)[data-current-view="dashboard"] .main::before,
   body:not(.auth-locked)[data-current-view="dashboard"] .main::after,

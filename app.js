@@ -3981,7 +3981,7 @@ function renderContentLibrary() {
       ? '請先選擇編排'
       : selectedCount
         ? `加入「${selectedBookTitle}」（已選 ${selectedCount} 篇）`
-        : `選取札記後加入「${selectedBookTitle}」`;
+        : '先勾選札記';
     els.contentLibraryAddSelected.classList.toggle('primary-btn', !!selectedBook && !!selectedCount && !state.bookArrangementSaving);
     els.contentLibraryAddSelected.classList.toggle('secondary-btn', !selectedBook || !selectedCount || state.bookArrangementSaving);
   }
