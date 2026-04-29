@@ -1295,7 +1295,10 @@ body.account-settings-open {
 #content-library-clear-filters {
   grid-column: 11 / span 2;
   width: 100%;
+  inline-size: 100%;
+  min-width: 0;
   max-width: 100%;
+  max-inline-size: 100%;
   min-height: 48px;
   padding: 9px 14px;
   border-radius: 14px;
@@ -1428,11 +1431,11 @@ body.account-settings-open {
   }
 
   #view-content-library .compact-control:has(#content-library-date-from) {
-    grid-column: 1 / span 3;
+    grid-column: 1 / -1;
   }
 
   #view-content-library .compact-control:has(#content-library-date-to) {
-    grid-column: 4 / span 3;
+    grid-column: 1 / -1;
   }
 
   #view-content-library .compact-control:has(#content-library-category) {
