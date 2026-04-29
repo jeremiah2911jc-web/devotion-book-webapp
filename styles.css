@@ -690,7 +690,9 @@ input:focus, textarea:focus, select:focus {
   margin: 0 0 12px;
   font-size: 13px;
   line-height: 1.7;
+  overflow-wrap: anywhere;
 }
+.footer-support-text a { color: #4a8b90; }
 .footer-copyright {
   margin: 14px 0 0;
   font-size: 12px;

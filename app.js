@@ -959,6 +959,17 @@ function ensureContentLibraryUi() {
 }
 
 function ensureOperationManualUi() {
+  const siteFooter = document.querySelector('.site-footer');
+  if (siteFooter && !document.getElementById('footer-support-contact')) {
+    const contact = document.createElement('p');
+    contact.id = 'footer-support-contact';
+    contact.className = 'footer-support-text';
+    contact.innerHTML = '使用問題與意見回饋：<a href="mailto:devotionbook.tw@gmail.com">devotionbook.tw@gmail.com</a>';
+    const copyright = siteFooter.querySelector('.footer-copyright');
+    if (copyright) siteFooter.insertBefore(contact, copyright);
+    else siteFooter.appendChild(contact);
+  }
+
   const desktopNav = document.querySelector('.desktop-sidebar-nav');
   if (desktopNav && !desktopNav.querySelector('[data-view="manual"]')) {
     const settingsLink = desktopNav.querySelector('[data-open-account-settings]');
@@ -1013,6 +1024,7 @@ function ensureOperationManualUi() {
             <li><a href="#manual-account-data">十一、帳號與資料</a></li>
             <li><a href="#manual-admin-backup">十二、管理後台與備份</a></li>
             <li><a href="#manual-faq">十三、常見問題</a></li>
+            <li><a href="#manual-feedback">十四、使用問題與意見回饋</a></li>
           </ul>
         </section>
 
@@ -1169,17 +1181,9 @@ function ensureOperationManualUi() {
 
           <section id="manual-admin-backup" class="manual-section">
             <h2>十二、管理後台與備份</h2>
-            <p>管理後台適合管理者使用，一般使用者平常不需要進入。若沒有管理權限，系統會回到一般頁面。</p>
-            <p>目前管理後台包含資料備份、系統備份、匯入備份預覽、安全模式還原、覆蓋還原，以及 Supabase / Vercel 使用量資訊區塊。</p>
-            <p>備份與還原請謹慎操作：</p>
-            <ul>
-              <li>「匯出備份（JSON）」可保存目前資料。</li>
-              <li>「下載系統備份」用於保留較完整的系統資料。</li>
-              <li>「匯入備份（JSON）」會先讀取並預覽備份內容。</li>
-              <li>「開始還原（安全模式）」適合較保守的還原。</li>
-              <li>「覆蓋還原（危險）」可能取代既有資料，操作前務必確認備份內容。</li>
-            </ul>
-            <p>使用量卡片透過後端安全代理讀取，不會在前端顯示平台 Token。若環境變數或權限不足，卡片可能顯示尚未接入或讀取失敗。</p>
+            <p>管理後台主要供系統管理者使用，一般使用者平常不需要進入。</p>
+            <p>若沒有管理權限，系統會回到一般頁面。</p>
+            <p>備份與還原屬於管理操作，請由管理者確認後再使用。</p>
           </section>
 
           <section id="manual-faq" class="manual-section">
@@ -1200,6 +1204,13 @@ function ensureOperationManualUi() {
             <p>iPhone / iPad 可用「書籍」App。Android 可用「Google Play 圖書」或其他支援 EPUB 的閱讀器。桌機可用支援 EPUB 的閱讀軟體或瀏覽器擴充功能。</p>
             <h3>外部 EPUB 匯入失敗怎麼辦？</h3>
             <p>請確認檔案是 EPUB、大小未超過限制，且沒有 DRM 保護。若檔案結構特殊或已損壞，系統可能無法解析。</p>
+          </section>
+
+          <section id="manual-feedback" class="manual-section">
+            <h2>十四、使用問題與意見回饋</h2>
+            <p>如果你在使用靈修札記成書系統時遇到問題，或有功能建議，歡迎來信：</p>
+            <p><a href="mailto:devotionbook.tw@gmail.com">devotionbook.tw@gmail.com</a></p>
+            <p>來信時可以簡單附上使用裝置、遇到的頁面、問題描述。若方便，也可以附上截圖，方便我們判斷問題。</p>
           </section>
         </article>
       </section>
