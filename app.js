@@ -19,6 +19,36 @@ const TEMPLATE_LABELS = {
 
 const DEFAULT_BOOK_LANGUAGE = 'mul';
 const ADMIN_EMAILS = ['allen680552@gmail.com'];
+const MAX_IMPORTED_EPUB_BYTES = 10 * 1024 * 1024;
+const MAX_IMPORTED_EPUB_UNZIPPED_BYTES = 30 * 1024 * 1024;
+const MAX_IMPORTED_EPUB_CHAPTER_CHARS = 300_000;
+const IMPORTED_EPUB_SAFE_TAGS = new Set([
+  'p',
+  'br',
+  'strong',
+  'em',
+  'b',
+  'i',
+  'u',
+  'blockquote',
+  'ul',
+  'ol',
+  'li',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'span',
+  'div',
+  'section',
+  'article',
+  'small',
+  'sup',
+  'sub',
+  'a',
+  'hr',
+]);
+const HTML_REMOVE_WITH_CONTENT_TAGS = new Set(['script', 'style', 'iframe', 'object', 'embed', 'link', 'meta', 'base', 'svg']);
 const EMPTY_ADMIN_USAGE = {
   database: {
     used: null,
@@ -611,7 +641,16 @@ async function loadAdminUsage() {
     state.adminUsage.status = 'loading';
     refreshUi();
     try {
-      const response = await fetch('/api/admin-usage', { headers: { Accept: 'application/json' } });
+      if (!state.supabase) throw new Error('admin usage requires Supabase session');
+      const { data } = await state.supabase.auth.getSession();
+      const sessionAccessToken = String(data?.session?.access_token || '').trim();
+      if (!sessionAccessToken) throw new Error('admin usage requires active session');
+      const response = await fetch('/api/admin-usage', {
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${sessionAccessToken}`,
+        },
+      });
       if (!response.ok) throw new Error(`admin usage request failed: ${response.status}`);
       const payload = await response.json();
       state.adminUsage.status = 'ready';
@@ -2495,12 +2534,75 @@ async function restoreBackupDanger() {
 }
 
 function escapeHtml(input = '') {
-  return input
+  return String(input ?? '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+function isSafeHtmlUrl(value = '') {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return false;
+  const normalized = trimmed.replace(/[\u0000-\u001F\u007F\s]+/g, '').toLowerCase();
+  if (
+    normalized.startsWith('javascript:')
+    || normalized.startsWith('data:')
+    || normalized.startsWith('vbscript:')
+  ) return false;
+  if (trimmed.startsWith('#') || trimmed.startsWith('/') || trimmed.startsWith('./') || trimmed.startsWith('../')) return true;
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) return true;
+  return /^(https?:|mailto:|tel:)/i.test(trimmed);
+}
+
+function stripUnsafeHtmlAttributes(root) {
+  root.querySelectorAll('*').forEach(node => {
+    [...node.attributes].forEach(attribute => {
+      const name = attribute.name.toLowerCase();
+      const value = attribute.value || '';
+      if (name.startsWith('on')) {
+        node.removeAttribute(attribute.name);
+        return;
+      }
+      if (['href', 'src', 'xlink:href', 'action', 'formaction'].includes(name) && !isSafeHtmlUrl(value)) {
+        node.removeAttribute(attribute.name);
+      }
+    });
+  });
+}
+
+function unwrapHtmlElement(node) {
+  const parent = node.parentNode;
+  if (!parent) return;
+  while (node.firstChild) parent.insertBefore(node.firstChild, node);
+  node.remove();
+}
+
+function sanitizeImportedHtmlFragment(html = '') {
+  const template = document.createElement('template');
+  template.innerHTML = String(html || '');
+  template.content.querySelectorAll([...HTML_REMOVE_WITH_CONTENT_TAGS].join(',')).forEach(node => node.remove());
+  [...template.content.querySelectorAll('*')].forEach(node => {
+    const tagName = node.tagName.toLowerCase();
+    if (!IMPORTED_EPUB_SAFE_TAGS.has(tagName)) {
+      unwrapHtmlElement(node);
+      return;
+    }
+    [...node.attributes].forEach(attribute => {
+      const name = attribute.name.toLowerCase();
+      const value = attribute.value || '';
+      if (name === 'href' && tagName === 'a' && isSafeHtmlUrl(value)) {
+        node.setAttribute('href', value.trim());
+        return;
+      }
+      node.removeAttribute(attribute.name);
+    });
+    if (tagName === 'a' && node.hasAttribute('href')) {
+      node.setAttribute('rel', 'noopener noreferrer');
+    }
+  });
+  return template.innerHTML;
 }
 function showToast(message) {
   els.toast.textContent = message;
@@ -7940,6 +8042,8 @@ async function handleImportEpubFile(file) {
   if (!(file instanceof File)) throw new Error('請先選擇要匯入的 EPUB 檔案。');
   const isEpub = /\.epub$/i.test(file.name) || file.type === 'application/epub+zip';
   if (!isEpub) throw new Error('這個檔案不是 EPUB 格式。');
+  if (file.type && file.type !== 'application/epub+zip' && !/\.epub$/i.test(file.name)) throw new Error('這個檔案不是 EPUB 格式。');
+  if (Number(file.size || 0) > MAX_IMPORTED_EPUB_BYTES) throw new Error('EPUB 檔案不可超過 10MB。');
   showToast('正在匯入 EPUB...');
   const importedBook = await importExternalEpub(file);
   cloudLibrary.selectedBookId = importedBook.id;
@@ -7950,7 +8054,7 @@ async function handleImportEpubFile(file) {
 async function importExternalEpub(file) {
   let parsed;
   try {
-    parsed = await parseExternalEpub(file);
+    parsed = await parseExternalEpub(file, { enforceImportedLimits: true });
   } catch (error) {
     throw buildExternalEpubError(error);
   }
@@ -8000,11 +8104,15 @@ function buildExternalEpubError(error) {
 }
 
 async function readEpubChapters(epubBlob, manifestChapters = [], options = {}) {
-  const entries = await unzipStoredEntries(epubBlob);
+  const enforceImportedLimits = options.source === 'imported_epub';
+  const entries = await unzipStoredEntries(epubBlob, { enforceImportedLimits });
   const epubChapters = extractEpubSpineChapters(entries);
   const sourceChapters = epubChapters.length > manifestChapters.length ? epubChapters : manifestChapters;
   return sourceChapters.map(chapter => {
     const entry = entries.get(chapter.chapter_path) || entries.get(chapter.href) || entries.get(`OEBPS/${chapter.href}`);
+    if (enforceImportedLimits && entry?.text && entry.text.length > MAX_IMPORTED_EPUB_CHAPTER_CHARS) {
+      throw new Error('EPUB 單章內容過大，請拆分章節後再匯入。');
+    }
     const html = entry ? sanitizeReaderHtml(entry.text, options) : '<p>找不到 EPUB 內的章節內容。</p>';
     return { ...chapter, html };
   });
@@ -8056,31 +8164,18 @@ function sanitizeReaderHtml(xhtml, options = {}) {
     ? 'script, style, link, iframe, object, embed, svg'
     : 'script, style, link';
   body.querySelectorAll(blockedSelector).forEach(node => node.remove());
+  stripUnsafeHtmlAttributes(body);
   if (source === 'imported_epub') {
-    body.querySelectorAll('*').forEach(node => {
-      [...node.attributes].forEach(attribute => {
-        const name = attribute.name.toLowerCase();
-        const value = attribute.value || '';
-        if (name.startsWith('on')) {
-          node.removeAttribute(attribute.name);
-          return;
-        }
-        if (['src', 'href', 'xlink:href'].includes(name)) {
-          const normalized = value.trim().toLowerCase();
-          if (normalized.startsWith('javascript:') || normalized.startsWith('data:text/html')) {
-            node.removeAttribute(attribute.name);
-          }
-        }
-      });
-    });
+    return sanitizeImportedHtmlFragment(body.innerHTML);
   }
   return body.innerHTML;
 }
 
-async function unzipStoredEntries(blob) {
+async function unzipStoredEntries(blob, options = {}) {
   const bytes = new Uint8Array(await blob.arrayBuffer());
   const entries = new Map();
   let offset = 0;
+  let totalInflatedBytes = 0;
   const decoder = new TextDecoder();
   while (offset + 30 <= bytes.length) {
     const view = new DataView(bytes.buffer, bytes.byteOffset + offset);
@@ -8100,6 +8195,10 @@ async function unzipStoredEntries(blob) {
     if (compression === 0 || compression === 8) {
       const entryBytes = bytes.slice(contentStart, contentEnd);
       const inflated = compression === 0 ? entryBytes : await inflateRawEntryData(entryBytes);
+      totalInflatedBytes += inflated.length;
+      if (options.enforceImportedLimits && totalInflatedBytes > MAX_IMPORTED_EPUB_UNZIPPED_BYTES) {
+        throw new Error('EPUB 解壓後內容不可超過 30MB，請改用較小檔案。');
+      }
       entries.set(name, {
         name,
         compression,
@@ -8123,8 +8222,9 @@ async function inflateRawEntryData(data) {
   return new Uint8Array(buffer);
 }
 
-async function parseExternalEpub(epubBlob) {
-  const entries = await unzipStoredEntries(epubBlob);
+async function parseExternalEpub(epubBlob, options = {}) {
+  const enforceImportedLimits = !!options.enforceImportedLimits;
+  const entries = await unzipStoredEntries(epubBlob, { enforceImportedLimits });
   if (entries.has('META-INF/encryption.xml') || entries.has('META-INF/rights.xml')) {
     throw new Error('EPUB appears encrypted or DRM protected');
   }
@@ -8134,7 +8234,7 @@ async function parseExternalEpub(epubBlob) {
   const opfEntry = entries.get(opfPath);
   if (!opfEntry?.text) throw new Error('找不到 OPF 檔案');
   const opfData = parseOpfDocument(opfEntry.text, opfPath);
-  const chapters = buildExternalEpubChapters(opfData, entries);
+  const chapters = buildExternalEpubChapters(opfData, entries, { enforceImportedLimits });
   if (!chapters.length) throw new Error('spine 為空');
   const coverItem = findEpubCoverItem(opfData);
   const coverEntry = coverItem ? entries.get(coverItem.path) : null;
@@ -8203,13 +8303,16 @@ function parseOpfDocument(opfText, opfPath) {
   return { opfPath, opfBasePath, metadata, manifestItems, manifest, spine };
 }
 
-function buildExternalEpubChapters(opfData, entries = new Map()) {
+function buildExternalEpubChapters(opfData, entries = new Map(), options = {}) {
   return opfData.spine
     .map((spineItem, index) => {
       const manifestItem = opfData.manifest.get(spineItem.idref);
       if (!manifestItem) return null;
       if (!/xhtml|html|xml/i.test(manifestItem.mediaType || '')) return null;
       const chapterText = entries.get(manifestItem.path)?.text || '';
+      if (options.enforceImportedLimits && chapterText.length > MAX_IMPORTED_EPUB_CHAPTER_CHARS) {
+        throw new Error('EPUB 單章內容過大，請拆分章節後再匯入。');
+      }
       const title = extractChapterTitle(chapterText, index);
       return {
         id: `imported_spine_${index}`,

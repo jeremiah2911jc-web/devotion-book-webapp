@@ -1,4 +1,5 @@
 const SUPABASE_API_BASE = 'https://api.supabase.com/v1';
+const DEFAULT_ADMIN_EMAILS = ['allen680552@gmail.com'];
 const BYTES_PER_MB = 1024 * 1024;
 const FALLBACK_LIMITS_MB = {
   databaseLimit: 500,
@@ -32,6 +33,51 @@ function logUsage(message, extra = null) {
     return;
   }
   console.log(`[admin-usage] ${message}`, extra);
+}
+
+function getAdminEmailSet() {
+  const configured = String(process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map(email => email.trim().toLowerCase())
+    .filter(Boolean);
+  return new Set(configured.length ? configured : DEFAULT_ADMIN_EMAILS);
+}
+
+function getBearerToken(req) {
+  const header = req.headers?.authorization || req.headers?.Authorization || '';
+  const match = String(header).match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : '';
+}
+
+function getMissingAuthEnv(projectRef) {
+  const missing = [];
+  if (!String(projectRef || '').trim()) missing.push('SUPABASE_PROJECT_REF');
+  if (!String(process.env.SUPABASE_ANON_KEY || '').trim()) missing.push('SUPABASE_ANON_KEY');
+  return missing;
+}
+
+async function verifySupabaseUser(projectRef, accessToken) {
+  const anonKey = String(process.env.SUPABASE_ANON_KEY || '').trim();
+  const response = await fetch(`https://${projectRef}.supabase.co/auth/v1/user`, {
+    headers: {
+      Accept: 'application/json',
+      apikey: anonKey,
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+  if (!response.ok) return null;
+  return response.json().catch(() => null);
+}
+
+async function authorizeAdminRequest(projectRef, accessToken) {
+  const user = await verifySupabaseUser(projectRef, accessToken).catch((error) => {
+    logUsage('auth verification failed', error?.message || String(error));
+    return null;
+  });
+  const email = String(user?.email || '').trim().toLowerCase();
+  if (!email) return { ok: false, status: 401, error: 'unauthorized' };
+  if (!getAdminEmailSet().has(email)) return { ok: false, status: 403, error: 'forbidden' };
+  return { ok: true, userEmail: email };
 }
 
 function bytesToMb(value) {
@@ -207,8 +253,20 @@ export default async function handler(req, res) {
     return res.status(405).json(emptyUsage());
   }
 
+  const userAccessToken = getBearerToken(req);
+  if (!userAccessToken) return res.status(401).json({ error: 'unauthorized' });
+
   const accessToken = process.env.SUPABASE_ACCESS_TOKEN;
   const projectRef = process.env.SUPABASE_PROJECT_REF;
+  const missingAuthEnv = getMissingAuthEnv(projectRef);
+
+  if (missingAuthEnv.length) {
+    logUsage('missing auth env', missingAuthEnv);
+    return res.status(500).json({ error: 'missing_env', missing: missingAuthEnv });
+  }
+
+  const auth = await authorizeAdminRequest(projectRef, userAccessToken);
+  if (!auth.ok) return res.status(auth.status).json({ error: auth.error });
 
   if (!accessToken || !projectRef) {
     logUsage('missing SUPABASE_ACCESS_TOKEN or SUPABASE_PROJECT_REF');
