@@ -5944,6 +5944,7 @@ const cloudLibrary = {
   readerSearchTimer: null,
   readerSearchRunId: 0,
   readerSearchTruncated: false,
+  readerSearchComposing: false,
   readerSettings: loadJson('devotion-app-reader-settings', { fontSize: 18, lineHeight: 1.8, theme: 'light' }),
 };
 
@@ -6874,7 +6875,7 @@ function injectReaderViewStyles() {
 const READER_PANEL_TYPES = new Set(['menu', 'toc', 'search', 'settings', 'bookmarks']);
 const READER_FONT_SIZE_LEVELS = [16, 17, 18, 20, 22, 24];
 const READER_LINE_HEIGHT_LEVELS = [1.55, 1.65, 1.75, 1.85, 1.95, 2.05];
-const READER_SEARCH_MIN_LENGTH = 2;
+const READER_SEARCH_MIN_LENGTH = 1;
 const READER_SEARCH_DEBOUNCE_MS = 320;
 const READER_SEARCH_RESULT_LIMIT = 50;
 
@@ -7072,6 +7073,7 @@ function resetReaderSearchState() {
   cloudLibrary.readerSearchTimer = null;
   cloudLibrary.readerSearchRunId += 1;
   cloudLibrary.readerSearchTruncated = false;
+  cloudLibrary.readerSearchComposing = false;
 }
 
 function getReaderSearchCacheKey() {
@@ -7174,8 +7176,7 @@ async function runReaderSearch(query, runId) {
     cloudLibrary.readerSearchStatus = 'error';
     cloudLibrary.readerSearchTruncated = false;
   }
-  renderReaderPanels();
-  focusReaderSearchField();
+  updateReaderSearchPanelContent();
 }
 
 function focusReaderSearchField() {
@@ -7188,6 +7189,42 @@ function focusReaderSearchField() {
   });
 }
 
+function getReaderSearchStatusText() {
+  const query = cloudLibrary.readerSearchQuery || '';
+  const status = cloudLibrary.readerSearchStatus || 'idle';
+  const results = Array.isArray(cloudLibrary.readerSearchResults) ? cloudLibrary.readerSearchResults : [];
+  return !query
+    ? '輸入關鍵字搜尋本書內容。'
+    : query.length < READER_SEARCH_MIN_LENGTH
+      ? `請再輸入 ${READER_SEARCH_MIN_LENGTH - query.length} 個字後開始搜尋。`
+      : status === 'searching'
+        ? '搜尋中...'
+        : status === 'empty'
+          ? '沒有找到符合的章節。'
+          : status === 'error'
+            ? '搜尋時發生問題，請稍後再試。'
+            : `找到 ${results.length}${cloudLibrary.readerSearchTruncated ? '+' : ''} 筆結果。`;
+}
+
+function renderReaderSearchResultItems() {
+  const results = Array.isArray(cloudLibrary.readerSearchResults) ? cloudLibrary.readerSearchResults : [];
+  return results.map(result => `
+    <button class="reader-search-result" type="button" data-reader-search-chapter-index="${Number(result.chapterIndex) || 0}">
+      <strong>${escapeHtml(String(result.chapterTitle || `第 ${(Number(result.chapterIndex) || 0) + 1} 章`))}</strong>
+      <span>${escapeHtml(String(result.snippet || ''))}</span>
+      <small>點擊結果會前往該章節。</small>
+    </button>
+  `).join('');
+}
+
+function updateReaderSearchPanelContent() {
+  if (cloudLibrary.readerActivePanel !== 'search') return;
+  const status = document.getElementById('reader-search-status');
+  const results = document.getElementById('reader-search-results');
+  if (status) status.textContent = getReaderSearchStatusText();
+  if (results) results.innerHTML = renderReaderSearchResultItems();
+}
+
 function scheduleReaderSearch(value) {
   const query = String(value || '').trim();
   clearTimeout(cloudLibrary.readerSearchTimer);
@@ -7198,22 +7235,31 @@ function scheduleReaderSearch(value) {
   const runId = cloudLibrary.readerSearchRunId;
   if (!query) {
     cloudLibrary.readerSearchStatus = 'idle';
-    renderReaderPanels();
-    focusReaderSearchField();
+    updateReaderSearchPanelContent();
     return;
   }
   if (query.length < READER_SEARCH_MIN_LENGTH) {
     cloudLibrary.readerSearchStatus = 'too-short';
-    renderReaderPanels();
-    focusReaderSearchField();
+    updateReaderSearchPanelContent();
     return;
   }
   cloudLibrary.readerSearchStatus = 'searching';
-  renderReaderPanels();
-  focusReaderSearchField();
+  updateReaderSearchPanelContent();
   cloudLibrary.readerSearchTimer = setTimeout(() => {
     runReaderSearch(query, runId).catch(handleError);
   }, READER_SEARCH_DEBOUNCE_MS);
+}
+
+function beginReaderSearchComposition(value) {
+  cloudLibrary.readerSearchComposing = true;
+  cloudLibrary.readerSearchQuery = String(value || '');
+  clearTimeout(cloudLibrary.readerSearchTimer);
+  cloudLibrary.readerSearchRunId += 1;
+}
+
+function endReaderSearchComposition(value) {
+  cloudLibrary.readerSearchComposing = false;
+  scheduleReaderSearch(value);
 }
 
 async function jumpToReaderSearchResult(chapterIndex) {
@@ -7333,33 +7379,13 @@ function renderReaderTocPanel() {
 
 function renderReaderSearchPanel() {
   const query = cloudLibrary.readerSearchQuery || '';
-  const status = cloudLibrary.readerSearchStatus || 'idle';
-  const results = Array.isArray(cloudLibrary.readerSearchResults) ? cloudLibrary.readerSearchResults : [];
-  const resultItems = results.map(result => `
-    <button class="reader-search-result" type="button" data-reader-search-chapter-index="${Number(result.chapterIndex) || 0}">
-      <strong>${escapeHtml(String(result.chapterTitle || `第 ${(Number(result.chapterIndex) || 0) + 1} 章`))}</strong>
-      <span>${escapeHtml(String(result.snippet || ''))}</span>
-      <small>點擊結果會前往該章節。</small>
-    </button>
-  `).join('');
-  const statusText = !query
-    ? '輸入至少 2 個字搜尋本書內容。'
-    : query.length < READER_SEARCH_MIN_LENGTH
-      ? `請再輸入 ${READER_SEARCH_MIN_LENGTH - query.length} 個字後開始搜尋。`
-      : status === 'searching'
-        ? '搜尋中...'
-        : status === 'empty'
-          ? '沒有找到符合的章節。'
-          : status === 'error'
-            ? '搜尋時發生問題，請稍後再試。'
-            : `找到 ${results.length}${cloudLibrary.readerSearchTruncated ? '+' : ''} 筆結果。`;
   return `
     <label class="reader-panel-muted" for="reader-search-field">輸入關鍵字</label>
     <input id="reader-search-field" class="reader-search-field" type="search" placeholder="搜尋本書內容" autocomplete="off" value="${escapeHtml(query)}" />
     <p class="reader-panel-muted">輸入關鍵字搜尋本書內容。第一階段會前往命中的章節，不會精準定位到節號。</p>
-    <p class="reader-search-status" role="status">${escapeHtml(statusText)}</p>
-    <div class="reader-search-results" aria-label="搜尋結果">
-      ${resultItems}
+    <p id="reader-search-status" class="reader-search-status" role="status">${escapeHtml(getReaderSearchStatusText())}</p>
+    <div id="reader-search-results" class="reader-search-results" aria-label="搜尋結果">
+      ${renderReaderSearchResultItems()}
     </div>
   `;
 }
@@ -8427,6 +8453,10 @@ document.addEventListener('change', event => {
 document.addEventListener('input', event => {
   if (event.target.id === 'reader-search-field') {
     event.stopPropagation();
+    if (cloudLibrary.readerSearchComposing || event.isComposing) {
+      cloudLibrary.readerSearchQuery = event.target.value;
+      return;
+    }
     scheduleReaderSearch(event.target.value);
     return;
   }
@@ -8437,6 +8467,18 @@ document.addEventListener('input', event => {
   if (event.target.closest('#view-reader')) showReaderControls();
 });
 
+document.addEventListener('compositionstart', event => {
+  if (event.target.id !== 'reader-search-field') return;
+  event.stopPropagation();
+  beginReaderSearchComposition(event.target.value);
+});
+
+document.addEventListener('compositionend', event => {
+  if (event.target.id !== 'reader-search-field') return;
+  event.stopPropagation();
+  endReaderSearchComposition(event.target.value);
+});
+
 document.addEventListener('keydown', event => {
   if (document.getElementById('view-reader')?.classList.contains('active')) {
     if (event.key === 'Escape' && cloudLibrary.readerActivePanel) {
@@ -8444,6 +8486,7 @@ document.addEventListener('keydown', event => {
       closeReaderPanel();
       return;
     }
+    if (event.target.closest('input, textarea, select, [contenteditable="true"]')) return;
     if (event.key === 'ArrowLeft') {
       event.preventDefault();
       turnReaderPage(-1).catch(handleError);
