@@ -6807,6 +6807,11 @@ function injectReaderViewStyles() {
     #view-reader .reader-setting-level-button.active { border-color: rgba(63,152,144,.62); background: #3f9890; color: #fff; box-shadow: 0 8px 18px rgba(63,152,144,.18); }
     #view-reader.reader-dark .reader-setting-level-button { border-color: rgba(255,255,255,.14); background: rgba(255,255,255,.08); }
     #view-reader.reader-dark .reader-setting-level-button.active { border-color: rgba(220,239,235,.6); background: #3f9890; color: #fff; }
+    #view-reader .reader-panel-section { display: grid; gap: 10px; margin-bottom: 18px; }
+    #view-reader .reader-panel-section + .reader-panel-section { padding-top: 16px; border-top: 1px solid rgba(80,70,55,.12); }
+    #view-reader.reader-dark .reader-panel-section + .reader-panel-section { border-color: rgba(255,255,255,.12); }
+    #view-reader .reader-panel-section-title { margin: 0; color: #21484c; font-size: .96rem; line-height: 1.35; font-weight: 800; }
+    #view-reader.reader-dark .reader-panel-section-title { color: #dcefeb; }
     #view-reader .reader-bookmark-summary { display: grid; gap: 8px; padding: 14px; border-radius: 12px; background: rgba(63,152,144,.1); color: inherit; }
     #view-reader .reader-bookmark-summary strong { color: #21484c; }
     #view-reader.reader-dark .reader-bookmark-summary strong { color: #dcefeb; }
@@ -7088,7 +7093,7 @@ function renderReaderPanel(panel) {
     toc: '目錄',
     search: '搜尋書籍',
     settings: '主題與設定',
-    bookmarks: '書籤',
+    bookmarks: '閱讀位置與書籤',
   };
   const body = panel === 'toc'
     ? renderReaderTocPanel()
@@ -7174,20 +7179,29 @@ function renderReaderBookmarksPanel() {
     </div>
   `).join('');
   return `
-    <p class="reader-panel-book-title">${escapeHtml(book?.title || '閱讀模式')}</p>
-    <div class="reader-bookmark-summary">
-      <span>目前位置</span>
-      <strong>${escapeHtml(getReaderCurrentChapterTitle())}｜${escapeHtml(getReaderCurrentPageLabel())}</strong>
-    </div>
-    <div class="reader-bookmark-actions">
-      <button class="reader-bookmark-action${currentBookmark ? ' is-remove' : ''}" type="button" data-reader-bookmark-toggle>
-        ${currentBookmark ? '移除目前位置書籤' : '加入目前位置書籤'}
-      </button>
-    </div>
-    <p class="reader-panel-muted">本機書籤只儲存在此瀏覽器，不寫入 Supabase。</p>
-    <div class="reader-bookmark-list">
-      ${bookmarkItems || '<p class="reader-panel-muted">這本書目前沒有書籤。</p>'}
-    </div>
+    <section class="reader-panel-section" aria-labelledby="reader-progress-section-title">
+      <h4 id="reader-progress-section-title" class="reader-panel-section-title">目前閱讀位置</h4>
+      <p class="reader-panel-book-title">${escapeHtml(book?.title || '閱讀模式')}</p>
+      <div class="reader-bookmark-summary">
+        <span>目前章節與頁碼</span>
+        <strong>${escapeHtml(getReaderCurrentChapterTitle())}｜${escapeHtml(getReaderCurrentPageLabel())}</strong>
+      </div>
+      <p class="reader-panel-muted">系統會自動記住你最後閱讀的位置；不需要按加入書籤。下次使用同一台裝置與同一個瀏覽器開啟這本書時，會回到這裡。</p>
+      <p class="reader-panel-muted">目前閱讀位置只保存在這台裝置與這個瀏覽器，尚未同步到帳號。</p>
+    </section>
+    <section class="reader-panel-section" aria-labelledby="reader-manual-bookmarks-title">
+      <h4 id="reader-manual-bookmarks-title" class="reader-panel-section-title">手動書籤</h4>
+      <p class="reader-panel-muted">手動書籤可用來標記重要頁面，之後可從列表快速跳回。</p>
+      <div class="reader-bookmark-actions">
+        <button class="reader-bookmark-action${currentBookmark ? ' is-remove' : ''}" type="button" data-reader-bookmark-toggle>
+          ${currentBookmark ? '移除目前位置書籤' : '加入目前位置書籤'}
+        </button>
+      </div>
+      <p class="reader-panel-muted">手動書籤目前只保存在這台裝置與這個瀏覽器，尚未同步到帳號。</p>
+      <div class="reader-bookmark-list" aria-label="手動書籤列表">
+        ${bookmarkItems || '<p class="reader-panel-muted">這本書目前沒有手動書籤。</p>'}
+      </div>
+    </section>
   `;
 }
 
