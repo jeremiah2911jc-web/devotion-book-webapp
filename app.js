@@ -6758,13 +6758,17 @@ function injectReaderViewStyles() {
     #view-reader .reader-progress { display: grid; grid-template-columns: auto auto; gap: 6px 12px; align-items: center; font-size: .9rem; }
     #view-reader .reader-progress div { grid-column: 1 / -1; height: 4px; border-radius: 999px; overflow: hidden; background: rgba(120,100,70,.22); }
     #view-reader .reader-progress i { display: block; height: 100%; width: 0; background: #9b7a48; }
-    #view-reader .reader-close-button { position: absolute; top: 14px; right: clamp(12px, 3vw, 28px); z-index: 8; min-height: 38px; padding: 0 14px; border: 1px solid rgba(80,70,55,.16); border-radius: 999px; background: rgba(255,255,255,.82); color: #26494c; font-weight: 700; box-shadow: 0 10px 28px rgba(45,35,25,.12); backdrop-filter: blur(12px); }
+    #view-reader .reader-close-button { position: absolute; top: 14px; right: clamp(12px, 3vw, 28px); z-index: 8; min-height: 38px; padding: 0 14px; border: 1px solid rgba(80,70,55,.16); border-radius: 999px; background: rgba(255,255,255,.82); color: #26494c; font-weight: 700; box-shadow: 0 10px 28px rgba(45,35,25,.12); backdrop-filter: blur(12px); transition: opacity .18s ease, transform .18s ease; }
     #view-reader.reader-dark .reader-close-button { border-color: rgba(255,255,255,.14); background: rgba(30,30,30,.82); color: #eee7dd; }
-    #view-reader .reader-action-button { position: absolute; right: clamp(18px, 6vw, 88px); bottom: calc(var(--reader-stage-bottom) + clamp(18px, 3vh, 28px)); z-index: 6; min-height: 46px; padding: 0 18px; border: 0; border-radius: 999px; background: #3f9890; color: #fff; font-weight: 800; box-shadow: 0 12px 28px rgba(42,112,106,.26); }
+    #view-reader .reader-action-button { position: absolute; right: clamp(16px, 3vw, 36px); bottom: calc(var(--reader-stage-bottom) + clamp(18px, 3vh, 28px)); z-index: 6; min-height: 46px; padding: 0 18px; border: 0; border-radius: 999px; background: #3f9890; color: #fff; font-weight: 800; box-shadow: 0 12px 28px rgba(42,112,106,.26); transition: opacity .18s ease, transform .18s ease; }
+    #view-reader.reader-controls-hidden .reader-close-button,
+    #view-reader.reader-controls-hidden .reader-action-button,
+    #view-reader.reader-panel-open .reader-close-button,
+    #view-reader.reader-panel-open .reader-action-button { opacity: 0; pointer-events: none; transform: translateY(8px); }
     #view-reader .reader-panel-root { position: absolute; inset: 0; z-index: 7; pointer-events: none; }
     #view-reader .reader-panel-backdrop { position: absolute; inset: 0; border: 0; background: rgba(38,32,26,.18); pointer-events: auto; }
     #view-reader.reader-dark .reader-panel-backdrop { background: rgba(0,0,0,.42); }
-    #view-reader .reader-action-menu { position: absolute; right: clamp(18px, 6vw, 88px); bottom: calc(var(--reader-stage-bottom) + 76px); z-index: 8; width: min(240px, calc(100vw - 28px)); padding: 8px; border: 1px solid rgba(80,70,55,.14); border-radius: 16px; background: rgba(255,253,248,.96); box-shadow: 0 18px 44px rgba(45,35,25,.2); pointer-events: auto; backdrop-filter: blur(14px); }
+    #view-reader .reader-action-menu { position: absolute; right: clamp(16px, 3vw, 36px); bottom: calc(var(--reader-stage-bottom) + 76px); z-index: 8; width: min(240px, calc(100vw - 28px)); padding: 8px; border: 1px solid rgba(80,70,55,.14); border-radius: 16px; background: rgba(255,253,248,.96); box-shadow: 0 18px 44px rgba(45,35,25,.2); pointer-events: auto; backdrop-filter: blur(14px); }
     #view-reader.reader-dark .reader-action-menu { border-color: rgba(255,255,255,.12); background: rgba(31,31,31,.96); box-shadow: 0 18px 44px rgba(0,0,0,.36); }
     #view-reader .reader-action-menu-item { width: 100%; min-height: 42px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; color: inherit; font-weight: 700; text-align: left; }
     #view-reader .reader-action-menu-item:hover, #view-reader .reader-action-menu-item:focus-visible { background: rgba(63,152,144,.13); outline: none; }
@@ -6790,6 +6794,11 @@ function injectReaderViewStyles() {
     #view-reader.reader-dark .reader-search-field { border-color: rgba(255,255,255,.16); background: #242424; color: #eee7dd; }
     #view-reader .reader-settings-sheet { display: grid; gap: 16px; }
     #view-reader .reader-settings-sheet label { display: grid; gap: 8px; color: inherit; font-size: .9rem; font-weight: 700; }
+    #view-reader .reader-setting-levels { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+    #view-reader .reader-setting-level-button { min-height: 40px; border: 1px solid rgba(80,70,55,.16); border-radius: 10px; background: rgba(255,255,255,.72); color: inherit; font-weight: 800; }
+    #view-reader .reader-setting-level-button.active { border-color: rgba(63,152,144,.62); background: #3f9890; color: #fff; box-shadow: 0 8px 18px rgba(63,152,144,.18); }
+    #view-reader.reader-dark .reader-setting-level-button { border-color: rgba(255,255,255,.14); background: rgba(255,255,255,.08); }
+    #view-reader.reader-dark .reader-setting-level-button.active { border-color: rgba(220,239,235,.6); background: #3f9890; color: #fff; }
     #view-reader .reader-bookmark-summary { display: grid; gap: 8px; padding: 14px; border-radius: 12px; background: rgba(63,152,144,.1); color: inherit; }
     #view-reader .reader-bookmark-summary strong { color: #21484c; }
     #view-reader.reader-dark .reader-bookmark-summary strong { color: #dcefeb; }
@@ -6820,6 +6829,8 @@ function injectReaderViewStyles() {
 }
 
 const READER_PANEL_TYPES = new Set(['menu', 'toc', 'search', 'settings', 'bookmarks']);
+const READER_FONT_SIZE_LEVELS = [16, 17, 18, 20, 22, 24];
+const READER_LINE_HEIGHT_LEVELS = [1.55, 1.65, 1.75, 1.85, 1.95, 2.05];
 
 function isReaderPanel(panel) {
   return READER_PANEL_TYPES.has(panel);
@@ -6848,6 +6859,24 @@ function getReaderCurrentChapterTitle() {
 
 function getReaderCurrentPageLabel() {
   return document.getElementById('reader-page-text')?.textContent || `第 ${cloudLibrary.readerPageIndex + 1} 頁`;
+}
+
+function getClosestReaderSettingLevel(value, levels) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return levels[0];
+  return levels.reduce((closest, level) => Math.abs(level - numeric) < Math.abs(closest - numeric) ? level : closest, levels[0]);
+}
+
+function renderReaderSettingLevelButtons(key, levels, currentValue) {
+  const activeValue = getClosestReaderSettingLevel(currentValue, levels);
+  return `
+    <div class="reader-setting-levels" role="group" aria-label="${key === 'fontSize' ? '字體大小' : '行距'}">
+      ${levels.map((level, index) => {
+        const active = level === activeValue;
+        return `<button class="reader-setting-level-button${active ? ' active' : ''}" type="button" data-reader-setting-option="${key}" data-reader-setting-value="${level}" aria-pressed="${active ? 'true' : 'false'}">${key === 'fontSize' ? level : level.toFixed(2)}</button>`;
+      }).join('')}
+    </div>
+  `;
 }
 
 function renderReaderPanels() {
@@ -6943,10 +6972,10 @@ function renderReaderSettingsPanel() {
   return `
     <div class="reader-settings-sheet">
       <label>字體大小
-        <input data-reader-setting="fontSize" type="range" min="15" max="28" step="1" value="${Number(settings.fontSize || 18)}" />
+        ${renderReaderSettingLevelButtons('fontSize', READER_FONT_SIZE_LEVELS, settings.fontSize)}
       </label>
       <label>行距
-        <input data-reader-setting="lineHeight" type="range" min="1.4" max="2.4" step="0.1" value="${Number(settings.lineHeight || 1.8)}" />
+        ${renderReaderSettingLevelButtons('lineHeight', READER_LINE_HEIGHT_LEVELS, settings.lineHeight)}
       </label>
       <label>背景主題
         <select data-reader-setting="theme">
@@ -7889,6 +7918,15 @@ document.addEventListener('click', event => {
     event.preventDefault();
     event.stopPropagation();
     closeReaderPanel();
+    return;
+  }
+  const settingOption = event.target.closest('[data-reader-setting-option]');
+  if (settingOption) {
+    event.preventDefault();
+    event.stopPropagation();
+    const key = settingOption.dataset.readerSettingOption;
+    const value = Number(settingOption.dataset.readerSettingValue);
+    if (key && Number.isFinite(value)) updateReaderSetting(key, value);
     return;
   }
   const tocItem = event.target.closest('[data-reader-toc-index]');
