@@ -5931,6 +5931,7 @@ const cloudLibrary = {
   readerChapterPageCounts: [],
   readerChapterPages: [],
   readerPaginationSignature: '',
+  readerActivePanel: null,
   readerControlsVisible: false,
   readerControlsTimer: null,
   readerSettings: loadJson('devotion-app-reader-settings', { fontSize: 18, lineHeight: 1.8, theme: 'light' }),
@@ -5975,6 +5976,7 @@ function clearCloudLibrary(message = '') {
   cloudLibrary.readerChapterPageCounts = [];
   cloudLibrary.readerChapterPages = [];
   cloudLibrary.readerPaginationSignature = '';
+  cloudLibrary.readerActivePanel = null;
   cloudLibrary.readerControlsVisible = false;
   clearTimeout(cloudLibrary.readerControlsTimer);
   cloudLibrary.readerControlsTimer = null;
@@ -6626,6 +6628,7 @@ function renderReaderShell() {
   document.getElementById('reader-chapter-nav').innerHTML = cloudLibrary.readerChapters.map((chapter, index) => `<option value="${index}">${escapeHtml(chapter.title || `第 ${index + 1} 章`)}</option>`).join('');
   hideReaderControls();
   renderReaderSettings();
+  renderReaderPanels();
 }
 
 function ensureReaderViewShell() {
@@ -6635,6 +6638,7 @@ function ensureReaderViewShell() {
   view.dataset.readerShell = 'paged';
   view.innerHTML = `
     <div class="reader-app-shell">
+      <button id="reader-close-button" class="reader-close-button" type="button" data-reader-close aria-label="關閉閱讀器">關閉</button>
       <header class="reader-toolbar">
         <button id="reader-back-library" class="ghost-btn" type="button">返回書櫃</button>
         <div class="reader-book-heading">
@@ -6663,7 +6667,9 @@ function ensureReaderViewShell() {
           <div><i id="reader-progress-bar"></i></div>
         </div>
         <button class="primary-btn" data-reader-next-page type="button">下一頁</button>
+        <button class="reader-action-button" type="button" data-reader-toggle-panel="menu" aria-label="閱讀功能">功能</button>
       </footer>
+      <div id="reader-panel-root" class="reader-panel-root" aria-live="polite"></div>
     </div>
   `;
 }
@@ -6750,12 +6756,47 @@ function injectReaderViewStyles() {
     #view-reader .reader-turn-zone:disabled, #view-reader .reader-footer button:disabled { cursor: default; opacity: .35; }
     #view-reader .reader-turn-left { left: 0; }
     #view-reader .reader-turn-right { right: 0; }
-    #view-reader .reader-footer { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; display: grid; grid-template-columns: auto minmax(180px, 520px) auto; align-items: center; gap: 14px; padding: 12px clamp(12px, 3vw, 28px); border-top: 1px solid rgba(80,70,55,.18); background: rgba(255,255,255,.7); transition: opacity .2s ease, transform .2s ease; }
+    #view-reader .reader-footer { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; display: grid; grid-template-columns: auto minmax(180px, 520px) auto auto; align-items: center; gap: 14px; padding: 12px clamp(12px, 3vw, 28px); border-top: 1px solid rgba(80,70,55,.18); background: rgba(255,255,255,.7); transition: opacity .2s ease, transform .2s ease; }
     #view-reader.reader-dark .reader-footer { background: rgba(25,25,25,.78); border-color: rgba(255,255,255,.12); }
     #view-reader.reader-controls-hidden .reader-footer { display: grid; opacity: .92; transform: none; pointer-events: auto; padding-block: 8px; }
     #view-reader .reader-progress { display: grid; grid-template-columns: auto auto; gap: 6px 12px; align-items: center; font-size: .9rem; }
     #view-reader .reader-progress div { grid-column: 1 / -1; height: 4px; border-radius: 999px; overflow: hidden; background: rgba(120,100,70,.22); }
     #view-reader .reader-progress i { display: block; height: 100%; width: 0; background: #9b7a48; }
+    #view-reader .reader-close-button { position: absolute; top: 14px; right: clamp(12px, 3vw, 28px); z-index: 8; min-height: 38px; padding: 0 14px; border: 1px solid rgba(80,70,55,.16); border-radius: 999px; background: rgba(255,255,255,.82); color: #26494c; font-weight: 700; box-shadow: 0 10px 28px rgba(45,35,25,.12); backdrop-filter: blur(12px); }
+    #view-reader.reader-dark .reader-close-button { border-color: rgba(255,255,255,.14); background: rgba(30,30,30,.82); color: #eee7dd; }
+    #view-reader .reader-action-button { min-height: 42px; padding: 0 16px; border: 0; border-radius: 999px; background: #3f9890; color: #fff; font-weight: 800; box-shadow: 0 8px 20px rgba(63,152,144,.2); }
+    #view-reader .reader-panel-root { position: absolute; inset: 0; z-index: 7; pointer-events: none; }
+    #view-reader .reader-panel-backdrop { position: absolute; inset: 0; border: 0; background: rgba(38,32,26,.18); pointer-events: auto; }
+    #view-reader.reader-dark .reader-panel-backdrop { background: rgba(0,0,0,.42); }
+    #view-reader .reader-action-menu { position: absolute; right: clamp(14px, 3vw, 34px); bottom: calc(var(--reader-stage-bottom) + 18px); z-index: 8; width: min(240px, calc(100vw - 28px)); padding: 8px; border: 1px solid rgba(80,70,55,.14); border-radius: 16px; background: rgba(255,253,248,.96); box-shadow: 0 18px 44px rgba(45,35,25,.2); pointer-events: auto; backdrop-filter: blur(14px); }
+    #view-reader.reader-dark .reader-action-menu { border-color: rgba(255,255,255,.12); background: rgba(31,31,31,.96); box-shadow: 0 18px 44px rgba(0,0,0,.36); }
+    #view-reader .reader-action-menu-item { width: 100%; min-height: 42px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; color: inherit; font-weight: 700; text-align: left; }
+    #view-reader .reader-action-menu-item:hover, #view-reader .reader-action-menu-item:focus-visible { background: rgba(63,152,144,.13); outline: none; }
+    #view-reader .reader-panel { position: absolute; top: 24px; right: clamp(16px, 4vw, 48px); bottom: calc(var(--reader-stage-bottom) + 20px); z-index: 8; width: min(430px, calc(100vw - 32px)); display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(80,70,55,.14); border-radius: 18px; background: rgba(255,253,248,.98); color: #2f2a24; box-shadow: 0 24px 60px rgba(45,35,25,.24); pointer-events: auto; backdrop-filter: blur(18px); }
+    #view-reader.reader-dark .reader-panel { border-color: rgba(255,255,255,.12); background: rgba(28,28,28,.98); color: #eee7dd; box-shadow: 0 24px 60px rgba(0,0,0,.4); }
+    #view-reader .reader-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 16px 18px; border-bottom: 1px solid rgba(80,70,55,.12); }
+    #view-reader.reader-dark .reader-panel-header { border-color: rgba(255,255,255,.12); }
+    #view-reader .reader-panel-title { margin: 0; font-size: 1rem; line-height: 1.35; color: inherit; }
+    #view-reader .reader-panel-close { min-width: 36px; min-height: 36px; border: 0; border-radius: 999px; background: rgba(63,152,144,.12); color: inherit; font-weight: 800; }
+    #view-reader .reader-panel-body { min-height: 0; flex: 1; overflow: auto; padding: 16px 18px 20px; }
+    #view-reader .reader-panel-book-title { margin: 0 0 4px; color: #21484c; font-weight: 800; }
+    #view-reader.reader-dark .reader-panel-book-title { color: #dcefeb; }
+    #view-reader .reader-panel-muted { margin: 0 0 14px; color: #74675d; font-size: .9rem; line-height: 1.55; }
+    #view-reader.reader-dark .reader-panel-muted { color: #b8aea4; }
+    #view-reader .reader-panel-toc { display: grid; gap: 6px; }
+    #view-reader .reader-panel-toc-item { width: 100%; min-height: 42px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 12px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: inherit; text-align: left; }
+    #view-reader .reader-panel-toc-item.active { border-color: rgba(63,152,144,.35); background: rgba(63,152,144,.13); color: #21484c; font-weight: 800; }
+    #view-reader.reader-dark .reader-panel-toc-item.active { color: #dcefeb; }
+    #view-reader .reader-panel-toc-item small { color: #7a6d62; font-size: .78rem; white-space: nowrap; }
+    #view-reader.reader-dark .reader-panel-toc-item small { color: #aaa099; }
+    #view-reader .reader-search-field, #view-reader .reader-settings-sheet select, #view-reader .reader-settings-sheet input { width: 100%; }
+    #view-reader .reader-search-field { min-height: 44px; padding: 0 12px; border: 1px solid rgba(80,70,55,.2); border-radius: 10px; background: #fff; color: #2f2a24; }
+    #view-reader.reader-dark .reader-search-field { border-color: rgba(255,255,255,.16); background: #242424; color: #eee7dd; }
+    #view-reader .reader-settings-sheet { display: grid; gap: 16px; }
+    #view-reader .reader-settings-sheet label { display: grid; gap: 8px; color: inherit; font-size: .9rem; font-weight: 700; }
+    #view-reader .reader-bookmark-summary { display: grid; gap: 8px; padding: 14px; border-radius: 12px; background: rgba(63,152,144,.1); color: inherit; }
+    #view-reader .reader-bookmark-summary strong { color: #21484c; }
+    #view-reader.reader-dark .reader-bookmark-summary strong { color: #dcefeb; }
     @media (max-width: 1023px) {
       body.reader-active #view-reader.reader-view.active { inset: 0; }
       #view-reader .reader-toolbar { grid-template-columns: auto 1fr; }
@@ -6771,12 +6812,168 @@ function injectReaderViewStyles() {
       #view-reader .reader-flow .chapter-kicker { font-size: 1.24em; letter-spacing: .09em; margin-bottom: .66em; }
       #view-reader .reader-flow .chapter-head h1 { font-size: 1.16em; line-height: 1.5; }
       #view-reader .reader-flow .chapter-summary { margin-bottom: 1.55em; padding: 1em 1em .96em; }
-      #view-reader .reader-footer { grid-template-columns: auto 1fr auto; }
+      #view-reader .reader-footer { grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 8px; padding-inline: 8px; }
+      #view-reader .reader-footer > button { min-width: 0; padding-inline: 10px; }
+      #view-reader .reader-action-button { min-height: 40px; padding-inline: 12px; }
+      #view-reader .reader-close-button { top: 10px; right: 10px; min-height: 34px; padding-inline: 12px; font-size: .82rem; }
+      #view-reader .reader-action-menu { right: 8px; bottom: calc(var(--reader-stage-bottom) + 10px); }
+      #view-reader .reader-panel { top: auto; right: 10px; bottom: calc(var(--reader-stage-bottom) + 10px); left: 10px; width: auto; max-height: min(78dvh, 620px); border-radius: 18px 18px 12px 12px; }
       #view-reader .reader-book-heading h2 { font-size: .95rem; }
       #view-reader .reader-turn-zone { width: 28%; }
     }
   `;
   document.head.appendChild(style);
+}
+
+const READER_PANEL_TYPES = new Set(['menu', 'toc', 'search', 'settings', 'bookmarks']);
+
+function isReaderPanel(panel) {
+  return READER_PANEL_TYPES.has(panel);
+}
+
+function openReaderPanel(panel) {
+  if (!isReaderPanel(panel)) return;
+  cloudLibrary.readerActivePanel = panel;
+  renderReaderPanels();
+}
+
+function closeReaderPanel() {
+  cloudLibrary.readerActivePanel = null;
+  renderReaderPanels();
+}
+
+function toggleReaderPanel(panel) {
+  if (cloudLibrary.readerActivePanel === panel) closeReaderPanel();
+  else openReaderPanel(panel);
+}
+
+function getReaderCurrentChapterTitle() {
+  const chapter = cloudLibrary.readerChapters[cloudLibrary.readerChapterIndex];
+  return chapter?.title || `第 ${cloudLibrary.readerChapterIndex + 1} 章`;
+}
+
+function getReaderCurrentPageLabel() {
+  return document.getElementById('reader-page-text')?.textContent || `第 ${cloudLibrary.readerPageIndex + 1} 頁`;
+}
+
+function renderReaderPanels() {
+  const root = document.getElementById('reader-panel-root');
+  const view = document.getElementById('view-reader');
+  if (!root || !view) return;
+  const panel = cloudLibrary.readerActivePanel;
+  view.classList.toggle('reader-panel-open', Boolean(panel));
+  if (panel) view.dataset.readerPanel = panel;
+  else delete view.dataset.readerPanel;
+  if (!isReaderPanel(panel)) {
+    root.innerHTML = '';
+    return;
+  }
+  if (panel === 'menu') root.innerHTML = renderReaderActionMenu();
+  else root.innerHTML = `
+    <button class="reader-panel-backdrop" type="button" data-reader-close-panel aria-label="關閉閱讀面板"></button>
+    ${renderReaderPanel(panel)}
+  `;
+}
+
+function renderReaderActionMenu() {
+  return `
+    <button class="reader-panel-backdrop" type="button" data-reader-close-panel aria-label="關閉閱讀功能"></button>
+    <div class="reader-action-menu" role="menu" aria-label="閱讀功能">
+      <button class="reader-action-menu-item" type="button" data-reader-open-panel="toc" role="menuitem"><span>目錄</span><span>&gt;</span></button>
+      <button class="reader-action-menu-item" type="button" data-reader-open-panel="search" role="menuitem"><span>搜尋</span><span>&gt;</span></button>
+      <button class="reader-action-menu-item" type="button" data-reader-open-panel="settings" role="menuitem"><span>主題與設定</span><span>&gt;</span></button>
+      <button class="reader-action-menu-item" type="button" data-reader-open-panel="bookmarks" role="menuitem"><span>書籤</span><span>&gt;</span></button>
+    </div>
+  `;
+}
+
+function renderReaderPanel(panel) {
+  const titles = {
+    toc: '目錄',
+    search: '搜尋書籍',
+    settings: '主題與設定',
+    bookmarks: '書籤',
+  };
+  const body = panel === 'toc'
+    ? renderReaderTocPanel()
+    : panel === 'search'
+      ? renderReaderSearchPanel()
+      : panel === 'settings'
+        ? renderReaderSettingsPanel()
+        : renderReaderBookmarksPanel();
+  return `
+    <section class="reader-panel reader-panel-${panel}" role="dialog" aria-modal="true" aria-label="${escapeHtml(titles[panel])}">
+      <header class="reader-panel-header">
+        <h3 class="reader-panel-title">${escapeHtml(titles[panel])}</h3>
+        <button class="reader-panel-close" type="button" data-reader-close-panel aria-label="關閉">關閉</button>
+      </header>
+      <div class="reader-panel-body">${body}</div>
+    </section>
+  `;
+}
+
+function renderReaderTocPanel() {
+  const book = cloudLibrary.readerBook;
+  const totalPages = getReaderTotalPages();
+  const pageCounts = cloudLibrary.readerChapterPageCounts || [];
+  let pageStart = 1;
+  const items = cloudLibrary.readerChapters.map((chapter, index) => {
+    const count = Math.max(1, Number(pageCounts[index] || 1));
+    const start = pageStart;
+    pageStart += count;
+    const active = index === cloudLibrary.readerChapterIndex;
+    return `
+      <button class="reader-panel-toc-item${active ? ' active' : ''}" type="button" data-reader-toc-index="${index}" aria-current="${active ? 'true' : 'false'}">
+        <span>${escapeHtml(chapter.title || `第 ${index + 1} 章`)}</span>
+        <small>${totalPages > 1 ? `第 ${start} 頁` : `第 ${index + 1}`}</small>
+      </button>
+    `;
+  }).join('');
+  return `
+    <p class="reader-panel-book-title">${escapeHtml(book?.title || '閱讀模式')}</p>
+    <p class="reader-panel-muted">${getReaderCurrentPageLabel()}</p>
+    <div class="reader-panel-toc">${items || '<p class="reader-panel-muted">目前沒有可用章節。</p>'}</div>
+  `;
+}
+
+function renderReaderSearchPanel() {
+  return `
+    <label class="reader-panel-muted" for="reader-search-field">輸入關鍵字</label>
+    <input id="reader-search-field" class="reader-search-field" type="search" placeholder="搜尋書籍內容" autocomplete="off" />
+    <p class="reader-panel-muted">全文搜尋功能將於後續版本加入。本階段先保留面板入口，不建立全文索引。</p>
+  `;
+}
+
+function renderReaderSettingsPanel() {
+  const settings = { fontSize: 18, lineHeight: 1.8, theme: 'light', ...cloudLibrary.readerSettings };
+  return `
+    <div class="reader-settings-sheet">
+      <label>字體大小
+        <input data-reader-setting="fontSize" type="range" min="15" max="28" step="1" value="${Number(settings.fontSize || 18)}" />
+      </label>
+      <label>行距
+        <input data-reader-setting="lineHeight" type="range" min="1.4" max="2.4" step="0.1" value="${Number(settings.lineHeight || 1.8)}" />
+      </label>
+      <label>背景主題
+        <select data-reader-setting="theme">
+          <option value="light"${settings.theme === 'light' ? ' selected' : ''}>淺色</option>
+          <option value="dark"${settings.theme === 'dark' ? ' selected' : ''}>深色</option>
+        </select>
+      </label>
+    </div>
+  `;
+}
+
+function renderReaderBookmarksPanel() {
+  const book = cloudLibrary.readerBook;
+  return `
+    <p class="reader-panel-book-title">${escapeHtml(book?.title || '閱讀模式')}</p>
+    <div class="reader-bookmark-summary">
+      <span>目前位置</span>
+      <strong>${escapeHtml(getReaderCurrentChapterTitle())}｜${escapeHtml(getReaderCurrentPageLabel())}</strong>
+    </div>
+    <p class="reader-panel-muted">書籤功能將於後續版本加入。本階段先顯示目前閱讀位置，不寫入 Supabase。</p>
+  `;
 }
 
 function renderReaderSettings() {
@@ -6802,6 +6999,7 @@ function updateReaderSetting(key, value) {
   cloudLibrary.readerSettings = { fontSize: 18, lineHeight: 1.8, theme: 'light', ...cloudLibrary.readerSettings, [key]: value };
   saveJson(cloudLibrary.readerSettingsKey, cloudLibrary.readerSettings);
   renderReaderSettings();
+  renderReaderPanels();
   showReaderControls();
 }
 
@@ -7108,6 +7306,7 @@ function updateReaderProgressUi() {
   }
   if (progressBar) progressBar.style.width = `${percent}%`;
   updateReaderTurnButtons();
+  if (cloudLibrary.readerActivePanel && cloudLibrary.readerActivePanel !== 'settings') renderReaderPanels();
 }
 
 function updateReaderTurnButtons() {
@@ -7673,7 +7872,43 @@ document.addEventListener('click', event => {
   if (event.target.id === 'download-exported-book-btn') downloadLatestExportedBook();
   if (event.target.id === 'go-library-btn') setView('library');
   if (event.target.id === 'library-empty-action') setView('books');
-  if (event.target.id === 'reader-back-library') setView('library');
+  if (event.target.id === 'reader-back-library' || event.target.closest('[data-reader-close]')) {
+    closeReaderPanel();
+    setView('library');
+    return;
+  }
+  const panelToggle = event.target.closest('[data-reader-toggle-panel]');
+  if (panelToggle) {
+    event.preventDefault();
+    event.stopPropagation();
+    toggleReaderPanel(panelToggle.dataset.readerTogglePanel);
+    return;
+  }
+  const panelOpen = event.target.closest('[data-reader-open-panel]');
+  if (panelOpen) {
+    event.preventDefault();
+    event.stopPropagation();
+    openReaderPanel(panelOpen.dataset.readerOpenPanel);
+    return;
+  }
+  if (event.target.closest('[data-reader-close-panel]')) {
+    event.preventDefault();
+    event.stopPropagation();
+    closeReaderPanel();
+    return;
+  }
+  const tocItem = event.target.closest('[data-reader-toc-index]');
+  if (tocItem) {
+    event.preventDefault();
+    event.stopPropagation();
+    openReaderChapter(Number(tocItem.dataset.readerTocIndex) || 0, { pageIndex: 0 })
+      .then(() => {
+        closeReaderPanel();
+        showReaderControls();
+      })
+      .catch(handleError);
+    return;
+  }
   if (event.target.closest('[data-reader-prev-page]')) {
     event.preventDefault();
     event.stopPropagation();
@@ -7696,17 +7931,25 @@ document.addEventListener('change', event => {
   if (event.target.id === 'library-sort') renderLibrary();
   if (event.target.id === 'reader-chapter-nav') openReaderChapter(Number(event.target.value) || 0, { pageIndex: 0 }).catch(handleError);
   if (event.target.id === 'reader-theme') updateReaderSetting('theme', event.target.value);
+  if (event.target.dataset.readerSetting === 'theme') updateReaderSetting('theme', event.target.value);
   if (event.target.closest('#view-reader')) showReaderControls();
 });
 
 document.addEventListener('input', event => {
   if (event.target.id === 'reader-font-size') updateReaderSetting('fontSize', Number(event.target.value));
   if (event.target.id === 'reader-line-height') updateReaderSetting('lineHeight', Number(event.target.value));
+  if (event.target.dataset.readerSetting === 'fontSize') updateReaderSetting('fontSize', Number(event.target.value));
+  if (event.target.dataset.readerSetting === 'lineHeight') updateReaderSetting('lineHeight', Number(event.target.value));
   if (event.target.closest('#view-reader')) showReaderControls();
 });
 
 document.addEventListener('keydown', event => {
   if (document.getElementById('view-reader')?.classList.contains('active')) {
+    if (event.key === 'Escape' && cloudLibrary.readerActivePanel) {
+      event.preventDefault();
+      closeReaderPanel();
+      return;
+    }
     if (event.key === 'ArrowLeft') {
       event.preventDefault();
       turnReaderPage(-1).catch(handleError);
