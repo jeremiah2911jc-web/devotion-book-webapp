@@ -6639,7 +6639,7 @@ function ensureReaderViewShell() {
   view.innerHTML = `
     <div class="reader-app-shell">
       <button id="reader-close-button" class="reader-close-button" type="button" data-reader-close aria-label="關閉閱讀器">關閉</button>
-      <header class="reader-toolbar">
+      <div class="reader-hidden-controls" aria-hidden="true">
         <button id="reader-back-library" class="ghost-btn" type="button">返回書櫃</button>
         <div class="reader-book-heading">
           <h2 id="reader-title">閱讀模式</h2>
@@ -6649,7 +6649,7 @@ function ensureReaderViewShell() {
         <label>字體<input id="reader-font-size" type="range" min="15" max="28" step="1" /></label>
         <label>行距<input id="reader-line-height" type="range" min="1.4" max="2.4" step="0.1" /></label>
         <label>背景<select id="reader-theme"><option value="light">淺色</option><option value="dark">深色</option></select></label>
-      </header>
+      </div>
       <main class="reader-stage">
         <button class="reader-turn-zone reader-turn-left" data-reader-prev-page type="button" aria-label="上一頁"></button>
         <section id="reader-page-viewport" class="reader-page-viewport">
@@ -6667,8 +6667,8 @@ function ensureReaderViewShell() {
           <div><i id="reader-progress-bar"></i></div>
         </div>
         <button class="primary-btn" data-reader-next-page type="button">下一頁</button>
-        <button class="reader-action-button" type="button" data-reader-toggle-panel="menu" aria-label="閱讀功能">功能</button>
       </footer>
+      <button class="reader-action-button" type="button" data-reader-toggle-panel="menu" aria-label="閱讀功能">功能</button>
       <div id="reader-panel-root" class="reader-panel-root" aria-live="polite"></div>
     </div>
   `;
@@ -6706,13 +6706,9 @@ function injectReaderViewStyles() {
     #view-reader.reader-view { padding: 0; }
     #view-reader .reader-app-shell { --reader-stage-top: 0px; --reader-stage-bottom: 0px; position: relative; min-height: 100dvh; height: 100dvh; overflow: hidden; background: #f8f5ef; color: #2f2a24; }
     #view-reader.reader-dark .reader-app-shell { background: #171717; color: #eee7dd; }
-    #view-reader .reader-toolbar { position: absolute; top: 0; left: 0; right: 0; z-index: 4; display: grid; grid-template-columns: auto minmax(180px, 1fr) minmax(160px, 260px) repeat(3, auto); align-items: center; gap: 12px; padding: 12px clamp(12px, 3vw, 28px); border-bottom: 1px solid rgba(80,70,55,.18); background: rgba(255,255,255,.72); backdrop-filter: blur(12px); transition: opacity .2s ease, transform .2s ease; }
-    #view-reader.reader-dark .reader-toolbar { background: rgba(25,25,25,.78); border-color: rgba(255,255,255,.12); }
-    #view-reader.reader-controls-hidden .reader-toolbar { display: none; opacity: 0; transform: translateY(-100%); pointer-events: none; }
+    #view-reader .reader-hidden-controls { display: none !important; }
     #view-reader .reader-book-heading h2 { margin: 0; font-size: 1rem; line-height: 1.2; }
     #view-reader .reader-book-heading p { margin: 2px 0 0; }
-    #view-reader .reader-toolbar label { display: grid; gap: 3px; font-size: .78rem; color: inherit; }
-    #view-reader .reader-toolbar select, #view-reader .reader-toolbar input { max-width: 100%; }
     #view-reader .reader-stage { position: absolute; top: var(--reader-stage-top); right: 0; bottom: var(--reader-stage-bottom); left: 0; z-index: 1; display: flex; align-items: stretch; justify-content: center; padding: clamp(10px, 2.5vw, 28px) clamp(12px, 4vw, 42px); overflow: hidden; }
     #view-reader .reader-page-viewport { flex: 0 1 min(1120px, 100%); width: min(1120px, 100%); height: 100%; overflow: hidden; contain: layout paint size; isolation: isolate; border-radius: 10px; background: #fffdf8; box-shadow: 0 18px 48px rgba(45,35,25,.14); }
     #view-reader.reader-dark .reader-page-viewport { background: #202020; box-shadow: 0 18px 48px rgba(0,0,0,.28); }
@@ -6756,7 +6752,7 @@ function injectReaderViewStyles() {
     #view-reader .reader-turn-zone:disabled, #view-reader .reader-footer button:disabled { cursor: default; opacity: .35; }
     #view-reader .reader-turn-left { left: 0; }
     #view-reader .reader-turn-right { right: 0; }
-    #view-reader .reader-footer { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; display: grid; grid-template-columns: auto minmax(180px, 520px) auto auto; align-items: center; gap: 14px; padding: 12px clamp(12px, 3vw, 28px); border-top: 1px solid rgba(80,70,55,.18); background: rgba(255,255,255,.7); transition: opacity .2s ease, transform .2s ease; }
+    #view-reader .reader-footer { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; display: grid; grid-template-columns: auto minmax(180px, 520px) auto; align-items: center; gap: 14px; padding: 12px clamp(12px, 3vw, 28px); border-top: 1px solid rgba(80,70,55,.18); background: rgba(255,255,255,.7); transition: opacity .2s ease, transform .2s ease; }
     #view-reader.reader-dark .reader-footer { background: rgba(25,25,25,.78); border-color: rgba(255,255,255,.12); }
     #view-reader.reader-controls-hidden .reader-footer { display: grid; opacity: .92; transform: none; pointer-events: auto; padding-block: 8px; }
     #view-reader .reader-progress { display: grid; grid-template-columns: auto auto; gap: 6px 12px; align-items: center; font-size: .9rem; }
@@ -6764,11 +6760,11 @@ function injectReaderViewStyles() {
     #view-reader .reader-progress i { display: block; height: 100%; width: 0; background: #9b7a48; }
     #view-reader .reader-close-button { position: absolute; top: 14px; right: clamp(12px, 3vw, 28px); z-index: 8; min-height: 38px; padding: 0 14px; border: 1px solid rgba(80,70,55,.16); border-radius: 999px; background: rgba(255,255,255,.82); color: #26494c; font-weight: 700; box-shadow: 0 10px 28px rgba(45,35,25,.12); backdrop-filter: blur(12px); }
     #view-reader.reader-dark .reader-close-button { border-color: rgba(255,255,255,.14); background: rgba(30,30,30,.82); color: #eee7dd; }
-    #view-reader .reader-action-button { min-height: 42px; padding: 0 16px; border: 0; border-radius: 999px; background: #3f9890; color: #fff; font-weight: 800; box-shadow: 0 8px 20px rgba(63,152,144,.2); }
+    #view-reader .reader-action-button { position: absolute; right: clamp(18px, 6vw, 88px); bottom: calc(var(--reader-stage-bottom) + clamp(18px, 3vh, 28px)); z-index: 6; min-height: 46px; padding: 0 18px; border: 0; border-radius: 999px; background: #3f9890; color: #fff; font-weight: 800; box-shadow: 0 12px 28px rgba(42,112,106,.26); }
     #view-reader .reader-panel-root { position: absolute; inset: 0; z-index: 7; pointer-events: none; }
     #view-reader .reader-panel-backdrop { position: absolute; inset: 0; border: 0; background: rgba(38,32,26,.18); pointer-events: auto; }
     #view-reader.reader-dark .reader-panel-backdrop { background: rgba(0,0,0,.42); }
-    #view-reader .reader-action-menu { position: absolute; right: clamp(14px, 3vw, 34px); bottom: calc(var(--reader-stage-bottom) + 18px); z-index: 8; width: min(240px, calc(100vw - 28px)); padding: 8px; border: 1px solid rgba(80,70,55,.14); border-radius: 16px; background: rgba(255,253,248,.96); box-shadow: 0 18px 44px rgba(45,35,25,.2); pointer-events: auto; backdrop-filter: blur(14px); }
+    #view-reader .reader-action-menu { position: absolute; right: clamp(18px, 6vw, 88px); bottom: calc(var(--reader-stage-bottom) + 76px); z-index: 8; width: min(240px, calc(100vw - 28px)); padding: 8px; border: 1px solid rgba(80,70,55,.14); border-radius: 16px; background: rgba(255,253,248,.96); box-shadow: 0 18px 44px rgba(45,35,25,.2); pointer-events: auto; backdrop-filter: blur(14px); }
     #view-reader.reader-dark .reader-action-menu { border-color: rgba(255,255,255,.12); background: rgba(31,31,31,.96); box-shadow: 0 18px 44px rgba(0,0,0,.36); }
     #view-reader .reader-action-menu-item { width: 100%; min-height: 42px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; color: inherit; font-weight: 700; text-align: left; }
     #view-reader .reader-action-menu-item:hover, #view-reader .reader-action-menu-item:focus-visible { background: rgba(63,152,144,.13); outline: none; }
@@ -6799,8 +6795,6 @@ function injectReaderViewStyles() {
     #view-reader.reader-dark .reader-bookmark-summary strong { color: #dcefeb; }
     @media (max-width: 1023px) {
       body.reader-active #view-reader.reader-view.active { inset: 0; }
-      #view-reader .reader-toolbar { grid-template-columns: auto 1fr; }
-      #view-reader .reader-toolbar label { grid-column: span 1; }
       #view-reader .reader-stage { padding: 0; }
       #view-reader .reader-page-viewport { flex-basis: 100vw; width: 100vw; height: 100%; min-height: 0; border-radius: 0; box-shadow: none; }
       #view-reader .reader-flow { padding: clamp(34px, 7vh, 58px) clamp(24px, 8vw, 40px) clamp(30px, 6vh, 50px); }
@@ -6812,11 +6806,11 @@ function injectReaderViewStyles() {
       #view-reader .reader-flow .chapter-kicker { font-size: 1.24em; letter-spacing: .09em; margin-bottom: .66em; }
       #view-reader .reader-flow .chapter-head h1 { font-size: 1.16em; line-height: 1.5; }
       #view-reader .reader-flow .chapter-summary { margin-bottom: 1.55em; padding: 1em 1em .96em; }
-      #view-reader .reader-footer { grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 8px; padding-inline: 8px; }
+      #view-reader .reader-footer { grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; padding-inline: 8px; }
       #view-reader .reader-footer > button { min-width: 0; padding-inline: 10px; }
-      #view-reader .reader-action-button { min-height: 40px; padding-inline: 12px; }
+      #view-reader .reader-action-button { right: 14px; bottom: calc(var(--reader-stage-bottom) + 14px); min-height: 42px; padding-inline: 14px; }
       #view-reader .reader-close-button { top: 10px; right: 10px; min-height: 34px; padding-inline: 12px; font-size: .82rem; }
-      #view-reader .reader-action-menu { right: 8px; bottom: calc(var(--reader-stage-bottom) + 10px); }
+      #view-reader .reader-action-menu { right: 8px; bottom: calc(var(--reader-stage-bottom) + 62px); }
       #view-reader .reader-panel { top: auto; right: 10px; bottom: calc(var(--reader-stage-bottom) + 10px); left: 10px; width: auto; max-height: min(78dvh, 620px); border-radius: 18px 18px 12px 12px; }
       #view-reader .reader-book-heading h2 { font-size: .95rem; }
       #view-reader .reader-turn-zone { width: 28%; }
