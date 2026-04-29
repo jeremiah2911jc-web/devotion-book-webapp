@@ -324,6 +324,7 @@ const state = {
   bookArrangementSaving: false,
   bookArrangementDrafts: {},
   bookDraftModalOpen: false,
+  bookDraftModalBookId: null,
   bookExportSettingsModalOpen: false,
   isExporting: false,
   latestExportedBook: null,
@@ -862,8 +863,9 @@ function ensureContentLibraryUi() {
         </div>
         <div class="row gap-sm wrap mt-md">
           <strong id="content-library-selection-count">已選 0 篇</strong>
-          <span id="content-library-book-hint" class="caption">請先到成書工作台建立或選擇一份編排。</span>
-          <button id="content-library-add-selected" class="secondary-btn" type="button">加入目前選稿編排</button>
+          <span id="content-library-book-hint" class="caption">請先到選稿編排建立或選擇一份書稿。</span>
+          <button id="content-library-add-selected" class="secondary-btn" type="button">請先選擇編排</button>
+          <button id="content-library-go-workbench" class="ghost-btn hidden" type="button">前往選稿編排</button>
           <button id="content-library-clear-selection" class="ghost-btn" type="button">清除選取</button>
         </div>
         <div id="content-library-list" class="list-stack mt-md empty-state">目前還沒有可整理的札記。</div>
@@ -883,11 +885,12 @@ function ensureContentLibraryUi() {
   els.contentLibrarySelectionCount = document.getElementById('content-library-selection-count');
   els.contentLibraryBookHint = document.getElementById('content-library-book-hint');
   els.contentLibraryAddSelected = document.getElementById('content-library-add-selected');
+  els.contentLibraryGoWorkbench = document.getElementById('content-library-go-workbench');
   els.contentLibraryClearSelection = document.getElementById('content-library-clear-selection');
   els.contentLibraryList = document.getElementById('content-library-list');
 
   document.querySelector('#view-content-library .panel-header h2')?.replaceChildren(document.createTextNode('札記庫'));
-  document.querySelector('#view-content-library .panel-header .muted')?.replaceChildren(document.createTextNode('從過去寫過的札記中搜尋、篩選並挑選文章，加入選稿編排。'));
+  document.querySelector('#view-content-library .panel-header .muted')?.replaceChildren(document.createTextNode('從過去寫過的札記中搜尋、篩選並挑選文章，加入目前正在編排的書稿。'));
 
   if (els.contentLibrarySearch && !els.contentLibrarySearch.dataset.bound) {
     els.contentLibrarySearch.dataset.bound = 'true';
@@ -945,6 +948,13 @@ function ensureContentLibraryUi() {
   if (els.contentLibraryAddSelected && !els.contentLibraryAddSelected.dataset.bound) {
     els.contentLibraryAddSelected.dataset.bound = 'true';
     els.contentLibraryAddSelected.addEventListener('click', () => addSelectedNotesToCurrentBookDraft().catch(handleError));
+  }
+  if (els.contentLibraryGoWorkbench && !els.contentLibraryGoWorkbench.dataset.bound) {
+    els.contentLibraryGoWorkbench.dataset.bound = 'true';
+    els.contentLibraryGoWorkbench.addEventListener('click', () => {
+      setView('books');
+      refreshUi();
+    });
   }
 }
 
@@ -1009,7 +1019,7 @@ function ensureOperationManualUi() {
           <section id="manual-purpose" class="manual-section">
             <h2>一、系統用途</h2>
             <p>靈修札記成書系統是一套協助使用者整理每日靈修內容、累積屬靈文章、編排成電子書，並在書櫃中閱讀與管理的工具。</p>
-            <p>使用者可以從一篇札記開始，逐步累積內容。當文章數量增加後，可以從札記庫搜尋、篩選並挑選適合的文章，加入目前選稿編排，再整理章節順序，最後進入成書匯出，產生 EPUB 電子書。</p>
+            <p>使用者可以從一篇札記開始，逐步累積內容。當文章數量增加後，可以從札記庫搜尋、篩選並挑選適合的文章，加入目前正在編排的書稿，再整理章節順序，最後進入成書匯出，產生 EPUB 電子書。</p>
             <div class="manual-callout">
               <strong>整體使用流程</strong>
               <p>寫札記 → 札記庫挑選文章 → 選稿編排整理章節 → 成書匯出 → 書櫃閱讀</p>
@@ -1053,10 +1063,10 @@ function ensureOperationManualUi() {
               <li>依日期、分類、標籤篩選札記</li>
               <li>編輯既有札記</li>
               <li>勾選適合成書的文章</li>
-              <li>將文章加入目前選稿編排</li>
+              <li>將文章加入目前正在編排的書稿</li>
             </ul>
             <p>札記庫的主要用途，是保存、搜尋、篩選、編輯與挑選原始文章。</p>
-            <p>當某篇札記適合收進未來的書中，可以直接從札記庫勾選該篇文章，加入目前選稿編排。</p>
+            <p>當某篇札記適合收進未來的書中，可以直接從札記庫勾選該篇文章，加入目前正在編排的書稿。</p>
             <h3>4. 選稿編排</h3>
             <p>選稿編排是成書前最重要的整理工作區。</p>
             <p>使用者可以建立一本書的編排，並把札記庫中的文章加入目前編排。</p>
@@ -1222,7 +1232,7 @@ function ensureOperationManualUi() {
               <li>篩選札記</li>
               <li>編輯札記</li>
               <li>勾選札記</li>
-              <li>將札記加入目前選稿編排</li>
+              <li>將札記加入目前正在編排的書稿</li>
             </ul>
             <p>如果發現某篇札記需要修改，可以直接在札記庫點選「編輯」，系統會回到寫札記頁，並載入該篇札記。</p>
             <p>修改後再儲存，會更新原本那篇札記，不會另外新增一篇。</p>
@@ -1256,7 +1266,7 @@ function ensureOperationManualUi() {
               <li>分類篩選</li>
               <li>標籤篩選</li>
             </ul>
-            <p>找到文章後，勾選文章，點選「加入目前選稿編排」。</p>
+            <p>找到文章後，勾選文章，點選「加入目前正在編排的書稿」。</p>
             <p>加入後，該文章會成為目前選稿編排中的一個章節。</p>
             <p>若文章尚未整理成熟，可以先留在札記庫中，不急著加入編排。</p>
             <p>建議使用方式：</p>
@@ -1433,7 +1443,7 @@ function ensureOperationManualUi() {
             <h3>2. 每週整理方式</h3>
             <p>每週可以花一段時間打開札記庫。</p>
             <p>回顧最近寫過的內容。</p>
-            <p>挑選較完整、較有主題性的文章，加入目前選稿編排。</p>
+            <p>挑選較完整、較有主題性的文章，加入目前正在編排的書稿。</p>
             <p>這樣可以讓札記逐漸形成成書素材。</p>
             <h3>3. 每月成書整理方式</h3>
             <p>每月可以建立一份選稿編排。</p>
@@ -1488,7 +1498,7 @@ function ensureOperationManualUi() {
             <h2>九、常見問題</h2>
             <h3>1. 我寫完札記後，為什麼書裡還沒有出現？</h3>
             <p>札記儲存後會先留在札記庫。</p>
-            <p>若要放進書中，需要先建立或選擇目前選稿編排，再從札記庫勾選文章加入目前選稿編排。</p>
+            <p>若要放進書中，需要先建立或選擇目前正在編排的書稿，再從札記庫勾選文章加入。</p>
             <p>接著回到選稿編排整理章節，最後進入成書匯出。</p>
             <h3>2. 札記庫和選稿編排有什麼差別？</h3>
             <p>札記庫是所有已儲存札記的集中管理區。</p>
@@ -1531,7 +1541,7 @@ function ensureOperationManualUi() {
             <h2>十、推薦操作習慣</h2>
             <ul>
               <li>每天先專心寫札記，不急著成書。</li>
-              <li>每週回顧札記庫，把成熟文章加入目前選稿編排。</li>
+              <li>每週回顧札記庫，把成熟文章加入目前正在編排的書稿。</li>
               <li>每月建立或整理選稿編排。</li>
               <li>成書前先預覽內容與章節順序。</li>
               <li>成書匯出前先補齊書名、作者、簡介、前言與後記。</li>
@@ -1549,7 +1559,7 @@ function ensureOperationManualUi() {
               <li>每篇札記都填寫標題、經文、分類、標籤、摘要與全文。</li>
               <li>每週進入「札記庫」，挑選文字較完整的文章。</li>
               <li>月底進入「選稿編排」，建立一份編排，命名為「詩篇靈修札記」。</li>
-              <li>前往「札記庫」，把適合的文章加入目前選稿編排。</li>
+              <li>前往「札記庫」，把適合的文章加入目前正在編排的書稿。</li>
               <li>回到「選稿編排」，整理章節順序。</li>
               <li>確認每篇文章標題、段落、小標題與經文格式。</li>
               <li>開啟「成書匯出設定」，填寫書名、作者、書籍簡介、前言與後記。</li>
@@ -3952,19 +3962,30 @@ function renderContentLibrary() {
   const chapterSourceIds = new Set(displayChapters.map(chapter => getChapterSourceNoteId(chapter)).filter(Boolean));
   const filteredNotes = getContentLibraryFilteredNotes();
   const selectedCount = state.contentLibrarySelectedNoteIds.length;
+  const selectedBookTitle = getBookDraftLabel(selectedBook);
   if (els.contentLibrarySelectionCount) {
     els.contentLibrarySelectionCount.textContent = selectedBook
-    ? `已選 ${selectedCount} 篇，目前編排 ${displayChapters.length} 章`
-      : `已選 ${selectedCount} 篇`;
+      ? `已選 ${selectedCount} 篇｜目前正在編排：${selectedBookTitle}｜已收錄 ${displayChapters.length} 章`
+      : '尚未選擇目前正在編排的書稿';
   }
   if (els.contentLibraryBookHint) {
     els.contentLibraryBookHint.textContent = selectedBook
-    ? `目前編排：${getBookDraftLabel(selectedBook)}${hasBookArrangementDraft(selectedBook.id) ? '（尚未儲存）' : ''}`
-    : '請先建立或開啟一份選稿編排';
+      ? (selectedCount
+        ? `將把勾選的札記加入「${selectedBookTitle}」${hasBookArrangementDraft(selectedBook.id) ? '（含尚未儲存的章節調整）' : ''}`
+        : `請先勾選要加入「${selectedBookTitle}」的札記`)
+      : '請先到選稿編排建立或選擇一份書稿。';
   }
   if (els.contentLibraryAddSelected) {
     els.contentLibraryAddSelected.disabled = !selectedBook || !selectedCount || state.bookArrangementSaving;
+    els.contentLibraryAddSelected.textContent = !selectedBook
+      ? '請先選擇編排'
+      : selectedCount
+        ? `加入「${selectedBookTitle}」（已選 ${selectedCount} 篇）`
+        : `選取札記後加入「${selectedBookTitle}」`;
+    els.contentLibraryAddSelected.classList.toggle('primary-btn', !!selectedBook && !!selectedCount && !state.bookArrangementSaving);
+    els.contentLibraryAddSelected.classList.toggle('secondary-btn', !selectedBook || !selectedCount || state.bookArrangementSaving);
   }
+  if (els.contentLibraryGoWorkbench) els.contentLibraryGoWorkbench.classList.toggle('hidden', !!selectedBook);
   if (els.contentLibraryClearSelection) els.contentLibraryClearSelection.disabled = !selectedCount;
 
   if (!filteredNotes.length) {
@@ -4056,7 +4077,7 @@ function getBookDraftStatusTone(book) {
 }
 
 function openBookDraftModal(bookId = '', { focusChapters = false } = {}) {
-  if (bookId) state.selectedBookId = bookId;
+  state.bookDraftModalBookId = bookId || state.selectedBookId || null;
   state.bookDraftModalOpen = true;
   refreshUi();
   if (focusChapters) {
@@ -4074,6 +4095,7 @@ function openBookDraftModal(bookId = '', { focusChapters = false } = {}) {
 
 function closeBookDraftModal() {
   state.bookDraftModalOpen = false;
+  state.bookDraftModalBookId = null;
   refreshUi();
 }
 
@@ -4083,8 +4105,11 @@ function focusSelectedDraftPanel(bookId = '') {
 
 function setCurrentBookDraft(bookId = '') {
   if (!bookId) return;
+  const book = state.books.find(item => item.id === bookId);
   state.selectedBookId = bookId;
+  if (state.bookDraftModalOpen) state.bookDraftModalBookId = bookId;
   refreshUi();
+  showToast(`已切換目前編排：${getBookDraftLabel(book)}`);
 }
 
 function goToContentLibraryForBookDraft(bookId = '') {
@@ -4102,9 +4127,37 @@ function ensureBookDraftWorkspaceUi() {
 
   const booksView = document.getElementById('view-books');
   if (!booksView) return;
-  const panels = booksView.querySelectorAll('.panel');
-  const [draftFormPanel, draftListPanel, draftOverviewPanel] = panels;
   booksView.classList.add('book-draft-workspace');
+  const booksGrid = booksView.querySelector('.grid.layout-books');
+  let currentPanel = document.getElementById('book-draft-current-panel');
+  if (booksGrid && !currentPanel) {
+    currentPanel = document.createElement('section');
+    currentPanel.id = 'book-draft-current-panel';
+    currentPanel.className = 'panel book-draft-current-panel';
+    currentPanel.innerHTML = `
+      <div class="panel-header">
+        <div>
+          <h2>目前正在編排</h2>
+          <p class="muted">這份書稿會接收從札記庫加入的文章。</p>
+        </div>
+      </div>
+      <div id="current-book-draft-card" class="empty-state">尚未選擇目前正在編排的書稿</div>
+    `;
+    booksGrid.prepend(currentPanel);
+  }
+  const draftFormPanel = els.bookForm?.closest('.panel');
+  const draftListPanel = els.booksList?.closest('.panel');
+  const draftOverviewPanel = els.selectedBookPanel?.closest('.panel');
+  if (booksGrid && currentPanel && draftListPanel && draftFormPanel) {
+    booksGrid.insertBefore(currentPanel, booksGrid.firstElementChild);
+    booksGrid.insertBefore(draftListPanel, draftFormPanel);
+    if (draftOverviewPanel) booksGrid.appendChild(draftOverviewPanel);
+  }
+  currentPanel?.classList.remove('book-draft-form-panel', 'book-draft-list-panel', 'book-draft-overview-panel', 'book-draft-modal-shell');
+  draftFormPanel?.classList.remove('book-draft-list-panel', 'book-draft-overview-panel', 'book-draft-modal-shell');
+  draftListPanel?.classList.remove('book-draft-form-panel', 'book-draft-overview-panel', 'book-draft-modal-shell');
+  draftOverviewPanel?.classList.remove('book-draft-form-panel', 'book-draft-list-panel');
+  currentPanel?.querySelector('.panel-header h2')?.replaceChildren(document.createTextNode('目前正在編排'));
   draftFormPanel?.classList.add('book-draft-form-panel');
   draftListPanel?.classList.add('book-draft-list-panel');
   draftOverviewPanel?.classList.add('book-draft-overview-panel');
@@ -4117,7 +4170,7 @@ function ensureBookDraftWorkspaceUi() {
   els.chaptersList?.classList.add('book-draft-chapters-list');
   document.querySelector('#view-books .chapter-list-heading')?.classList.add('book-draft-chapter-heading');
 
-  draftFormPanel?.querySelector('.panel-header h2')?.replaceChildren(document.createTextNode('建立選稿編排'));
+  draftFormPanel?.querySelector('.panel-header h2')?.replaceChildren(document.createTextNode('新增選稿編排'));
   els.newBookBtn?.classList.add('hidden');
   const titleLabel = els.bookTitle?.closest('label');
   if (titleLabel) {
@@ -4139,13 +4192,13 @@ function ensureBookDraftWorkspaceUi() {
   document.querySelector('.book-export-options')?.classList.add('hidden');
   const submitBtn = els.bookForm?.querySelector('button[type="submit"]');
   if (submitBtn) {
-    submitBtn.textContent = els.bookId?.value ? '更新編排' : '建立編排';
+    submitBtn.textContent = els.bookId?.value ? '更新選稿編排' : '建立選稿編排';
     submitBtn.classList.add('book-draft-submit-btn');
   }
   if (els.deleteBookBtn) els.deleteBookBtn.textContent = '刪除編排';
 
-  draftListPanel?.querySelector('.panel-header h2')?.replaceChildren(document.createTextNode('選稿編排'));
-  draftOverviewPanel?.querySelector('.panel-header h2')?.replaceChildren(document.createTextNode('目前選稿編排'));
+  draftListPanel?.querySelector('.panel-header h2')?.replaceChildren(document.createTextNode('其他選稿編排'));
+  draftOverviewPanel?.querySelector('.panel-header h2')?.replaceChildren(document.createTextNode('整理章節'));
   if (els.selectedBookEmpty) els.selectedBookEmpty.textContent = '請先建立或選取一份編排。';
   document.querySelector('#view-books .chapter-picker')?.classList.add('hidden');
   document.querySelector('#view-books .toc-preview h3')?.replaceChildren(document.createTextNode('前幾篇章節預覽'));
@@ -4229,9 +4282,19 @@ function ensureBookDraftWorkspaceUi() {
       exportSettingsBtn.type = 'button';
       exportSettingsBtn.className = 'ghost-btn';
       exportSettingsBtn.textContent = '成書匯出設定';
-      exportSettingsBtn.addEventListener('click', () => openBookExportSettingsModal(state.selectedBookId));
+      exportSettingsBtn.addEventListener('click', () => openBookExportSettingsModal(getActiveBookDraftId()));
     }
     rightFooter.prepend(exportSettingsBtn);
+    let modalStartBtn = document.getElementById('modal-start-current-book-btn');
+    if (!modalStartBtn) {
+      modalStartBtn = document.createElement('button');
+      modalStartBtn.id = 'modal-start-current-book-btn';
+      modalStartBtn.type = 'button';
+      modalStartBtn.className = 'secondary-btn';
+      modalStartBtn.textContent = '開始編這本';
+      modalStartBtn.addEventListener('click', () => setCurrentBookDraft(getActiveBookDraftId()));
+    }
+    rightFooter.prepend(modalStartBtn);
     const saveBtn = document.getElementById('save-book-arrangement-btn');
     if (saveBtn) rightFooter.prepend(saveBtn);
     const focusBtn = document.getElementById('focus-draft-chapters-btn');
@@ -4267,7 +4330,7 @@ function ensureBookDraftWorkspaceUi() {
 
 async function addSelectedNotesToCurrentBookDraft() {
   const book = getSelectedBook();
-  if (!book) throw new Error('請先到成書工作台建立或選擇一份編排。');
+  if (!book) throw new Error('請先到選稿編排建立或選擇一份書稿。');
   if (!state.contentLibrarySelectedNoteIds.length) throw new Error('請先勾選至少一篇文章。');
   if (state.bookArrangementSaving) return;
   const selectedNotes = state.notes.filter(note => state.contentLibrarySelectedNoteIds.includes(note.id));
@@ -4291,17 +4354,18 @@ async function addSelectedNotesToCurrentBookDraft() {
     existingSourceIds.add(note.id);
     addedCount += 1;
   });
-  if (!addedCount) {
-      throw new Error(skippedCount ? '所選文章都已在目前選稿編排中。' : '沒有可加入的文章。');
-  }
-  setBookArrangementDraft(book.id, nextChapters);
   state.contentLibrarySelectedNoteIds = [];
+  if (addedCount) setBookArrangementDraft(book.id, nextChapters);
   refreshUi();
   const totalChapters = getBookArrangementDraft(book.id)?.length || nextChapters.length;
-  const bookTitle = book.title || '未命名書籍';
+  const bookTitle = getBookDraftLabel(book);
+  if (!addedCount) {
+    showToast(skippedCount ? `已略過重複札記：${skippedCount} 篇` : '沒有可加入的札記。');
+    return;
+  }
   showToast(skippedCount
-      ? `已加入 ${addedCount} 篇到「${bookTitle}」，目前選稿編排共 ${totalChapters} 章，略過 ${skippedCount} 篇已在編排中的文章。`
-      : `已加入 ${addedCount} 篇到「${bookTitle}」，目前選稿編排共 ${totalChapters} 章。`);
+    ? `已加入「${bookTitle}」：${addedCount} 篇札記；已略過重複札記：${skippedCount} 篇`
+    : `已加入「${bookTitle}」：${addedCount} 篇札記`);
 }
 function renderCardList(container, items, renderer, emptyText = '還沒有資料。') {
   if (!items.length) {
@@ -5073,53 +5137,80 @@ async function deleteNote() {
   showToast('札記已刪除。');
 }
 
+function renderBookDraftCard(book, { current = false } = {}) {
+  const chapterCount = getBookDisplayChapters(book).length;
+  const isEmptyDraft = chapterCount === 0;
+  const description = (book.description || '').slice(0, 180)
+    || (isEmptyDraft ? '尚未收錄札記，請先前往札記庫加入文章。' : '尚未填寫整理說明');
+  const statusLabel = current ? '正在編排' : '待成書設定';
+  const statusTone = current ? 'is-current' : getBookDraftStatusTone(book);
+  return `
+    <article class="card book-draft-card ${current ? 'is-current-draft selected' : ''}" data-book-draft-card="${book.id}">
+      <div class="book-draft-card-header">
+        <h3>${escapeHtml(getBookDraftLabel(book))}</h3>
+        <span class="badge book-draft-status-badge ${statusTone}">${escapeHtml(statusLabel)}</span>
+      </div>
+      <div class="card-meta book-draft-meta-row">
+        <span>已收錄 ${chapterCount} 篇札記</span>
+        <span>更新於 ${escapeHtml(formatDate(book.updated_at || book.created_at))}</span>
+      </div>
+      <div class="book-draft-scope">${escapeHtml(getBookDraftScopeSummary(book))}</div>
+      <div class="caption book-draft-description ${isEmptyDraft ? 'is-empty-hint' : ''}">${escapeHtml(description)}</div>
+      <div class="card-actions book-draft-actions">
+        ${current
+          ? `
+            <button class="secondary-btn" data-go-content-library="${book.id}">加入札記</button>
+            <button class="ghost-btn" data-open-book-draft="${book.id}">整理章節</button>
+            <button class="ghost-btn" data-open-export-settings="${book.id}">成書匯出設定</button>
+          `
+          : `
+            <button class="secondary-btn" data-select-book="${book.id}">開始編這本</button>
+            <button class="ghost-btn" data-open-book-draft="${book.id}">整理章節</button>
+            <button class="ghost-btn" data-go-content-library="${book.id}">加入札記</button>
+            <button class="ghost-btn book-draft-delete-btn" data-delete-book-draft="${book.id}">刪除</button>
+          `}
+      </div>
+    </article>
+  `;
+}
+
+function bindBookDraftCardActions(scope) {
+  scope.querySelectorAll('[data-select-book]').forEach(btn => btn.addEventListener('click', () => setCurrentBookDraft(btn.dataset.selectBook)));
+  scope.querySelectorAll('[data-go-content-library]').forEach(btn => btn.addEventListener('click', () => goToContentLibraryForBookDraft(btn.dataset.goContentLibrary)));
+  scope.querySelectorAll('[data-open-book-draft]').forEach(btn => btn.addEventListener('click', () => focusSelectedDraftPanel(btn.dataset.openBookDraft)));
+  scope.querySelectorAll('[data-open-export-settings]').forEach(btn => btn.addEventListener('click', () => openBookExportSettingsModal(btn.dataset.openExportSettings)));
+  scope.querySelectorAll('[data-delete-book-draft]').forEach(btn => btn.addEventListener('click', () => deleteBook(btn.dataset.deleteBookDraft).catch(handleError)));
+}
+
+function renderCurrentBookDraftCard() {
+  const container = document.getElementById('current-book-draft-card');
+  if (!container) return;
+  const currentBook = state.books.find(book => book.id === state.selectedBookId) || null;
+  if (!currentBook) {
+    container.className = 'empty-state book-draft-current-empty';
+    container.innerHTML = `
+      <strong>尚未選擇目前正在編排的書稿</strong>
+      <p>請先建立新的選稿編排，或從下方既有書稿中選擇一個開始編輯。</p>
+    `;
+    return;
+  }
+  container.className = 'book-draft-current-card-wrap';
+  container.innerHTML = renderBookDraftCard(currentBook, { current: true });
+  bindBookDraftCardActions(container);
+}
+
 function renderBooks() {
   if (!els.booksList) return;
-  if (!state.books.length) {
+  renderCurrentBookDraftCard();
+  const otherBooks = state.books.filter(book => book.id !== state.selectedBookId);
+  if (!otherBooks.length) {
     els.booksList.className = 'list-stack empty-state';
-    els.booksList.textContent = '還沒有選稿編排。';
+    els.booksList.textContent = state.books.length ? '目前沒有其他選稿編排。' : '還沒有選稿編排。';
     return;
   }
   els.booksList.className = 'list-stack';
-  els.booksList.innerHTML = state.books.map(book => {
-    const chapterCount = getBookDisplayChapters(book).length;
-    const isEmptyDraft = chapterCount === 0;
-    const description = (book.description || '').slice(0, 140)
-      || (isEmptyDraft ? '尚未收錄札記，請先前往札記庫加入文章。' : '尚未填寫整理說明');
-    return `
-      <article class="card book-draft-card ${book.id === state.selectedBookId ? 'selected' : ''}">
-        <div class="book-draft-card-header">
-          <h3>${escapeHtml(getBookDraftLabel(book))}</h3>
-          <span class="badge book-draft-status-badge ${getBookDraftStatusTone(book)}">${escapeHtml(getBookDraftStatus(book))}</span>
-        </div>
-        <div class="card-meta book-draft-meta-row">
-          <span>已收錄 ${chapterCount} 篇札記</span>
-          <span>更新於 ${escapeHtml(formatDate(book.updated_at || book.created_at))}</span>
-        </div>
-        <div class="book-draft-scope">${escapeHtml(getBookDraftScopeSummary(book))}</div>
-        <div class="caption book-draft-description ${isEmptyDraft ? 'is-empty-hint' : ''}">${escapeHtml(description)}</div>
-        <div class="card-actions book-draft-actions">
-          ${isEmptyDraft
-            ? `
-              <button class="secondary-btn" data-go-content-library="${book.id}">前往札記庫加入文章</button>
-              <button class="ghost-btn" data-select-book="${book.id}">設為目前編排</button>
-              <button class="ghost-btn" data-open-book-draft="${book.id}">查看編排</button>
-              <button class="ghost-btn book-draft-delete-btn" data-delete-book-draft="${book.id}">刪除</button>
-            `
-            : `
-              <button class="secondary-btn" data-open-book-draft="${book.id}">整理章節</button>
-              <button class="ghost-btn" data-select-book="${book.id}">設為目前編排</button>
-              <button class="ghost-btn" data-go-content-library="${book.id}">前往札記庫加入文章</button>
-              <button class="ghost-btn book-draft-delete-btn" data-delete-book-draft="${book.id}">刪除</button>
-            `}
-        </div>
-      </article>
-    `;
-  }).join('');
-  els.booksList.querySelectorAll('[data-select-book]').forEach(btn => btn.addEventListener('click', () => setCurrentBookDraft(btn.dataset.selectBook)));
-  els.booksList.querySelectorAll('[data-go-content-library]').forEach(btn => btn.addEventListener('click', () => goToContentLibraryForBookDraft(btn.dataset.goContentLibrary)));
-  els.booksList.querySelectorAll('[data-open-book-draft]').forEach(btn => btn.addEventListener('click', () => focusSelectedDraftPanel(btn.dataset.openBookDraft)));
-  els.booksList.querySelectorAll('[data-delete-book-draft]').forEach(btn => btn.addEventListener('click', () => deleteBook(btn.dataset.deleteBookDraft).catch(handleError)));
+  els.booksList.innerHTML = otherBooks.map(book => renderBookDraftCard(book)).join('');
+  bindBookDraftCardActions(els.booksList);
 }
 
 function populateBookForm(bookId) {
@@ -5164,6 +5255,7 @@ async function saveBook() {
   requireUser();
   const existing = state.books.find(item => item.id === els.bookId.value);
   const isNewDraft = !existing;
+  const previousSelectedBookId = state.selectedBookId;
   const coverDataUrl = els.bookCover.files[0] ? await fileToDataUrl(els.bookCover.files[0]) : (existing?.cover_data_url || '');
   const payload = {
     id: els.bookId.value || uid('book'),
@@ -5195,16 +5287,18 @@ async function saveBook() {
     saveJson(STORAGE_KEYS.books, books);
   }
   clearBookForm();
-  state.selectedBookId = payload.id;
+  state.selectedBookId = isNewDraft && previousSelectedBookId ? previousSelectedBookId : payload.id;
   if (els.bookSaveFeedback) {
-    els.bookSaveFeedback.textContent = isNewDraft ? '編排已建立，請前往札記庫加入文章。' : '編排已儲存';
+    els.bookSaveFeedback.textContent = isNewDraft
+      ? (previousSelectedBookId ? `已建立選稿編排：${payload.title}` : `已建立並開始編排：${payload.title}`)
+      : '編排已儲存';
     els.bookSaveFeedback.classList.remove('hidden');
   }
   await loadAllData({ silent: true, syncReason: state.supabase ? '編排儲存後同步' : '' });
-  state.selectedBookId = payload.id;
+  state.selectedBookId = isNewDraft && previousSelectedBookId ? previousSelectedBookId : payload.id;
   setView('books');
   showToast(isNewDraft
-    ? `已建立「${payload.title}」，請前往札記庫加入文章。`
+    ? (previousSelectedBookId ? `已建立選稿編排：${payload.title}` : `已建立並開始編排：${payload.title}`)
     : '編排已儲存');
 }
 
@@ -5283,8 +5377,15 @@ function renderTocPreview(book) {
   `).join('')}</ol>`;
 }
 
+function getActiveBookDraftId() {
+  return state.bookDraftModalOpen && state.bookDraftModalBookId
+    ? state.bookDraftModalBookId
+    : state.selectedBookId;
+}
+
 function getSelectedBook() {
-  return state.books.find(book => book.id === state.selectedBookId) || null;
+  const activeId = getActiveBookDraftId();
+  return state.books.find(book => book.id === activeId) || null;
 }
 
 function getBookArrangementDraft(bookId = '') {
@@ -5361,9 +5462,15 @@ function renderSelectedBookPanel() {
   els.selectedBookPanel.classList.toggle('hidden', !book);
   if (!book) {
     state.bookDraftModalOpen = false;
+    state.bookDraftModalBookId = null;
     renderExportSuccessActions(null);
     return;
   }
+  const isCurrentDraft = book.id === state.selectedBookId;
+  document.querySelector('#view-books .book-draft-modal-shell .panel-header h2')?.replaceChildren(
+    document.createTextNode(isCurrentDraft ? `目前選稿編排：${getBookDraftLabel(book)}` : `整理章節：${getBookDraftLabel(book)}`),
+  );
+  document.getElementById('modal-start-current-book-btn')?.classList.toggle('hidden', isCurrentDraft);
   ensureBookArrangementControls();
   if (els.addChapterBtn) els.addChapterBtn.disabled = state.bookArrangementDirty || state.bookArrangementSaving;
   updateChapterSourceOptions();
@@ -5377,7 +5484,8 @@ function renderSelectedBookPanel() {
         : '待整理';
   els.bookCoverPreview.innerHTML = `
     <div class="cover-overlay">
-      <div class="caption">目前編排</div>
+      <div class="caption">${isCurrentDraft ? '目前正在編排' : '選稿編排'}</div>
+      ${isCurrentDraft ? '<span class="badge book-draft-status-badge is-current">正在編排</span>' : ''}
       <h2>${escapeHtml(getBookDraftLabel(book))}</h2>
       <div>${escapeHtml(book.description || '尚未填寫整理說明')}</div>
       <div class="caption">已收錄 ${chapterCount} 篇｜${escapeHtml(draftStatus)}｜更新於 ${escapeHtml(formatDate(book.updated_at || book.created_at))}</div>
@@ -5405,7 +5513,7 @@ function renderChaptersList(book) {
     els.chaptersList.innerHTML = `
         <div class="book-draft-empty-guide">
           <h4>這份選稿編排目前還沒有收錄文章。</h4>
-          <p>請先到札記庫挑選札記，加入目前選稿編排。</p>
+          <p>請先到札記庫挑選札記，加入目前正在編排的書稿。</p>
           <button type="button" class="secondary-btn" data-empty-draft-go-library="${book.id}">前往札記庫加入文章</button>
         </div>
     `;
@@ -5515,7 +5623,7 @@ async function saveBookArrangement() {
   try {
     await persistBookChanges(book.id, { chapters: normalizeBookChapters(draftChapters) });
     clearBookArrangementDraft(book.id);
-    showToast('章節編排已儲存。');
+    showToast('章節編排已儲存');
   } finally {
     state.bookArrangementSaving = false;
     refreshUi();
@@ -5655,7 +5763,7 @@ function setView(viewName) {
   const titleMap = {
     dashboard: ['總覽', ''],
     notes: ['寫札記', '專注建立與編輯單篇札記。'],
-    'content-library': ['札記庫', '從過去寫過的札記中搜尋、篩選並挑選文章，加入目前選稿編排。'],
+    'content-library': ['札記庫', '從過去寫過的札記中搜尋、篩選並挑選文章，加入目前正在編排的書稿。'],
     books: ['選稿編排', '管理成書前的選稿編排，整理章節順序並銜接成書匯出設定。'],
     'admin-dashboard': ['管理後台', '第一階段白名單入口，僅授權管理者可使用。'],
     snapshots: ['快照備份', '查看每次建立的書籍快照。'],

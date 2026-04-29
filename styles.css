@@ -265,10 +265,21 @@ input:focus, textarea:focus, select:focus {
 .note-writing-list-panel {
   display: none !important;
 }
-.book-draft-workspace .grid.layout-books { align-items: start; }
+.book-draft-workspace .grid.layout-books {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 18px;
+}
+.book-draft-current-panel {
+  border-color: rgba(98, 160, 151, 0.42);
+  background: linear-gradient(180deg, rgba(240, 249, 245, 0.96), rgba(255, 255, 255, 0.92));
+}
 .book-draft-form-panel .panel-header { margin-bottom: 8px; }
+.book-draft-form-panel {
+  background: rgba(255, 255, 255, 0.72);
+}
 .book-draft-form { display: grid; gap: 10px; }
-.book-draft-form textarea { min-height: 120px; }
+.book-draft-form textarea { min-height: 92px; }
 .book-draft-submit-btn {
   min-height: 44px;
   padding-inline: 18px;
@@ -374,6 +385,32 @@ input:focus, textarea:focus, select:focus {
   gap: 10px;
   padding: 16px 18px;
   border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.book-draft-card.is-current-draft {
+  border-color: rgba(75, 150, 139, 0.48);
+  background: linear-gradient(180deg, rgba(239, 249, 245, 0.98), rgba(255, 255, 255, 0.94));
+  box-shadow: 0 14px 38px rgba(58, 112, 105, 0.16);
+}
+.book-draft-card.is-current-draft::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: #4ca494;
+}
+.book-draft-current-card-wrap {
+  min-width: 0;
+}
+.book-draft-current-empty {
+  display: grid;
+  gap: 6px;
+  text-align: left;
+}
+.book-draft-current-empty p {
+  margin: 0;
+  line-height: 1.7;
 }
 .book-draft-card-header {
   display: flex;
@@ -405,6 +442,11 @@ input:focus, textarea:focus, select:focus {
   border-color: #d9e3e2;
   color: #6f8486;
 }
+.book-draft-status-badge.is-current {
+  background: #e8f7ef;
+  border-color: #a8d9c7;
+  color: #2f756e;
+}
 .book-draft-meta-row {
   display: flex;
   flex-wrap: wrap;
@@ -434,6 +476,7 @@ input:focus, textarea:focus, select:focus {
 .book-draft-actions .ghost-btn {
   min-height: 40px;
   padding-inline: 14px;
+  white-space: normal;
 }
 .book-draft-delete-btn {
   color: #8b4f56;
@@ -1239,6 +1282,10 @@ body.account-settings-open {
   gap: 8px 10px;
   margin-top: 4px;
   margin-bottom: 8px;
+  padding: 12px;
+  border: 1px solid rgba(191, 211, 208, 0.72);
+  border-radius: 16px;
+  background: rgba(247, 251, 250, 0.82);
 }
 
 #view-content-library .compact-control {
@@ -1309,17 +1356,31 @@ body.account-settings-open {
 #content-library-selection-count {
   font-size: 15px;
   line-height: 1.2;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 #content-library-book-hint {
   min-width: 0;
+  flex: 1 1 240px;
+  overflow-wrap: anywhere;
 }
 
 #content-library-add-selected,
+#content-library-go-workbench,
 #content-library-clear-selection {
   min-height: 44px;
   padding: 9px 14px;
   border-radius: 14px;
+  max-width: 100%;
+  white-space: normal;
+}
+
+#content-library-add-selected:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+  background: rgba(238, 244, 243, 0.95);
+  color: #637b7d;
 }
 
 #content-library-list.mt-md {
@@ -1419,6 +1480,7 @@ body.account-settings-open {
   }
 
   #content-library-add-selected,
+  #content-library-go-workbench,
   #content-library-clear-selection {
     min-height: 42px;
     padding: 8px 12px;
@@ -1466,6 +1528,11 @@ body.account-settings-open {
   }
 
   #content-library-add-selected {
+    grid-column: 1;
+    order: 3;
+  }
+
+  #content-library-go-workbench {
     grid-column: 1;
     order: 3;
   }
