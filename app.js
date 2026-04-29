@@ -4226,13 +4226,18 @@ function renderDesktopBookshelfCard() {
   els.desktopBookshelfList.innerHTML = books.map((book, index) => {
     const title = sanitizeDisplayText(book.title, `書籍 ${index + 1}`);
     const chapterCount = Number(book.total_chapters || book.totalChapters || (Array.isArray(book.chapters) ? book.chapters.length : 0));
-    const status = isSystemLibraryBook(book)
+    const isSystemBook = isSystemLibraryBook(book);
+    const status = isSystemBook
       ? '系統預設'
       : book.source === 'imported_epub'
         ? '外部匯入'
         : snapshotBookIds.has(book.id)
           ? '已完成'
           : (chapterCount > 0 ? '整理中' : '已建立');
+    const metaItems = [
+      ...(!isSystemBook ? [`${chapterCount} 章`] : []),
+      status,
+    ];
     const coverUrl = getLibraryCoverUrl(book);
     return `
       <article class="bookshelf-book-card">
@@ -4240,10 +4245,11 @@ function renderDesktopBookshelfCard() {
           ? `<img class="bookshelf-cover-thumb" src="${coverUrl}" alt="${escapeHtml(title)}封面" />`
           : `<div class="bookshelf-cover-placeholder" aria-hidden="true">封面</div>`}
         <div class="bookshelf-book-copy">
-          <strong>${escapeHtml(title)}</strong>
-          <div class="bookshelf-book-meta">
-            <span>${chapterCount} 章</span>
-            <span>${status}</span>
+          <div class="bookshelf-book-heading">
+            <strong>${escapeHtml(title)}</strong>
+            <div class="bookshelf-book-meta">
+              ${metaItems.map(item => `<span>${escapeHtml(item)}</span>`).join('')}
+            </div>
           </div>
         </div>
       </article>`;
