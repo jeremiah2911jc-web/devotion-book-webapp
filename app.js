@@ -32,7 +32,6 @@ const SUPPORT_PAYMENT_INFO = {
   code: '012',
   account: '82110000769095',
 };
-const SUPPORT_RECEIPT_REQUEST_TABLE = 'support_receipt_requests';
 const CURRENT_NOTE_DRAFT_KEY = 'devotion-current-note-draft';
 const CURRENT_NOTE_DRAFT_DEBOUNCE_MS = 700;
 const SIGNED_URL_CACHE_TTL_SECONDS = 60 * 60;
@@ -1313,6 +1312,7 @@ function ensureOperationManualUi() {
               <div class="manual-faq-item"><h3>找不到剛寫的札記怎麼辦？</h3><p>先到「札記庫」確認。若有使用搜尋或篩選，請點「清除篩選」。也可以回到「寫札記」確認是否已儲存成功。</p></div>
               <div class="manual-faq-item"><h3>禱告或代禱事項要寫在哪裡？</h3><p>可以直接寫在「寫札記」裡。分類可以選「禱告」或「代禱」，再用標籤補充對象或主題。日後可以在札記庫用分類或標籤搜尋，也可以整理成禱告操練或代禱紀錄。</p></div>
               <div class="manual-faq-item"><h3>可以用語音輸入寫札記嗎？</h3><p>可以。你可以使用手機或電腦內建的語音輸入法。手機可使用鍵盤上的麥克風；Windows 可按 Windows 鍵 + H；Mac 可使用系統聽寫。語音輸入後，建議再檢查文字內容，避免經文、人名或標點辨識錯誤。</p></div>
+              <div class="manual-faq-item"><h3>如何申請支持款項收款證明？</h3><p>完成轉帳後，可在「支持平台／支持事工」中點選「申請收款證明」，填寫姓名或抬頭、Email、支持金額、轉帳日期與匯款帳號後五碼。系統會將申請資料寄送給管理者，管理者確認入帳後，會再依您填寫的 Email 處理支持款項收款證明。本證明為支持款項收款紀錄，不作為稅務扣抵憑證。</p></div>
               <div class="manual-faq-item"><h3>為什麼編輯區會出現 ##、{red}、{/red} 這些符號？</h3><p>這些是格式標記，用來讓系統在預覽與成書時轉成小標題或重點色。寫作時會先看到標記，點「預覽文章」後可以確認實際效果。</p></div>
               <div class="manual-faq-item"><h3>為什麼 {red}##重點{/red} 沒有正常變成小標題？</h3><p>小標題的 <code>##</code> 需要放在一行最前面，不能被顏色標記包住。如果想使用小標題，請寫成「## 重點整理」。如果想標記紅字，請另起一行寫「{red}這一句是重點。{/red}」。</p></div>
               <div class="manual-faq-item"><h3>小標題和重點色可以一起用嗎？</h3><p>建議分開使用。小標題用來整理文章結構，重點色用來強調正文短句。比較好的方式是讓小標題獨立一行，重點句另起一行。</p></div>
@@ -2663,40 +2663,36 @@ function validateSupportReceiptRequest(input) {
 }
 
 function buildSupportReceiptRequestPayload(input) {
-  const timestamp = nowIso();
   return {
-    id: uid('support_receipt_request'),
-    user_id: state.currentUser?.id || null,
     name: input.name,
     email: input.email,
     amount: input.amount,
-    transfer_date: input.transfer_date,
-    bank_last5: input.bank_last5,
+    transferDate: input.transfer_date,
+    bankLast5: input.bank_last5,
     note: input.note,
-    status: 'pending',
-    created_at: timestamp,
-    updated_at: timestamp,
   };
 }
 
-function buildSupportReceiptCertificateDraft(request) {
-  return {
-    title: '支持款項收款證明',
-    receiptNumber: '',
-    requestedAt: request.created_at,
-    status: request.status,
-    name: request.name,
-    email: request.email,
-    amount: request.amount,
-    transferDate: request.transfer_date,
-    bankLast5: request.bank_last5,
-    purpose: '支持平台／支持事工，用於內容製作、系統開發、雲端維護與出版功能優化。',
-    note: '本證明為支持款項收款紀錄，不作為稅務扣抵憑證。',
-  };
+async function submitSupportReceiptRequest(payload) {
+  const response = await fetch('/api/support-receipt-request', {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.ok) {
+    const message = String(data.message || data.error || '').trim();
+    throw new Error(message || '收款證明申請送出失敗，請稍後再試，或聯絡 devotionbook.tw@gmail.com。');
+  }
+  return data;
 }
 
-function handleSupportReceiptSubmit(event) {
+async function handleSupportReceiptSubmit(event) {
   event.preventDefault();
+  const form = event.currentTarget;
   clearSupportReceiptMessage();
   const input = readSupportReceiptRequestForm();
   const validationError = validateSupportReceiptRequest(input);
@@ -2705,14 +2701,29 @@ function handleSupportReceiptSubmit(event) {
     return;
   }
   const payload = buildSupportReceiptRequestPayload(input);
-  console.warn(`${SUPPORT_RECEIPT_REQUEST_TABLE} table is not configured yet; support receipt request is UI-only for now.`, {
-    request: payload,
-    certificateDraft: buildSupportReceiptCertificateDraft(payload),
-  });
-  event.currentTarget.reset();
-  const successMessage = '已收到您的收款證明申請，確認入帳後將寄送至您填寫的 Email。';
-  setSupportReceiptMessage(successMessage, 'success');
-  showToast(successMessage);
+  const submitButton = form.querySelector('button[type="submit"]');
+  const originalText = submitButton?.textContent || '';
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = '送出中...';
+  }
+  try {
+    await submitSupportReceiptRequest(payload);
+    form.reset();
+    const successMessage = '收款證明申請已送出。我們確認入帳後，會依您填寫的 Email 聯繫並寄送支持款項收款證明。';
+    setSupportReceiptMessage(successMessage, 'success');
+    showToast(successMessage);
+  } catch (error) {
+    const failureMessage = '收款證明申請送出失敗，請稍後再試，或聯絡 devotionbook.tw@gmail.com。';
+    setSupportReceiptMessage(failureMessage, 'error');
+    showToast(failureMessage);
+    console.warn('support receipt request failed', error);
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+      submitButton.textContent = originalText || '送出申請';
+    }
+  }
 }
 
 function getErrorText(error) {

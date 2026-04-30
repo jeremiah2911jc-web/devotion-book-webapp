@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-title" content="DEVOTION" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>DEVOTION｜與神更親近的每一天</title>
-  <link rel="stylesheet" href="./styles.css?v=support-payment-receipt-20260430" />
+  <link rel="stylesheet" href="./styles.css?v=support-receipt-email-flow-20260430" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -745,7 +745,7 @@
             <strong>82110000769095</strong>
           </button>
         </div>
-        <p class="support-receipt-note">若您已完成轉帳，請填寫轉帳資訊，我們確認入帳後會寄出支持款項收款證明。</p>
+        <p class="support-receipt-note">完成轉帳後，請填寫收款證明申請。系統會將申請資料寄送給管理者，確認入帳後再寄出支持款項收款證明。</p>
         <div class="support-modal-actions">
           <button id="open-support-receipt-form-btn" class="secondary-btn" type="button">申請收款證明</button>
           <button class="ghost-btn" type="button" data-copy-support-payment="82110000769095" data-copy-label="轉帳帳號">複製帳號</button>
@@ -753,7 +753,7 @@
       </section>
       <section id="support-receipt-section" class="support-modal-section hidden">
         <h3>申請支持款項收款證明</h3>
-        <p class="modal-intro">請填寫轉帳資訊。我們確認入帳後，會將支持款項收款證明寄送至您填寫的 Email。</p>
+        <p class="modal-intro">請填寫轉帳資訊。系統會將申請資料寄送給管理者，確認入帳後再依您填寫的 Email 處理支持款項收款證明。</p>
         <form id="support-receipt-form" class="support-receipt-form" novalidate>
           <div class="support-receipt-grid">
             <label>姓名或收據抬頭
@@ -772,7 +772,7 @@
               <input id="support-receipt-bank-last5" name="bank_last5" inputmode="numeric" maxlength="5" placeholder="例：12345" />
             </label>
             <label class="support-receipt-span-2">備註
-              <textarea id="support-receipt-note" name="note" placeholder="若有需要補充的資訊，可填寫在這裡"></textarea>
+              <textarea id="support-receipt-note" name="note" maxlength="1000" placeholder="若有需要補充的資訊，可填寫在這裡"></textarea>
             </label>
           </div>
           <p class="support-receipt-tax-note">本證明為支持款項收款紀錄，不作為稅務扣抵憑證。</p>
@@ -788,6 +788,6 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./app.js?v=support-payment-receipt-20260430"></script>
+  <script type="module" src="./app.js?v=support-receipt-email-flow-20260430"></script>
 </body>
 </html>
