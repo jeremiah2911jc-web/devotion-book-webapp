@@ -26,6 +26,7 @@ const PROFILE_AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 const PROFILE_AVATAR_SIZE = 512;
 const PROFILE_AVATAR_BUCKET = 'library-books';
 const PROFILE_AVATAR_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const SUPPORT_EMAIL = 'devotionbook.tw@gmail.com';
 const IMPORTED_EPUB_SAFE_TAGS = new Set([
   'p',
   'br',
@@ -979,7 +980,7 @@ function ensureOperationManualUi() {
     const contact = document.createElement('p');
     contact.id = 'footer-support-contact';
     contact.className = 'footer-support-text';
-    contact.innerHTML = '使用問題與意見回饋：<a href="mailto:devotionbook.tw@gmail.com">devotionbook.tw@gmail.com</a>';
+    contact.innerHTML = `使用問題與意見回饋：<button class="footer-email-copy" type="button" data-copy-support-email>${SUPPORT_EMAIL}</button><button class="footer-copy-email-btn" type="button" data-copy-support-email>複製信箱</button>`;
     const copyright = siteFooter.querySelector('.footer-copyright');
     if (copyright) siteFooter.insertBefore(contact, copyright);
     else siteFooter.appendChild(contact);
@@ -1299,7 +1300,7 @@ function ensureOperationManualUi() {
           <section id="manual-feedback" class="manual-section">
             <h2>十四、使用問題與意見回饋</h2>
             <p>如果你在使用靈修札記成書系統時遇到問題，或有功能建議，歡迎來信：</p>
-            <p><a href="mailto:devotionbook.tw@gmail.com">devotionbook.tw@gmail.com</a></p>
+            <p class="manual-feedback-email"><span>${SUPPORT_EMAIL}</span><button class="footer-copy-email-btn" type="button" data-copy-support-email>複製信箱</button></p>
             <p>來信時可以簡單附上使用裝置、遇到的頁面、問題描述。若方便，也可以附上截圖，方便我們判斷問題。</p>
           </section>
 
@@ -2349,6 +2350,39 @@ function showToast(message) {
   clearTimeout(showToast.timer);
   showToast.timer = setTimeout(() => els.toast.classList.add('hidden'), 2600);
 }
+
+function copyTextFallback(text) {
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  textarea.style.top = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+  let copied = false;
+  try {
+    copied = document.execCommand('copy');
+  } finally {
+    textarea.remove();
+  }
+  return copied;
+}
+
+async function copySupportEmail() {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(SUPPORT_EMAIL);
+    } else if (!copyTextFallback(SUPPORT_EMAIL)) {
+      throw new Error('Clipboard fallback failed');
+    }
+    showToast(`已複製信箱：${SUPPORT_EMAIL}`);
+  } catch (error) {
+    showToast('無法自動複製，請手動複製信箱');
+  }
+}
+
 function getErrorText(error) {
   return String([
     error?.message,
@@ -3046,6 +3080,10 @@ function bindEvents() {
   els.importEpubBtn?.addEventListener('click', () => handleImportEpubClick());
   els.importEpubInput?.addEventListener('change', event => handleImportEpubSelection(event).catch(handleError));
   els.supportBtn?.addEventListener('click', openSupportModal);
+  document.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest('[data-copy-support-email]')) copySupportEmail().catch(handleError);
+  });
   els.closeSupportModal?.addEventListener('click', closeSupportModal);
   els.supportModalBackdrop?.addEventListener('click', closeSupportModal);
   document.addEventListener('keydown', (event) => {

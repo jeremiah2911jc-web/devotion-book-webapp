@@ -740,7 +740,40 @@ input:focus, textarea:focus, select:focus {
   line-height: 1.7;
   overflow-wrap: anywhere;
 }
-.footer-support-text a { color: #4a8b90; }
+.footer-email-copy,
+.footer-copy-email-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #4a8b90;
+  font: inherit;
+  cursor: pointer;
+}
+.footer-email-copy {
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.footer-copy-email-btn {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border: 1px solid rgba(74, 139, 144, 0.3);
+  border-radius: 999px;
+  background: rgba(239, 248, 247, 0.72);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.footer-email-copy:hover,
+.footer-copy-email-btn:hover {
+  color: #24696d;
+}
+.manual-feedback-email {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
 .footer-copyright {
   margin: 14px 0 0;
   font-size: 12px;
@@ -3004,6 +3037,18 @@ body.auth-locked .bottom-nav {
 }
 
 @media (max-width: 720px) {
+  .footer-support-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px 8px;
+    flex-wrap: wrap;
+  }
+
+  .footer-copy-email-btn {
+    margin-left: 0;
+  }
+
   body:not(.auth-locked) .main {
     padding: 10px 14px 132px;
   }
@@ -4891,7 +4936,7 @@ body:not(.auth-locked) .main {
   .desktop-sidebar-account-header {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 14px;
     margin-bottom: 10px;
   }
 
@@ -4901,9 +4946,10 @@ body:not(.auth-locked) .main {
   }
 
   .desktop-sidebar-account-header .account-avatar {
-    width: 44px;
-    height: 44px;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
+    font-size: 20px;
   }
 
   .desktop-sidebar-account-header .account-avatar::before {
@@ -6061,6 +6107,9 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
     grid-column: 1;
     grid-row: 1 / span 2;
     align-self: start;
+    width: 56px;
+    height: 56px;
+    font-size: 18px;
   }
 
   .account-summary-copy strong {
@@ -6085,6 +6134,12 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
     justify-content: flex-end;
     align-self: center;
   }
+}
+
+.account-settings-card .account-settings-avatar-preview {
+  width: 64px;
+  height: 64px;
+  font-size: 22px;
 }
 
 @media (min-width: 1024px) {
