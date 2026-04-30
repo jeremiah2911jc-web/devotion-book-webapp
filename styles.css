@@ -505,6 +505,9 @@ input:focus, textarea:focus, select:focus {
   justify-self: start;
   min-height: 42px;
 }
+.book-draft-modal-mobile-actions {
+  display: none;
+}
 .book-draft-list { display: grid; gap: 14px; }
 .book-draft-card {
   display: grid;
@@ -6263,6 +6266,103 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
 
   .book-draft-modal-right-footer {
     padding-bottom: max(16px, calc(12px + env(safe-area-inset-bottom)));
+  }
+}
+
+@media (max-width: 1023px) {
+  .book-draft-modal-shell.is-open {
+    top: 0;
+    left: 0;
+    transform: none;
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    padding: 16px 14px 0;
+    overflow: hidden;
+  }
+
+  .book-draft-modal-shell.is-open .panel-header {
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+  }
+
+  .book-draft-modal-shell.is-open .book-draft-overview-body {
+    display: block;
+    height: 100%;
+    max-height: none;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 0;
+    padding-bottom: max(140px, calc(140px + env(safe-area-inset-bottom)));
+  }
+
+  .book-draft-modal-shell.is-open .book-draft-modal-left,
+  .book-draft-modal-shell.is-open .book-draft-summary,
+  .book-draft-modal-shell.is-open .book-draft-preview-panel,
+  .book-draft-modal-shell.is-open .toc-preview {
+    display: none !important;
+  }
+
+  .book-draft-modal-shell.is-open .book-draft-modal-right {
+    display: block;
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    overflow: visible;
+  }
+
+  .book-draft-modal-shell.is-open .book-draft-modal-mobile-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(191,211,208,0.7);
+    background: rgba(255,255,255,0.98);
+  }
+
+  .book-draft-modal-shell.is-open .book-draft-modal-mobile-actions .secondary-btn,
+  .book-draft-modal-shell.is-open .book-draft-modal-mobile-actions .ghost-btn {
+    flex: 1 1 150px;
+    min-height: 42px;
+  }
+
+  .book-draft-modal-shell.is-open .book-draft-modal-right-body {
+    display: block;
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .book-draft-modal-shell.is-open .book-draft-chapter-heading {
+    margin-bottom: 10px;
+  }
+
+  .book-draft-modal-shell.is-open .book-draft-chapters-list {
+    display: grid;
+    gap: 10px;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .book-draft-modal-shell.is-open .book-draft-modal-right-footer {
+    position: static;
+    bottom: auto;
+    margin-top: 16px;
+    padding-top: 12px;
+    padding-bottom: max(32px, calc(32px + env(safe-area-inset-bottom)));
+  }
+
+  .book-draft-modal-shell.is-open .book-draft-modal-right-footer .secondary-btn,
+  .book-draft-modal-shell.is-open .book-draft-modal-right-footer .ghost-btn {
+    width: 100%;
+    justify-self: stretch;
   }
 }
 

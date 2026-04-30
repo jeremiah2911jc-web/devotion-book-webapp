@@ -4755,6 +4755,13 @@ function ensureBookDraftWorkspaceUi() {
       rightCol.className = 'book-draft-modal-right';
       els.selectedBookPanel.appendChild(rightCol);
     }
+    let mobileActions = document.getElementById('book-draft-modal-mobile-actions');
+    if (!mobileActions) {
+      mobileActions = document.createElement('div');
+      mobileActions.id = 'book-draft-modal-mobile-actions';
+      mobileActions.className = 'book-draft-modal-mobile-actions';
+      rightCol.appendChild(mobileActions);
+    }
     let rightBody = document.getElementById('book-draft-modal-right-body');
     if (!rightBody) {
       rightBody = document.createElement('div');
@@ -4789,6 +4796,15 @@ function ensureBookDraftWorkspaceUi() {
       exportSettingsBtn.addEventListener('click', () => openBookExportSettingsModal(getActiveBookDraftId()));
     }
     rightFooter.prepend(exportSettingsBtn);
+    let mobileExportSettingsBtn = document.getElementById('open-book-export-settings-mobile-btn');
+    if (!mobileExportSettingsBtn) {
+      mobileExportSettingsBtn = document.createElement('button');
+      mobileExportSettingsBtn.id = 'open-book-export-settings-mobile-btn';
+      mobileExportSettingsBtn.type = 'button';
+      mobileExportSettingsBtn.className = 'ghost-btn';
+      mobileExportSettingsBtn.textContent = '成書匯出設定';
+      mobileExportSettingsBtn.addEventListener('click', () => openBookExportSettingsModal(getActiveBookDraftId()));
+    }
     let modalStartBtn = document.getElementById('modal-start-current-book-btn');
     if (!modalStartBtn) {
       modalStartBtn = document.createElement('button');
@@ -4799,8 +4815,29 @@ function ensureBookDraftWorkspaceUi() {
       modalStartBtn.addEventListener('click', () => setCurrentBookDraft(getActiveBookDraftId()));
     }
     rightFooter.prepend(modalStartBtn);
+    let mobileStartBtn = document.getElementById('modal-start-current-book-mobile-btn');
+    if (!mobileStartBtn) {
+      mobileStartBtn = document.createElement('button');
+      mobileStartBtn.id = 'modal-start-current-book-mobile-btn';
+      mobileStartBtn.type = 'button';
+      mobileStartBtn.className = 'secondary-btn';
+      mobileStartBtn.textContent = '開始編這本';
+      mobileStartBtn.addEventListener('click', () => setCurrentBookDraft(getActiveBookDraftId()));
+    }
     const saveBtn = document.getElementById('save-book-arrangement-btn');
     if (saveBtn) rightFooter.prepend(saveBtn);
+    let mobileSaveBtn = document.getElementById('save-book-arrangement-mobile-btn');
+    if (!mobileSaveBtn) {
+      mobileSaveBtn = document.createElement('button');
+      mobileSaveBtn.id = 'save-book-arrangement-mobile-btn';
+      mobileSaveBtn.type = 'button';
+      mobileSaveBtn.className = 'secondary-btn';
+      mobileSaveBtn.textContent = '儲存編排';
+      mobileSaveBtn.addEventListener('click', () => saveBookArrangement().catch(handleError));
+    }
+    mobileActions.appendChild(mobileSaveBtn);
+    mobileActions.appendChild(mobileExportSettingsBtn);
+    mobileActions.appendChild(mobileStartBtn);
     const focusBtn = document.getElementById('focus-draft-chapters-btn');
     if (focusBtn) focusBtn.classList.add('hidden');
     actionRow.classList.add('hidden');
@@ -6169,6 +6206,11 @@ function ensureBookArrangementControls() {
   }
   saveBtn.disabled = !state.bookArrangementDirty || state.bookArrangementSaving;
   saveBtn.textContent = state.bookArrangementSaving ? '儲存中...' : '儲存編排';
+  const mobileSaveBtn = document.getElementById('save-book-arrangement-mobile-btn');
+  if (mobileSaveBtn) {
+    mobileSaveBtn.disabled = saveBtn.disabled;
+    mobileSaveBtn.textContent = saveBtn.textContent;
+  }
   statusText.textContent = state.bookArrangementSaving ? '正在儲存章節編排...' : '章節編排尚未儲存';
   statusText.classList.toggle('hidden', !(state.bookArrangementDirty || state.bookArrangementSaving));
 }
@@ -6194,6 +6236,7 @@ function renderSelectedBookPanel() {
     document.createTextNode(isCurrentDraft ? `目前選稿編排：${getBookDraftLabel(book)}` : `整理章節：${getBookDraftLabel(book)}`),
   );
   document.getElementById('modal-start-current-book-btn')?.classList.toggle('hidden', isCurrentDraft);
+  document.getElementById('modal-start-current-book-mobile-btn')?.classList.toggle('hidden', isCurrentDraft);
   ensureBookArrangementControls();
   if (els.addChapterBtn) els.addChapterBtn.disabled = state.bookArrangementDirty || state.bookArrangementSaving;
   updateChapterSourceOptions();
