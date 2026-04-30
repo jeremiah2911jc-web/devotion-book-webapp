@@ -311,6 +311,56 @@ input:focus, textarea:focus, select:focus {
   max-width: 100%;
   margin-inline: auto;
 }
+.current-note-draft-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 14px;
+  border: 1px solid rgba(139, 170, 100, 0.34);
+  border-radius: 14px;
+  background: rgba(250, 248, 232, 0.95);
+  box-shadow: 0 10px 24px rgba(88, 110, 79, 0.08);
+}
+.current-note-draft-notice.hidden { display: none; }
+.current-note-draft-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.current-note-draft-copy strong {
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+}
+.current-note-draft-copy p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.current-note-draft-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+@media (max-width: 720px) {
+  .current-note-draft-notice {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 12px;
+  }
+  .current-note-draft-actions {
+    justify-content: stretch;
+  }
+  .current-note-draft-actions .primary-btn,
+  .current-note-draft-actions .ghost-btn {
+    flex: 1 1 120px;
+    min-width: 0;
+  }
+}
 .note-writing-list-panel {
   display: none !important;
 }

@@ -27,6 +27,8 @@ const PROFILE_AVATAR_SIZE = 512;
 const PROFILE_AVATAR_BUCKET = 'library-books';
 const PROFILE_AVATAR_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const SUPPORT_EMAIL = 'devotionbook.tw@gmail.com';
+const CURRENT_NOTE_DRAFT_KEY = 'devotion-current-note-draft';
+const CURRENT_NOTE_DRAFT_DEBOUNCE_MS = 700;
 const IMPORTED_EPUB_SAFE_TAGS = new Set([
   'p',
   'br',
@@ -328,6 +330,9 @@ const state = {
   passwordRecoveryActive: false,
   deviceId: getOrCreateDeviceId(),
   realtimeChannel: null,
+  noteDraftSaveTimer: null,
+  noteDraftDirty: false,
+  currentNoteDraftNotice: null,
   syncStatus: '本機模式',
   syncDetail: '目前資料只保存在這台裝置。',
   lastSyncAt: '',
@@ -1279,6 +1284,7 @@ function ensureOperationManualUi() {
               <div class="manual-faq-item"><h3>如何切換目前正在編排？</h3><p>到「選稿編排」的「其他選稿編排」區塊，點想整理的卡片上的「開始編這本」。切換後該卡片會移到「目前正在編排」。</p></div>
               <div class="manual-faq-item"><h3>建立選稿編排後，可以修改標題或整理說明嗎？</h3><p>可以。到「選稿編排」頁，在該卡片點「編輯設定」，即可修改編排代稱、整理說明、日期範圍、分類與標籤。儲存後，卡片會立即更新。</p></div>
               <div class="manual-faq-item"><h3>刪除資料前會再確認嗎？</h3><p>會。刪除札記、選稿編排、書櫃書籍、移除頭像或執行較危險的還原操作前，系統會先顯示確認提示。確認前請先看清楚刪除對象，避免誤刪。</p></div>
+              <div class="manual-faq-item"><h3>如果還沒儲存就關掉頁面，內容會不見嗎？</h3><p>系統會盡量暫存目前正在編輯的札記草稿。若瀏覽器重新整理、意外關閉或儲存失敗，回到「寫札記」頁時，會提示是否恢復尚未儲存的草稿。仍建議長篇內容寫到一段落就先儲存一次。</p></div>
               <div class="manual-faq-item"><h3>書櫃跟選稿編排有什麼差別？</h3><p>選稿編排用來整理成書前的章節與設定。書櫃用來閱讀、下載與管理已完成或已匯入的電子書。</p></div>
               <div class="manual-faq-item"><h3>為什麼手機底部選單可以左右滑動？</h3><p>手機螢幕較窄，底部導覽包含多個功能。可以左右滑動底部導覽列，找到書櫃、操作手冊或管理後台等項目。</p></div>
               <div class="manual-faq-item"><h3>EPUB 下載後怎麼打開？</h3><p>iPhone / iPad 可用「書籍」App。Android 可用「Google Play 圖書」或其他支援 EPUB 的閱讀器。桌機可用支援 EPUB 的閱讀軟體或瀏覽器擴充功能。</p></div>
@@ -3185,12 +3191,18 @@ function bindEvents() {
   els.markdownBlueBtn?.addEventListener('click', () => applyMarkdownBlueText());
   els.markdownGoldBtn?.addEventListener('click', () => applyMarkdownGoldText());
   els.markdownPurpleBtn?.addEventListener('click', () => applyMarkdownPurpleText());
-  els.noteForm.addEventListener('submit', event => { event.preventDefault(); saveNote().catch(handleError); });
+  els.noteForm.addEventListener('submit', event => { event.preventDefault(); saveNote().catch(handleNoteSaveError); });
   els.noteForm.addEventListener('input', event => {
-    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) renderNotePreview();
+    if (isNoteFormField(event.target)) {
+      renderNotePreview();
+      scheduleCurrentNoteDraftSave();
+    }
   });
   els.noteForm.addEventListener('change', event => {
-    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) renderNotePreview();
+    if (isNoteFormField(event.target)) {
+      renderNotePreview();
+      scheduleCurrentNoteDraftSave();
+    }
   });
   els.notePreviewBtn?.addEventListener('click', openNotePreview);
   els.notePreviewBackdrop?.addEventListener('click', closeNotePreview);
@@ -3242,6 +3254,12 @@ function bindEvents() {
     if (state.supabase && state.currentUser) {
       loadAllData({ silent: true, syncReason: '網路恢復後已重新同步。' }).catch(console.error);
     }
+  });
+  window.addEventListener('beforeunload', event => {
+    if (!hasUnsavedCurrentNoteDraft()) return;
+    persistCurrentNoteDraft({ immediate: true });
+    event.preventDefault();
+    event.returnValue = '';
   });
 }
 
@@ -4212,6 +4230,7 @@ function refreshUi() {
   renderLibrary();
   renderAdminDashboard();
   renderReaderSettings();
+  syncCurrentNoteDraftNotice();
 }
 
 function renderRecentCards() {
@@ -5050,6 +5069,7 @@ function applyScriptureBlockToNoteContent(items) {
   ].slice(0, 12);
   els.noteContent.value = next;
   renderNotePreview();
+  scheduleCurrentNoteDraftSave();
 }
 
 function renderNotes() {
@@ -5241,10 +5261,14 @@ function renderMarkdownContent(text = '') {
 }
 
 function getNoteContentTextarea() {
-  if (!(els.noteContent instanceof HTMLTextAreaElement)) {
+  if (!els.noteContent || els.noteContent.tagName !== 'TEXTAREA') {
     throw new Error('找不到札記內容輸入框。');
   }
   return els.noteContent;
+}
+
+function isNoteFormField(target) {
+  return !!target?.matches?.('input, textarea');
 }
 
 function getNoteContentSelection() {
@@ -5268,6 +5292,7 @@ function updateNoteContentSelection(nextValue, selectionStart, selectionEnd = se
   textarea.focus();
   textarea.setSelectionRange(selectionStart, selectionEnd);
   renderNotePreview();
+  scheduleCurrentNoteDraftSave();
 }
 
 function replaceNoteContentSelection(replacement, options = {}) {
@@ -5408,6 +5433,181 @@ function closeNotePreview() {
   els.notePreviewModal?.setAttribute('aria-hidden', 'true');
 }
 
+function getCurrentNoteDraftPayload() {
+  return {
+    title: els.noteTitle?.value || '',
+    scripture: els.noteScripture?.value || '',
+    category: els.noteCategory?.value || '',
+    tags: els.noteTags?.value || '',
+    summary: els.noteSummary?.value || '',
+    content: els.noteContent?.value || '',
+    editingNoteId: els.noteId?.value || '',
+    userId: getUserId(),
+    updatedAt: nowIso(),
+  };
+}
+
+function hasCurrentNoteDraftContent(draft) {
+  if (!draft || typeof draft !== 'object') return false;
+  return ['title', 'scripture', 'category', 'tags', 'summary', 'content']
+    .some(key => String(draft[key] || '').trim());
+}
+
+function isCurrentUserNoteDraft(draft) {
+  return !draft?.userId || draft.userId === getUserId();
+}
+
+function readCurrentNoteDraftFromStorage(storage) {
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(CURRENT_NOTE_DRAFT_KEY);
+    if (!raw) return null;
+    const draft = JSON.parse(raw);
+    if (!draft || typeof draft !== 'object' || !isCurrentUserNoteDraft(draft)) return null;
+    return draft;
+  } catch (error) {
+    console.warn('note draft read skipped', error);
+    return null;
+  }
+}
+
+function loadCurrentNoteDraft() {
+  return readCurrentNoteDraftFromStorage(localStorage) || readCurrentNoteDraftFromStorage(sessionStorage);
+}
+
+function writeCurrentNoteDraftToStorage(draft) {
+  try {
+    localStorage.setItem(CURRENT_NOTE_DRAFT_KEY, JSON.stringify(draft));
+    try { sessionStorage.removeItem(CURRENT_NOTE_DRAFT_KEY); } catch (_) {}
+    return true;
+  } catch (error) {
+    console.warn('note draft localStorage write skipped', error);
+    try {
+      localStorage.removeItem(STORAGE_KEYS.autoBackups);
+      localStorage.setItem(CURRENT_NOTE_DRAFT_KEY, JSON.stringify(draft));
+      try { sessionStorage.removeItem(CURRENT_NOTE_DRAFT_KEY); } catch (_) {}
+      return true;
+    } catch (retryError) {
+      console.warn('note draft localStorage retry skipped', retryError);
+    }
+    try {
+      sessionStorage.setItem(CURRENT_NOTE_DRAFT_KEY, JSON.stringify(draft));
+      return true;
+    } catch (sessionError) {
+      console.warn('note draft sessionStorage write skipped', sessionError);
+      return false;
+    }
+  }
+}
+
+function clearCurrentNoteDraft() {
+  clearTimeout(state.noteDraftSaveTimer);
+  state.noteDraftSaveTimer = null;
+  state.noteDraftDirty = false;
+  try { localStorage.removeItem(CURRENT_NOTE_DRAFT_KEY); } catch (error) { console.warn('note draft localStorage clear skipped', error); }
+  try { sessionStorage.removeItem(CURRENT_NOTE_DRAFT_KEY); } catch (error) { console.warn('note draft sessionStorage clear skipped', error); }
+  syncCurrentNoteDraftNotice();
+}
+
+function persistCurrentNoteDraft({ immediate = false } = {}) {
+  const draft = getCurrentNoteDraftPayload();
+  const hasContent = hasCurrentNoteDraftContent(draft);
+  if (!hasContent && !draft.editingNoteId) {
+    clearCurrentNoteDraft();
+    return false;
+  }
+  if (immediate) {
+    clearTimeout(state.noteDraftSaveTimer);
+    state.noteDraftSaveTimer = null;
+  }
+  writeCurrentNoteDraftToStorage(draft);
+  syncCurrentNoteDraftNotice();
+  return true;
+}
+
+function scheduleCurrentNoteDraftSave() {
+  state.noteDraftDirty = true;
+  clearTimeout(state.noteDraftSaveTimer);
+  state.noteDraftSaveTimer = setTimeout(() => {
+    state.noteDraftSaveTimer = null;
+    persistCurrentNoteDraft();
+  }, CURRENT_NOTE_DRAFT_DEBOUNCE_MS);
+  syncCurrentNoteDraftNotice();
+}
+
+function hasUnsavedCurrentNoteDraft() {
+  return state.noteDraftDirty && hasCurrentNoteDraftContent(getCurrentNoteDraftPayload());
+}
+
+function isCurrentNoteFormEmpty() {
+  return !String(els.noteId?.value || '').trim()
+    && !hasCurrentNoteDraftContent(getCurrentNoteDraftPayload());
+}
+
+function ensureCurrentNoteDraftNotice() {
+  if (state.currentNoteDraftNotice || !els.noteForm?.parentElement) return state.currentNoteDraftNotice;
+  const notice = document.createElement('div');
+  notice.id = 'current-note-draft-notice';
+  notice.className = 'current-note-draft-notice hidden';
+  notice.innerHTML = `
+    <div class="current-note-draft-copy">
+      <strong>偵測到尚未儲存的札記草稿，是否恢復？</strong>
+      <p>恢復後會回填上次尚未儲存的標題、經文、分類、標籤、摘要與內容。</p>
+    </div>
+    <div class="current-note-draft-actions">
+      <button type="button" class="primary-btn small" data-restore-current-note-draft>恢復草稿</button>
+      <button type="button" class="ghost-btn small" data-ignore-current-note-draft>忽略</button>
+    </div>
+  `;
+  notice.querySelector('[data-restore-current-note-draft]')?.addEventListener('click', restoreCurrentNoteDraft);
+  notice.querySelector('[data-ignore-current-note-draft]')?.addEventListener('click', ignoreCurrentNoteDraft);
+  els.noteForm.parentElement.insertBefore(notice, els.noteForm);
+  state.currentNoteDraftNotice = notice;
+  return notice;
+}
+
+function syncCurrentNoteDraftNotice() {
+  if (!els.noteForm) return;
+  const notice = ensureCurrentNoteDraftNotice();
+  const draft = loadCurrentNoteDraft();
+  const shouldShow = document.body.dataset.currentView === 'notes'
+    && draft
+    && (hasCurrentNoteDraftContent(draft) || draft.editingNoteId)
+    && isCurrentUserNoteDraft(draft)
+    && isCurrentNoteFormEmpty();
+  notice?.classList.toggle('hidden', !shouldShow);
+}
+
+function restoreCurrentNoteDraft() {
+  const draft = loadCurrentNoteDraft();
+  if (!draft || !isCurrentUserNoteDraft(draft)) return;
+  els.noteId.value = draft.editingNoteId || '';
+  els.noteTitle.value = draft.title || '';
+  els.noteScripture.value = draft.scripture || '';
+  els.noteCategory.value = draft.category || '';
+  els.noteTags.value = draft.tags || '';
+  els.noteSummary.value = draft.summary || '';
+  els.noteContent.value = draft.content || '';
+  state.scriptureAppliedBlocks = [];
+  state.scriptureLastAppliedBlock = '';
+  if (draft.editingNoteId) els.deleteNoteBtn.classList.remove('hidden');
+  else els.deleteNoteBtn.classList.add('hidden');
+  if (draft.scripture) {
+    fetchAndRenderScriptures({ force: true, syncToContent: false }).catch(() => setScriptureStatus('經文預覽暫時無法載入。', true));
+  } else {
+    resetScripturePreview({ clearApplied: true });
+  }
+  renderNotePreview();
+  state.noteDraftDirty = true;
+  persistCurrentNoteDraft({ immediate: true });
+  showToast('已恢復尚未儲存的草稿。');
+}
+
+function ignoreCurrentNoteDraft() {
+  clearCurrentNoteDraft();
+  showToast('已忽略草稿。');
+}
+
 function populateNoteForm(noteId) {
   const note = state.notes.find(item => item.id === noteId);
   if (!note) return;
@@ -5428,15 +5628,20 @@ function populateNoteForm(noteId) {
     resetScripturePreview();
   }
   renderNotePreview();
+  state.noteDraftDirty = false;
+  syncCurrentNoteDraftNotice();
 }
 
-function clearNoteForm() {
+function clearNoteForm({ clearDraft = false } = {}) {
   els.noteForm.reset();
   els.noteId.value = '';
   els.deleteNoteBtn.classList.add('hidden');
   resetScripturePreview({ clearApplied: true });
   els.scriptureAppendToContent.checked = true;
   renderNotePreview();
+  state.noteDraftDirty = false;
+  if (clearDraft) clearCurrentNoteDraft();
+  else syncCurrentNoteDraftNotice();
 }
 
 async function saveNote() {
@@ -5454,18 +5659,34 @@ async function saveNote() {
     created_at: els.noteId.value ? (state.notes.find(n => n.id === els.noteId.value)?.created_at || nowIso()) : nowIso(),
   };
   if (!payload.title || !payload.content) throw new Error('請填入標題與內容。');
-  if (state.supabase) {
-    const { error } = await state.supabase.from('devotion_notes').upsert(payload);
-    if (error) throw error;
-  } else {
-    const notes = loadJson(STORAGE_KEYS.notes, []);
-    const idx = notes.findIndex(item => item.id === payload.id && item.user_id === payload.user_id);
-    if (idx >= 0) notes[idx] = payload; else notes.unshift(payload);
-    saveJson(STORAGE_KEYS.notes, notes);
+  persistCurrentNoteDraft({ immediate: true });
+  try {
+    if (state.supabase) {
+      const { error } = await state.supabase.from('devotion_notes').upsert(payload);
+      if (error) throw error;
+    } else {
+      const notes = loadJson(STORAGE_KEYS.notes, []);
+      const idx = notes.findIndex(item => item.id === payload.id && item.user_id === payload.user_id);
+      if (idx >= 0) notes[idx] = payload; else notes.unshift(payload);
+      saveJson(STORAGE_KEYS.notes, notes);
+    }
+  } catch (error) {
+    console.warn('note save failed', error);
+    persistCurrentNoteDraft({ immediate: true });
+    throw new Error('札記儲存失敗，內容已保留，請稍後再試。');
   }
-  clearNoteForm();
-  await loadAllData({ silent: true, syncReason: state.supabase ? '札記已同步到雲端。' : '' });
+
+  els.noteId.value = payload.id;
+  try {
+    await loadAllData({ silent: true, syncReason: state.supabase ? '札記已同步到雲端。' : '' });
+  } catch (error) {
+    console.warn('note saved but refresh failed', error);
+    persistCurrentNoteDraft({ immediate: true });
+    showToast('札記已儲存，但畫面刷新暫時失敗，內容已保留。');
+    return;
+  }
   setView('notes');
+  clearNoteForm({ clearDraft: true });
   showToast('札記已儲存。');
 }
 
@@ -6168,6 +6389,7 @@ function setView(viewName) {
     document.body.style.overflow = '';
     if (restoreY > 0) window.scrollTo({ top: restoreY, behavior: 'auto' });
   }
+  syncCurrentNoteDraftNotice();
 }
 
 function formatDate(value) {
@@ -6185,6 +6407,16 @@ function formatDate(value) {
 function handleError(error) {
   console.error(error);
   showToast(error?.message || '發生錯誤，請檢查設定。');
+}
+
+function handleNoteSaveError(error) {
+  console.error(error);
+  persistCurrentNoteDraft({ immediate: true });
+  if (error?.message === '請填入標題與內容。') {
+    showToast(error.message);
+    return;
+  }
+  showToast('札記儲存失敗，內容已保留，請稍後再試。');
 }
 
 async function exportSelectedBookEpub() {
