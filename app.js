@@ -27,6 +27,12 @@ const PROFILE_AVATAR_SIZE = 512;
 const PROFILE_AVATAR_BUCKET = 'library-books';
 const PROFILE_AVATAR_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const SUPPORT_EMAIL = 'devotionbook.tw@gmail.com';
+const SUPPORT_PAYMENT_INFO = {
+  bank: '台北富邦銀行',
+  code: '012',
+  account: '82110000769095',
+};
+const SUPPORT_RECEIPT_REQUEST_TABLE = 'support_receipt_requests';
 const CURRENT_NOTE_DRAFT_KEY = 'devotion-current-note-draft';
 const CURRENT_NOTE_DRAFT_DEBOUNCE_MS = 700;
 const SIGNED_URL_CACHE_TTL_SECONDS = 60 * 60;
@@ -2596,6 +2602,119 @@ async function copySupportEmail() {
   }
 }
 
+async function copySupportPaymentValue(value, label = '轉帳資訊') {
+  const text = String(value || '').trim();
+  if (!text) return;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else if (!copyTextFallback(text)) {
+      throw new Error('Clipboard fallback failed');
+    }
+    showToast(`已複製${label}：${text}`);
+  } catch (error) {
+    showToast(`無法自動複製，請手動複製${label}`);
+  }
+}
+
+function setSupportReceiptView(view = 'payment') {
+  const isReceipt = view === 'receipt';
+  document.getElementById('support-payment-section')?.classList.toggle('hidden', isReceipt);
+  document.getElementById('support-receipt-section')?.classList.toggle('hidden', !isReceipt);
+  if (!isReceipt) clearSupportReceiptMessage();
+}
+
+function clearSupportReceiptMessage() {
+  const message = document.getElementById('support-receipt-message');
+  if (!message) return;
+  message.textContent = '';
+  message.classList.add('hidden');
+  message.classList.remove('is-error', 'is-success');
+}
+
+function setSupportReceiptMessage(text, type = 'error') {
+  const message = document.getElementById('support-receipt-message');
+  if (!message) return;
+  message.textContent = text;
+  message.classList.remove('hidden', 'is-error', 'is-success');
+  message.classList.add(type === 'success' ? 'is-success' : 'is-error');
+}
+
+function readSupportReceiptRequestForm() {
+  const name = document.getElementById('support-receipt-name')?.value.trim() || '';
+  const email = document.getElementById('support-receipt-email')?.value.trim() || '';
+  const amountInput = document.getElementById('support-receipt-amount')?.value.trim() || '';
+  const transferDate = document.getElementById('support-receipt-transfer-date')?.value || '';
+  const bankLast5 = document.getElementById('support-receipt-bank-last5')?.value.trim() || '';
+  const note = document.getElementById('support-receipt-note')?.value.trim() || '';
+  const amount = Number(amountInput);
+  return { name, email, amountInput, amount, transfer_date: transferDate, bank_last5: bankLast5, note };
+}
+
+function validateSupportReceiptRequest(input) {
+  if (!input.name) return '請填寫姓名或收據抬頭。';
+  if (!input.email) return '請填寫 Email。';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) return 'Email 格式不正確，請再確認一次。';
+  if (!input.amountInput) return '請填寫支持金額。';
+  if (!Number.isFinite(input.amount) || input.amount <= 0) return '支持金額必須是正數。';
+  if (!input.transfer_date) return '請選擇轉帳日期。';
+  if (!/^\d{5}$/.test(input.bank_last5)) return '匯款帳號後五碼請填寫 5 碼數字。';
+  return '';
+}
+
+function buildSupportReceiptRequestPayload(input) {
+  const timestamp = nowIso();
+  return {
+    id: uid('support_receipt_request'),
+    user_id: state.currentUser?.id || null,
+    name: input.name,
+    email: input.email,
+    amount: input.amount,
+    transfer_date: input.transfer_date,
+    bank_last5: input.bank_last5,
+    note: input.note,
+    status: 'pending',
+    created_at: timestamp,
+    updated_at: timestamp,
+  };
+}
+
+function buildSupportReceiptCertificateDraft(request) {
+  return {
+    title: '支持款項收款證明',
+    receiptNumber: '',
+    requestedAt: request.created_at,
+    status: request.status,
+    name: request.name,
+    email: request.email,
+    amount: request.amount,
+    transferDate: request.transfer_date,
+    bankLast5: request.bank_last5,
+    purpose: '支持平台／支持事工，用於內容製作、系統開發、雲端維護與出版功能優化。',
+    note: '本證明為支持款項收款紀錄，不作為稅務扣抵憑證。',
+  };
+}
+
+function handleSupportReceiptSubmit(event) {
+  event.preventDefault();
+  clearSupportReceiptMessage();
+  const input = readSupportReceiptRequestForm();
+  const validationError = validateSupportReceiptRequest(input);
+  if (validationError) {
+    setSupportReceiptMessage(validationError, 'error');
+    return;
+  }
+  const payload = buildSupportReceiptRequestPayload(input);
+  console.warn(`${SUPPORT_RECEIPT_REQUEST_TABLE} table is not configured yet; support receipt request is UI-only for now.`, {
+    request: payload,
+    certificateDraft: buildSupportReceiptCertificateDraft(payload),
+  });
+  event.currentTarget.reset();
+  const successMessage = '已收到您的收款證明申請，確認入帳後將寄送至您填寫的 Email。';
+  setSupportReceiptMessage(successMessage, 'success');
+  showToast(successMessage);
+}
+
 function getErrorText(error) {
   return String([
     error?.message,
@@ -3347,7 +3466,17 @@ function bindEvents() {
   document.addEventListener('click', (event) => {
     const target = event.target instanceof Element ? event.target : null;
     if (target?.closest('[data-copy-support-email]')) copySupportEmail().catch(handleError);
+    const supportCopyTarget = target?.closest('[data-copy-support-payment]');
+    if (supportCopyTarget) {
+      copySupportPaymentValue(
+        supportCopyTarget.dataset.copySupportPayment,
+        supportCopyTarget.dataset.copyLabel || '轉帳資訊',
+      ).catch(handleError);
+    }
   });
+  document.getElementById('open-support-receipt-form-btn')?.addEventListener('click', () => setSupportReceiptView('receipt'));
+  document.getElementById('back-support-payment-btn')?.addEventListener('click', () => setSupportReceiptView('payment'));
+  document.getElementById('support-receipt-form')?.addEventListener('submit', handleSupportReceiptSubmit);
   els.closeSupportModal?.addEventListener('click', closeSupportModal);
   els.supportModalBackdrop?.addEventListener('click', closeSupportModal);
   document.addEventListener('keydown', (event) => {
@@ -3392,6 +3521,7 @@ function bindEvents() {
 }
 
 function openSupportModal() {
+  setSupportReceiptView('payment');
   els.supportModal?.classList.remove('hidden');
   els.supportModal?.setAttribute('aria-hidden', 'false');
 }

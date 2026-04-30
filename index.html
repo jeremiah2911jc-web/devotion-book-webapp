@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-title" content="DEVOTION" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>DEVOTION｜與神更親近的每一天</title>
-  <link rel="stylesheet" href="./styles.css?v=chapter-modal-mobile-simple-20260430" />
+  <link rel="stylesheet" href="./styles.css?v=support-payment-receipt-20260430" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -724,23 +724,70 @@
 
   <div id="support-modal" class="modal hidden" aria-hidden="true">
     <div id="support-modal-backdrop" class="modal-backdrop"></div>
-    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="support-modal-title">
+    <div class="modal-card support-modal-card" role="dialog" aria-modal="true" aria-labelledby="support-modal-title">
       <div class="panel-header">
         <h2 id="support-modal-title">支持平台／支持事工</h2>
         <button id="close-support-modal" class="ghost-btn small" type="button">關閉</button>
       </div>
-      <p class="modal-intro">您所提供之支持款項，將用於內容製作、系統開發、雲端維護與出版功能優化。</p>
-      <div class="support-info">
-        <p><strong>匯款銀行：</strong>台北富邦銀行</p>
-        <p><strong>銀行代碼：</strong>000</p>
-        <p><strong>戶名：</strong>三策專案管理顧問有限公司</p>
-        <p><strong>匯款帳號：</strong>0000000000</p>
-      </div>
+      <section id="support-payment-section" class="support-modal-section">
+        <p class="modal-intro">您所提供之支持款項，將用於內容製作、系統開發、雲端維護與出版功能優化。</p>
+        <div class="support-info" aria-label="轉帳資訊">
+          <div class="support-info-row">
+            <span>轉帳銀行</span>
+            <strong>台北富邦銀行</strong>
+          </div>
+          <button class="support-info-row support-copy-row" type="button" data-copy-support-payment="012" data-copy-label="銀行代碼">
+            <span>銀行代碼</span>
+            <strong>012</strong>
+          </button>
+          <button class="support-info-row support-copy-row" type="button" data-copy-support-payment="82110000769095" data-copy-label="轉帳帳號">
+            <span>轉帳帳號</span>
+            <strong>82110000769095</strong>
+          </button>
+        </div>
+        <p class="support-receipt-note">若您已完成轉帳，請填寫轉帳資訊，我們確認入帳後會寄出支持款項收款證明。</p>
+        <div class="support-modal-actions">
+          <button id="open-support-receipt-form-btn" class="secondary-btn" type="button">申請收款證明</button>
+          <button class="ghost-btn" type="button" data-copy-support-payment="82110000769095" data-copy-label="轉帳帳號">複製帳號</button>
+        </div>
+      </section>
+      <section id="support-receipt-section" class="support-modal-section hidden">
+        <h3>申請支持款項收款證明</h3>
+        <p class="modal-intro">請填寫轉帳資訊。我們確認入帳後，會將支持款項收款證明寄送至您填寫的 Email。</p>
+        <form id="support-receipt-form" class="support-receipt-form" novalidate>
+          <div class="support-receipt-grid">
+            <label>姓名或收據抬頭
+              <input id="support-receipt-name" name="name" autocomplete="name" placeholder="例：王小明／某某小組／某某教會" />
+            </label>
+            <label>Email
+              <input id="support-receipt-email" name="email" type="email" autocomplete="email" placeholder="例：name@example.com" />
+            </label>
+            <label>支持金額
+              <input id="support-receipt-amount" name="amount" type="number" inputmode="decimal" min="1" step="1" placeholder="例：500" />
+            </label>
+            <label>轉帳日期
+              <input id="support-receipt-transfer-date" name="transfer_date" type="date" />
+            </label>
+            <label>匯款帳號後五碼
+              <input id="support-receipt-bank-last5" name="bank_last5" inputmode="numeric" maxlength="5" placeholder="例：12345" />
+            </label>
+            <label class="support-receipt-span-2">備註
+              <textarea id="support-receipt-note" name="note" placeholder="若有需要補充的資訊，可填寫在這裡"></textarea>
+            </label>
+          </div>
+          <p class="support-receipt-tax-note">本證明為支持款項收款紀錄，不作為稅務扣抵憑證。</p>
+          <p id="support-receipt-message" class="support-receipt-message hidden" role="status"></p>
+          <div class="support-modal-actions">
+            <button id="back-support-payment-btn" class="ghost-btn" type="button">返回轉帳資訊</button>
+            <button class="secondary-btn" type="submit">送出申請</button>
+          </div>
+        </form>
+      </section>
     </div>
   </div>
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./app.js?v=chapter-modal-mobile-simple-20260430"></script>
+  <script type="module" src="./app.js?v=support-payment-receipt-20260430"></script>
 </body>
 </html>

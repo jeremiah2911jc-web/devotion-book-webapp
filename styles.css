@@ -1098,6 +1098,96 @@ body.account-settings-open {
   border: 1px solid rgba(191,211,208,0.75);
 }
 .support-info p { margin: 0; }
+.support-modal-card {
+  width: min(92vw, 640px);
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.support-modal-section {
+  display: grid;
+  gap: 14px;
+}
+.support-info-row {
+  display: grid;
+  grid-template-columns: minmax(96px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  color: var(--text);
+  text-align: left;
+}
+.support-info-row span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+.support-info-row strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.support-copy-row {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 12px;
+}
+.support-copy-row:hover {
+  color: var(--primary-dark);
+}
+.support-receipt-note,
+.support-receipt-tax-note,
+.support-receipt-message {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.support-receipt-tax-note {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(246, 166, 178, 0.12);
+}
+.support-receipt-message {
+  padding: 10px 12px;
+  border-radius: 14px;
+}
+.support-receipt-message.is-error {
+  color: #a9444f;
+  background: rgba(217, 120, 127, 0.12);
+}
+.support-receipt-message.is-success {
+  color: var(--primary-dark);
+  background: rgba(75, 150, 139, 0.12);
+}
+.support-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.support-receipt-form {
+  display: grid;
+  gap: 14px;
+}
+.support-receipt-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+.support-receipt-grid input,
+.support-receipt-grid textarea {
+  min-width: 0;
+}
+.support-receipt-grid textarea {
+  min-height: 108px;
+  resize: vertical;
+}
+.support-receipt-span-2 {
+  grid-column: 1 / -1;
+}
 @media (max-width: 1180px) {
   .app-shell { grid-template-columns: 1fr; }
   .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid rgba(191,211,208,0.55); }
@@ -1153,6 +1243,34 @@ body.account-settings-open {
   }
 }
 @media (max-width: 720px) {
+  .support-modal-card {
+    width: min(100vw - 28px, 640px);
+    max-height: calc(100dvh - 28px);
+    padding: 18px 16px max(18px, calc(16px + env(safe-area-inset-bottom)));
+  }
+
+  .support-info-row {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+
+  .support-receipt-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .support-receipt-span-2 {
+    grid-column: auto;
+  }
+
+  .support-modal-actions {
+    justify-content: stretch;
+  }
+
+  .support-modal-actions .secondary-btn,
+  .support-modal-actions .ghost-btn {
+    width: 100%;
+  }
+
   .main { padding: 18px; }
   .topbar { flex-direction: column; align-items: flex-start; }
   .summary-cards { grid-template-columns: 1fr; }
