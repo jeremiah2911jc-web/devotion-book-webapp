@@ -78,6 +78,7 @@ const DEFAULT_CONFIG = {
 };
 
 const AUTO_BACKUP_SLOTS = ['08', '14', '20'];
+const AUTO_BACKUP_MAX_ITEMS = 3;
 
 function buildMergedConfig(raw = null) {
   const next = raw && typeof raw === 'object' ? raw : {};
@@ -359,6 +360,7 @@ const state = {
   isRestoring: false,
   restoreStatusMessage: '',
   isAutoBackingUp: false,
+  autoBackupFailedSlots: new Set(),
 };
 
 function loadJson(key, fallback) {
@@ -1557,9 +1559,34 @@ function loadAutoBackups() {
   });
 }
 
+function isStorageQuotaError(error) {
+  const name = String(error?.name || '');
+  const message = String(error?.message || error || '');
+  return name === 'QuotaExceededError'
+    || name === 'NS_ERROR_DOM_QUOTA_REACHED'
+    || error?.code === 22
+    || error?.code === 1014
+    || /quota|exceeded/i.test(message);
+}
+
 function saveAutoBackups(backups = []) {
-  const list = Array.isArray(backups) ? backups.slice(-10) : [];
-  saveJson(STORAGE_KEYS.autoBackups, list);
+  let list = Array.isArray(backups) ? backups.slice(-AUTO_BACKUP_MAX_ITEMS) : [];
+  while (list.length) {
+    try {
+      saveJson(STORAGE_KEYS.autoBackups, list);
+      return true;
+    } catch (error) {
+      if (!isStorageQuotaError(error)) throw error;
+      console.warn('auto backup storage quota reached; dropping older backup and retrying', error);
+      list = list.slice(1);
+    }
+  }
+  try {
+    localStorage.removeItem(STORAGE_KEYS.autoBackups);
+  } catch (error) {
+    console.warn('auto backup storage cleanup skipped', error);
+  }
+  return false;
 }
 
 function getCurrentAutoBackupSlot(date = new Date()) {
@@ -1582,8 +1609,7 @@ function performAutoBackup(slot = '') {
     slot,
     data: payload,
   });
-  saveAutoBackups(backups);
-  return true;
+  return saveAutoBackups(backups);
 }
 
 function runAutoBackupCheck() {
@@ -1594,6 +1620,8 @@ function runAutoBackupCheck() {
   const currentUserEmail = String(state.currentUser?.email || '').trim().toLowerCase();
   if (!currentUserEmail) return;
   const currentDate = `${String(now.getFullYear())}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const failedSlotKey = `${state.currentUser?.id || currentUserEmail}|${currentDate}|${slot}`;
+  if (state.autoBackupFailedSlots.has(failedSlotKey)) return;
   state.isAutoBackingUp = true;
   try {
     const meta = trimAutoBackupMeta(loadAutoBackupMeta(), now);
@@ -1605,11 +1633,17 @@ function runAutoBackupCheck() {
       : { '08': false, '14': false, '20': false };
     if (userMeta[slot]) return;
     const saved = performAutoBackup(slot);
-    if (!saved) return;
+    if (!saved) {
+      state.autoBackupFailedSlots.add(failedSlotKey);
+      return;
+    }
     userMeta[slot] = true;
     dayMeta[currentUserEmail] = userMeta;
     meta[currentDate] = dayMeta;
     saveAutoBackupMeta(trimAutoBackupMeta(meta, now));
+  } catch (error) {
+    state.autoBackupFailedSlots.add(failedSlotKey);
+    console.warn('auto backup skipped', error);
   } finally {
     state.isAutoBackingUp = false;
   }
