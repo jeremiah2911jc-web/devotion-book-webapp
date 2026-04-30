@@ -29,6 +29,8 @@ const PROFILE_AVATAR_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/web
 const SUPPORT_EMAIL = 'devotionbook.tw@gmail.com';
 const CURRENT_NOTE_DRAFT_KEY = 'devotion-current-note-draft';
 const CURRENT_NOTE_DRAFT_DEBOUNCE_MS = 700;
+const SIGNED_URL_CACHE_TTL_SECONDS = 60 * 60;
+const SIGNED_URL_CACHE_REFRESH_BUFFER_MS = 60 * 1000;
 const IMPORTED_EPUB_SAFE_TAGS = new Set([
   'p',
   'br',
@@ -333,6 +335,8 @@ const state = {
   noteDraftSaveTimer: null,
   noteDraftDirty: false,
   currentNoteDraftNotice: null,
+  profileAvatarUrlCache: new Map(),
+  libraryCoverUrlCache: new Map(),
   syncStatus: '本機模式',
   syncDetail: '目前資料只保存在這台裝置。',
   lastSyncAt: '',
@@ -2808,6 +2812,32 @@ function appendAvatarCacheBust(url = '', updatedAt = '') {
   return `${src}${src.includes('?') ? '&' : '?'}v=${token}`;
 }
 
+function getSignedUrlCacheKey(path = '', version = '') {
+  const normalizedPath = String(path || '').trim();
+  if (!normalizedPath) return '';
+  return `${normalizedPath}|${String(version || '').trim()}`;
+}
+
+function getCachedSignedUrl(cache, key) {
+  if (!(cache instanceof Map) || !key) return '';
+  const entry = cache.get(key);
+  if (!entry?.url) return '';
+  if (Number(entry.expiresAt || 0) <= Date.now() + SIGNED_URL_CACHE_REFRESH_BUFFER_MS) {
+    cache.delete(key);
+    return '';
+  }
+  return entry.url;
+}
+
+function setCachedSignedUrl(cache, key, url) {
+  if (!(cache instanceof Map) || !key || !url) return '';
+  cache.set(key, {
+    url,
+    expiresAt: Date.now() + SIGNED_URL_CACHE_TTL_SECONDS * 1000,
+  });
+  return url;
+}
+
 function resetProfileAvatarState() {
   state.profileAvatar = { path: '', url: '', updatedAt: '' };
 }
@@ -2833,10 +2863,18 @@ async function refreshProfileAvatar({ updateUi = false } = {}) {
     if (updateUi) syncProfileAvatarUi();
     return;
   }
-  const { data, error } = await state.supabase.storage.from(PROFILE_AVATAR_BUCKET).createSignedUrl(metadata.path, 60 * 20);
+  const cacheKey = getSignedUrlCacheKey(metadata.path, metadata.updatedAt);
+  const cachedUrl = getCachedSignedUrl(state.profileAvatarUrlCache, cacheKey);
+  if (cachedUrl) {
+    state.profileAvatar = { path: metadata.path, url: cachedUrl, updatedAt: metadata.updatedAt };
+    if (updateUi) syncProfileAvatarUi();
+    return;
+  }
+  const { data, error } = await state.supabase.storage.from(PROFILE_AVATAR_BUCKET).createSignedUrl(metadata.path, SIGNED_URL_CACHE_TTL_SECONDS);
+  const signedUrl = appendAvatarCacheBust(data?.signedUrl || '', metadata.updatedAt);
   state.profileAvatar = error
     ? { path: metadata.path, url: '', updatedAt: metadata.updatedAt }
-    : { path: metadata.path, url: appendAvatarCacheBust(data?.signedUrl || '', metadata.updatedAt), updatedAt: metadata.updatedAt };
+    : { path: metadata.path, url: setCachedSignedUrl(state.profileAvatarUrlCache, cacheKey, signedUrl), updatedAt: metadata.updatedAt };
   if (updateUi) syncProfileAvatarUi();
 }
 
@@ -2953,6 +2991,7 @@ async function handleProfileAvatarSelection(event) {
       avatar_url: null,
       avatar_updated_at: updatedAt,
     });
+    state.profileAvatarUrlCache.clear();
     await refreshProfileAvatar({ updateUi: true });
     refreshUi();
     showToast('頭像已更新');
@@ -2983,6 +3022,7 @@ async function removeProfileAvatar() {
     avatar_url: null,
     avatar_updated_at: nowIso(),
   });
+  state.profileAvatarUrlCache.clear();
   resetProfileAvatarState();
   refreshUi();
   showToast('頭像已移除');
@@ -3444,7 +3484,7 @@ async function loadAllData({ silent = false, syncReason = '' } = {}) {
     const [notesRes, booksRes, snapshotsRes] = await Promise.all([
       state.supabase.from('devotion_notes').select('*').eq('user_id', userId).order('updated_at', { ascending: false }),
       state.supabase.from('book_projects').select('*').eq('user_id', userId).order('updated_at', { ascending: false }),
-      state.supabase.from('book_snapshots').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+      state.supabase.from('book_snapshots').select('id,user_id,book_project_id,book_id:book_project_id,created_at').eq('user_id', userId).order('created_at', { ascending: false }),
     ]);
     if (notesRes.error) throw notesRes.error;
     if (booksRes.error) throw booksRes.error;
@@ -6799,6 +6839,7 @@ function clearCloudLibrary(message = '') {
   cloudLibrary.books = [];
   cloudLibrary.chapters = new Map();
   cloudLibrary.coverUrls = new Map();
+  state.libraryCoverUrlCache.clear();
   cloudLibrary.error = message;
   cloudLibrary.selectedBookId = '';
   cloudLibrary.readerBook = null;
@@ -7237,8 +7278,15 @@ async function refreshLibraryCoverUrls() {
   if (state.supabase && state.currentUser) {
     const cloudEntries = await Promise.all(cloudLibrary.books.map(async book => {
       if (!book.cover_image_path) return [book.id, ''];
-      const { data, error } = await state.supabase.storage.from(cloudLibrary.bucket).createSignedUrl(book.cover_image_path, 60 * 20);
-      return [book.id, error ? '' : data?.signedUrl || ''];
+      const cacheKey = getSignedUrlCacheKey(book.cover_image_path, book.cover_updated_at || book.updated_at || book.created_at || '');
+      const cachedUrl = getCachedSignedUrl(state.libraryCoverUrlCache, cacheKey);
+      if (cachedUrl) return [book.id, cachedUrl];
+      const { data, error } = await state.supabase.storage.from(cloudLibrary.bucket).createSignedUrl(book.cover_image_path, SIGNED_URL_CACHE_TTL_SECONDS);
+      if (error) {
+        state.libraryCoverUrlCache.delete(cacheKey);
+        return [book.id, ''];
+      }
+      return [book.id, setCachedSignedUrl(state.libraryCoverUrlCache, cacheKey, data?.signedUrl || '')];
     }));
     entries.push(...cloudEntries);
   }
