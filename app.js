@@ -5971,13 +5971,13 @@ function setView(viewName) {
   const isReaderView = viewName === 'reader';
   const titleMap = {
     dashboard: ['總覽', ''],
-    notes: ['寫札記', '專注建立與編輯單篇札記。'],
-    'content-library': ['札記庫', '從過去寫過的札記中搜尋、篩選並挑選文章，加入目前正在編排的書稿。'],
-    books: ['選稿編排', '管理成書前的選稿編排，整理章節順序並銜接成書匯出設定。'],
+    notes: ['寫札記', '專注寫下今天的領受、禱告與整理。'],
+    'content-library': ['札記庫', '搜尋、篩選並挑選已寫下的札記，加入目前正在編排的書稿。'],
+    books: ['選稿編排', '管理成書前的選稿編排，整理章節順序並進行成書設定。'],
     'admin-dashboard': ['管理後台', '第一階段白名單入口，僅授權管理者可使用。'],
     snapshots: ['快照備份', '查看每次建立的書籍快照。'],
     library: ['書櫃', '收藏已匯出的固定版本作品，直接開啟閱讀。'],
-    manual: ['操作手冊', '靈修札記成書系統使用說明'],
+    manual: ['操作手冊', '了解靈修札記成書系統的使用方式與整理流程。'],
     reader: ['閱讀模式', '安靜閱讀已加入書櫃的 EPUB。'],
   };
   document.body.dataset.currentView = viewName;

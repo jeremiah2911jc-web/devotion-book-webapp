@@ -6248,6 +6248,38 @@ body:not(.auth-locked) #view-subtitle {
   color: #70837f;
 }
 
+body:not(.auth-locked) .topbar {
+  display: flex;
+  align-items: flex-start;
+  margin: 10px 0 26px;
+}
+
+body:not(.auth-locked) .topbar > div:first-child {
+  width: min(720px, 100%);
+  display: grid;
+  gap: 7px;
+}
+
+body:not(.auth-locked):not([data-current-view="dashboard"]):not([data-current-view="reader"]) .topbar {
+  padding-top: 6px;
+  padding-bottom: 2px;
+}
+
+body:not(.auth-locked):not([data-current-view="dashboard"]):not([data-current-view="reader"]) .topbar > div:first-child::after {
+  content: "";
+  display: block;
+  width: 72px;
+  height: 3px;
+  margin-top: 14px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(90, 166, 166, 0.9), rgba(239, 192, 177, 0.66));
+}
+
+body:not(.auth-locked):not([data-current-view="dashboard"]):not([data-current-view="reader"]) .topbar-actions {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
 body:not(.auth-locked) .panel-header h2,
 body:not(.auth-locked) .manual-section h2,
 body:not(.auth-locked) .admin-dashboard-section .panel-header h3 {
@@ -6398,6 +6430,28 @@ body:not(.auth-locked) .summary-content strong small {
 
   body:not(.auth-locked) #view-subtitle {
     font-size: 14px;
+  }
+
+  body:not(.auth-locked) .topbar {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin: 4px 0 22px;
+    gap: 10px;
+  }
+
+  body:not(.auth-locked) .topbar > div:first-child {
+    gap: 6px;
+  }
+
+  body:not(.auth-locked):not([data-current-view="dashboard"]):not([data-current-view="reader"]) .topbar {
+    padding-top: 4px;
+  }
+
+  body:not(.auth-locked):not([data-current-view="dashboard"]):not([data-current-view="reader"]) .topbar > div:first-child::after {
+    width: 56px;
+    height: 3px;
+    margin-top: 10px;
   }
 
   body:not(.auth-locked) .panel-header h2,
