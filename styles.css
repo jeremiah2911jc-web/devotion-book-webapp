@@ -40,6 +40,7 @@ body.auth-locked .app-shell { display: none; }
   background-size: cover, cover, cover;
   background-repeat: no-repeat;
 }
+
 .auth-gate.hidden { display: none; }
 .auth-gate-shell {
   width: min(100%, 540px);
@@ -740,32 +741,18 @@ input:focus, textarea:focus, select:focus {
   line-height: 1.7;
   overflow-wrap: anywhere;
 }
-.footer-email-copy,
-.footer-copy-email-btn {
+.footer-email-copy {
   appearance: none;
   border: 0;
   background: transparent;
   color: #4a8b90;
   font: inherit;
   cursor: pointer;
-}
-.footer-email-copy {
   padding: 0;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-.footer-copy-email-btn {
-  margin-left: 8px;
-  padding: 2px 8px;
-  border: 1px solid rgba(74, 139, 144, 0.3);
-  border-radius: 999px;
-  background: rgba(239, 248, 247, 0.72);
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.footer-email-copy:hover,
-.footer-copy-email-btn:hover {
+.footer-email-copy:hover {
   color: #24696d;
 }
 .manual-feedback-email {
@@ -3043,10 +3030,6 @@ body.auth-locked .bottom-nav {
     justify-content: center;
     gap: 6px 8px;
     flex-wrap: wrap;
-  }
-
-  .footer-copy-email-btn {
-    margin-left: 0;
   }
 
   body:not(.auth-locked) .main {
@@ -6245,5 +6228,228 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
     position: relative;
     z-index: 2;
     transform: translateY(-145px);
+  }
+}
+
+/* Final signed-in typography pass. */
+body:not(.auth-locked) #view-title {
+  font-size: 32px;
+  line-height: 1.18;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: #234e55;
+}
+
+body:not(.auth-locked) #view-subtitle {
+  margin-top: 4px;
+  font-size: 15px;
+  line-height: 1.6;
+  font-weight: 400;
+  color: #70837f;
+}
+
+body:not(.auth-locked) .panel-header h2,
+body:not(.auth-locked) .manual-section h2,
+body:not(.auth-locked) .admin-dashboard-section .panel-header h3 {
+  font-size: 24px;
+  line-height: 1.28;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+body:not(.auth-locked) .panel-header p,
+body:not(.auth-locked) .panel p,
+body:not(.auth-locked) .manual-section p,
+body:not(.auth-locked) .manual-section li {
+  font-size: 15px;
+  line-height: 1.68;
+  font-weight: 400;
+}
+
+body:not(.auth-locked) .caption,
+body:not(.auth-locked) .card-meta,
+body:not(.auth-locked) .muted,
+body:not(.auth-locked) .book-draft-card .muted,
+body:not(.auth-locked) .book-draft-card .caption {
+  font-size: 13px;
+  line-height: 1.55;
+  font-weight: 400;
+}
+
+body:not(.auth-locked) .card h3,
+body:not(.auth-locked) .book-draft-card-header h3,
+body:not(.auth-locked) .library-book h3,
+body:not(.auth-locked) .manual-card h3,
+body:not(.auth-locked) .manual-tool-card strong,
+body:not(.auth-locked) .manual-faq-item h3,
+body:not(.auth-locked) .home-recent-subtitle {
+  font-size: 18px;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+body:not(.auth-locked) .panel-header-actions-only {
+  justify-content: flex-end;
+}
+
+body:not(.auth-locked) .library-panel > .panel-header {
+  width: 100%;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(191, 211, 208, 0.62);
+  border-radius: 18px;
+  background: rgba(247, 251, 250, 0.78);
+}
+
+body:not(.auth-locked) .library-panel-actions {
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+body:not(.auth-locked) .library-panel-actions #import-epub-btn,
+body:not(.auth-locked) .library-panel-actions #library-sort {
+  min-height: 44px;
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-size: 15px;
+  line-height: 1.2;
+  font-weight: 600;
+}
+
+body:not(.auth-locked) .library-panel-actions #import-epub-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body:not(.auth-locked) .library-panel-actions .compact-control-library {
+  max-width: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #5d7478;
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 500;
+}
+
+body:not(.auth-locked) .library-panel-actions #library-sort {
+  width: auto;
+  min-width: 122px;
+  background-color: rgba(255, 255, 255, 0.94);
+}
+
+body:not(.auth-locked) .manual-panel {
+  gap: 20px;
+}
+
+body:not(.auth-locked) .manual-hero {
+  margin-top: 0;
+}
+
+body:not(.auth-locked) .manual-feedback-email {
+  display: block;
+}
+
+body:not(.auth-locked) .footer-support-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+body:not(.auth-locked) .hero-copy h1 {
+  font-size: clamp(42px, 3.4vw, 46px);
+  line-height: 1.08;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+body:not(.auth-locked) .hero-copy p {
+  font-size: 15px;
+  line-height: 1.55;
+  font-weight: 400;
+}
+
+body:not(.auth-locked) .summary-content span {
+  font-size: 15px;
+  line-height: 1.25;
+  font-weight: 600;
+}
+
+body:not(.auth-locked) .summary-content strong {
+  align-items: baseline;
+}
+
+body:not(.auth-locked) .summary-content strong small {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+@media (max-width: 720px) {
+  body:not(.auth-locked) #view-title {
+    font-size: 26px;
+  }
+
+  body:not(.auth-locked) #view-subtitle {
+    font-size: 14px;
+  }
+
+  body:not(.auth-locked) .panel-header h2,
+  body:not(.auth-locked) .manual-section h2,
+  body:not(.auth-locked) .admin-dashboard-section .panel-header h3 {
+    font-size: 20px;
+  }
+
+  body:not(.auth-locked) .panel-header p,
+  body:not(.auth-locked) .panel p,
+  body:not(.auth-locked) .manual-section p,
+  body:not(.auth-locked) .manual-section li {
+    font-size: 15px;
+  }
+
+  body:not(.auth-locked) .hero-copy h1 {
+    font-size: clamp(28px, 7.2vw, 34px);
+    font-weight: 600;
+  }
+
+  body:not(.auth-locked) .hero-copy p {
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  body:not(.auth-locked) .summary-content span {
+    font-size: 14px;
+  }
+
+  body:not(.auth-locked) .summary-content strong small {
+    font-size: 12px;
+  }
+
+  body:not(.auth-locked) .library-panel > .panel-header {
+    padding: 12px;
+  }
+
+  body:not(.auth-locked) .library-panel-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    justify-content: stretch;
+  }
+
+  body:not(.auth-locked) .library-panel-actions #import-epub-btn,
+  body:not(.auth-locked) .library-panel-actions .compact-control-library,
+  body:not(.auth-locked) .library-panel-actions #library-sort {
+    width: 100%;
+  }
+
+  body:not(.auth-locked) .library-panel-actions .compact-control-library {
+    display: grid;
+    gap: 6px;
   }
 }

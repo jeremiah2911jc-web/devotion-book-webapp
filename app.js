@@ -851,12 +851,6 @@ function ensureContentLibraryUi() {
     section.className = 'view';
     section.innerHTML = `
         <section class="panel">
-          <div class="panel-header">
-            <div>
-            <h2>札記庫</h2>
-            <p class="muted">從過去寫過的札記中搜尋、篩選並挑選文章，加入選稿編排。</p>
-            </div>
-          </div>
         <div class="row gap-sm wrap">
           <input id="content-library-search" class="search" placeholder="搜尋標題、摘要、內容、經文" />
           <label class="compact-control">
@@ -905,8 +899,7 @@ function ensureContentLibraryUi() {
   els.contentLibraryClearSelection = document.getElementById('content-library-clear-selection');
   els.contentLibraryList = document.getElementById('content-library-list');
 
-  document.querySelector('#view-content-library .panel-header h2')?.replaceChildren(document.createTextNode('札記庫'));
-  document.querySelector('#view-content-library .panel-header .muted')?.replaceChildren(document.createTextNode('從過去寫過的札記中搜尋、篩選並挑選文章，加入目前正在編排的書稿。'));
+  document.querySelector('#view-content-library .panel-header')?.remove();
 
   if (els.contentLibrarySearch && !els.contentLibrarySearch.dataset.bound) {
     els.contentLibrarySearch.dataset.bound = 'true';
@@ -980,7 +973,7 @@ function ensureOperationManualUi() {
     const contact = document.createElement('p');
     contact.id = 'footer-support-contact';
     contact.className = 'footer-support-text';
-    contact.innerHTML = `使用問題與意見回饋：<button class="footer-email-copy" type="button" data-copy-support-email>${SUPPORT_EMAIL}</button><button class="footer-copy-email-btn" type="button" data-copy-support-email>複製信箱</button>`;
+    contact.innerHTML = `使用問題與意見回饋：<button class="footer-email-copy" type="button" data-copy-support-email>${SUPPORT_EMAIL}</button>`;
     const copyright = siteFooter.querySelector('.footer-copyright');
     if (copyright) siteFooter.insertBefore(contact, copyright);
     else siteFooter.appendChild(contact);
@@ -1011,13 +1004,6 @@ function ensureOperationManualUi() {
     section.className = 'view manual-view';
     section.innerHTML = `
       <section class="panel manual-panel">
-        <div class="panel-header manual-panel-header">
-          <div>
-            <h2>操作手冊</h2>
-            <p class="muted">靈修札記成書系統使用說明</p>
-          </div>
-        </div>
-
         <section class="manual-hero">
           <p class="manual-kicker">給每一天的靈修留下路徑</p>
           <h1>讓你的靈修，不再只是零散筆記。</h1>
@@ -1300,7 +1286,7 @@ function ensureOperationManualUi() {
           <section id="manual-feedback" class="manual-section">
             <h2>十四、使用問題與意見回饋</h2>
             <p>如果你在使用靈修札記成書系統時遇到問題，或有功能建議，歡迎來信：</p>
-            <p class="manual-feedback-email"><span>${SUPPORT_EMAIL}</span><button class="footer-copy-email-btn" type="button" data-copy-support-email>複製信箱</button></p>
+            <p class="manual-feedback-email"><button class="footer-email-copy" type="button" data-copy-support-email>${SUPPORT_EMAIL}</button></p>
             <p>來信時可以簡單附上使用裝置、遇到的頁面、問題描述。若方便，也可以附上截圖，方便我們判斷問題。</p>
           </section>
 
@@ -3594,7 +3580,9 @@ function ensureWritingWorkspaceUi() {
   const [editorPanel, listPanel] = panels;
   editorPanel?.classList.add('note-writing-form-panel');
   listPanel?.classList.add('note-writing-list-panel', 'hidden');
-  editorPanel?.querySelector('.panel-header h2')?.replaceChildren(document.createTextNode('寫札記'));
+  const editorHeader = editorPanel?.querySelector('.panel-header');
+  editorHeader?.classList.add('panel-header-actions-only');
+  editorHeader?.querySelector('h2')?.remove();
 }
 
 function getBookDraftSettingsElements() {
@@ -3993,11 +3981,11 @@ function syncDesktopDashboardStaticCopy() {
   document.querySelector('.hero-copy h1')?.replaceChildren(document.createTextNode('我的靈修書房'));
   document.querySelector('.hero-copy p')?.replaceChildren(document.createTextNode('整理每日札記，慢慢編成一本書'));
   document.querySelectorAll('.home-summary-cards .summary-card')[0]?.querySelector('.summary-content span')?.replaceChildren(document.createTextNode('札記'));
-  document.querySelectorAll('.home-summary-cards .summary-card')[1]?.querySelector('.summary-content span')?.replaceChildren(document.createTextNode('書籍'));
+  document.querySelectorAll('.home-summary-cards .summary-card')[1]?.querySelector('.summary-content span')?.replaceChildren(document.createTextNode('書稿'));
   document.querySelectorAll('.home-summary-cards .summary-card')[2]?.querySelector('.summary-content span')?.replaceChildren(document.createTextNode('書櫃'));
   document.querySelector('#summary-notes-count + small')?.replaceChildren(document.createTextNode('篇'));
   document.querySelector('#summary-books-count + small')?.replaceChildren(document.createTextNode('本'));
-  document.querySelector('#library-count + small')?.replaceChildren(document.createTextNode('已完成'));
+  document.querySelector('#library-count + small')?.replaceChildren(document.createTextNode('本'));
   document.querySelector('#quick-new-note strong')?.replaceChildren(document.createTextNode('寫一篇札記'));
   document.querySelector('#quick-new-book strong')?.replaceChildren(document.createTextNode('建立一本書'));
   document.querySelector('.home-recent-panel .panel-header h2')?.replaceChildren(document.createTextNode('最近編輯札記'));
@@ -5988,7 +5976,7 @@ function setView(viewName) {
     books: ['選稿編排', '管理成書前的選稿編排，整理章節順序並銜接成書匯出設定。'],
     'admin-dashboard': ['管理後台', '第一階段白名單入口，僅授權管理者可使用。'],
     snapshots: ['快照備份', '查看每次建立的書籍快照。'],
-    library: ['書櫃', '收藏已輸出的固定版本作品，直接開啟閱讀。'],
+    library: ['書櫃', '收藏已匯出的固定版本作品，直接開啟閱讀。'],
     manual: ['操作手冊', '靈修札記成書系統使用說明'],
     reader: ['閱讀模式', '安靜閱讀已加入書櫃的 EPUB。'],
   };
