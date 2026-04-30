@@ -254,6 +254,17 @@ input, textarea, select {
 input:focus, textarea:focus, select:focus {
   outline: none; border-color: #89c4c3; box-shadow: 0 0 0 4px rgba(121,197,192,0.16);
 }
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 .search { max-width: 220px; }
 .primary-btn, .secondary-btn, .ghost-btn, .danger-btn, .support-btn {
   border: none; border-radius: 14px; padding: 10px 16px; font-weight: 700; transition: .2s ease;
@@ -2700,13 +2711,37 @@ body:not(.auth-locked) .main {
   border-radius: 50%;
   overflow: hidden;
   flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  background: linear-gradient(135deg, #d8ecea, #eef6f5);
+  border: 1px dashed #8eb6b2;
+  color: #5a7f7a;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.account-avatar::before {
+  content: attr(data-initial);
+}
+
+.account-avatar.has-avatar {
+  border-style: solid;
+  background: #eef6f5;
+}
+
+.account-avatar.has-avatar::before {
+  display: none;
 }
 
 .account-avatar img {
   width: 100%;
   height: 100%;
-  display: block;
+  display: none;
   object-fit: cover;
+}
+
+.account-avatar.has-avatar img {
+  display: block;
 }
 
 .account-summary-copy {
@@ -2857,6 +2892,33 @@ body:not(.auth-locked) .main {
   border-top: 1px solid rgba(128, 148, 139, 0.14);
 }
 
+.account-avatar-settings-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+
+.account-settings-avatar-preview {
+  width: 64px;
+  height: 64px;
+  font-size: 22px;
+}
+
+.account-avatar-settings-copy {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.account-avatar-settings-copy p {
+  margin: 0;
+}
+
+.account-avatar-message.is-error {
+  color: #9b3d3d;
+}
+
 .account-settings-section:first-of-type {
   border-top: none;
   padding-top: 4px;
@@ -2891,6 +2953,17 @@ body:not(.auth-locked) .main {
     max-height: 92vh;
     max-height: min(92vh, calc(100dvh - 20px));
     padding: 18px;
+  }
+
+  .account-avatar-settings-row {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
+  .account-avatar-settings-copy,
+  .account-avatar-settings-copy .account-settings-actions,
+  .account-avatar-settings-copy .ghost-btn {
+    width: 100%;
   }
 }
 
@@ -4830,21 +4903,11 @@ body:not(.auth-locked) .main {
   .desktop-sidebar-account-header .account-avatar {
     width: 44px;
     height: 44px;
-    border-radius: 14px;
-    background: linear-gradient(135deg, #d8ecea, #eef6f5);
-    border: 1px dashed #8eb6b2;
-    color: #5a7f7a;
-    display: grid;
-    place-items: center;
-    font-weight: 700;
-  }
-
-  .desktop-sidebar-account-header .account-avatar img {
-    display: none;
+    border-radius: 50%;
   }
 
   .desktop-sidebar-account-header .account-avatar::before {
-    content: "A";
+    content: attr(data-initial);
   }
 
   .desktop-sidebar-account-copy {

@@ -189,8 +189,8 @@
       <div class="desktop-sidebar-footer">
         <section class="panel compact desktop-sidebar-account-card">
           <div class="desktop-sidebar-account-header">
-            <span class="account-avatar desktop-sidebar-avatar" aria-hidden="true">
-              <img src="./assets/ui/account-sprout.png" alt="" decoding="async" />
+            <span class="account-avatar desktop-sidebar-avatar" data-account-avatar data-initial="A" aria-hidden="true">
+              <img alt="" decoding="async" />
             </span>
             <div class="desktop-sidebar-footer-label">帳號</div>
           </div>
@@ -351,8 +351,8 @@
 
           <section class="panel account-summary-card">
             <div class="account-summary-main">
-              <span class="account-avatar" aria-hidden="true">
-                <img src="./assets/ui/account-sprout.png" alt="" decoding="async" />
+              <span class="account-avatar" data-account-avatar data-initial="A" aria-hidden="true">
+                <img alt="" decoding="async" />
               </span>
               <div class="account-summary-copy">
                 <strong id="account-email">尚未登入</strong>
@@ -656,6 +656,23 @@
         <div class="account-settings-section">
           <span class="account-settings-label">目前帳號</span>
           <strong id="account-settings-email">-</strong>
+        </div>
+        <div class="account-settings-section account-avatar-settings-section">
+          <span class="account-settings-label">個人頭像</span>
+          <div class="account-avatar-settings-row">
+            <span id="profile-avatar-preview" class="account-avatar account-settings-avatar-preview" data-account-avatar data-initial="A" aria-hidden="true">
+              <img alt="" decoding="async" />
+            </span>
+            <div class="account-avatar-settings-copy">
+              <p class="caption">支援 JPG、PNG、WEBP，建議使用正方形照片，檔案大小上限 2MB。</p>
+              <div class="account-settings-actions">
+                <input id="profile-avatar-input" class="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" />
+                <button id="profile-avatar-upload-btn" class="ghost-btn" type="button">上傳頭像</button>
+                <button id="profile-avatar-remove-btn" class="ghost-btn" type="button">移除頭像</button>
+              </div>
+              <p id="profile-avatar-message" class="caption account-avatar-message hidden" aria-live="polite"></p>
+            </div>
+          </div>
         </div>
         <div class="account-settings-section">
           <span class="account-settings-label">修改密碼</span>

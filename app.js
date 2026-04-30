@@ -22,6 +22,10 @@ const ADMIN_EMAILS = ['allen680552@gmail.com'];
 const MAX_IMPORTED_EPUB_BYTES = 10 * 1024 * 1024;
 const MAX_IMPORTED_EPUB_UNZIPPED_BYTES = 30 * 1024 * 1024;
 const MAX_IMPORTED_EPUB_CHAPTER_CHARS = 300_000;
+const PROFILE_AVATAR_MAX_BYTES = 2 * 1024 * 1024;
+const PROFILE_AVATAR_SIZE = 512;
+const PROFILE_AVATAR_BUCKET = 'library-books';
+const PROFILE_AVATAR_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const IMPORTED_EPUB_SAFE_TAGS = new Set([
   'p',
   'br',
@@ -243,6 +247,10 @@ const els = {
   accountSettingsBackdrop: document.getElementById('account-settings-backdrop'),
   closeAccountSettingsBtn: document.getElementById('close-account-settings-btn'),
   accountSettingsEmail: document.getElementById('account-settings-email'),
+  profileAvatarInput: document.getElementById('profile-avatar-input'),
+  profileAvatarUploadBtn: document.getElementById('profile-avatar-upload-btn'),
+  profileAvatarRemoveBtn: document.getElementById('profile-avatar-remove-btn'),
+  profileAvatarMessage: document.getElementById('profile-avatar-message'),
   accountPasswordToggleBtn: document.getElementById('account-password-toggle-btn'),
   accountPasswordForm: document.getElementById('account-password-form'),
   accountNewPassword: document.getElementById('account-new-password'),
@@ -292,6 +300,11 @@ const state = {
   config: buildMergedConfig(loadJson(STORAGE_KEYS.config, null)),
   supabase: null,
   currentUser: null,
+  profileAvatar: {
+    path: '',
+    url: '',
+    updatedAt: '',
+  },
   storageMode: 'local',
   notes: [],
   books: [],
@@ -2555,6 +2568,7 @@ function clearAuthRecoveryUrl() {
 function enterPasswordRecoveryMode() {
   state.passwordRecoveryActive = true;
   state.currentUser = null;
+  resetProfileAvatarState();
   teardownCloudRealtime();
   setSyncState({ status: '尚未登入', detail: '請先設定新密碼後再重新登入。', at: '' });
   clearAuthRecoveryUrl();
@@ -2564,6 +2578,7 @@ function enterPasswordRecoveryMode() {
 function showInvalidPasswordRecoveryLink() {
   state.passwordRecoveryActive = false;
   state.currentUser = null;
+  resetProfileAvatarState();
   teardownCloudRealtime();
   setSyncState({ status: '尚未登入', detail: '重設密碼連結已失效，請重新寄送忘記密碼信。', at: '' });
   clearAuthRecoveryUrl();
@@ -2600,7 +2615,209 @@ function syncAccountSettingsModal() {
   if (els.accountSettingsEmail) {
     els.accountSettingsEmail.textContent = state.currentUser?.email || '尚未登入';
   }
+  syncProfileAvatarMessage();
 }
+
+function getProfileAvatarMetadata(user = state.currentUser) {
+  const metadata = user?.user_metadata || {};
+  return {
+    path: String(metadata.avatar_path || '').trim(),
+    url: String(metadata.avatar_url || '').trim(),
+    updatedAt: String(metadata.avatar_updated_at || '').trim(),
+  };
+}
+
+function getProfileAvatarStoragePath(userId = getUserId()) {
+  return `users/${userId}/profile/avatar.webp`;
+}
+
+function getAccountInitial() {
+  const source = String(state.currentUser?.email || state.currentUser?.id || 'A').trim();
+  const letter = source.match(/[A-Za-z0-9]/)?.[0] || source[0] || 'A';
+  return letter.toUpperCase();
+}
+
+function appendAvatarCacheBust(url = '', updatedAt = '') {
+  const src = String(url || '').trim();
+  if (!src) return '';
+  if (/^(data|blob):/i.test(src)) return src;
+  const token = encodeURIComponent(updatedAt || state.profileAvatar.updatedAt || nowIso());
+  return `${src}${src.includes('?') ? '&' : '?'}v=${token}`;
+}
+
+function resetProfileAvatarState() {
+  state.profileAvatar = { path: '', url: '', updatedAt: '' };
+}
+
+async function refreshProfileAvatar({ updateUi = false } = {}) {
+  const metadata = getProfileAvatarMetadata();
+  if (!state.currentUser || state.passwordRecoveryActive) {
+    resetProfileAvatarState();
+    if (updateUi) syncProfileAvatarUi();
+    return;
+  }
+  if (metadata.url) {
+    state.profileAvatar = {
+      path: metadata.path,
+      url: appendAvatarCacheBust(metadata.url, metadata.updatedAt),
+      updatedAt: metadata.updatedAt,
+    };
+    if (updateUi) syncProfileAvatarUi();
+    return;
+  }
+  if (!(state.supabase && metadata.path)) {
+    resetProfileAvatarState();
+    if (updateUi) syncProfileAvatarUi();
+    return;
+  }
+  const { data, error } = await state.supabase.storage.from(PROFILE_AVATAR_BUCKET).createSignedUrl(metadata.path, 60 * 20);
+  state.profileAvatar = error
+    ? { path: metadata.path, url: '', updatedAt: metadata.updatedAt }
+    : { path: metadata.path, url: appendAvatarCacheBust(data?.signedUrl || '', metadata.updatedAt), updatedAt: metadata.updatedAt };
+  if (updateUi) syncProfileAvatarUi();
+}
+
+function syncProfileAvatarUi() {
+  const initial = getAccountInitial();
+  const avatarUrl = state.profileAvatar.url;
+  document.querySelectorAll('[data-account-avatar]').forEach((avatar) => {
+    avatar.dataset.initial = initial;
+    avatar.classList.toggle('has-avatar', !!avatarUrl);
+    const image = avatar.querySelector('img');
+    if (!image) return;
+    image.alt = avatarUrl ? '個人頭像' : '';
+    image.onerror = () => {
+      if (state.profileAvatar.url) {
+        state.profileAvatar.url = '';
+        syncProfileAvatarUi();
+      }
+    };
+    if (avatarUrl) {
+      image.src = avatarUrl;
+    } else {
+      image.removeAttribute('src');
+    }
+  });
+  syncProfileAvatarMessage();
+}
+
+function syncProfileAvatarMessage(message = '', isError = false) {
+  if (els.profileAvatarMessage) {
+    els.profileAvatarMessage.textContent = message;
+    els.profileAvatarMessage.classList.toggle('hidden', !message);
+    els.profileAvatarMessage.classList.toggle('is-error', !!isError);
+  }
+  const cloudReady = !!(state.supabase && state.currentUser && !state.passwordRecoveryActive);
+  els.profileAvatarUploadBtn?.toggleAttribute('disabled', !cloudReady);
+  els.profileAvatarRemoveBtn?.toggleAttribute('disabled', !cloudReady || !getProfileAvatarMetadata().path);
+  if (!message && els.profileAvatarMessage && !cloudReady && state.currentUser) {
+    els.profileAvatarMessage.textContent = '頭像同步需要登入雲端帳號。';
+    els.profileAvatarMessage.classList.remove('hidden', 'is-error');
+  }
+}
+
+function validateProfileAvatarFile(file) {
+  if (!file) throw new Error('請先選擇圖片。');
+  if (!PROFILE_AVATAR_MIME_TYPES.has(file.type)) throw new Error('請上傳 JPG、PNG 或 WEBP 圖片');
+  if (file.size > PROFILE_AVATAR_MAX_BYTES) throw new Error('請上傳 2MB 以下的圖片');
+}
+
+function loadImageElementFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('請上傳 JPG、PNG 或 WEBP 圖片'));
+    };
+    image.src = objectUrl;
+  });
+}
+
+async function prepareProfileAvatarBlob(file) {
+  validateProfileAvatarFile(file);
+  const image = await loadImageElementFromFile(file);
+  const size = Math.min(image.naturalWidth || image.width, image.naturalHeight || image.height);
+  if (!size) throw new Error('請上傳 JPG、PNG 或 WEBP 圖片');
+  const sx = Math.max(0, ((image.naturalWidth || image.width) - size) / 2);
+  const sy = Math.max(0, ((image.naturalHeight || image.height) - size) / 2);
+  const canvas = document.createElement('canvas');
+  canvas.width = PROFILE_AVATAR_SIZE;
+  canvas.height = PROFILE_AVATAR_SIZE;
+  const context = canvas.getContext('2d', { alpha: false });
+  if (!context) throw new Error('頭像上傳失敗，請稍後再試');
+  context.drawImage(image, sx, sy, size, size, 0, 0, PROFILE_AVATAR_SIZE, PROFILE_AVATAR_SIZE);
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error('頭像上傳失敗，請稍後再試'));
+        return;
+      }
+      resolve(blob);
+    }, 'image/webp', 0.86);
+  });
+}
+
+async function updateProfileAvatarMetadata(nextMetadata) {
+  if (!(state.supabase && state.currentUser)) throw new Error('頭像同步需要登入雲端帳號。');
+  const metadata = { ...(state.currentUser.user_metadata || {}), ...nextMetadata };
+  const { data, error } = await state.supabase.auth.updateUser({ data: metadata });
+  if (error) throw createAuthError(error);
+  state.currentUser = data?.user || { ...state.currentUser, user_metadata: metadata };
+}
+
+async function handleProfileAvatarSelection(event) {
+  const input = event.target;
+  const file = input?.files?.[0] || null;
+  if (!file) return;
+  try {
+    syncProfileAvatarMessage('');
+    if (!(state.supabase && state.currentUser)) throw new Error('頭像同步需要登入雲端帳號。');
+    const avatarBlob = await prepareProfileAvatarBlob(file);
+    const avatarPath = getProfileAvatarStoragePath();
+    const { error } = await state.supabase.storage.from(PROFILE_AVATAR_BUCKET).upload(avatarPath, avatarBlob, {
+      contentType: 'image/webp',
+      upsert: true,
+    });
+    if (error) throw new Error('頭像上傳失敗，請稍後再試');
+    const updatedAt = nowIso();
+    await updateProfileAvatarMetadata({
+      avatar_path: avatarPath,
+      avatar_url: null,
+      avatar_updated_at: updatedAt,
+    });
+    await refreshProfileAvatar({ updateUi: true });
+    refreshUi();
+    showToast('頭像已更新');
+  } catch (error) {
+    syncProfileAvatarMessage(error?.message || '頭像上傳失敗，請稍後再試', true);
+    showToast(error?.message || '頭像上傳失敗，請稍後再試');
+  } finally {
+    if (input) input.value = '';
+  }
+}
+
+async function removeProfileAvatar() {
+  if (!(state.supabase && state.currentUser)) throw new Error('頭像同步需要登入雲端帳號。');
+  const metadata = getProfileAvatarMetadata();
+  const avatarPath = metadata.path || getProfileAvatarStoragePath();
+  if (avatarPath) {
+    await state.supabase.storage.from(PROFILE_AVATAR_BUCKET).remove([avatarPath]).catch(() => {});
+  }
+  await updateProfileAvatarMetadata({
+    avatar_path: null,
+    avatar_url: null,
+    avatar_updated_at: nowIso(),
+  });
+  resetProfileAvatarState();
+  refreshUi();
+  showToast('頭像已移除');
+}
+
 function clearAccountPasswordFields() {
   if (els.accountNewPassword) els.accountNewPassword.value = '';
   if (els.accountConfirmPassword) els.accountConfirmPassword.value = '';
@@ -2775,6 +2992,9 @@ function bindEvents() {
   els.accountPasswordToggleBtn?.addEventListener('click', () => setAccountPasswordFormExpanded(true));
   els.accountCancelPasswordBtn?.addEventListener('click', () => setAccountPasswordFormExpanded(false));
   els.accountUpdatePasswordBtn?.addEventListener('click', () => handleAccountPasswordUpdate().catch(handleError));
+  els.profileAvatarUploadBtn?.addEventListener('click', () => els.profileAvatarInput?.click());
+  els.profileAvatarInput?.addEventListener('change', event => handleProfileAvatarSelection(event).catch(handleError));
+  els.profileAvatarRemoveBtn?.addEventListener('click', () => removeProfileAvatar().catch(handleError));
   els.signoutBtn.addEventListener('click', () => handleSignOut().catch(handleError));
   els.accountSignoutBtn?.addEventListener('click', () => handleSignOut().catch(handleError));
   els.desktopSidebarSignoutBtn?.addEventListener('click', () => handleSignOut().catch(handleError));
@@ -2980,6 +3200,7 @@ async function handleAccountPasswordUpdate() {
   showToast('密碼已更新，請重新登入。');
   await state.supabase.auth.signOut();
   state.currentUser = null;
+  resetProfileAvatarState();
   setSyncState({ status: '尚未登入', detail: '密碼已更新，請使用新密碼重新登入。', at: '' });
   await loadAllData({ silent: true });
   refreshUi();
@@ -3012,6 +3233,7 @@ async function handleSignOut() {
     clearLocalUser();
     state.currentUser = null;
   }
+  resetProfileAvatarState();
   setSyncState({ status: state.supabase ? '尚未登入' : '本機模式', detail: state.supabase ? '雲端設定仍在，但目前尚未登入帳號。' : '目前資料只保存在這台裝置。', at: '' });
   state.selectedBookId = null;
   await loadAllData({ silent: true });
@@ -3077,6 +3299,7 @@ async function loadAllData({ silent = false, syncReason = '' } = {}) {
     if (!validBookIds.has(bookId)) delete state.bookArrangementDrafts[bookId];
   });
   syncBookArrangementState(state.selectedBookId || '');
+  await refreshProfileAvatar();
   refreshUi();
 }
 
@@ -3770,6 +3993,7 @@ function refreshUi() {
   els.currentUserText.textContent = isSignedIn ? `目前使用者：${accountEmail}` : '尚未登入';
   if (els.accountEmail) els.accountEmail.textContent = accountEmail;
   if (els.desktopAccountEmail) els.desktopAccountEmail.textContent = isSignedIn ? accountEmail : '尚未登入';
+  syncProfileAvatarUi();
   syncAccountSettingsModal();
   els.accountSignoutBtn?.toggleAttribute('disabled', !isSignedIn);
   els.desktopSidebarSignoutBtn?.toggleAttribute('disabled', !isSignedIn);
