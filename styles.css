@@ -1103,7 +1103,7 @@ body.account-settings-open {
     width: min(980px, calc(100vw - 40px));
   }
 }
-@media (max-width: 900px) {
+@media (max-width: 1023px) {
   .book-draft-modal-shell.is-open {
     top: 16px;
     left: 16px;
@@ -1117,7 +1117,7 @@ body.account-settings-open {
     align-content: start;
     overflow-y: auto;
     overflow-x: hidden;
-    padding-bottom: max(24px, calc(18px + env(safe-area-inset-bottom)));
+    padding-bottom: max(112px, calc(96px + env(safe-area-inset-bottom)));
   }
   .book-draft-modal-left,
   .book-draft-modal-right {
@@ -1126,15 +1126,27 @@ body.account-settings-open {
     overflow: visible;
   }
   .book-draft-modal-right {
-    grid-template-rows: auto auto;
+    display: grid;
+    grid-template-rows: auto;
+    min-height: 0;
   }
   .book-draft-modal-right-body {
     overflow: visible;
+    height: auto;
+    max-height: none;
+    min-height: 0;
     grid-template-rows: auto auto;
   }
   .book-draft-modal-shell.is-open .book-draft-chapters-list {
-    max-height: min(520px, 52dvh);
-    overflow-y: auto;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+  .book-draft-modal-right-footer {
+    position: static;
+    bottom: auto;
+    margin-top: 14px;
+    padding-bottom: max(24px, calc(18px + env(safe-area-inset-bottom)));
   }
 }
 @media (max-width: 720px) {
@@ -1155,9 +1167,6 @@ body.account-settings-open {
   }
   .book-draft-modal-shell.is-open .book-draft-overview-body {
     grid-template-columns: 1fr;
-  }
-  .book-draft-modal-right {
-    grid-template-rows: minmax(0, 1fr) auto;
   }
   .book-draft-modal-right-body,
   .book-draft-modal-left {
