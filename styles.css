@@ -86,10 +86,12 @@ body.auth-locked .app-shell { display: none; }
 }
 .auth-gate-title {
   margin: 0;
+  font-family: "Noto Serif TC", "Songti TC", "PMingLiU", "Microsoft JhengHei", serif;
   font-size: clamp(36px, 10.2vw, 56px);
-  line-height: 1.18;
+  font-weight: 600;
+  line-height: 1.22;
   color: #245f5f;
-  letter-spacing: 0;
+  letter-spacing: 0.025em;
 }
 .auth-gate-subtitle {
   margin: 18px 0 0;
@@ -928,7 +930,8 @@ body.account-settings-open {
     height: 30px;
   }
   .auth-gate-title {
-    font-size: clamp(32px, 9.6vw, 43px);
+    font-size: clamp(31px, 9.2vw, 42px);
+    line-height: 1.24;
   }
   .auth-brand-name {
     font-size: clamp(26px, 7.8vw, 34px);
@@ -1010,7 +1013,7 @@ body.account-settings-open {
   }
 
   .auth-gate-title {
-    font-size: clamp(40px, 4.2vw, 52px);
+    font-size: clamp(40px, 4.1vw, 52px);
   }
 
   .auth-gate-divider {
