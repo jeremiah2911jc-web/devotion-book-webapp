@@ -2188,6 +2188,15 @@ body.account-settings-open {
 .library-book-main { display: grid; gap: 10px; }
 .library-book-main h3 { margin: 0 0 6px; }
 .library-book-main p { margin: 0; color: var(--muted); line-height: 1.65; }
+.library-book-main .library-book-description {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  min-height: calc(1.65em * 2);
+  max-height: calc(1.65em * 2);
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
 .library-book-top {
   display: flex;
   flex-wrap: wrap;
@@ -2296,6 +2305,10 @@ body.account-settings-open {
 
   .library-book-main p {
     display: none;
+  }
+
+  .library-book-main .library-book-description {
+    display: -webkit-box;
   }
 
   .library-book-main h3 {
