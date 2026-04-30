@@ -5122,7 +5122,7 @@ body:not(.auth-locked) .topbar {
   display: flex;
   margin-bottom: 12px;
   align-items: center;
-  padding-left: var(--desktop-hero-text-inset);
+  padding-left: 0;
   box-sizing: border-box;
 }
 
@@ -6094,7 +6094,16 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
 
   body:not(.auth-locked) .main {
     background: #fbf6ee;
-    padding-bottom: max(128px, calc(104px + env(safe-area-inset-bottom)));
+    padding-bottom: max(148px, calc(120px + env(safe-area-inset-bottom)));
+  }
+
+  body:not(.auth-locked)[data-current-view="dashboard"] .topbar,
+  body:not(.auth-locked) .topbar-actions,
+  body:not(.auth-locked) .desktop-topbar-sync-pill,
+  body:not(.auth-locked) #topbar-force-sync-btn,
+  body:not(.auth-locked) .desktop-topbar-notify,
+  body:not(.auth-locked) #open-account-settings-btn {
+    display: none !important;
   }
 
   body:not(.auth-locked) .bottom-nav {
@@ -6629,5 +6638,11 @@ body:not(.auth-locked) .summary-content strong small {
   body:not(.auth-locked) .library-panel-actions .compact-control-library {
     display: grid;
     gap: 6px;
+  }
+}
+
+@media (min-width: 1024px) {
+  body:not(.auth-locked) .bottom-nav {
+    display: none !important;
   }
 }
