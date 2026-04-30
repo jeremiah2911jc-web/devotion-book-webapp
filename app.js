@@ -1003,9 +1003,14 @@ function ensureOperationManualUi() {
         </div>
 
         <section class="manual-hero">
-          <p class="manual-kicker">流程導覽</p>
-          <h1>靈修札記成書系統使用操作手冊</h1>
-          <p>這套系統用來把平常寫下的靈修札記，整理成可閱讀、可下載、可保存的電子書。建議用這條主流程理解：寫札記 → 札記庫挑選文章 → 選稿編排 → 整理章節 → 成書匯出設定 → 書櫃閱讀。</p>
+          <p class="manual-kicker">給每一天的靈修留下路徑</p>
+          <h1>讓你的靈修，不再只是零散筆記。</h1>
+          <div class="manual-value-lines">
+            <p>每天的領受與記錄，慢慢整理成一本屬於你的書。</p>
+            <p>留下你與神同行的軌跡，也成為日後回顧的恩典記號。</p>
+          </div>
+          <p>這套系統幫助你把每天與神同行的領受、禱告、代禱、感恩、悔改、講道筆記與查經心得，整理成可以閱讀、可以下載、可以保存的電子書。</p>
+          <p class="manual-flow-line">寫札記 → 札記庫挑選文章 → 選稿編排 → 整理章節 → 成書匯出設定 → 書櫃閱讀</p>
         </section>
 
         <section class="manual-toc" aria-labelledby="manual-toc-title">
@@ -1025,17 +1030,18 @@ function ensureOperationManualUi() {
             <li><a href="#manual-admin-backup">十二、管理後台與備份</a></li>
             <li><a href="#manual-faq">十三、常見問題</a></li>
             <li><a href="#manual-feedback">十四、使用問題與意見回饋</a></li>
+            <li><a href="#manual-closing-note">十五、給使用者的一點提醒</a></li>
           </ul>
         </section>
 
         <article class="manual-article">
           <section id="manual-purpose" class="manual-section">
             <h2>一、系統是做什麼的</h2>
-            <p>靈修札記成書系統協助你把每日靈修、講道筆記、小組查經心得或主題文章，從零散文字整理成一本可閱讀的電子書。</p>
-            <p>使用時先在「寫札記」累積內容，再到「札記庫」搜尋與篩選文章。選好文章後，加入「目前正在編排」的書稿，接著整理章節順序、章節標題與目錄，最後匯出 EPUB 並放入書櫃閱讀。</p>
+            <p>靈修札記成書系統是一個幫助你整理信仰文字的地方。你可以把每日靈修、講道筆記、小組查經、禱告、代禱、感恩、悔改反思和生命見證寫下來，日後再挑選、編排、匯出成書。</p>
+            <p>它會保存單篇文字，也幫助你看見一段時間裡神如何帶領你、提醒你、安慰你。當札記慢慢累積，你可以把它整理成一本可以自己閱讀、分享或留存的電子書。</p>
             <div class="manual-callout">
               <strong>核心流程</strong>
-              <p>寫札記 → 札記庫 → 選稿編排 → 整理章節 → 成書匯出設定 → 書櫃與閱讀器</p>
+              <p>寫札記 → 札記庫挑選文章 → 選稿編排 → 整理章節 → 成書匯出設定 → 書櫃閱讀</p>
             </div>
           </section>
 
@@ -1055,18 +1061,84 @@ function ensureOperationManualUi() {
 
           <section id="manual-writing-note" class="manual-section">
             <h2>三、寫札記</h2>
-            <p>「寫札記」是建立與編輯單篇內容的地方。可以從總覽的「寫一篇札記」、側邊欄或底部導覽進入。</p>
-            <p>目前欄位包含：</p>
-            <ul>
-              <li>標題：建議寫成日後可成為章節標題的名稱。</li>
-              <li>經文：可填寫經文範圍，也可以使用經文工具帶入內容。</li>
-              <li>分類：適合放大主題，例如靈修、講道、查經、見證。</li>
-              <li>標籤：適合放細部主題，例如信心、禱告、悔改、盼望。</li>
-              <li>摘要：用二到四句說明這篇札記的重點。</li>
-              <li>內容：完整寫下默想、整理、回應與禱告。</li>
-            </ul>
-            <p>工具列可協助插入小標題、粗體、引用、經文區塊、清單、分隔線與重點色。完成後可先點「預覽」，確認段落與格式，再儲存札記。</p>
-            <p>儲存後，札記會進入「札記庫」。若從札記庫點「編輯」，系統會回到寫札記並載入該篇內容，儲存時會更新原本的札記。</p>
+            <p>「寫札記」是整套系統的起點。你可以從總覽的「寫一篇札記」、側邊欄或手機底部導覽進入。寫完後按「儲存札記」，這篇內容就會進入札記庫，之後可以被挑選、編排、整理成書。</p>
+
+            <div class="manual-card-grid manual-card-grid-three">
+              <div class="manual-card">
+                <h3>不只可以寫每日靈修</h3>
+                <ul>
+                  <li>每日靈修、講道筆記、小組查經整理。</li>
+                  <li>禱告內容、代禱事項、感恩記錄、悔改反思。</li>
+                  <li>生命見證、讀書心得、主題文章、信仰操練紀錄。</li>
+                </ul>
+              </div>
+              <div class="manual-card">
+                <h3>分類可以怎麼用？</h3>
+                <p>分類適合放大方向，讓札記庫日後容易篩選。</p>
+                <p class="manual-chip-line">靈修、講道、查經、見證、禱告、代禱、感恩、悔改、操練</p>
+              </div>
+              <div class="manual-card">
+                <h3>標籤可以怎麼用？</h3>
+                <p>標籤適合補充主題、對象或狀態。</p>
+                <p class="manual-chip-line">信心、禱告、悔改、盼望、家庭、工作、服事、教會、福音對象、長期代禱、已蒙應允</p>
+              </div>
+            </div>
+
+            <h3>欄位怎麼填</h3>
+            <div class="manual-card-grid">
+              <div class="manual-card"><h3>標題</h3><p>寫成日後容易辨認的名稱，也可以當作未來章節標題。例：在等待中學習信靠。</p></div>
+              <div class="manual-card"><h3>經文</h3><p>可以填經文範圍，也可以用經文抓取功能帶入內容。若經文很長，建議分段放進正文。</p></div>
+              <div class="manual-card"><h3>分類</h3><p>選一個主要方向，例如靈修、講道、查經、代禱或感恩。</p></div>
+              <div class="manual-card"><h3>標籤</h3><p>用逗號分隔多個標籤，幫助日後搜尋同一個主題、對象或禱告狀態。</p></div>
+              <div class="manual-card"><h3>摘要</h3><p>用二到四句整理重點。日後在札記庫瀏覽或成書時，可以快速知道這篇在說什麼。</p></div>
+              <div class="manual-card"><h3>內容</h3><p>完整寫下觀察、默想、禱告、回應與操練。段落短一點，手機閱讀會更舒服。</p></div>
+            </div>
+
+            <section id="manual-toolbar-guide" class="manual-subsection">
+              <h3>工具列怎麼用</h3>
+              <p>內容欄上方的工具列會幫你插入常用格式。先選取一段文字再按工具，或把游標放在想插入的位置後按工具，都可以快速加入格式標記。</p>
+              <div class="manual-toolbar-grid">
+                <div class="manual-tool-card"><strong>小標題</strong><p>插入 <code>## 小標題</code>。適合建立文章架構，例如經文觀察、默想反思、今日禱告、感恩記錄、代禱事項、回應與操練。</p></div>
+                <div class="manual-tool-card"><strong>粗體</strong><p>適合強調一句核心提醒、重要結論或需要再次思想的短句。</p></div>
+                <div class="manual-tool-card"><strong>引用</strong><p>適合放講道中的一句話、書摘、短句提醒或別人分享的內容。</p></div>
+                <div class="manual-tool-card"><strong>經文</strong><p>適合放完整經文段落。經文較長時，建議分成幾段，讓閱讀時不會太擠。</p></div>
+                <div class="manual-tool-card"><strong>清單</strong><p>適合整理觀察重點、禱告事項、代禱名單、今日回應或下一步行動。</p></div>
+                <div class="manual-tool-card"><strong>分隔線</strong><p>適合分開不同段落，例如默想結束後進入禱告，或把感恩與代禱分開。</p></div>
+                <div class="manual-tool-card"><strong>紅字</strong><p>適合標記今天特別扎心、需要立刻回應或需要警醒的提醒。</p></div>
+                <div class="manual-tool-card"><strong>藍字</strong><p>適合標記安慰、應許、盼望或讓心安定下來的句子。</p></div>
+                <div class="manual-tool-card"><strong>金字</strong><p>適合標記感恩、恩典、已蒙應允或值得紀念的內容。</p></div>
+                <div class="manual-tool-card"><strong>紫字</strong><p>適合標記敬拜、尊榮、奉獻、呼召或生命方向的提醒。</p></div>
+              </div>
+            </section>
+
+            <section id="manual-format-markers" class="manual-subsection">
+              <h3>為什麼編輯區會出現 ##、{red}、{/red} 這些符號？</h3>
+              <p>這些符號是格式標記，是系統用來產生預覽與成書樣式的記號。在編輯區會先看到文字形式的標記，按下「預覽文章」後，系統會把它們轉成比較接近閱讀時的樣式。</p>
+              <div class="manual-card-grid">
+                <div class="manual-card"><h3><code>##</code></h3><p>代表小標題。小標題建議單獨一行使用，而且 <code>##</code> 必須放在那一行最前面，才會正常顯示成小標題。</p></div>
+                <div class="manual-card"><h3><code>{red}文字{/red}</code></h3><p>代表紅色重點字。</p></div>
+                <div class="manual-card"><h3><code>{blue}文字{/blue}</code></h3><p>代表藍色重點字。</p></div>
+                <div class="manual-card"><h3><code>{gold}文字{/gold}</code></h3><p>代表金色重點字。</p></div>
+                <div class="manual-card"><h3><code>{purple}文字{/purple}</code></h3><p>代表紫色重點字。</p></div>
+              </div>
+            </section>
+
+            <section id="manual-heading-color" class="manual-subsection manual-warning">
+              <h3>小標題與重點色怎麼搭配</h3>
+              <p>小標題是用來整理文章架構。重點色是用來強調正文短句。兩者建議分開使用。</p>
+              <div class="manual-example-grid">
+                <div class="manual-example good"><strong>正確小標題</strong><code>## 重點整理</code></div>
+                <div class="manual-example good"><strong>正確重點色</strong><code>{red}這一句是今天特別提醒我的重點。{/red}</code></div>
+                <div class="manual-example good"><strong>建議搭配方式</strong><code>## 重點整理<br><br>{red}這一句是今天特別提醒我的重點。{/red}</code></div>
+              </div>
+              <div class="manual-example-grid">
+                <div class="manual-example bad"><strong>請避免</strong><code>{red}##重點{/red}</code><p>這樣會把 <code>##</code> 包進顏色標記裡，系統可能無法正常判斷成小標題。預覽或成書時，可能只會顯示成一般文字，或樣式不如預期。</p></div>
+                <div class="manual-example bad"><strong>也不建議</strong><code>## {red}重點{/red}</code><p>即使某些情況看起來可以顯示，仍容易讓格式不穩定，之後預覽、成書或手機閱讀時，可能出現標題大小、顏色或間距不如預期的情況。</p></div>
+              </div>
+              <p><strong>簡單記法：</strong>如果要做段落標題，就讓小標題單獨一行。如果要標記一句重要提醒，就另起一行使用重點色。</p>
+            </section>
+
+            <p>完成後可以先點「預覽文章」，檢查小標題、重點色、經文區塊和段落間距，再儲存札記。若從札記庫點「編輯」，系統會回到寫札記並載入該篇內容，儲存時會更新原本的札記。</p>
           </section>
 
           <section id="manual-content-library" class="manual-section">
@@ -1188,22 +1260,23 @@ function ensureOperationManualUi() {
 
           <section id="manual-faq" class="manual-section">
             <h2>十三、常見問題</h2>
-            <h3>找不到剛寫的札記怎麼辦？</h3>
-            <p>先到「札記庫」確認。若有使用搜尋或篩選，請點「清除篩選」。也可以回到「寫札記」確認是否已儲存成功。</p>
-            <h3>為什麼加入按鈕不能按？</h3>
-            <p>可能尚未選擇目前正在編排，或目前已選 0 篇。請先到「選稿編排」建立或選擇一份編排，再回到札記庫勾選札記。</p>
-            <h3>文章加入到哪一本？</h3>
-            <p>札記庫會加入目前正在編排的那一份書稿。狀態列會顯示「目前正在編排：{title}」。</p>
-            <h3>如何切換目前正在編排？</h3>
-            <p>到「選稿編排」的「其他選稿編排」區塊，點想整理的卡片上的「開始編這本」。切換後該卡片會移到「目前正在編排」。</p>
-            <h3>書櫃跟選稿編排有什麼差別？</h3>
-            <p>選稿編排用來整理成書前的章節與設定。書櫃用來閱讀、下載與管理已完成或已匯入的電子書。</p>
-            <h3>為什麼手機底部選單可以左右滑動？</h3>
-            <p>手機螢幕較窄，底部導覽包含多個功能。可以左右滑動底部導覽列，找到書櫃、操作手冊或管理後台等項目。</p>
-            <h3>EPUB 下載後怎麼打開？</h3>
-            <p>iPhone / iPad 可用「書籍」App。Android 可用「Google Play 圖書」或其他支援 EPUB 的閱讀器。桌機可用支援 EPUB 的閱讀軟體或瀏覽器擴充功能。</p>
-            <h3>外部 EPUB 匯入失敗怎麼辦？</h3>
-            <p>請確認檔案是 EPUB、大小未超過限制，且沒有 DRM 保護。若檔案結構特殊或已損壞，系統可能無法解析。</p>
+            <div class="manual-faq-list">
+              <div class="manual-faq-item"><h3>找不到剛寫的札記怎麼辦？</h3><p>先到「札記庫」確認。若有使用搜尋或篩選，請點「清除篩選」。也可以回到「寫札記」確認是否已儲存成功。</p></div>
+              <div class="manual-faq-item"><h3>禱告或代禱事項要寫在哪裡？</h3><p>可以直接寫在「寫札記」裡。分類可以選「禱告」或「代禱」，再用標籤補充對象或主題。日後可以在札記庫用分類或標籤搜尋，也可以整理成禱告操練或代禱紀錄。</p></div>
+              <div class="manual-faq-item"><h3>為什麼編輯區會出現 ##、{red}、{/red} 這些符號？</h3><p>這些是格式標記，用來讓系統在預覽與成書時轉成小標題或重點色。寫作時會先看到標記，點「預覽文章」後可以確認實際效果。</p></div>
+              <div class="manual-faq-item"><h3>為什麼 {red}##重點{/red} 沒有正常變成小標題？</h3><p>小標題的 <code>##</code> 需要放在一行最前面，不能被顏色標記包住。如果想使用小標題，請寫成「## 重點整理」。如果想標記紅字，請另起一行寫「{red}這一句是重點。{/red}」。</p></div>
+              <div class="manual-faq-item"><h3>小標題和重點色可以一起用嗎？</h3><p>建議分開使用。小標題用來整理文章結構，重點色用來強調正文短句。比較好的方式是讓小標題獨立一行，重點句另起一行。</p></div>
+              <div class="manual-faq-item"><h3>為什麼預覽排版和我想像的不一樣？</h3><p>請先檢查是否有過多空白行、過長段落，或把小標題與重點色混在同一行。可以用「預覽文章」調整後再儲存。</p></div>
+              <div class="manual-faq-item"><h3>經文很長時要怎麼放？</h3><p>可以使用經文區塊，但長經文建議分段，讓手機閱讀更舒服。</p></div>
+              <div class="manual-faq-item"><h3>什麼時候用引用，什麼時候用經文區塊？</h3><p>引用適合短句或摘錄。經文區塊適合放完整經文段落。</p></div>
+              <div class="manual-faq-item"><h3>為什麼加入按鈕不能按？</h3><p>可能尚未選擇目前正在編排，或目前已選 0 篇。請先到「選稿編排」建立或選擇一份編排，再回到札記庫勾選札記。</p></div>
+              <div class="manual-faq-item"><h3>文章加入到哪一本？</h3><p>札記庫會加入目前正在編排的那一份書稿。狀態列會顯示「目前正在編排：{title}」。</p></div>
+              <div class="manual-faq-item"><h3>如何切換目前正在編排？</h3><p>到「選稿編排」的「其他選稿編排」區塊，點想整理的卡片上的「開始編這本」。切換後該卡片會移到「目前正在編排」。</p></div>
+              <div class="manual-faq-item"><h3>書櫃跟選稿編排有什麼差別？</h3><p>選稿編排用來整理成書前的章節與設定。書櫃用來閱讀、下載與管理已完成或已匯入的電子書。</p></div>
+              <div class="manual-faq-item"><h3>為什麼手機底部選單可以左右滑動？</h3><p>手機螢幕較窄，底部導覽包含多個功能。可以左右滑動底部導覽列，找到書櫃、操作手冊或管理後台等項目。</p></div>
+              <div class="manual-faq-item"><h3>EPUB 下載後怎麼打開？</h3><p>iPhone / iPad 可用「書籍」App。Android 可用「Google Play 圖書」或其他支援 EPUB 的閱讀器。桌機可用支援 EPUB 的閱讀軟體或瀏覽器擴充功能。</p></div>
+              <div class="manual-faq-item"><h3>外部 EPUB 匯入失敗怎麼辦？</h3><p>請確認檔案是 EPUB、大小未超過限制，且沒有 DRM 保護。若檔案結構特殊或已損壞，系統可能無法解析。</p></div>
+            </div>
           </section>
 
           <section id="manual-feedback" class="manual-section">
@@ -1211,6 +1284,13 @@ function ensureOperationManualUi() {
             <p>如果你在使用靈修札記成書系統時遇到問題，或有功能建議，歡迎來信：</p>
             <p><a href="mailto:devotionbook.tw@gmail.com">devotionbook.tw@gmail.com</a></p>
             <p>來信時可以簡單附上使用裝置、遇到的頁面、問題描述。若方便，也可以附上截圖，方便我們判斷問題。</p>
+          </section>
+
+          <section id="manual-closing-note" class="manual-section manual-closing">
+            <h2>十五、給使用者的一點提醒</h2>
+            <p>這套系統的目的，是幫助你把平常寫下的內容好好保存下來。</p>
+            <p>不用一開始就想著要完成一本很完整的書。可以先從一篇札記開始，慢慢累積，慢慢整理。</p>
+            <p>當那些日子裡的領受、禱告、眼淚、感恩與提醒被留下來，它們有一天可能就會成為一本值得回頭閱讀的書。</p>
           </section>
         </article>
       </section>
