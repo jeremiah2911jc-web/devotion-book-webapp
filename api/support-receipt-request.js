@@ -46,6 +46,26 @@ function formatAmount(amount) {
   });
 }
 
+async function readResendErrorResponse(response) {
+  try {
+    return await response.clone().json();
+  } catch (jsonError) {
+    return response.text().catch(() => '');
+  }
+}
+
+function summarizeSupportReceiptRequest(input) {
+  return {
+    fields: ['name', 'email', 'amount', 'transferDate', 'bankLast5', 'note'],
+    hasName: !!input.name,
+    emailDomain: input.email.includes('@') ? input.email.split('@').pop() : '',
+    amount: input.amount,
+    transferDate: input.transferDate,
+    bankLast5Length: input.bankLast5.length,
+    noteLength: input.note.length,
+  };
+}
+
 function buildSupportReceiptEmailText(input, requestedAt) {
   return [
     '支持款項收款證明申請',
@@ -99,8 +119,14 @@ async function sendSupportReceiptEmail(input) {
   });
 
   if (!response.ok) {
-    const details = await response.text().catch(() => '');
-    console.error('[support-receipt-request] resend failed', response.status, details);
+    const resendError = await readResendErrorResponse(response);
+    console.error('[support-receipt-request] resend failed', {
+      status: response.status,
+      error: resendError,
+      from: fromEmail,
+      to: toEmail,
+      request: summarizeSupportReceiptRequest(input),
+    });
     return {
       ok: false,
       status: 502,
