@@ -1276,6 +1276,7 @@ function ensureOperationManualUi() {
               <div class="manual-faq-item"><h3>文章加入到哪一本？</h3><p>札記庫會加入目前正在編排的那一份書稿。狀態列會顯示「目前正在編排：{title}」。</p></div>
               <div class="manual-faq-item"><h3>如何切換目前正在編排？</h3><p>到「選稿編排」的「其他選稿編排」區塊，點想整理的卡片上的「開始編這本」。切換後該卡片會移到「目前正在編排」。</p></div>
               <div class="manual-faq-item"><h3>建立選稿編排後，可以修改標題或整理說明嗎？</h3><p>可以。到「選稿編排」頁，在該卡片點「編輯設定」，即可修改編排代稱、整理說明、日期範圍、分類與標籤。儲存後，卡片會立即更新。</p></div>
+              <div class="manual-faq-item"><h3>刪除資料前會再確認嗎？</h3><p>會。刪除札記、選稿編排、書櫃書籍、移除頭像或執行較危險的還原操作前，系統會先顯示確認提示。確認前請先看清楚刪除對象，避免誤刪。</p></div>
               <div class="manual-faq-item"><h3>書櫃跟選稿編排有什麼差別？</h3><p>選稿編排用來整理成書前的章節與設定。書櫃用來閱讀、下載與管理已完成或已匯入的電子書。</p></div>
               <div class="manual-faq-item"><h3>為什麼手機底部選單可以左右滑動？</h3><p>手機螢幕較窄，底部導覽包含多個功能。可以左右滑動底部導覽列，找到書櫃、操作手冊或管理後台等項目。</p></div>
               <div class="manual-faq-item"><h3>EPUB 下載後怎麼打開？</h3><p>iPhone / iPad 可用「書籍」App。Android 可用「Google Play 圖書」或其他支援 EPUB 的閱讀器。桌機可用支援 EPUB 的閱讀軟體或瀏覽器擴充功能。</p></div>
@@ -2027,20 +2028,23 @@ async function rollbackDangerRestore(snapshot, userId = '') {
   await restoreImportedLibraryBlobSnapshot(snapshot.importedBlobs || []);
 }
 
-function requestDangerRestoreConfirmation(backup = {}) {
+async function requestDangerRestoreConfirmation(backup = {}) {
   const notesCount = Array.isArray(backup.notes) ? backup.notes.length : 0;
   const draftsCount = Array.isArray(backup.drafts) ? backup.drafts.length : 0;
   const libraryCount = Array.isArray(backup.library) ? backup.library.length : 0;
   const currentEmail = getCurrentUserEmail();
   const backupEmail = String(backup.user || '').trim().toLowerCase();
   const mismatchWarning = currentEmail && backupEmail && currentEmail !== backupEmail
-    ? `\n警告：備份使用者 ${String(backup.user || '')} 與目前登入帳號 ${String(state.currentUser?.email || '')} 不一致`
+    ? `\n\n警告：備份使用者 ${String(backup.user || '')} 與目前登入帳號 ${String(state.currentUser?.email || '')} 不一致。`
     : '';
-  const value = window.prompt(
-    `⚠ 這個操作會刪除目前所有資料並用備份覆蓋\n請輸入 RESTORE 才能繼續\n\nnotes：${notesCount}\ndrafts：${draftsCount}\nlibrary：${libraryCount}${mismatchWarning}`,
-    '',
-  );
-  return value === 'RESTORE';
+  return openConfirmDialog({
+    title: '確定要執行覆蓋還原嗎？',
+    message: `這可能會覆蓋目前資料。請確認已經備份後再繼續。\n\n備份內容：札記 ${notesCount} 筆、選稿編排 ${draftsCount} 份、書櫃 ${libraryCount} 本。${mismatchWarning}`,
+    confirmText: '確認還原',
+    danger: true,
+    requiredText: 'RESTORE',
+    requiredTextLabel: '請輸入 RESTORE 才能繼續覆蓋還原',
+  });
 }
 
 function setRestoreStatusMessage(message = '') {
@@ -2214,8 +2218,8 @@ async function restoreBackupDanger() {
     showToast('覆蓋還原進行中，請稍候。');
     return;
   }
-  if (!requestDangerRestoreConfirmation(backup)) {
-    showToast('沒有輸入 RESTORE，已取消覆蓋還原。');
+  if (!(await requestDangerRestoreConfirmation(backup))) {
+    showToast('已取消覆蓋還原。');
     return;
   }
 
@@ -2335,6 +2339,105 @@ function showToast(message) {
   els.toast.classList.remove('hidden');
   clearTimeout(showToast.timer);
   showToast.timer = setTimeout(() => els.toast.classList.add('hidden'), 2600);
+}
+
+function ensureConfirmDialogUi() {
+  let modal = document.getElementById('confirm-dialog');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'confirm-dialog';
+    modal.className = 'modal confirm-dialog hidden';
+    modal.setAttribute('aria-hidden', 'true');
+    modal.innerHTML = `
+      <div class="modal-backdrop confirm-dialog-backdrop" data-confirm-cancel></div>
+      <div class="modal-card confirm-dialog-card" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title">
+        <div class="confirm-dialog-header">
+          <div>
+            <p class="confirm-dialog-kicker">二次確認</p>
+            <h2 id="confirm-dialog-title">確定要刪除嗎？</h2>
+          </div>
+          <button class="ghost-btn small" type="button" data-confirm-cancel aria-label="關閉確認視窗">關閉</button>
+        </div>
+        <p id="confirm-dialog-message" class="confirm-dialog-message">這個動作無法復原。</p>
+        <label id="confirm-dialog-phrase-field" class="confirm-dialog-phrase-field hidden">
+          <span id="confirm-dialog-phrase-label" class="caption">請輸入指定文字以繼續</span>
+          <input id="confirm-dialog-phrase-input" type="text" autocomplete="off" />
+        </label>
+        <div class="confirm-dialog-actions">
+          <button id="confirm-dialog-cancel-btn" class="ghost-btn" type="button" data-confirm-cancel>取消</button>
+          <button id="confirm-dialog-confirm-btn" class="danger-btn" type="button">確認刪除</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+  return {
+    modal,
+    title: modal.querySelector('#confirm-dialog-title'),
+    message: modal.querySelector('#confirm-dialog-message'),
+    phraseField: modal.querySelector('#confirm-dialog-phrase-field'),
+    phraseLabel: modal.querySelector('#confirm-dialog-phrase-label'),
+    phraseInput: modal.querySelector('#confirm-dialog-phrase-input'),
+    cancelBtn: modal.querySelector('#confirm-dialog-cancel-btn'),
+    confirmBtn: modal.querySelector('#confirm-dialog-confirm-btn'),
+    cancelButtons: [...modal.querySelectorAll('[data-confirm-cancel]')],
+  };
+}
+
+function openConfirmDialog({
+  title = '確定要刪除嗎？',
+  message = '這個動作無法復原。',
+  confirmText = '確認刪除',
+  cancelText = '取消',
+  danger = true,
+  requiredText = '',
+  requiredTextLabel = '',
+} = {}) {
+  const dialog = ensureConfirmDialogUi();
+  dialog.title.textContent = title;
+  dialog.message.textContent = message;
+  dialog.confirmBtn.textContent = confirmText;
+  dialog.cancelBtn.textContent = cancelText;
+  dialog.confirmBtn.className = danger ? 'danger-btn' : 'primary-btn';
+  const phrase = String(requiredText || '');
+  dialog.phraseField.classList.toggle('hidden', !phrase);
+  dialog.phraseInput.value = '';
+  dialog.phraseInput.placeholder = phrase;
+  dialog.phraseLabel.textContent = requiredTextLabel || `請輸入 ${phrase} 以繼續`;
+  dialog.confirmBtn.disabled = !!phrase;
+  dialog.modal.classList.remove('hidden');
+  dialog.modal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('confirm-dialog-open');
+
+  return new Promise(resolve => {
+    const updateConfirmState = () => {
+      dialog.confirmBtn.disabled = !!phrase && dialog.phraseInput.value.trim() !== phrase;
+    };
+    const close = result => {
+      dialog.modal.classList.add('hidden');
+      dialog.modal.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('confirm-dialog-open');
+      dialog.cancelButtons.forEach(button => button.removeEventListener('click', handleCancel));
+      dialog.confirmBtn.removeEventListener('click', handleConfirm);
+      dialog.phraseInput.removeEventListener('input', updateConfirmState);
+      document.removeEventListener('keydown', handleKeydown);
+      resolve(result);
+    };
+    const handleCancel = () => close(false);
+    const handleConfirm = () => {
+      if (dialog.confirmBtn.disabled) return;
+      close(true);
+    };
+    const handleKeydown = event => {
+      if (event.key === 'Escape') close(false);
+    };
+    dialog.cancelButtons.forEach(button => button.addEventListener('click', handleCancel));
+    dialog.confirmBtn.addEventListener('click', handleConfirm);
+    dialog.phraseInput.addEventListener('input', updateConfirmState);
+    document.addEventListener('keydown', handleKeydown);
+    if (phrase) dialog.phraseInput.focus();
+    else dialog.cancelBtn.focus();
+  });
 }
 
 function copyTextFallback(text) {
@@ -2823,6 +2926,13 @@ async function handleProfileAvatarSelection(event) {
 
 async function removeProfileAvatar() {
   if (!(state.supabase && state.currentUser)) throw new Error('頭像同步需要登入雲端帳號。');
+  const confirmed = await openConfirmDialog({
+    title: '確定要移除頭像嗎？',
+    message: '移除後會恢復為字母頭像。',
+    confirmText: '確認移除',
+    danger: true,
+  });
+  if (!confirmed) return;
   const metadata = getProfileAvatarMetadata();
   const avatarPath = metadata.path || getProfileAvatarStoragePath();
   if (avatarPath) {
@@ -5329,7 +5439,13 @@ async function deleteNote() {
   requireUser();
   const noteId = els.noteId.value;
   if (!noteId) return;
-  if (!confirm('確定要刪除這篇札記嗎？')) return;
+  const confirmed = await openConfirmDialog({
+    title: '確定要刪除這篇札記嗎？',
+    message: '刪除後將無法復原。若這篇札記已加入選稿編排，也可能影響後續整理。',
+    confirmText: '確認刪除',
+    danger: true,
+  });
+  if (!confirmed) return;
   if (state.supabase) {
     const { error } = await state.supabase.from('devotion_notes').delete().eq('id', noteId).eq('user_id', getUserId());
     if (error) throw error;
@@ -5516,7 +5632,13 @@ async function deleteBook(targetBookId = els.bookId.value) {
   if (!bookId) return;
   const book = state.books.find(item => item.id === bookId);
   const bookTitle = getBookDraftLabel(book);
-  if (!confirm(`確定要刪除「${bookTitle}」這份選稿編排嗎？這只會刪除這份選稿編排，不會刪除原始札記。`)) return;
+  const confirmed = await openConfirmDialog({
+    title: '確定要刪除這份選稿編排嗎？',
+    message: `「${bookTitle}」會被刪除。這會移除這份編排與其中的章節安排，但不會刪除原本的札記。`,
+    confirmText: '確認刪除',
+    danger: true,
+  });
+  if (!confirmed) return;
   if (state.supabase) {
     const { error } = await state.supabase.from('book_projects').delete().eq('id', bookId).eq('user_id', getUserId());
     if (error) throw error;
@@ -5849,6 +5971,15 @@ async function moveChapter(chapterId, direction) {
 }
 
 async function removeChapter(chapterId) {
+  const book = getSelectedBook();
+  const chapter = getBookDisplayChapters(book).find(item => item.id === chapterId);
+  const confirmed = await openConfirmDialog({
+    title: '確定要移除這個章節嗎？',
+    message: `「${chapter?.chapter_title || '未命名章節'}」只會從目前編排中移除，不會刪除原本的札記。`,
+    confirmText: '確認移除',
+    danger: true,
+  });
+  if (!confirmed) return;
   stageBookArrangementChange(chapters => {
     const nextChapters = chapters.filter(ch => ch.id !== chapterId);
     return nextChapters.length === chapters.length ? null : nextChapters;
@@ -6904,7 +7035,13 @@ async function deleteLibraryBook(bookId) {
   requireCloudLibrary();
   const book = getLibraryBook(bookId);
   if (!book) return;
-  if (!confirm(`確定要從書櫃刪除「${book.title}」嗎？雲端 EPUB 與封面也會一併移除。`)) return;
+  const confirmed = await openConfirmDialog({
+    title: '確定要刪除這本書嗎？',
+    message: `「${book.title || '未命名書籍'}」刪除後會從書櫃移除。若需要保留，請先下載 EPUB。`,
+    confirmText: '確認刪除',
+    danger: true,
+  });
+  if (!confirmed) return;
   const userId = getUserId();
   const paths = [book.epub_file_path, book.cover_image_path].filter(Boolean);
   if (paths.length) await state.supabase.storage.from(cloudLibrary.bucket).remove(paths);
@@ -6920,7 +7057,13 @@ async function deleteLibraryBook(bookId) {
 async function deleteImportedLibraryBook(bookId) {
   const book = getImportedBook(bookId);
   if (!book) return;
-  if (!confirm(`確定要刪除外部匯入書「${book.title}」嗎？這會移除本機 EPUB 與封面。`)) return;
+  const confirmed = await openConfirmDialog({
+    title: '確定要刪除這本書嗎？',
+    message: `「${book.title || '未命名書籍'}」刪除後會從書櫃移除。若需要保留，請先下載 EPUB。`,
+    confirmText: '確認刪除',
+    danger: true,
+  });
+  if (!confirmed) return;
   try {
     await deleteImportedBookBlob(bookId);
   } catch (error) {
@@ -7466,14 +7609,28 @@ function addCurrentReaderBookmark() {
   return bookmark;
 }
 
-function removeCurrentReaderBookmark() {
+async function removeCurrentReaderBookmark() {
   const current = getCurrentReaderBookmark();
   if (!current) return;
+  const confirmed = await openConfirmDialog({
+    title: '確定要移除這個書籤嗎？',
+    message: '移除後需要重新加入才能再次快速跳轉。',
+    confirmText: '確認移除',
+    danger: true,
+  });
+  if (!confirmed) return;
   saveReaderBookmarks(loadReaderBookmarks().filter(bookmark => bookmark.id !== current.id));
   renderReaderPanels();
 }
 
-function removeReaderBookmark(bookmarkId) {
+async function removeReaderBookmark(bookmarkId) {
+  const confirmed = await openConfirmDialog({
+    title: '確定要移除這個書籤嗎？',
+    message: '移除後需要重新加入才能再次快速跳轉。',
+    confirmText: '確認移除',
+    danger: true,
+  });
+  if (!confirmed) return;
   saveReaderBookmarks(loadReaderBookmarks().filter(bookmark => bookmark.id !== bookmarkId));
   renderReaderPanels();
 }
@@ -8821,13 +8978,13 @@ document.addEventListener('click', event => {
   if (bookmarkRemove) {
     event.preventDefault();
     event.stopPropagation();
-    removeReaderBookmark(bookmarkRemove.dataset.readerBookmarkRemove);
+    removeReaderBookmark(bookmarkRemove.dataset.readerBookmarkRemove).catch(handleError);
     return;
   }
   if (event.target.closest('[data-reader-bookmark-toggle]')) {
     event.preventDefault();
     event.stopPropagation();
-    if (isCurrentReaderPositionBookmarked()) removeCurrentReaderBookmark();
+    if (isCurrentReaderPositionBookmarked()) removeCurrentReaderBookmark().catch(handleError);
     else addCurrentReaderBookmark();
     return;
   }

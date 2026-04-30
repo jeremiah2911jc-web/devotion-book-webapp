@@ -776,6 +776,57 @@ input:focus, textarea:focus, select:focus {
   position: relative; width: min(92vw, 480px); background: rgba(255,255,255,0.97); border: 1px solid rgba(191,211,208,0.9);
   border-radius: 22px; padding: 22px; box-shadow: 0 24px 60px rgba(78,110,112,0.24);
 }
+.confirm-dialog {
+  z-index: 1400;
+  padding: 18px;
+}
+body.confirm-dialog-open {
+  overflow: hidden;
+}
+.confirm-dialog-card {
+  width: min(92vw, 460px);
+  max-height: calc(100dvh - 36px);
+  display: grid;
+  gap: 16px;
+  overflow: auto;
+}
+.confirm-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.confirm-dialog-kicker {
+  margin: 0 0 6px;
+  color: #8a6a5c;
+  font-size: 13px;
+  font-weight: 600;
+}
+.confirm-dialog-header h2 {
+  margin: 0;
+  color: #31545a;
+  font-size: 22px;
+  line-height: 1.35;
+}
+.confirm-dialog-message {
+  margin: 0;
+  color: #4f6266;
+  line-height: 1.75;
+  white-space: pre-line;
+}
+.confirm-dialog-phrase-field {
+  display: grid;
+  gap: 7px;
+}
+.confirm-dialog-phrase-field.hidden {
+  display: none;
+}
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+}
 .book-export-settings-open { overflow: hidden; }
 .book-export-settings-modal {
   z-index: 1320;
@@ -998,6 +1049,29 @@ body.account-settings-open {
   .book-draft-modal-right-footer .secondary-btn,
   .book-draft-modal-left-actions .secondary-btn,
   .book-draft-modal-left-actions .ghost-btn {
+    width: 100%;
+  }
+  .confirm-dialog {
+    align-items: flex-end;
+    padding: 14px 14px max(14px, env(safe-area-inset-bottom));
+  }
+  .confirm-dialog-card {
+    width: 100%;
+    max-height: calc(100dvh - 28px);
+    padding: 18px;
+  }
+  .confirm-dialog-header {
+    gap: 10px;
+  }
+  .confirm-dialog-header h2 {
+    font-size: 20px;
+  }
+  .confirm-dialog-actions {
+    flex-direction: column-reverse;
+  }
+  .confirm-dialog-actions .ghost-btn,
+  .confirm-dialog-actions .danger-btn,
+  .confirm-dialog-actions .primary-btn {
     width: 100%;
   }
   .book-draft-card-header { align-items: flex-start; }
