@@ -6092,10 +6092,12 @@ function renderTocPreview(book) {
     els.tocPreviewList.textContent = '尚未有列入目錄的章節。';
     return;
   }
+  const previewChapters = tocChapters.slice(0, 5);
+  const hiddenCount = tocChapters.length - previewChapters.length;
   els.tocPreviewList.className = 'toc-preview-list';
-  els.tocPreviewList.innerHTML = `<ol>${tocChapters.map(({ chapter, index }) => `
+  els.tocPreviewList.innerHTML = `<ol>${previewChapters.map(({ chapter, index }) => `
     <li><span>第 ${index + 1} 章</span><strong>${escapeHtml(chapter.chapter_title || '未命名章節')}</strong></li>
-  `).join('')}</ol>`;
+  `).join('')}</ol>${hiddenCount > 0 ? `<p class="caption toc-preview-more">另有 ${hiddenCount} 章未顯示，完整順序請看右側章節編排。</p>` : ''}`;
 }
 
 function getActiveBookDraftId() {
@@ -6225,7 +6227,7 @@ function renderChaptersList(book) {
   const actionDisabled = state.bookArrangementSaving ? 'disabled' : '';
   const fieldDisabled = state.bookArrangementDirty || state.bookArrangementSaving ? 'disabled' : '';
   if (!chapters.length) {
-    els.chaptersList.className = 'list-stack empty-state';
+    els.chaptersList.className = 'list-stack book-draft-chapters-list empty-state';
     if (state.bookArrangementSaving) {
       els.chaptersList.textContent = '正在儲存章節編排...';
       return;
@@ -6244,7 +6246,7 @@ function renderChaptersList(book) {
     });
       return;
   }
-  els.chaptersList.className = 'list-stack';
+  els.chaptersList.className = 'list-stack book-draft-chapters-list';
   els.chaptersList.innerHTML = chapters.map((chapter, index) => `
     <div class="chapter-item">
       <div class="chapter-row">
