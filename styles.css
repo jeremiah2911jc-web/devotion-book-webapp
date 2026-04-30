@@ -31,12 +31,12 @@ body { min-height: 100vh; }
 body.auth-locked .app-shell { display: none; }
 .auth-gate {
   min-height: 100vh;
-  padding: 24px 18px 28px;
+  padding: 22px 18px 28px;
   background-image:
-    linear-gradient(90deg, rgba(255, 252, 246, 0.82) 0%, rgba(255, 252, 246, 0.56) 42%, rgba(255, 252, 246, 0.12) 100%),
-    linear-gradient(180deg, rgba(252, 247, 237, 0.36) 0%, rgba(249, 242, 229, 0.18) 48%, rgba(247, 239, 224, 0.08) 100%),
+    linear-gradient(90deg, rgba(255, 252, 246, 0.88) 0%, rgba(255, 252, 246, 0.58) 44%, rgba(255, 252, 246, 0.12) 100%),
+    linear-gradient(180deg, rgba(252, 247, 237, 0.42) 0%, rgba(249, 242, 229, 0.2) 48%, rgba(247, 239, 224, 0.08) 100%),
     url("./assets/ui/auth-bg-portrait.jpg");
-  background-position: center, center, 58% center;
+  background-position: center, center, 62% center;
   background-size: cover, cover, cover;
   background-repeat: no-repeat;
 }
@@ -47,7 +47,7 @@ body.auth-locked .app-shell { display: none; }
   position: relative;
 }
 .auth-gate-body {
-  padding: 138px 8px 0;
+  padding: 58px 8px 0;
 }
 .auth-gate-welcome {
   display: grid;
@@ -57,12 +57,39 @@ body.auth-locked .app-shell { display: none; }
   text-align: left;
   color: #365e5d;
 }
+.auth-brand-lockup {
+  display: inline-grid;
+  justify-items: center;
+  gap: 3px;
+  margin-bottom: 48px;
+  color: #4a3932;
+}
+.auth-brand-mark {
+  width: 34px;
+  height: 34px;
+  background: center / contain no-repeat url("./assets/ui/leaf-sand.png");
+  opacity: 0.9;
+}
+.auth-brand-name {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(27px, 8vw, 38px);
+  line-height: 1;
+  letter-spacing: 0;
+}
+.auth-brand-tagline {
+  margin: 0;
+  font-size: clamp(13px, 3.6vw, 16px);
+  line-height: 1.5;
+  color: #6c5b54;
+  letter-spacing: 0;
+}
 .auth-gate-title {
   margin: 0;
-  font-size: clamp(35px, 11vw, 54px);
-  line-height: 1.12;
-  color: #2e6967;
-  letter-spacing: 0.02em;
+  font-size: clamp(36px, 10.2vw, 56px);
+  line-height: 1.18;
+  color: #245f5f;
+  letter-spacing: 0;
 }
 .auth-gate-subtitle {
   margin: 18px 0 0;
@@ -71,11 +98,12 @@ body.auth-locked .app-shell { display: none; }
   color: #41696a;
 }
 .auth-gate-divider {
-  margin: 24px 0 24px;
+  margin: 22px 0 22px;
   display: flex;
   align-items: center;
   gap: 16px;
   color: rgba(114, 130, 113, 0.45);
+  width: min(100%, 360px);
 }
 .auth-gate-divider span {
   height: 1px;
@@ -90,28 +118,35 @@ body.auth-locked .app-shell { display: none; }
 }
 .auth-gate-copy {
   display: grid;
-  gap: 16px;
-  max-width: 292px;
-  font-size: clamp(16px, 4.4vw, 20px);
-  line-height: 1.82;
-  color: #576463;
+  gap: 7px;
+  max-width: 430px;
+  font-size: clamp(16px, 4.35vw, 20px);
+  line-height: 1.78;
+  color: #465c5d;
 }
 .auth-gate-copy p {
   margin: 0;
 }
+.auth-sync-hint {
+  margin: 20px 0 0;
+  max-width: 430px;
+  color: #5f6968;
+  font-size: clamp(14px, 3.7vw, 17px);
+  line-height: 1.7;
+}
 .auth-gate-actions {
   display: grid;
-  gap: 18px;
-  margin-top: 78px;
+  gap: 14px;
+  margin-top: 34px;
 }
 .auth-cta {
-  width: min(86%, 360px);
-  min-height: 64px;
+  width: min(86%, 420px);
+  min-height: 62px;
   border-radius: 22px;
   padding: 16px 22px;
-  font-size: clamp(18px, 5vw, 24px);
+  font-size: clamp(17px, 4.6vw, 22px);
   font-weight: 800;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -875,46 +910,59 @@ body.account-settings-open {
   .site-footer { padding-bottom: 34px; }
   .auth-gate {
     padding-inline: 16px;
-    padding-top: 22px;
-    padding-bottom: 22px;
-    background-position: center, center, 60% center;
+    padding-top: 18px;
+    padding-bottom: 18px;
+    background-position: center, center, 64% center;
   }
   .auth-gate-shell {
     width: min(100%, 430px);
   }
   .auth-gate-body {
-    padding-top: 120px;
+    padding-top: 48px;
+  }
+  .auth-brand-lockup {
+    margin-bottom: 38px;
+  }
+  .auth-brand-mark {
+    width: 30px;
+    height: 30px;
   }
   .auth-gate-title {
-    font-size: clamp(33px, 11.4vw, 47px);
+    font-size: clamp(32px, 9.6vw, 43px);
   }
-  .auth-gate-subtitle {
-    font-size: clamp(16px, 4.9vw, 20px);
+  .auth-brand-name {
+    font-size: clamp(26px, 7.8vw, 34px);
   }
   .auth-gate-divider {
-    margin: 22px 0 20px;
+    margin: 18px 0 18px;
+    width: min(100%, 300px);
   }
   .auth-gate-copy {
-    max-width: 320px;
+    max-width: 330px;
     font-size: 15px;
-    line-height: 1.84;
+    line-height: 1.75;
+  }
+  .auth-sync-hint {
+    margin-top: 16px;
+    max-width: 330px;
+    font-size: 14px;
   }
   .auth-gate-actions {
-    gap: 14px;
-    margin-top: 72px;
+    gap: 12px;
+    margin-top: 26px;
   }
   .auth-cta {
-    width: min(86%, 336px);
-    min-height: 60px;
+    width: min(90%, 336px);
+    min-height: 58px;
     padding: 16px 20px;
-    font-size: 17px;
+    font-size: 16px;
   }
 }
 
 @media (orientation: landscape) {
   .auth-gate {
     background-image:
-      linear-gradient(90deg, rgba(255, 252, 246, 0.84) 0%, rgba(255, 252, 246, 0.52) 42%, rgba(255, 252, 246, 0.08) 100%),
+      linear-gradient(90deg, rgba(255, 252, 246, 0.88) 0%, rgba(255, 252, 246, 0.56) 42%, rgba(255, 252, 246, 0.08) 100%),
       linear-gradient(180deg, rgba(252, 247, 237, 0.28) 0%, rgba(249, 242, 229, 0.14) 48%, rgba(247, 239, 224, 0.06) 100%),
       url("./assets/ui/auth-bg-landscape.jpg");
     background-position: center, center, center center;
@@ -924,7 +972,6 @@ body.account-settings-open {
 @media (orientation: landscape) and (min-width: 768px) {
   .auth-gate-copy {
     max-width: none;
-    white-space: nowrap;
   }
 }
 
@@ -939,7 +986,52 @@ body.account-settings-open {
 
   .auth-gate-copy {
     max-width: none;
-    white-space: nowrap;
+  }
+
+  .auth-gate-body {
+    padding-top: 42px;
+  }
+
+  .auth-gate-shell {
+    width: min(44vw, 560px);
+  }
+
+  .auth-brand-lockup {
+    margin-bottom: 30px;
+  }
+
+  .auth-brand-mark {
+    width: 30px;
+    height: 30px;
+  }
+
+  .auth-brand-name {
+    font-size: 34px;
+  }
+
+  .auth-gate-title {
+    font-size: clamp(40px, 4.2vw, 52px);
+  }
+
+  .auth-gate-divider {
+    margin: 16px 0;
+  }
+
+  .auth-gate-copy {
+    font-size: 18px;
+    line-height: 1.62;
+  }
+
+  .auth-sync-hint {
+    margin-top: 14px;
+  }
+
+  .auth-gate-actions {
+    margin-top: 24px;
+  }
+
+  .auth-cta {
+    min-height: 58px;
   }
 }
 

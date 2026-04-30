@@ -276,8 +276,8 @@ function removeRetiredInterfaceElements() {
   document.getElementById('gate-reset-password-btn')?.replaceChildren(document.createTextNode('忘記密碼'));
   document.getElementById('reset-password-btn')?.replaceChildren(document.createTextNode('忘記密碼'));
   document.querySelector('.sidebar h1 + .muted')?.remove();
-  const authCopy = document.querySelector('.auth-gate-copy');
-  if (authCopy) authCopy.textContent = '建立免費帳戶後，可在手機與桌機間同步資料。';
+  const authSyncHint = document.querySelector('.auth-sync-hint');
+  if (authSyncHint) authSyncHint.textContent = '建立免費帳戶後，可在手機與桌機間同步資料。';
 
   document.querySelectorAll('.auth-feature-item span').forEach(span => {
     if (span.textContent.includes('快照')) span.textContent = span.textContent.replace('、快照', '').replace('與快照', '');

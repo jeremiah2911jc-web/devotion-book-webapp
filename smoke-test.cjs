@@ -182,7 +182,7 @@ async function verifyWelcomeScreen(page, results) {
     throw new Error(`welcome screen CTA 數量錯誤：預期 2，實際 ${visibleCtaCount}`);
   }
   const ctaTexts = (await ctas.allTextContents()).map((text) => text.trim()).filter(Boolean);
-  if (ctaTexts.length !== 2 || ctaTexts[0] !== '建立免費帳戶' || ctaTexts[1] !== '登入已有帳戶') {
+  if (ctaTexts.length !== 2 || ctaTexts[0] !== '開始寫我的第一篇靈修' || ctaTexts[1] !== '我已經有帳戶了') {
     throw new Error(`welcome screen CTA 文字錯誤：${ctaTexts.join(' / ')}`);
   }
 
@@ -196,7 +196,7 @@ async function verifyWelcomeScreen(page, results) {
     'welcome screen 不應顯示三橫線 menu'
   );
 
-  results.push('welcome screen 僅保留建立免費帳戶 / 登入已有帳戶兩個入口');
+  results.push('welcome screen 僅保留開始寫我的第一篇靈修 / 我已經有帳戶了兩個入口');
 }
 
 async function verifyAuthModal(page, triggerSelector, expectedTitle, expectedSubmitText, results) {
