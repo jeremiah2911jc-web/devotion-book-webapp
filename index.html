@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-title" content="DEVOTION" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>DEVOTION｜與神更親近的每一天</title>
-  <link rel="stylesheet" href="./styles.css?v=mobile-sync-layout-fix-20260430" />
+  <link rel="stylesheet" href="./styles.css?v=voice-input-guidance-20260430" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -400,7 +400,7 @@
               <label>標籤（以逗號分隔）
                 <input id="note-tags" placeholder="例：恩典, 悔改, 盼望" />
               </label>
-              <label>摘要
+              <label><span class="field-label-row"><span>摘要</span><span class="desktop-voice-input-hint">語音輸入：Windows 鍵 + H；Mac 使用聽寫。</span></span>
                 <textarea id="note-summary" rows="3" placeholder="這篇內容的重點摘要"></textarea>
               </label>
               <p class="caption note-summary-hint">可在文章完成後整理重點，供列表預覽或未來成書時選擇顯示。</p>
@@ -417,7 +417,7 @@
                 <button type="button" id="markdown-purple-btn" class="ghost-btn small markdown-toolbar-btn">紫字</button>
               </div>
               <p id="markdown-syntax-hint" class="caption markdown-syntax-hint hidden" aria-live="polite"></p>
-              <label>內容
+              <label><span class="field-label-row"><span>內容</span><span class="desktop-voice-input-hint">語音輸入：Windows 鍵 + H；Mac 使用聽寫。</span></span>
                 <textarea id="note-content" rows="14" required placeholder="輸入靈修札記全文"></textarea>
               </label>
               <div class="row gap-sm wrap">
@@ -741,6 +741,6 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./app.js?v=mobile-sync-layout-fix-20260430"></script>
+  <script type="module" src="./app.js?v=voice-input-guidance-20260430"></script>
 </body>
 </html>

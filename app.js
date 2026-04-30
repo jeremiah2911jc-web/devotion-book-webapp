@@ -1127,6 +1127,15 @@ function ensureOperationManualUi() {
               <div class="manual-card"><h3>內容</h3><p>完整寫下觀察、默想、禱告、回應與操練。段落短一點，手機閱讀會更舒服。</p></div>
             </div>
 
+            <section id="manual-voice-input" class="manual-subsection">
+              <h3>語音輸入</h3>
+              <p>如果你不方便打字，也可以使用手機或電腦內建的語音輸入法。</p>
+              <p>在手機上，點進「摘要」或「內容」欄位後，可以使用鍵盤上的麥克風按鈕，直接用中文或英文說出想記錄的內容。</p>
+              <p>在 Windows 電腦上，可以先點進輸入欄位，再按 Windows 鍵 + H，開啟系統語音輸入。</p>
+              <p>在 Mac 上，可以使用系統內建的聽寫功能。</p>
+              <p>語音輸入完成後，建議再檢查一次文字，特別是人名、經文、標點與專有名詞。確認無誤後，再按「儲存札記」。</p>
+            </section>
+
             <section id="manual-toolbar-guide" class="manual-subsection">
               <h3>工具列怎麼用</h3>
               <p>內容欄上方的工具列會幫你插入常用格式。先選取一段文字再按工具，或把游標放在想插入的位置後按工具，都可以快速加入格式標記。</p>
@@ -1297,6 +1306,7 @@ function ensureOperationManualUi() {
             <div class="manual-faq-list">
               <div class="manual-faq-item"><h3>找不到剛寫的札記怎麼辦？</h3><p>先到「札記庫」確認。若有使用搜尋或篩選，請點「清除篩選」。也可以回到「寫札記」確認是否已儲存成功。</p></div>
               <div class="manual-faq-item"><h3>禱告或代禱事項要寫在哪裡？</h3><p>可以直接寫在「寫札記」裡。分類可以選「禱告」或「代禱」，再用標籤補充對象或主題。日後可以在札記庫用分類或標籤搜尋，也可以整理成禱告操練或代禱紀錄。</p></div>
+              <div class="manual-faq-item"><h3>可以用語音輸入寫札記嗎？</h3><p>可以。你可以使用手機或電腦內建的語音輸入法。手機可使用鍵盤上的麥克風；Windows 可按 Windows 鍵 + H；Mac 可使用系統聽寫。語音輸入後，建議再檢查文字內容，避免經文、人名或標點辨識錯誤。</p></div>
               <div class="manual-faq-item"><h3>為什麼編輯區會出現 ##、{red}、{/red} 這些符號？</h3><p>這些是格式標記，用來讓系統在預覽與成書時轉成小標題或重點色。寫作時會先看到標記，點「預覽文章」後可以確認實際效果。</p></div>
               <div class="manual-faq-item"><h3>為什麼 {red}##重點{/red} 沒有正常變成小標題？</h3><p>小標題的 <code>##</code> 需要放在一行最前面，不能被顏色標記包住。如果想使用小標題，請寫成「## 重點整理」。如果想標記紅字，請另起一行寫「{red}這一句是重點。{/red}」。</p></div>
               <div class="manual-faq-item"><h3>小標題和重點色可以一起用嗎？</h3><p>建議分開使用。小標題用來整理文章結構，重點色用來強調正文短句。比較好的方式是讓小標題獨立一行，重點句另起一行。</p></div>

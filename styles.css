@@ -247,6 +247,20 @@ h3 { color: #35585d; }
 .mt-md { margin-top: 14px; }
 .mt-lg { margin-top: 20px; }
 label { display: grid; gap: 6px; font-size: 14px; }
+.field-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.desktop-voice-input-hint {
+  display: none;
+  color: rgba(94, 117, 116, 0.74);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  text-align: right;
+}
 input, textarea, select {
   width: 100%; padding: 11px 12px; border: 1px solid rgba(191, 211, 208, 0.9); border-radius: 14px;
   background: rgba(255,255,255,0.96); color: var(--text);
@@ -6456,6 +6470,12 @@ body:not(.auth-locked) .home-recent-subtitle {
 
 body:not(.auth-locked) .panel-header-actions-only {
   justify-content: flex-end;
+}
+
+@media (min-width: 1024px) {
+  .desktop-voice-input-hint {
+    display: inline-flex;
+  }
 }
 
 body:not(.auth-locked) .library-panel > .panel-header {
