@@ -2043,7 +2043,7 @@ async function requestDangerRestoreConfirmation(backup = {}) {
     confirmText: '確認還原',
     danger: true,
     requiredText: 'RESTORE',
-    requiredTextLabel: '請輸入 RESTORE 才能繼續覆蓋還原',
+    requiredTextLabel: '請輸入 RESTORE 以確認還原',
   });
 }
 
