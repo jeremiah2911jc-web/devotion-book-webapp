@@ -34,11 +34,11 @@ const SUPPORT_PAYMENT_INFO = {
 };
 const CURRENT_NOTE_DRAFT_KEY = 'devotion-current-note-draft';
 const CURRENT_NOTE_DRAFT_DEBOUNCE_MS = 700;
-const SIGNED_URL_CACHE_TTL_SECONDS = 60 * 60;
-const SIGNED_URL_CACHE_REFRESH_BUFFER_MS = 60 * 1000;
+const SIGNED_URL_CACHE_TTL_SECONDS = 6 * 60 * 60;
+const SIGNED_URL_CACHE_REFRESH_BUFFER_MS = 10 * 60 * 1000;
 const EGRESS_DEBUG = false;
-const CLOUD_RELOAD_DEBOUNCE_MS = 1000;
-const PASSIVE_CLOUD_RELOAD_MIN_INTERVAL_MS = 30 * 1000;
+const CLOUD_RELOAD_DEBOUNCE_MS = 15 * 1000;
+const PASSIVE_CLOUD_RELOAD_MIN_INTERVAL_MS = 5 * 60 * 1000;
 const IMPORTED_EPUB_SAFE_TAGS = new Set([
   'p',
   'br',
@@ -345,6 +345,7 @@ const state = {
   currentNoteDraftNotice: null,
   profileAvatarUrlCache: new Map(),
   libraryCoverUrlCache: new Map(),
+  libraryCoverRefreshPromise: null,
   syncStatus: '本機模式',
   syncDetail: '目前資料只保存在這台裝置。',
   lastSyncAt: '',
@@ -352,6 +353,8 @@ const state = {
   cloudReloadPromise: null,
   pendingCloudReloadReason: '',
   lastPassiveCloudReloadAt: 0,
+  loadAllDataPromise: null,
+  lastCloudFullLoadAt: 0,
   todayDevotions: null,
   todayDevotionsStatus: 'idle',
   todayDevotionsPromise: null,
@@ -370,6 +373,7 @@ const state = {
     data: { ...EMPTY_ADMIN_USAGE },
     promise: null,
   },
+  epubDownloadPromises: new Map(),
   backupImportPreview: {
     status: 'idle',
     error: '',
@@ -410,6 +414,12 @@ function estimatePayloadBytes(value) {
 function egressDebugLog(label, detail = {}) {
   if (!EGRESS_DEBUG) return;
   console.info(`[egress] ${label}`, detail);
+}
+function egressGuardInfo(label, detail = {}) {
+  console.info(`[egress-guard] ${label}`, detail);
+}
+function egressGuardWarn(label, detail = {}) {
+  console.warn(`[egress-guard] ${label}`, detail);
 }
 function resolveLoadReason({ reason = '', syncReason = '' } = {}) {
   return String(reason || syncReason || 'unspecified');
@@ -1371,7 +1381,7 @@ function shouldSkipPassiveCloudReload(reason, minIntervalMs = 0) {
   const now = Date.now();
   const elapsed = now - Number(state.lastPassiveCloudReloadAt || 0);
   if (elapsed < minIntervalMs) {
-    egressDebugLog('cloudReload:skip-passive', { reason, elapsed, minIntervalMs });
+    egressGuardInfo('cloudReload:skip-passive', { reason, elapsed, minIntervalMs });
     return true;
   }
   state.lastPassiveCloudReloadAt = now;
@@ -1389,6 +1399,8 @@ function requestCloudReload(reason = '雲端更新', options = {}) {
     silent: options.silent ?? true,
     syncReason: reason,
     reason,
+    minIntervalMs: options.minIntervalMs || 0,
+    force: !!options.force,
   }).catch(error => {
     if (options.handleError === false) {
       console.error(error);
@@ -1421,7 +1433,13 @@ function setupCloudRealtime() {
       schema: 'public',
       table,
       filter: `user_id=eq.${userId}`,
-    }, () => scheduleCloudReload('其他裝置有更新，已重新同步。'));
+    }, () => {
+      setSyncState({ status: '等待同步', detail: '背景資料有更新，稍後會自動同步。' });
+      scheduleCloudReload('其他裝置有更新，已重新同步。', {
+        minIntervalMs: PASSIVE_CLOUD_RELOAD_MIN_INTERVAL_MS,
+        debounceMs: CLOUD_RELOAD_DEBOUNCE_MS,
+      });
+    });
   });
   channel.subscribe((status) => {
     if (status === 'SUBSCRIBED') {
@@ -1545,6 +1563,24 @@ async function downloadSystemBackup() {
   requireUser();
   if (!isAdminUser()) throw new Error('只有管理者可以下載系統備份。');
   if (!state.supabase) throw new Error('系統備份需要 Supabase 雲端模式。');
+  const confirmed = await openTwoStepConfirmDialog({
+    first: {
+      title: '確定要執行系統備份嗎？',
+      message: '系統備份會下載大量雲端資料，可能增加 Supabase Egress。確定要繼續嗎？',
+      confirmText: '繼續備份',
+      danger: true,
+    },
+    second: {
+      title: '再次確認系統備份',
+      message: '請再次確認是否執行系統備份。若目前正在處理流量異常，建議暫停備份。',
+      confirmText: '確認執行備份',
+      danger: true,
+    },
+  });
+  if (!confirmed) {
+    egressGuardWarn('systemBackup:cancelled-before-fetch');
+    return;
+  }
   const { data } = await state.supabase.auth.getSession();
   const sessionAccessToken = String(data?.session?.access_token || '').trim();
   if (!sessionAccessToken) throw new Error('目前找不到有效的登入 session，請重新登入後再試。');
@@ -2570,6 +2606,12 @@ function openConfirmDialog({
   });
 }
 
+async function openTwoStepConfirmDialog({ first = {}, second = {} } = {}) {
+  const firstConfirmed = await openConfirmDialog(first);
+  if (!firstConfirmed) return false;
+  return openConfirmDialog(second);
+}
+
 function copyTextFallback(text) {
   const textarea = document.createElement('textarea');
   textarea.value = text;
@@ -3018,7 +3060,8 @@ function appendAvatarCacheBust(url = '', updatedAt = '') {
   const src = String(url || '').trim();
   if (!src) return '';
   if (/^(data|blob):/i.test(src)) return src;
-  const token = encodeURIComponent(updatedAt || state.profileAvatar.updatedAt || nowIso());
+  const token = encodeURIComponent(updatedAt || state.profileAvatar.updatedAt || '');
+  if (!token) return src;
   return `${src}${src.includes('?') ? '&' : '?'}v=${token}`;
 }
 
@@ -3704,66 +3747,91 @@ function requireUser() {
   if (!state.currentUser) throw new Error('請先登入或以本機模式建立測試帳號。');
 }
 
-async function loadAllData({ silent = false, syncReason = '', reason = '' } = {}) {
+async function loadAllData({ silent = false, syncReason = '', reason = '', minIntervalMs = 0, force = false } = {}) {
   const loadReason = resolveLoadReason({ reason, syncReason });
-  egressDebugLog('loadAllData:start', { reason: loadReason, silent });
-  await refreshImportedLibraryState();
-  if (state.supabase && state.currentUser) {
-    const userId = state.currentUser.id;
-    setSyncState({ status: '同步中', detail: '正在從雲端讀取資料…' });
-    if (!silent) refreshUi();
-    const [notesRes, booksRes, snapshotsRes] = await Promise.all([
-      state.supabase.from('devotion_notes').select('*').eq('user_id', userId).order('updated_at', { ascending: false }),
-      state.supabase.from('book_projects').select('*').eq('user_id', userId).order('updated_at', { ascending: false }),
-      state.supabase.from('book_snapshots').select('id,user_id,book_project_id,book_id:book_project_id,created_at').eq('user_id', userId).order('created_at', { ascending: false }),
-    ]);
-    if (notesRes.error) throw notesRes.error;
-    if (booksRes.error) throw booksRes.error;
-    if (snapshotsRes.error) throw snapshotsRes.error;
-    egressDebugLog('loadAllData:tables', {
-      reason: loadReason,
-      notes: { count: (notesRes.data || []).length, bytes: estimatePayloadBytes(notesRes.data || []) },
-      books: { count: (booksRes.data || []).length, bytes: estimatePayloadBytes(booksRes.data || []) },
-      snapshots: { count: (snapshotsRes.data || []).length, bytes: estimatePayloadBytes(snapshotsRes.data || []) },
-    });
-    state.notes = notesRes.data || [];
-    state.books = (booksRes.data || []).map(book => ({
-      ...book,
-      chapters: parseMaybeJson(book.chapters, []),
-      cover_data_url: book.cover_data_url || '',
-      language: resolveBookLanguage(book.language),
-      include_chapter_summary: !!book.include_chapter_summary,
-    }));
-    state.snapshots = (snapshotsRes.data || []).map(s => ({ ...s, snapshot_json: parseMaybeJson(s.snapshot_json, null) }));
-    await loadCloudLibrary(userId, { reason: loadReason });
-    await syncPendingReadingProgress();
-    markCloudSynced(syncReason || '雲端資料已讀取完成。');
-  } else {
-    const userId = getUserId();
-    state.notes = loadJson(STORAGE_KEYS.notes, []).filter(item => item.user_id === userId);
-    state.books = loadJson(STORAGE_KEYS.books, []).filter(item => item.user_id === userId).map(book => ({
-      ...book,
-      language: resolveBookLanguage(book.language),
-      include_chapter_summary: !!book.include_chapter_summary,
-    }));
-    state.snapshots = loadJson(STORAGE_KEYS.snapshots, []).filter(item => item.user_id === userId);
-    clearCloudLibrary('書櫃同步需要登入 Supabase 帳號。');
-    setSyncState({
-      status: state.supabase ? '尚未登入' : '本機模式',
-      detail: state.supabase ? '已設定雲端，但目前還沒有登入帳號。' : '目前資料只保存在這台裝置。',
-      at: state.supabase ? state.lastSyncAt : '',
-    });
+  const isCloudLoad = !!(state.supabase && state.currentUser);
+  if (isCloudLoad && state.loadAllDataPromise) {
+    egressGuardInfo('loadAllData:reuse-in-flight', { reason: loadReason });
+    return state.loadAllDataPromise;
   }
-  if (!state.books.find(b => b.id === state.selectedBookId)) {
-    state.selectedBookId = state.books[0]?.id || null;
+  if (isCloudLoad && state.cloudReloadPromise && state.cloudReloadPromise !== state.loadAllDataPromise) {
+    egressGuardInfo('loadAllData:reuse-cloud-reload', { reason: loadReason });
+    return state.cloudReloadPromise;
   }
-  const validBookIds = new Set(state.books.map(book => book.id));
-  Object.keys(state.bookArrangementDrafts).forEach(bookId => {
-    if (!validBookIds.has(bookId)) delete state.bookArrangementDrafts[bookId];
+  if (isCloudLoad && !force && minIntervalMs) {
+    const elapsed = Date.now() - Number(state.lastCloudFullLoadAt || 0);
+    if (elapsed < minIntervalMs) {
+      egressGuardInfo('loadAllData:skip-recent-cloud-load', { reason: loadReason, elapsed, minIntervalMs });
+      return false;
+    }
+  }
+  const loadTask = (async () => {
+    egressDebugLog('loadAllData:start', { reason: loadReason, silent });
+    if (isCloudLoad) state.lastCloudFullLoadAt = Date.now();
+    await refreshImportedLibraryState();
+    if (state.supabase && state.currentUser) {
+      const userId = state.currentUser.id;
+      setSyncState({ status: '同步中', detail: '正在從雲端讀取資料…' });
+      if (!silent) refreshUi();
+      const [notesRes, booksRes, snapshotsRes] = await Promise.all([
+        state.supabase.from('devotion_notes').select('*').eq('user_id', userId).order('updated_at', { ascending: false }),
+        state.supabase.from('book_projects').select('*').eq('user_id', userId).order('updated_at', { ascending: false }),
+        state.supabase.from('book_snapshots').select('id,user_id,book_project_id,book_id:book_project_id,created_at').eq('user_id', userId).order('created_at', { ascending: false }),
+      ]);
+      if (notesRes.error) throw notesRes.error;
+      if (booksRes.error) throw booksRes.error;
+      if (snapshotsRes.error) throw snapshotsRes.error;
+      egressDebugLog('loadAllData:tables', {
+        reason: loadReason,
+        notes: { count: (notesRes.data || []).length, bytes: estimatePayloadBytes(notesRes.data || []) },
+        books: { count: (booksRes.data || []).length, bytes: estimatePayloadBytes(booksRes.data || []) },
+        snapshots: { count: (snapshotsRes.data || []).length, bytes: estimatePayloadBytes(snapshotsRes.data || []) },
+      });
+      state.notes = notesRes.data || [];
+      state.books = (booksRes.data || []).map(book => ({
+        ...book,
+        chapters: parseMaybeJson(book.chapters, []),
+        cover_data_url: book.cover_data_url || '',
+        language: resolveBookLanguage(book.language),
+        include_chapter_summary: !!book.include_chapter_summary,
+      }));
+      state.snapshots = (snapshotsRes.data || []).map(s => ({ ...s, snapshot_json: parseMaybeJson(s.snapshot_json, null) }));
+      await loadCloudLibrary(userId, { reason: loadReason });
+      await syncPendingReadingProgress();
+      markCloudSynced(syncReason || '雲端資料已讀取完成。');
+    } else {
+      const userId = getUserId();
+      state.notes = loadJson(STORAGE_KEYS.notes, []).filter(item => item.user_id === userId);
+      state.books = loadJson(STORAGE_KEYS.books, []).filter(item => item.user_id === userId).map(book => ({
+        ...book,
+        language: resolveBookLanguage(book.language),
+        include_chapter_summary: !!book.include_chapter_summary,
+      }));
+      state.snapshots = loadJson(STORAGE_KEYS.snapshots, []).filter(item => item.user_id === userId);
+      clearCloudLibrary('書櫃同步需要登入 Supabase 帳號。');
+      setSyncState({
+        status: state.supabase ? '尚未登入' : '本機模式',
+        detail: state.supabase ? '已設定雲端，但目前還沒有登入帳號。' : '目前資料只保存在這台裝置。',
+        at: state.supabase ? state.lastSyncAt : '',
+      });
+    }
+    if (!state.books.find(b => b.id === state.selectedBookId)) {
+      state.selectedBookId = state.books[0]?.id || null;
+    }
+    const validBookIds = new Set(state.books.map(book => book.id));
+    Object.keys(state.bookArrangementDrafts).forEach(bookId => {
+      if (!validBookIds.has(bookId)) delete state.bookArrangementDrafts[bookId];
+    });
+    syncBookArrangementState(state.selectedBookId || '');
+    await refreshProfileAvatar();
+    refreshUi();
+  })();
+  if (!isCloudLoad) return loadTask;
+  const guardedPromise = loadTask.finally(() => {
+    if (state.loadAllDataPromise === guardedPromise) state.loadAllDataPromise = null;
   });
-  syncBookArrangementState(state.selectedBookId || '');
-  await refreshProfileAvatar();
-  refreshUi();
+  state.loadAllDataPromise = guardedPromise;
+  return state.loadAllDataPromise;
 }
 
 function parseMaybeJson(value, fallback) {
@@ -7588,34 +7656,47 @@ function getLibraryBook(bookId) {
 }
 
 async function refreshLibraryCoverUrls() {
-  const entries = getSystemLibraryBooks().map(book => [book.id, book.cover_image_path || '']);
-  if (state.supabase && state.currentUser) {
-    let hits = 0;
-    let misses = 0;
-    let errors = 0;
-    const cloudEntries = await Promise.all(cloudLibrary.books.map(async book => {
-      if (!book.cover_image_path) return [book.id, ''];
-      const cacheKey = getSignedUrlCacheKey(book.cover_image_path, book.cover_updated_at || book.updated_at || book.created_at || '');
-      const cachedUrl = getCachedSignedUrl(state.libraryCoverUrlCache, cacheKey);
-      if (cachedUrl) {
-        hits += 1;
-        return [book.id, cachedUrl];
-      }
-      misses += 1;
-      const { data, error } = await state.supabase.storage.from(cloudLibrary.bucket).createSignedUrl(book.cover_image_path, SIGNED_URL_CACHE_TTL_SECONDS);
-      if (error) {
-        errors += 1;
-        state.libraryCoverUrlCache.delete(cacheKey);
-        return [book.id, ''];
-      }
-      return [book.id, setCachedSignedUrl(state.libraryCoverUrlCache, cacheKey, data?.signedUrl || '')];
-    }));
-    egressDebugLog('libraryCoverSignedUrls', { books: cloudLibrary.books.length, hits, misses, errors });
-    entries.push(...cloudEntries);
+  if (state.libraryCoverRefreshPromise) {
+    egressGuardInfo('libraryCoverSignedUrls:reuse-in-flight');
+    return state.libraryCoverRefreshPromise;
   }
-  cloudLibrary.coverUrls = new Map(entries);
-  renderLibrary();
-  renderDesktopBookshelfCard();
+  const refreshTask = (async () => {
+    const entries = getSystemLibraryBooks().map(book => [book.id, book.cover_image_path || '']);
+    if (state.supabase && state.currentUser) {
+      let hits = 0;
+      let misses = 0;
+      let errors = 0;
+      const cloudEntries = await Promise.all(cloudLibrary.books.map(async book => {
+        if (!book.cover_image_path) return [book.id, ''];
+        const cacheKey = getSignedUrlCacheKey(book.cover_image_path, book.cover_updated_at || book.updated_at || book.created_at || '');
+        const cachedUrl = getCachedSignedUrl(state.libraryCoverUrlCache, cacheKey);
+        if (cachedUrl) {
+          hits += 1;
+          return [book.id, cachedUrl];
+        }
+        misses += 1;
+        const { data, error } = await state.supabase.storage.from(cloudLibrary.bucket).createSignedUrl(book.cover_image_path, SIGNED_URL_CACHE_TTL_SECONDS);
+        if (error) {
+          errors += 1;
+          state.libraryCoverUrlCache.delete(cacheKey);
+          return [book.id, ''];
+        }
+        return [book.id, setCachedSignedUrl(state.libraryCoverUrlCache, cacheKey, data?.signedUrl || '')];
+      }));
+      egressDebugLog('libraryCoverSignedUrls', { books: cloudLibrary.books.length, hits, misses, errors });
+      entries.push(...cloudEntries);
+    }
+    cloudLibrary.coverUrls = new Map(entries);
+    renderLibrary();
+    renderDesktopBookshelfCard();
+  })();
+  const guardedRefreshPromise = refreshTask.finally(() => {
+    if (state.libraryCoverRefreshPromise === guardedRefreshPromise) {
+      state.libraryCoverRefreshPromise = null;
+    }
+  });
+  state.libraryCoverRefreshPromise = guardedRefreshPromise;
+  return guardedRefreshPromise;
 }
 
 function renderLibrary() {
@@ -7664,7 +7745,7 @@ function renderLibrary() {
     const deleteAction = isSystemLibraryBook(book)
       ? ''
       : `<button class="danger-btn" data-delete-library-book="${book.id}" data-library-source="${book.source}">刪除書籍</button>`;
-    return `<article class="library-book ${selected ? 'selected' : ''} ${book.source === 'imported_epub' ? 'imported-book' : ''}"><div class="library-cover">${coverUrl ? `<img src="${coverUrl}" alt="${escapeHtml(book.title)}封面" />` : fallbackCover}</div><div class="library-book-main"><div><div class="library-book-top"><h3>${escapeHtml(book.title)}</h3>${sourceBadge}</div><div class="card-meta"><span>${escapeHtml(book.author || '未填作者')}</span><span>建立：${createdAt ? formatDate(createdAt) : '未記錄'}</span><span>最後閱讀：${book.last_read_at ? formatDate(book.last_read_at) : '尚未閱讀'}</span><span>${detailLabel}</span></div><p class="library-book-description">${escapeHtml(description)}</p></div><div class="library-progress"><span>${Math.round(progress * 100)}%</span><div><i style="width:${Math.round(progress * 100)}%"></i></div></div><div class="card-actions"><button class="primary-btn" data-open-library-book="${book.id}" data-library-source="${book.source}">開啟閱讀</button><button class="ghost-btn" data-download-library-epub="${book.id}" data-library-source="${book.source}">下載 EPUB</button>${deleteAction}</div></div></article>`;
+    return `<article class="library-book ${selected ? 'selected' : ''} ${book.source === 'imported_epub' ? 'imported-book' : ''}"><div class="library-cover">${coverUrl ? `<img src="${coverUrl}" alt="${escapeHtml(book.title)}封面" loading="lazy" decoding="async" />` : fallbackCover}</div><div class="library-book-main"><div><div class="library-book-top"><h3>${escapeHtml(book.title)}</h3>${sourceBadge}</div><div class="card-meta"><span>${escapeHtml(book.author || '未填作者')}</span><span>建立：${createdAt ? formatDate(createdAt) : '未記錄'}</span><span>最後閱讀：${book.last_read_at ? formatDate(book.last_read_at) : '尚未閱讀'}</span><span>${detailLabel}</span></div><p class="library-book-description">${escapeHtml(description)}</p></div><div class="library-progress"><span>${Math.round(progress * 100)}%</span><div><i style="width:${Math.round(progress * 100)}%"></i></div></div><div class="card-actions"><button class="primary-btn" data-open-library-book="${book.id}" data-library-source="${book.source}">開啟閱讀</button><button class="ghost-btn" data-download-library-epub="${book.id}" data-library-source="${book.source}">下載 EPUB</button>${deleteAction}</div></div></article>`;
   }).join('');
 }
 
@@ -7804,8 +7885,7 @@ async function downloadLibraryBookEpub(bookId) {
   const book = getLibraryBook(bookId);
   if (!book) throw new Error('找不到這本書。');
   if (!book.epub_file_path) throw new Error('這本書沒有 EPUB 儲存路徑，請重新匯出後再下載。');
-  const { data, error } = await state.supabase.storage.from(cloudLibrary.bucket).download(book.epub_file_path);
-  if (error) throw new Error(buildStorageError(error, '下載 EPUB 失敗'));
+  const data = await downloadCloudEpubBlob(book, { prompt: true });
   const safeTitle = String(book.title || 'book').replace(/[\\/:*?"<>|]+/g, '').trim() || 'book';
   downloadBlob(`${safeTitle}.epub`, data);
   showToast('EPUB 已下載。');
@@ -7830,14 +7910,49 @@ async function downloadImportedLibraryBookEpub(bookId) {
   showToast('EPUB 已下載。');
 }
 
-async function loadEpubForReading(book) {
+async function confirmCloudEpubDownload(book) {
+  const bookId = book?.id || '';
+  const confirmed = await openConfirmDialog({
+    title: '從雲端下載 EPUB？',
+    message: '此書需要從雲端下載 EPUB 檔案，可能增加流量。是否繼續？',
+    confirmText: '繼續下載',
+    danger: false,
+  });
+  if (!confirmed) egressGuardWarn('cloudEpubDownload:cancelled', { bookId });
+  return confirmed;
+}
+
+async function downloadCloudEpubBlob(book, { prompt = true } = {}) {
+  requireCloudLibrary();
+  if (!book?.id) throw new Error('找不到這本書。');
   const cached = await getCachedEpub(book.id);
-  if (cached) return cached;
-  if (!book.epub_file_path) throw new Error('這本書沒有 EPUB 儲存路徑，請重新匯出。');
-  const { data, error } = await state.supabase.storage.from(cloudLibrary.bucket).download(book.epub_file_path);
-  if (error) throw new Error(buildStorageError(error, '下載 EPUB 失敗'));
-  await cacheEpubBlob(book.id, data);
-  return data;
+  if (cached) {
+    egressGuardInfo('cloudEpubDownload:cache-hit', { bookId: book.id });
+    return cached;
+  }
+  const existing = state.epubDownloadPromises.get(book.id);
+  if (existing) {
+    egressGuardInfo('cloudEpubDownload:reuse-in-flight', { bookId: book.id });
+    return existing;
+  }
+  const downloadTask = (async () => {
+    if (prompt && !(await confirmCloudEpubDownload(book))) {
+      throw new Error('已取消雲端 EPUB 下載。');
+    }
+    if (!book.epub_file_path) throw new Error('這本書沒有 EPUB 儲存路徑，請重新匯出。');
+    const { data, error } = await state.supabase.storage.from(cloudLibrary.bucket).download(book.epub_file_path);
+    if (error) throw new Error(buildStorageError(error, '下載 EPUB 失敗'));
+    await cacheEpubBlob(book.id, data);
+    return data;
+  })().finally(() => {
+    state.epubDownloadPromises.delete(book.id);
+  });
+  state.epubDownloadPromises.set(book.id, downloadTask);
+  return downloadTask;
+}
+
+async function loadEpubForReading(book) {
+  return downloadCloudEpubBlob(book, { prompt: true });
 }
 
 function renderReaderShell() {
