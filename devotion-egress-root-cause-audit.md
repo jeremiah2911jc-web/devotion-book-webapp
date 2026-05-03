@@ -149,7 +149,7 @@ Current interpretation:
 Code audit of the real-login home flow:
 
 1. `loadAllData()` reads `devotion_notes` with `select('*')`, filters by `user_id`, orders by `updated_at`, and has no `limit`. This can become a large response if the user has many notes or long note content.
-2. Before the current local patch, `loadAllData()` read `book_projects` with `select('*')`, filtered by `user_id`, ordered by `updated_at`, and had no `limit`. This was the highest-risk login-time database response because `book_projects` includes `chapters` JSON and other book draft content. The current uncommitted patch changes this to metadata-first loading.
+2. Before commit `7af2bda`, `loadAllData()` read `book_projects` with `select('*')`, filtered by `user_id`, ordered by `updated_at`, and had no `limit`. This was the highest-risk login-time database response because `book_projects` includes `chapters` JSON and other book draft content. Commit `7af2bda` changed this to metadata-first loading.
 3. `loadAllData()` reads `book_snapshots` with `select('id,user_id,book_project_id,book_id:book_project_id,created_at')`, filters by `user_id`, and has no `limit`. This is metadata-only in the current query and lower risk than full snapshot JSON.
 4. `loadCloudLibrary()` reads `library_books` metadata only: `id,user_id,title,author,description,cover_image_path,epub_file_path,created_at,updated_at,last_read_at,reading_progress,total_chapters,current_chapter,source_project_id,source_compilation_id,version,is_archived`. It filters by `user_id` and `is_archived=false`. It does not fetch EPUB bytes or chapter rows.
 5. `library_book_chapters` is not fetched on login/home. It is fetched by `loadLibraryBookChapters()` only when opening a non-system cloud library book, and the query is metadata-only (`id,user_id,book_id,title,chapter_order,href,chapter_path,progress,created_at,updated_at`).
@@ -901,7 +901,7 @@ Observed Supabase-related requests:
 
 This changes the current primary suspect from the system Bible reader to the real-login full sync path. The default `system-bible` still uses site static assets and does not call Supabase while opening or turning pages. The captured large Supabase traffic comes from the login data load, especially `book_projects select *`, plus one large signed cover image.
 
-Implemented local preventive patch, not yet committed:
+Implemented preventive patch, pushed as commit `7af2bda`:
 
 1. `loadAllData()` now loads `book_projects` metadata only through `BOOK_PROJECT_METADATA_SELECT` instead of `select('*')`.
 2. Full `book_projects.select('*')` is moved into `loadBookProjectDetail(projectId)`, which runs only when the user enters workflows that need chapters or full draft content, such as整理章節, adding notes to a draft, saving/exporting a book, or opening export settings.
@@ -915,3 +915,65 @@ Expected impact:
 - A normal login/home load should no longer download large `chapters` JSON embedded in every `book_projects` row.
 - Supabase Storage cover image downloads should be deferred until the library page actually needs to display book covers.
 - The patch does not remove user data, Storage objects, schema, environment variables, Auth settings, or production data.
+
+## Production 修正後 Network 驗證
+
+After pushing commit `7af2bda6e62bc2057146478a6726ac8e9304e4b6` (`Reduce login egress from book projects and covers`), the user re-tested production Network and still observed:
+
+- `book_projects?select=*...` with status `200`, about `2,169KB`.
+- signed `cover.png?token=...` with status `200`, about `2,125KB`.
+
+This means the fix was not active in that specific browser test, or another old path was still being executed.
+
+Low-traffic production JS verification:
+
+- Production HTML still references `./app.js?v=support-receipt-email-flow-20260430`.
+- Fetching production `app.js` directly from `https://www.devotionbook.com.tw/app.js?v=support-receipt-email-flow-20260430` now returns the new code from `7af2bda`.
+- The production JS contains `BOOK_PROJECT_METADATA_SELECT`.
+- The production JS contains `loadBookProjectDetail()`.
+- The production JS contains the metadata-first login query:
+  `state.supabase.from('book_projects').select(BOOK_PROJECT_METADATA_SELECT)...`
+- The production JS still contains `.select('*')` only for:
+  - `loadBookProjectDetail(projectId)`, which is a single-project on-demand detail query.
+  - `devotion_notes`, which is unrelated to `book_projects`.
+
+Current interpretation:
+
+1. Vercel is now serving the `7af2bda` JavaScript content.
+2. The observed `book_projects?select=*` on the user's post-push test most likely came from an old browser tab, old cached module, or a test performed before Vercel finished serving the new JS.
+3. If a fresh hard reload or incognito test still shows `book_projects?select=*` immediately after login/home, then there is another runtime path not represented by the currently fetched production JS and it must be captured with initiator details.
+
+Cover validation:
+
+- In the current production JS, `refreshLibraryCoverUrls()` is called only when `setView('library')` runs or when `loadCloudLibrary()` completes while `document.body.dataset.currentView === 'library'`.
+- Therefore login/home should not create signed cover URLs or download cloud cover images in a fresh session.
+- If signed `cover.png?token=...` still appears before opening the library page after a hard reload, the likely explanation is old JS still running, or an already-open tab/session that had previously generated and rendered the cover URL.
+
+Recommended retest:
+
+1. Open a new incognito window, or close all existing Devotion tabs.
+2. Open DevTools Network and enable `Disable cache` for the test tab.
+3. Press `Ctrl + F5` / hard reload before logging in.
+4. Log in once, stay on the dashboard/home screen, do not open the library page, then log out.
+5. Check whether `book_projects` now uses a metadata select URL rather than `select=*`.
+6. Check whether signed `cover.png?token=...` is absent until the library page is opened.
+
+Clean production retest result:
+
+- The user opened a new incognito window, enabled DevTools Network `Preserve log`, set the Network filter to `supabase`, enabled `Disable cache`, opened production, logged in, stayed on the dashboard/home screen, did not open the library page, did not open the Bible, did not turn pages, and then logged out.
+- `book_projects` no longer used the large `select=*` login response.
+- `book_projects` transfer size dropped to about `1.7KB`, down from the previous about `2,169KB`.
+- No Supabase signed cover request such as `cover.png?token=...` appeared during the home/dashboard phase.
+- Supabase-filtered Network showed about `14` requests and about `140KB` transferred.
+- Current larger data requests were `devotion_notes` at about `82.3KB`, `library_books` at about `1.9KB`, and `book_snapshots` at about `0.8KB`.
+- `logout` was small.
+- Realtime websocket remained pending at `0KB` and was not a large transfer in this capture.
+
+Post-deploy conclusion:
+
+1. Commit `7af2bda` is active on production.
+2. Login-time `book_projects` egress was reduced from about `2.1MB` to about `1.7KB`.
+3. The dashboard/home screen no longer downloads Supabase signed cover images before the library page is opened.
+4. This materially reduces Supabase egress for the normal login/home flow.
+5. Supabase Usage is cumulative for the billing period, so the total used value will not go down; the next check should focus on hourly/daily growth rate.
+6. If `devotion_notes` grows substantially in the future, the next likely optimization is notes metadata-first loading or pagination, but it is not currently a 2MB-class login response in this capture.
