@@ -89,6 +89,8 @@ const DEFAULT_CONFIG = {
   supabaseAnonKey: 'sb_publishable_7dOBDTLOfsppsElw5tTIrQ_luCT8vVh',
 };
 
+const BOOK_PROJECT_METADATA_SELECT = 'id,user_id,title,subtitle,author_name,description,template_code,language,toc_enabled,include_chapter_summary,created_at,updated_at';
+
 const AUTO_BACKUP_SLOTS = ['08', '14', '20'];
 const AUTO_BACKUP_MAX_ITEMS = 3;
 
@@ -367,6 +369,8 @@ const state = {
   bookArrangementDirty: false,
   bookArrangementSaving: false,
   bookArrangementDrafts: {},
+  bookProjectDetailIds: new Set(),
+  bookProjectDetailPromises: new Map(),
   bookDraftModalOpen: false,
   bookDraftModalBookId: null,
   bookDraftSettingsModalOpen: false,
@@ -3753,6 +3757,65 @@ function requireUser() {
   if (!state.currentUser) throw new Error('請先登入或以本機模式建立測試帳號。');
 }
 
+function normalizeBookProjectRow(book = {}, { detailLoaded = false } = {}) {
+  return {
+    ...book,
+    chapters: detailLoaded ? parseMaybeJson(book.chapters, []) : [],
+    cover_data_url: detailLoaded ? (book.cover_data_url || '') : '',
+    preface: detailLoaded ? (book.preface || '') : '',
+    afterword: detailLoaded ? (book.afterword || '') : '',
+    language: resolveBookLanguage(book.language),
+    include_chapter_summary: !!book.include_chapter_summary,
+  };
+}
+
+function rememberBookProjectDetail(bookId = '') {
+  if (bookId) state.bookProjectDetailIds.add(bookId);
+}
+
+function forgetBookProjectDetails() {
+  state.bookProjectDetailIds = new Set();
+  state.bookProjectDetailPromises = new Map();
+}
+
+function hasBookProjectDetail(bookId = '') {
+  if (!bookId) return false;
+  if (!(state.supabase && state.currentUser)) return true;
+  return state.bookProjectDetailIds.has(bookId);
+}
+
+async function loadBookProjectDetail(bookId = '') {
+  const existing = state.books.find(item => item.id === bookId) || null;
+  if (!bookId || !(state.supabase && state.currentUser)) return existing;
+  if (hasBookProjectDetail(bookId)) return existing;
+  const inFlight = state.bookProjectDetailPromises.get(bookId);
+  if (inFlight) {
+    egressGuardInfo('bookProjectDetail:reuse-in-flight', { bookId });
+    return inFlight;
+  }
+  const detailTask = (async () => {
+    egressDebugLog('bookProjectDetail:start', { bookId });
+    const { data, error } = await state.supabase
+      .from('book_projects')
+      .select('*')
+      .eq('user_id', getUserId())
+      .eq('id', bookId)
+      .single();
+    if (error) throw error;
+    const fullBook = normalizeBookProjectRow(data || {}, { detailLoaded: true });
+    const idx = state.books.findIndex(item => item.id === bookId);
+    if (idx >= 0) state.books[idx] = { ...state.books[idx], ...fullBook };
+    else state.books.unshift(fullBook);
+    rememberBookProjectDetail(bookId);
+    egressDebugLog('bookProjectDetail:loaded', { bookId, bytes: estimatePayloadBytes(data || {}) });
+    return state.books.find(item => item.id === bookId) || fullBook;
+  })().finally(() => {
+    state.bookProjectDetailPromises.delete(bookId);
+  });
+  state.bookProjectDetailPromises.set(bookId, detailTask);
+  return detailTask;
+}
+
 async function loadAllData({ silent = false, syncReason = '', reason = '', minIntervalMs = 0, force = false } = {}) {
   const loadReason = resolveLoadReason({ reason, syncReason });
   const isCloudLoad = !!(state.supabase && state.currentUser);
@@ -3781,7 +3844,7 @@ async function loadAllData({ silent = false, syncReason = '', reason = '', minIn
       if (!silent) refreshUi();
       const [notesRes, booksRes, snapshotsRes] = await Promise.all([
         state.supabase.from('devotion_notes').select('*').eq('user_id', userId).order('updated_at', { ascending: false }),
-        state.supabase.from('book_projects').select('*').eq('user_id', userId).order('updated_at', { ascending: false }),
+        state.supabase.from('book_projects').select(BOOK_PROJECT_METADATA_SELECT).eq('user_id', userId).order('updated_at', { ascending: false }),
         state.supabase.from('book_snapshots').select('id,user_id,book_project_id,book_id:book_project_id,created_at').eq('user_id', userId).order('created_at', { ascending: false }),
       ]);
       if (notesRes.error) throw notesRes.error;
@@ -3794,13 +3857,8 @@ async function loadAllData({ silent = false, syncReason = '', reason = '', minIn
         snapshots: { count: (snapshotsRes.data || []).length, bytes: estimatePayloadBytes(snapshotsRes.data || []) },
       });
       state.notes = notesRes.data || [];
-      state.books = (booksRes.data || []).map(book => ({
-        ...book,
-        chapters: parseMaybeJson(book.chapters, []),
-        cover_data_url: book.cover_data_url || '',
-        language: resolveBookLanguage(book.language),
-        include_chapter_summary: !!book.include_chapter_summary,
-      }));
+      forgetBookProjectDetails();
+      state.books = (booksRes.data || []).map(book => normalizeBookProjectRow(book, { detailLoaded: false }));
       state.snapshots = (snapshotsRes.data || []).map(s => ({ ...s, snapshot_json: parseMaybeJson(s.snapshot_json, null) }));
       await loadCloudLibrary(userId, { reason: loadReason });
       await syncPendingReadingProgress();
@@ -3813,6 +3871,7 @@ async function loadAllData({ silent = false, syncReason = '', reason = '', minIn
         language: resolveBookLanguage(book.language),
         include_chapter_summary: !!book.include_chapter_summary,
       }));
+      state.bookProjectDetailIds = new Set(state.books.map(book => book.id));
       state.snapshots = loadJson(STORAGE_KEYS.snapshots, []).filter(item => item.user_id === userId);
       clearCloudLibrary('書櫃同步需要登入 Supabase 帳號。');
       setSyncState({
@@ -4323,10 +4382,11 @@ function populateBookExportSettingsModal(book) {
   renderBookExportCoverPreview(book.cover_data_url || '', getBookDraftLabel(book));
 }
 
-function openBookExportSettingsModal(bookId = '') {
+async function openBookExportSettingsModal(bookId = '') {
   if (bookId) state.selectedBookId = bookId;
-  const book = getSelectedBook();
+  let book = getSelectedBook();
   if (!book) throw new Error('請先選取一份選稿編排。');
+  book = await loadBookProjectDetail(book.id) || book;
   ensureBookExportSettingsUi();
   populateBookExportSettingsModal(book);
   const { modal, body } = getBookExportSettingsElements();
@@ -4353,7 +4413,7 @@ function syncBookExportSettingsActionState(mode = 'idle') {
 async function saveBookExportSettings({ closeAfterSave = false, silent = false, actionMode = 'saving' } = {}) {
   const modalEls = getBookExportSettingsElements();
   const bookId = modalEls.form?.dataset.bookId || '';
-  const book = state.books.find(item => item.id === bookId);
+  const book = await loadBookProjectDetail(bookId) || state.books.find(item => item.id === bookId);
   if (!book) throw new Error('找不到要更新的選稿編排。');
   const existingCover = modalEls.form?.dataset.coverDataUrl || book.cover_data_url || '';
   const coverDataUrl = modalEls.cover?.files?.[0] ? await fileToDataUrl(modalEls.cover.files[0]) : existingCover;
@@ -4795,9 +4855,12 @@ function getBookDraftStatusTone(book) {
   return 'is-ready';
 }
 
-function openBookDraftModal(bookId = '', { focusChapters = false } = {}) {
+async function openBookDraftModal(bookId = '', { focusChapters = false } = {}) {
   state.bookDraftModalBookId = bookId || state.selectedBookId || null;
   state.bookDraftModalOpen = true;
+  const detailPromise = state.bookDraftModalBookId ? loadBookProjectDetail(state.bookDraftModalBookId) : Promise.resolve(null);
+  refreshUi();
+  await detailPromise;
   refreshUi();
   if (focusChapters) {
     requestAnimationFrame(() => {
@@ -4818,8 +4881,8 @@ function closeBookDraftModal() {
   refreshUi();
 }
 
-function focusSelectedDraftPanel(bookId = '') {
-  openBookDraftModal(bookId, { focusChapters: true });
+async function focusSelectedDraftPanel(bookId = '') {
+  await openBookDraftModal(bookId, { focusChapters: true });
 }
 
 function setCurrentBookDraft(bookId = '') {
@@ -4831,8 +4894,9 @@ function setCurrentBookDraft(bookId = '') {
   showToast(`已切換目前編排：${getBookDraftLabel(book)}`);
 }
 
-function goToContentLibraryForBookDraft(bookId = '') {
+async function goToContentLibraryForBookDraft(bookId = '') {
   if (bookId) state.selectedBookId = bookId;
+  if (state.selectedBookId) await loadBookProjectDetail(state.selectedBookId);
   state.bookDraftModalOpen = false;
   setView('content-library');
   refreshUi();
@@ -4932,14 +4996,14 @@ function ensureBookDraftWorkspaceUi() {
       goLibraryBtn.type = 'button';
       goLibraryBtn.className = 'secondary-btn';
       goLibraryBtn.textContent = '前往札記庫加入文章';
-      goLibraryBtn.addEventListener('click', () => goToContentLibraryForBookDraft(state.selectedBookId));
+      goLibraryBtn.addEventListener('click', () => goToContentLibraryForBookDraft(state.selectedBookId).catch(handleError));
 
       const focusChaptersBtn = document.createElement('button');
       focusChaptersBtn.id = 'focus-draft-chapters-btn';
       focusChaptersBtn.type = 'button';
       focusChaptersBtn.className = 'ghost-btn';
       focusChaptersBtn.textContent = '整理章節';
-      focusChaptersBtn.addEventListener('click', () => focusSelectedDraftPanel());
+      focusChaptersBtn.addEventListener('click', () => focusSelectedDraftPanel().catch(handleError));
 
     els.createSnapshotBtn.parentElement.prepend(focusChaptersBtn);
     els.createSnapshotBtn.parentElement.prepend(goLibraryBtn);
@@ -5008,7 +5072,7 @@ function ensureBookDraftWorkspaceUi() {
       exportSettingsBtn.type = 'button';
       exportSettingsBtn.className = 'ghost-btn';
       exportSettingsBtn.textContent = '成書匯出設定';
-      exportSettingsBtn.addEventListener('click', () => openBookExportSettingsModal(getActiveBookDraftId()));
+      exportSettingsBtn.addEventListener('click', () => openBookExportSettingsModal(getActiveBookDraftId()).catch(handleError));
     }
     rightFooter.prepend(exportSettingsBtn);
     let mobileExportSettingsBtn = document.getElementById('open-book-export-settings-mobile-btn');
@@ -5018,7 +5082,7 @@ function ensureBookDraftWorkspaceUi() {
       mobileExportSettingsBtn.type = 'button';
       mobileExportSettingsBtn.className = 'ghost-btn';
       mobileExportSettingsBtn.textContent = '成書匯出設定';
-      mobileExportSettingsBtn.addEventListener('click', () => openBookExportSettingsModal(getActiveBookDraftId()));
+      mobileExportSettingsBtn.addEventListener('click', () => openBookExportSettingsModal(getActiveBookDraftId()).catch(handleError));
     }
     let modalStartBtn = document.getElementById('modal-start-current-book-btn');
     if (!modalStartBtn) {
@@ -5085,8 +5149,9 @@ function ensureBookDraftWorkspaceUi() {
 }
 
 async function addSelectedNotesToCurrentBookDraft() {
-  const book = getSelectedBook();
+  let book = getSelectedBook();
   if (!book) throw new Error('請先到選稿編排建立或選擇一份書稿。');
+  book = await loadBookProjectDetail(book.id) || book;
   if (!state.contentLibrarySelectedNoteIds.length) throw new Error('請先勾選至少一篇文章。');
   if (state.bookArrangementSaving) return;
   const selectedNotes = state.notes.filter(note => state.contentLibrarySelectedNoteIds.includes(note.id));
@@ -6102,8 +6167,10 @@ async function deleteNote() {
 }
 
 function renderBookDraftCard(book, { current = false } = {}) {
-  const chapterCount = getBookDisplayChapters(book).length;
-  const isEmptyDraft = chapterCount === 0;
+  const detailLoaded = hasBookProjectDetail(book.id);
+  const chapterCount = detailLoaded ? getBookDisplayChapters(book).length : 0;
+  const isEmptyDraft = detailLoaded && chapterCount === 0;
+  const chapterLabel = detailLoaded ? `已收錄 ${chapterCount} 篇札記` : '章節開啟後載入';
   const description = getBookDraftDescription(book).slice(0, 180)
     || (isEmptyDraft ? '尚未收錄札記，請先前往札記庫加入文章。' : '尚未填寫整理說明');
   const statusLabel = current ? '正在編排' : '待成書設定';
@@ -6115,7 +6182,7 @@ function renderBookDraftCard(book, { current = false } = {}) {
         <span class="badge book-draft-status-badge ${statusTone}">${escapeHtml(statusLabel)}</span>
       </div>
       <div class="card-meta book-draft-meta-row">
-        <span>已收錄 ${chapterCount} 篇札記</span>
+        <span>${escapeHtml(chapterLabel)}</span>
         <span>更新於 ${escapeHtml(formatDate(book.updated_at || book.created_at))}</span>
       </div>
       <div class="book-draft-scope">${escapeHtml(getBookDraftScopeSummary(book))}</div>
@@ -6142,10 +6209,10 @@ function renderBookDraftCard(book, { current = false } = {}) {
 
 function bindBookDraftCardActions(scope) {
   scope.querySelectorAll('[data-select-book]').forEach(btn => btn.addEventListener('click', () => setCurrentBookDraft(btn.dataset.selectBook)));
-  scope.querySelectorAll('[data-go-content-library]').forEach(btn => btn.addEventListener('click', () => goToContentLibraryForBookDraft(btn.dataset.goContentLibrary)));
-  scope.querySelectorAll('[data-open-book-draft]').forEach(btn => btn.addEventListener('click', () => focusSelectedDraftPanel(btn.dataset.openBookDraft)));
+  scope.querySelectorAll('[data-go-content-library]').forEach(btn => btn.addEventListener('click', () => goToContentLibraryForBookDraft(btn.dataset.goContentLibrary).catch(handleError)));
+  scope.querySelectorAll('[data-open-book-draft]').forEach(btn => btn.addEventListener('click', () => focusSelectedDraftPanel(btn.dataset.openBookDraft).catch(handleError)));
   scope.querySelectorAll('[data-open-selection-settings]').forEach(btn => btn.addEventListener('click', () => openBookDraftSettingsModal(btn.dataset.openSelectionSettings)));
-  scope.querySelectorAll('[data-open-export-settings]').forEach(btn => btn.addEventListener('click', () => openBookExportSettingsModal(btn.dataset.openExportSettings)));
+  scope.querySelectorAll('[data-open-export-settings]').forEach(btn => btn.addEventListener('click', () => openBookExportSettingsModal(btn.dataset.openExportSettings).catch(handleError)));
   scope.querySelectorAll('[data-delete-book-draft]').forEach(btn => btn.addEventListener('click', () => deleteBook(btn.dataset.deleteBookDraft).catch(handleError)));
 }
 
@@ -6220,7 +6287,8 @@ function clearBookForm() {
 
 async function saveBook() {
   requireUser();
-  const existing = state.books.find(item => item.id === els.bookId.value);
+  let existing = state.books.find(item => item.id === els.bookId.value);
+  if (existing) existing = await loadBookProjectDetail(existing.id) || existing;
   const isNewDraft = !existing;
   const previousSelectedBookId = state.selectedBookId;
   const coverDataUrl = els.bookCover.files[0] ? await fileToDataUrl(els.bookCover.files[0]) : (existing?.cover_data_url || '');
@@ -6291,6 +6359,8 @@ async function deleteBook(targetBookId = els.bookId.value) {
   }
   const nextSelectedBookId = state.books.find(item => item.id !== bookId)?.id || null;
   clearBookForm();
+  state.bookProjectDetailIds.delete(bookId);
+  state.bookProjectDetailPromises.delete(bookId);
   if (state.selectedBookId === bookId) state.selectedBookId = nextSelectedBookId;
   await loadAllData({ silent: true, syncReason: state.supabase ? '選稿編排已從雲端刪除。' : '' });
   if (state.selectedBookId === bookId || !state.books.find(item => item.id === state.selectedBookId)) {
@@ -6484,6 +6554,11 @@ function renderChaptersList(book) {
   const chapters = book.chapters || [];
   const actionDisabled = state.bookArrangementSaving ? 'disabled' : '';
   const fieldDisabled = state.bookArrangementDirty || state.bookArrangementSaving ? 'disabled' : '';
+  if (state.bookProjectDetailPromises.has(book.id)) {
+    els.chaptersList.className = 'list-stack book-draft-chapters-list empty-state';
+    els.chaptersList.textContent = '正在載入完整章節...';
+    return;
+  }
   if (!chapters.length) {
     els.chaptersList.className = 'list-stack book-draft-chapters-list empty-state';
     if (state.bookArrangementSaving) {
@@ -6500,7 +6575,7 @@ function renderChaptersList(book) {
     `;
     els.chaptersList.querySelector('[data-empty-draft-go-library]')?.addEventListener('click', () => {
       showToast(`請先為「${draftLabel}」加入文章。`);
-      goToContentLibraryForBookDraft(book.id);
+      goToContentLibraryForBookDraft(book.id).catch(handleError);
     });
       return;
   }
@@ -6534,8 +6609,9 @@ function getNoteById(noteId) {
 
 async function addChapterFromSelectedNote() {
   requireUser();
-  const book = getSelectedBook();
+  let book = getSelectedBook();
   if (!book) throw new Error('請先選取一本書。');
+  book = await loadBookProjectDetail(book.id) || book;
   const noteId = els.chapterSourceNote.value;
   const note = getNoteById(noteId);
   if (!note) throw new Error('請先選取要加入的札記。');
@@ -6550,15 +6626,17 @@ async function addChapterFromSelectedNote() {
 }
 
 async function updateChapterTitle(chapterId, title) {
-  const book = getSelectedBook();
+  let book = getSelectedBook();
   if (!book) return;
+  book = await loadBookProjectDetail(book.id) || book;
   const nextChapters = book.chapters.map(chapter => chapter.id === chapterId ? { ...chapter, chapter_title: title } : chapter);
   await persistBookChanges(book.id, { chapters: nextChapters });
 }
 
 async function updateChapterToc(chapterId, checked) {
-  const book = getSelectedBook();
+  let book = getSelectedBook();
   if (!book) return;
+  book = await loadBookProjectDetail(book.id) || book;
   const nextChapters = book.chapters.map(chapter => chapter.id === chapterId ? { ...chapter, include_in_toc: checked } : chapter);
   await persistBookChanges(book.id, { chapters: nextChapters });
 }
@@ -6595,8 +6673,9 @@ function stageBookArrangementChange(updater, pendingMessage = '章節編排尚�
 
 async function saveBookArrangement() {
   if (state.bookArrangementSaving) return;
-  const book = getSelectedBook();
+  let book = getSelectedBook();
   if (!book) return;
+  book = await loadBookProjectDetail(book.id) || book;
   if (!hasBookArrangementDraft(book.id)) return;
   const draftChapters = getBookArrangementDraft(book.id) || [];
   state.bookArrangementSaving = true;
@@ -6638,7 +6717,7 @@ async function removeChapter(chapterId) {
 }
 
 async function persistBookChanges(bookId, changes) {
-  const book = state.books.find(item => item.id === bookId);
+  const book = await loadBookProjectDetail(bookId) || state.books.find(item => item.id === bookId);
   if (!book) return;
   const payload = { ...book, ...changes, updated_at: nowIso() };
   if (state.supabase) {
@@ -6655,8 +6734,9 @@ async function persistBookChanges(bookId, changes) {
 
 async function createSnapshotForSelectedBook() {
   requireUser();
-  const book = getSelectedBook();
+  let book = getSelectedBook();
   if (!book) throw new Error('請先選取一本書。');
+  book = await loadBookProjectDetail(book.id) || book;
   const snapshot = buildBookSnapshot(book);
   const record = {
     id: uid('snapshot'),
@@ -6774,6 +6854,9 @@ function setView(viewName) {
   if (viewName === 'admin-dashboard') {
     loadAdminUsage().catch(() => {});
   }
+  if (viewName === 'library') {
+    refreshLibraryCoverUrls().catch(console.warn);
+  }
   if (isReaderView) {
     document.body.dataset.readerScrollY = String(window.scrollY || 0);
     document.body.classList.add('reader-active');
@@ -6818,8 +6901,9 @@ function handleNoteSaveError(error) {
 async function exportSelectedBookEpub() {
   if (state.isExporting) return;
   requireUser();
-  const book = getSelectedBook();
+  let book = getSelectedBook();
   if (!book) throw new Error('\u8acb\u5148\u9078\u64c7\u8981\u532f\u51fa\u7684\u66f8\u7c4d\u3002');
+  book = await loadBookProjectDetail(book.id) || book;
   if (!getBookProjectChapters(book).length) throw new Error('\u8acb\u81f3\u5c11\u52a0\u5165\u4e00\u7ae0\u5167\u5bb9\u5f8c\u518d\u532f\u51fa EPUB\u3002');
   state.isExporting = true;
   syncExportButtonState();
@@ -7465,7 +7549,8 @@ function compareLibraryBooks(a, b, sortMode = 'recent-read') {
 function getLibraryCoverUrl(book) {
   if (!book) return '';
   if (book.source === 'imported_epub') return importedLibrary.coverUrls.get(book.id) || '';
-  return cloudLibrary.coverUrls.get(book.id) || book.cover_image_path || '';
+  if (isSystemLibraryBook(book)) return cloudLibrary.coverUrls.get(book.id) || book.cover_image_path || '';
+  return cloudLibrary.coverUrls.get(book.id) || '';
 }
 
 function buildLibrarySetupError(error) {
@@ -7533,7 +7618,9 @@ async function loadCloudLibrary(userId, { reason = '' } = {}) {
     count: cloudLibrary.books.length,
     bytes: estimatePayloadBytes(data || []),
   });
-  refreshLibraryCoverUrls().catch(console.warn);
+  if (document.body.dataset.currentView === 'library') {
+    refreshLibraryCoverUrls().catch(console.warn);
+  }
 }
 
 async function loadLibraryBookChapters(bookId, { force = false } = {}) {

@@ -110,6 +110,67 @@ Code search did not find `local-check@example.test` committed in the repo. `smok
 
 Preventive fix: local preview hosts (`localhost`, `127.0.0.1`, `::1`) now default to local mode when there is no stored config. Production remains on the default cloud config, and a developer who intentionally needs cloud auth locally must explicitly save a custom config. This prevents local smoke/manual checks from defaulting to production signup.
 
+## Production 登入與聖經閱讀流程查證
+
+User observed that Supabase egress appeared to move from about `14.38GB / 5.5GB` in email to `14.57GB` in the Dashboard, roughly a `200MB` difference over a few hours. During that period, the reported user activity was limited to logging into the site, reading a few Bible pages, turning a few pages, and logging out.
+
+Production deployment check:
+
+- The production `app.js` currently contains the `ba8b7b8` localhost/local-mode safeguard.
+- The production `app.js` also contains the earlier egress safeguards: `loadAllData` in-flight reuse, passive Realtime reload interval constants, cloud EPUB in-flight reuse, and system backup confirmation text.
+
+Code audit for the Bible reader path:
+
+- The default Bible is defined as a system library item with `source: "system"`, `id: "system-bible"`, `cover_image_path: "/assets/default-books/bible-cover.png"`, and `epub_file_path: "/assets/default-books/bible.epub"`.
+- Opening the system Bible calls `openSystemLibraryBook()`, then `loadSystemLibraryEpub()`, then `fetchPublicAssetBlob()` against the local site asset path. It does not call Supabase Storage.
+- Turning reader pages calls `turnReaderPage()`, then `persistCurrentReaderProgress()`, then `persistReadingProgress()`. For `system-bible`, `persistReadingProgress()` matches `getSystemLibraryBook()` and saves progress to localStorage only; it returns before any Supabase `library_books.update()`.
+- The system Bible path does not call `loadLibraryBookChapters()` and does not read `library_book_chapters`.
+- The cloud library path is different: logging in calls `loadAllData()`, which reads `devotion_notes`, `book_projects`, `book_snapshots`, and metadata from `library_books`. Opening a non-system cloud library book then calls `loadLibraryBookChapters()` and cloud EPUB download.
+
+Controlled production network check performed without real credentials:
+
+- Fresh browser profile opened `https://www.devotionbook.com.tw/`.
+- Unauthenticated homepage produced `0` Supabase requests.
+- A local-mode production browser session opened the system Bible and turned four pages to verify the Bible reader path itself.
+- The system Bible reader produced `0` Supabase requests.
+- Observed site asset requests included `https://www.devotionbook.com.tw/assets/default-books/bible-cover.png` at about `2.73MB` and `https://www.devotionbook.com.tw/assets/default-books/bible.epub` at about `1.63MB`. These are website/Vercel static asset transfers, not Supabase Storage transfers.
+
+The full logged-in production flow was not executed by Codex because no production credentials/session were available and the audit should avoid repeated real-account traffic. The remaining unknown is what happens immediately after a real Supabase login: `loadAllData()`, cloud library metadata, signed cover URLs, avatar, and any pending reading-progress sync may still produce Supabase requests. If the Dashboard egress counter continued to rise after the user stopped, it may also reflect delayed Usage aggregation rather than new requests.
+
+Current interpretation:
+
+- The system Bible reader path itself is not currently proven to be a Supabase egress source.
+- A few Bible page turns should not write to Supabase for `system-bible`.
+- If Supabase egress rises during the user's login session, the likelier sources are login-time full sync (`devotion_notes` / `book_projects` / `library_books`), cloud cover/avatar signed asset loads, pending reading-progress sync for non-system books, or delayed Supabase Usage reporting.
+- Next evidence needed: one real-login Network capture/HAR or Supabase logs filtered to the exact login/read/logout timestamp, with tokens redacted.
+
+## 真實登入後首頁資料同步風險稽核
+
+Code audit of the real-login home flow:
+
+1. `loadAllData()` reads `devotion_notes` with `select('*')`, filters by `user_id`, orders by `updated_at`, and has no `limit`. This can become a large response if the user has many notes or long note content.
+2. Before the current local patch, `loadAllData()` read `book_projects` with `select('*')`, filtered by `user_id`, ordered by `updated_at`, and had no `limit`. This was the highest-risk login-time database response because `book_projects` includes `chapters` JSON and other book draft content. The current uncommitted patch changes this to metadata-first loading.
+3. `loadAllData()` reads `book_snapshots` with `select('id,user_id,book_project_id,book_id:book_project_id,created_at')`, filters by `user_id`, and has no `limit`. This is metadata-only in the current query and lower risk than full snapshot JSON.
+4. `loadCloudLibrary()` reads `library_books` metadata only: `id,user_id,title,author,description,cover_image_path,epub_file_path,created_at,updated_at,last_read_at,reading_progress,total_chapters,current_chapter,source_project_id,source_compilation_id,version,is_archived`. It filters by `user_id` and `is_archived=false`. It does not fetch EPUB bytes or chapter rows.
+5. `library_book_chapters` is not fetched on login/home. It is fetched by `loadLibraryBookChapters()` only when opening a non-system cloud library book, and the query is metadata-only (`id,user_id,book_id,title,chapter_order,href,chapter_path,progress,created_at,updated_at`).
+6. `refreshLibraryCoverUrls()` runs after cloud library metadata loads. It can call Storage `createSignedUrl()` once per cloud library book that has `cover_image_path`, unless the in-memory signed URL cache is still valid.
+7. `refreshProfileAvatar()` runs during `loadAllData()`. If user metadata has an avatar `path` and no cached signed URL, it calls Storage `createSignedUrl()` once for the profile avatar.
+8. `syncPendingReadingProgress()` runs after `loadCloudLibrary()`. If there are queued non-system cloud reading-progress updates in localStorage, it may issue `library_books.update()` calls. The `system-bible` path does not queue these because its progress is localStorage-only.
+
+Real-login production Network test status:
+
+- Completed by the user with production credentials and redacted screenshots.
+- The user opened DevTools Network, enabled Preserve log, logged in once, stayed on the post-login home screen, then logged out.
+- The capture showed `book_projects` at about `2,169KB`, `devotion_notes` at about `82.3KB`, `book_snapshots` at about `0.8KB`, `library_books` at about `1.9KB`, and one signed `cover.png?token=...` at about `2,125KB`.
+- Request headers and tokens were not shared, which is the correct handling for `apikey`, `access_token`, `refresh_token`, cookies, or bearer tokens.
+
+Interpretation rules for that test:
+
+- Large `/rest/v1/book_projects` response strongly implicates login-time `book_projects select *`, especially large `chapters` JSON. Current local fix: metadata-first book project loading with full detail loaded only on demand.
+- Large `/rest/v1/devotion_notes` response implicates all-notes full sync. Next fix: pagination, limit, or metadata-first note loading.
+- Many Storage sign/signed-cover/avatar requests implicate media URL loading. Current cache helps, but next fix could defer covers until the library view.
+- No large requests during the controlled login flow would point toward Supabase Usage aggregation delay, old sessions/devices, Preview/local clients, or a different timestamped workflow.
+
 ## Vercel Function Logs 查證結果
 
 Requested focus window: `2026-04-26` to `2026-04-30`.
@@ -817,3 +878,40 @@ Needed to identify root cause:
 6. If PostgREST `book_projects` dominates, keep the current `loadAllData()` stopgap and then split heavy columns out of initial loads.
 7. If Vercel `/api/system-backup` dominates, add server-side rate limiting/kill switch and keep two-step confirmation.
 8. If unknown IPs directly hit Supabase, consider Supabase dashboard mitigations, RLS verification, and potentially key rotation only after planning env updates.
+
+## 真實登入 Network 查證結果
+
+User-performed production Network capture:
+
+- Flow: open production site, enable DevTools Network Preserve log, log in, stay on the post-login home screen, then log out.
+- Total browser transfer shown in DevTools was about `13.6MB`.
+- Most of that transfer was website static image traffic from `devotionbook.com.tw` / Vercel, not Supabase egress.
+
+Observed Supabase-related requests:
+
+| Endpoint / asset category | Approx transfer | Interpretation |
+| --- | ---: | --- |
+| `/rest/v1/book_projects?...` | `2,169KB` | Largest database response. The request used `select=*`, so it likely included `chapters` JSON / book draft content that the login home screen does not need. |
+| `/rest/v1/devotion_notes?...` | `82.3KB` | Present but much smaller than `book_projects`; still worth watching if note count grows. |
+| `/rest/v1/book_snapshots?...` | `0.8KB` | Metadata-sized response, not a current primary suspect. |
+| `/rest/v1/library_books?...` | `1.9KB` | Metadata-sized response, not a current primary suspect by itself. |
+| signed `cover.png?token=...` | `2,125KB` | Large signed Storage image. This is likely a cloud library cover image and can contribute to Supabase Storage egress when loaded on login/home. |
+| Auth token / logout / preflight | small | Normal auth/control traffic, not a primary egress cause in this capture. |
+| Realtime websocket | pending / small | Not a large transfer in this capture. |
+
+This changes the current primary suspect from the system Bible reader to the real-login full sync path. The default `system-bible` still uses site static assets and does not call Supabase while opening or turning pages. The captured large Supabase traffic comes from the login data load, especially `book_projects select *`, plus one large signed cover image.
+
+Implemented local preventive patch, not yet committed:
+
+1. `loadAllData()` now loads `book_projects` metadata only through `BOOK_PROJECT_METADATA_SELECT` instead of `select('*')`.
+2. Full `book_projects.select('*')` is moved into `loadBookProjectDetail(projectId)`, which runs only when the user enters workflows that need chapters or full draft content, such as整理章節, adding notes to a draft, saving/exporting a book, or opening export settings.
+3. Full project detail is cached per project, and in-flight requests are reused so repeated clicks do not start duplicate large downloads.
+4. Book draft cards and lists can render metadata-only projects and show chapter status as deferred until the project is opened.
+5. Cloud library cover signed URLs are no longer refreshed immediately from login/home; they are refreshed when the library view is opened. Existing signed URL cache and lazy image loading remain in place.
+6. `getLibraryCoverUrl()` no longer returns a raw cloud `cover_image_path` for generated cloud books before a signed URL has been intentionally prepared.
+
+Expected impact:
+
+- A normal login/home load should no longer download large `chapters` JSON embedded in every `book_projects` row.
+- Supabase Storage cover image downloads should be deferred until the library page actually needs to display book covers.
+- The patch does not remove user data, Storage objects, schema, environment variables, Auth settings, or production data.
