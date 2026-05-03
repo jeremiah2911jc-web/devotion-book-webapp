@@ -92,9 +92,15 @@ const DEFAULT_CONFIG = {
 const AUTO_BACKUP_SLOTS = ['08', '14', '20'];
 const AUTO_BACKUP_MAX_ITEMS = 3;
 
+function isLocalDevelopmentHost() {
+  if (typeof window === 'undefined') return false;
+  return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+}
+
 function buildMergedConfig(raw = null) {
   const next = raw && typeof raw === 'object' ? raw : {};
-  const mode = next.mode === 'local'
+  const hasStoredConfig = !!raw && typeof raw === 'object';
+  const mode = next.mode === 'local' || (!hasStoredConfig && isLocalDevelopmentHost())
     ? 'local'
     : (typeof next.supabaseUrl === 'string' || typeof next.supabaseAnonKey === 'string' || next.mode === 'custom')
       ? 'custom'

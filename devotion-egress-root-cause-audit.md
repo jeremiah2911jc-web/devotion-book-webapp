@@ -91,6 +91,25 @@ To identify the historical source more precisely, check whether:
 - Any old logged-in browser tab, PWA, Vercel Preview, local dev environment, or other client was connected to the production Supabase project during that period.
 - The user or a test script opened the bookshelf, read/downloaded EPUBs, downloaded system backups, or stress-tested the reader around 2026-04-26 to 2026-04-30.
 
+## Auth Logs 查證結果
+
+User provided a Supabase Auth log entry:
+
+- `path`: `/signup`
+- `method`: `POST`
+- `status`: `400`
+- `error`: `Email address "local-check@example.test" is invalid`
+- `referer`: `http://127.0.0.1:4179/`
+- `time`: `2026-05-03T01:37:20Z` (`2026-05-03 09:37:20` Taiwan time)
+
+This log entry came from a local preview origin, not from `www.devotionbook.com.tw`. It is therefore not evidence that production visitors are automatically triggering signup requests. It also does not look like the main cause of the 14.57GB egress spike, because a failed Auth 400 response is small.
+
+However, it proves that a local test/check flow can accidentally hit the production Supabase Auth `/signup` endpoint. The likely trigger is a local preview session that loaded the app with no localStorage config; before the 2026-05-03 fix, the default config pointed at production Supabase, so clicking the local register UI on `127.0.0.1` could call `supabase.auth.signUp` against production Auth.
+
+Code search did not find `local-check@example.test` committed in the repo. `smoke-test.cjs` seeds localStorage with local mode and uses local fixture data; it does not submit this email to Supabase Auth. The app code contains the legitimate production `handleRegister()` path, which calls `supabase.auth.signUp` only when `state.supabase` exists and the user submits the register form.
+
+Preventive fix: local preview hosts (`localhost`, `127.0.0.1`, `::1`) now default to local mode when there is no stored config. Production remains on the default cloud config, and a developer who intentionally needs cloud auth locally must explicitly save a custom config. This prevents local smoke/manual checks from defaulting to production signup.
+
 ## Vercel Function Logs 查證結果
 
 Requested focus window: `2026-04-26` to `2026-04-30`.
