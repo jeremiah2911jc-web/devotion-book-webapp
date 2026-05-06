@@ -36,6 +36,7 @@ const CURRENT_NOTE_DRAFT_KEY = 'devotion-current-note-draft';
 const CURRENT_NOTE_DRAFT_DEBOUNCE_MS = 700;
 const SIGNED_URL_CACHE_TTL_SECONDS = 6 * 60 * 60;
 const SIGNED_URL_CACHE_REFRESH_BUFFER_MS = 10 * 60 * 1000;
+const TRANSPARENT_IMAGE_PLACEHOLDER = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
 const EGRESS_DEBUG = false;
 const CLOUD_RELOAD_DEBOUNCE_MS = 15 * 1000;
 const PASSIVE_CLOUD_RELOAD_MIN_INTERVAL_MS = 5 * 60 * 1000;
@@ -353,6 +354,10 @@ const state = {
   currentNoteDraftNotice: null,
   profileAvatarUrlCache: new Map(),
   libraryCoverUrlCache: new Map(),
+  libraryCoverSignedUrlPromises: new Map(),
+  libraryCoverObjectUrlCache: new Map(),
+  libraryCoverObjectUrlPromises: new Map(),
+  libraryCoverImageObserver: null,
   libraryCoverRefreshPromise: null,
   syncStatus: '本機模式',
   syncDetail: '目前資料只保存在這台裝置。',
@@ -3094,11 +3099,144 @@ function getCachedSignedUrl(cache, key) {
 
 function setCachedSignedUrl(cache, key, url) {
   if (!(cache instanceof Map) || !key || !url) return '';
+  const createdAt = Date.now();
   cache.set(key, {
     url,
-    expiresAt: Date.now() + SIGNED_URL_CACHE_TTL_SECONDS * 1000,
+    createdAt,
+    expiresAt: createdAt + SIGNED_URL_CACHE_TTL_SECONDS * 1000,
   });
   return url;
+}
+
+function getLibraryCoverVersion(book = {}) {
+  return book.cover_updated_at || book.updated_at || book.updatedAt || book.created_at || book.createdAt || '';
+}
+
+function getLibraryCoverCacheKey(book = {}) {
+  if (!book?.cover_image_path) return '';
+  return getSignedUrlCacheKey(book.cover_image_path, getLibraryCoverVersion(book));
+}
+
+function shouldUseCloudCoverLoader(book = {}, coverUrl = '') {
+  return !!(
+    book
+    && coverUrl
+    && book.cover_image_path
+    && book.source !== 'imported_epub'
+    && !isSystemLibraryBook(book)
+  );
+}
+
+function getCachedLibraryCoverObjectUrl(cacheKey = '') {
+  if (!cacheKey) return '';
+  const entry = state.libraryCoverObjectUrlCache.get(cacheKey);
+  if (!entry?.url) return '';
+  if (Number(entry.expiresAt || 0) <= Date.now() + SIGNED_URL_CACHE_REFRESH_BUFFER_MS) {
+    URL.revokeObjectURL(entry.url);
+    state.libraryCoverObjectUrlCache.delete(cacheKey);
+    return '';
+  }
+  return entry.url;
+}
+
+function setCachedLibraryCoverObjectUrl(cacheKey = '', objectUrl = '') {
+  if (!cacheKey || !objectUrl) return '';
+  const existing = state.libraryCoverObjectUrlCache.get(cacheKey);
+  if (existing?.url && existing.url !== objectUrl) URL.revokeObjectURL(existing.url);
+  const createdAt = Date.now();
+  state.libraryCoverObjectUrlCache.set(cacheKey, {
+    url: objectUrl,
+    createdAt,
+    expiresAt: createdAt + SIGNED_URL_CACHE_TTL_SECONDS * 1000,
+  });
+  return objectUrl;
+}
+
+function clearLibraryCoverObjectUrlCache() {
+  state.libraryCoverObjectUrlCache.forEach(entry => {
+    if (entry?.url) URL.revokeObjectURL(entry.url);
+  });
+  state.libraryCoverObjectUrlCache.clear();
+  state.libraryCoverObjectUrlPromises.clear();
+}
+
+async function resolveLibraryCoverObjectUrl(cacheKey = '', signedUrl = '') {
+  if (!cacheKey || !signedUrl) return '';
+  const cachedUrl = getCachedLibraryCoverObjectUrl(cacheKey);
+  if (cachedUrl) return cachedUrl;
+  const pendingUrlPromise = state.libraryCoverObjectUrlPromises.get(cacheKey);
+  if (pendingUrlPromise) return pendingUrlPromise;
+  const objectUrlPromise = fetch(signedUrl)
+    .then(response => {
+      if (!response.ok) throw new Error(`cover fetch failed: ${response.status}`);
+      return response.blob();
+    })
+    .then(blob => setCachedLibraryCoverObjectUrl(cacheKey, URL.createObjectURL(blob)));
+  state.libraryCoverObjectUrlPromises.set(cacheKey, objectUrlPromise);
+  try {
+    return await objectUrlPromise;
+  } finally {
+    if (state.libraryCoverObjectUrlPromises.get(cacheKey) === objectUrlPromise) {
+      state.libraryCoverObjectUrlPromises.delete(cacheKey);
+    }
+  }
+}
+
+async function loadDeferredLibraryCoverImage(img) {
+  if (!(img instanceof HTMLImageElement)) return;
+  const signedUrl = img.dataset.libraryCoverSrc || '';
+  const cacheKey = img.dataset.libraryCoverKey || '';
+  if (!signedUrl || !cacheKey) return;
+  const cachedUrl = getCachedLibraryCoverObjectUrl(cacheKey);
+  if (cachedUrl) {
+    img.src = cachedUrl;
+    return;
+  }
+  try {
+    const objectUrl = await resolveLibraryCoverObjectUrl(cacheKey, signedUrl);
+    if (objectUrl && img.isConnected && img.dataset.libraryCoverKey === cacheKey) {
+      img.src = objectUrl;
+    }
+  } catch (error) {
+    console.warn('書櫃封面快取載入失敗，改用 signed URL', error);
+    if (img.isConnected && img.dataset.libraryCoverKey === cacheKey) img.src = signedUrl;
+  }
+}
+
+function hydrateLibraryCoverImages(scope = document) {
+  if (!scope?.querySelectorAll) return;
+  const images = [...scope.querySelectorAll('img[data-library-cover-src][data-library-cover-key]')];
+  if (!images.length) return;
+  if ('IntersectionObserver' in window) {
+    if (!state.libraryCoverImageObserver) {
+      state.libraryCoverImageObserver = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          state.libraryCoverImageObserver.unobserve(entry.target);
+          loadDeferredLibraryCoverImage(entry.target).catch(console.warn);
+        });
+      }, { rootMargin: '160px' });
+    }
+    images.forEach(img => {
+      if (img.dataset.libraryCoverObserved === 'true') return;
+      img.dataset.libraryCoverObserved = 'true';
+      state.libraryCoverImageObserver.observe(img);
+    });
+    return;
+  }
+  images.forEach(img => loadDeferredLibraryCoverImage(img).catch(console.warn));
+}
+
+function buildLibraryCoverImage(book, coverUrl, alt, className = '') {
+  const classAttr = className ? ` class="${escapeHtml(className)}"` : '';
+  const baseAttrs = `${classAttr} alt="${escapeHtml(alt)}" loading="lazy" decoding="async" fetchpriority="low"`;
+  if (!shouldUseCloudCoverLoader(book, coverUrl)) {
+    return `<img${baseAttrs} src="${escapeHtml(coverUrl)}" />`;
+  }
+  const cacheKey = getLibraryCoverCacheKey(book);
+  const cachedObjectUrl = getCachedLibraryCoverObjectUrl(cacheKey);
+  if (cachedObjectUrl) return `<img${baseAttrs} src="${escapeHtml(cachedObjectUrl)}" />`;
+  return `<img${baseAttrs} src="${TRANSPARENT_IMAGE_PLACEHOLDER}" data-library-cover-src="${escapeHtml(coverUrl)}" data-library-cover-key="${escapeHtml(cacheKey)}" />`;
 }
 
 function resetProfileAvatarState() {
@@ -5198,19 +5336,31 @@ function renderCardList(container, items, renderer, emptyText = '還沒有資料
   container.innerHTML = items.map(renderer).join('');
 }
 
+function setElementHtmlIfChanged(element, html) {
+  if (!element) return false;
+  const nextHtml = String(html || '');
+  if (element.__devotionRenderedHtml === nextHtml) return false;
+  element.querySelectorAll?.('img[data-library-cover-key]').forEach(img => {
+    state.libraryCoverImageObserver?.unobserve(img);
+  });
+  element.innerHTML = nextHtml;
+  element.__devotionRenderedHtml = nextHtml;
+  return true;
+}
+
 function renderDesktopBookshelfCard() {
   if (!els.desktopBookshelfList) return;
   const books = getAllLibraryBooksForView().slice(0, 4);
   if (!books.length) {
-    els.desktopBookshelfList.innerHTML = `
+    setElementHtmlIfChanged(els.desktopBookshelfList, `
       <div class="bookshelf-empty-state">
         <strong>尚未建立書籍</strong>
         <p>建立一本書，開始整理你的札記</p>
-      </div>`;
+      </div>`);
     return;
   }
   const snapshotBookIds = new Set(state.snapshots.map(snapshot => snapshot.book_id).filter(Boolean));
-  els.desktopBookshelfList.innerHTML = books.map((book, index) => {
+  const nextHtml = books.map((book, index) => {
     const title = sanitizeDisplayText(book.title, `書籍 ${index + 1}`);
     const chapterCount = Number(book.total_chapters || book.totalChapters || (Array.isArray(book.chapters) ? book.chapters.length : 0));
     const isSystemBook = isSystemLibraryBook(book);
@@ -5229,7 +5379,7 @@ function renderDesktopBookshelfCard() {
     return `
       <article class="bookshelf-book-card">
         ${coverUrl
-          ? `<img class="bookshelf-cover-thumb" src="${coverUrl}" alt="${escapeHtml(title)}封面" />`
+          ? buildLibraryCoverImage(book, coverUrl, `${title}封面`, 'bookshelf-cover-thumb')
           : `<div class="bookshelf-cover-placeholder" aria-hidden="true">封面</div>`}
         <div class="bookshelf-book-copy">
           <div class="bookshelf-book-heading">
@@ -5241,6 +5391,8 @@ function renderDesktopBookshelfCard() {
         </div>
       </article>`;
   }).join('');
+  setElementHtmlIfChanged(els.desktopBookshelfList, nextHtml);
+  hydrateLibraryCoverImages(els.desktopBookshelfList);
 }
 
 function renderTodayDevotionCard() {
@@ -7280,6 +7432,10 @@ function clearCloudLibrary(message = '') {
   cloudLibrary.chapters = new Map();
   cloudLibrary.coverUrls = new Map();
   state.libraryCoverUrlCache.clear();
+  state.libraryCoverSignedUrlPromises.clear();
+  clearLibraryCoverObjectUrlCache();
+  state.libraryCoverImageObserver?.disconnect();
+  state.libraryCoverImageObserver = null;
   cloudLibrary.error = message;
   cloudLibrary.selectedBookId = '';
   cloudLibrary.readerBook = null;
@@ -7758,6 +7914,7 @@ async function refreshLibraryCoverUrls() {
     if (state.supabase && state.currentUser) {
       let hits = 0;
       let misses = 0;
+      let pendingHits = 0;
       let errors = 0;
       const cloudEntries = await Promise.all(cloudLibrary.books.map(async book => {
         if (!book.cover_image_path) return [book.id, ''];
@@ -7767,16 +7924,35 @@ async function refreshLibraryCoverUrls() {
           hits += 1;
           return [book.id, cachedUrl];
         }
+        const pendingUrlPromise = state.libraryCoverSignedUrlPromises.get(cacheKey);
+        if (pendingUrlPromise) {
+          pendingHits += 1;
+          const pendingUrl = await pendingUrlPromise.catch(() => '');
+          return [book.id, pendingUrl || ''];
+        }
         misses += 1;
-        const { data, error } = await state.supabase.storage.from(cloudLibrary.bucket).createSignedUrl(book.cover_image_path, SIGNED_URL_CACHE_TTL_SECONDS);
-        if (error) {
+        const signedUrlPromise = state.supabase.storage
+          .from(cloudLibrary.bucket)
+          .createSignedUrl(book.cover_image_path, SIGNED_URL_CACHE_TTL_SECONDS)
+          .then(({ data, error }) => {
+            if (error) throw error;
+            return setCachedSignedUrl(state.libraryCoverUrlCache, cacheKey, data?.signedUrl || '');
+          });
+        state.libraryCoverSignedUrlPromises.set(cacheKey, signedUrlPromise);
+        try {
+          const signedUrl = await signedUrlPromise;
+          return [book.id, signedUrl || ''];
+        } catch {
           errors += 1;
           state.libraryCoverUrlCache.delete(cacheKey);
           return [book.id, ''];
+        } finally {
+          if (state.libraryCoverSignedUrlPromises.get(cacheKey) === signedUrlPromise) {
+            state.libraryCoverSignedUrlPromises.delete(cacheKey);
+          }
         }
-        return [book.id, setCachedSignedUrl(state.libraryCoverUrlCache, cacheKey, data?.signedUrl || '')];
       }));
-      egressDebugLog('libraryCoverSignedUrls', { books: cloudLibrary.books.length, hits, misses, errors });
+      egressDebugLog('libraryCoverSignedUrls', { books: cloudLibrary.books.length, hits, misses, pendingHits, errors });
       entries.push(...cloudEntries);
     }
     cloudLibrary.coverUrls = new Map(entries);
@@ -7800,18 +7976,18 @@ function renderLibrary() {
   if (count) count.textContent = String(booksForView.length);
   if (cloudLibrary.error && !booksForView.length) {
     list.className = 'library-list empty-state';
-    list.innerHTML = `<h3>書櫃暫時無法同步</h3><p>${escapeHtml(cloudLibrary.error)}</p>`;
+    setElementHtmlIfChanged(list, `<h3>書櫃暫時無法同步</h3><p>${escapeHtml(cloudLibrary.error)}</p>`);
     return;
   }
   if (!booksForView.length) {
     list.className = 'library-list empty-state';
-    list.innerHTML = '<h3>書櫃裡還沒有書</h3><p>可以先匯出自製 EPUB，或按上方「匯入 EPUB」把外部電子書加入書櫃。</p>';
+    setElementHtmlIfChanged(list, '<h3>書櫃裡還沒有書</h3><p>可以先匯出自製 EPUB，或按上方「匯入 EPUB」把外部電子書加入書櫃。</p>');
     return;
   }
   const sortMode = document.getElementById('library-sort')?.value || 'recent-read';
   const books = [...booksForView].sort((a, b) => compareLibraryBooks(a, b, sortMode));
   list.className = 'library-list';
-  list.innerHTML = books.map(book => {
+  const nextHtml = books.map(book => {
     const coverUrl = getLibraryCoverUrl(book);
     const progress = Math.max(0, Math.min(1, book.reading_progress || 0));
     const sourceBadge = book.source === 'imported_epub'
@@ -7838,8 +8014,10 @@ function renderLibrary() {
     const deleteAction = isSystemLibraryBook(book)
       ? ''
       : `<button class="danger-btn" data-delete-library-book="${book.id}" data-library-source="${book.source}">刪除書籍</button>`;
-    return `<article class="library-book ${selected ? 'selected' : ''} ${book.source === 'imported_epub' ? 'imported-book' : ''}"><div class="library-cover">${coverUrl ? `<img src="${coverUrl}" alt="${escapeHtml(book.title)}封面" loading="lazy" decoding="async" />` : fallbackCover}</div><div class="library-book-main"><div><div class="library-book-top"><h3>${escapeHtml(book.title)}</h3>${sourceBadge}</div><div class="card-meta"><span>${escapeHtml(book.author || '未填作者')}</span><span>建立：${createdAt ? formatDate(createdAt) : '未記錄'}</span><span>最後閱讀：${book.last_read_at ? formatDate(book.last_read_at) : '尚未閱讀'}</span><span>${detailLabel}</span></div><p class="library-book-description">${escapeHtml(description)}</p></div><div class="library-progress"><span>${Math.round(progress * 100)}%</span><div><i style="width:${Math.round(progress * 100)}%"></i></div></div><div class="card-actions"><button class="primary-btn" data-open-library-book="${book.id}" data-library-source="${book.source}">開啟閱讀</button><button class="ghost-btn" data-download-library-epub="${book.id}" data-library-source="${book.source}">下載 EPUB</button>${deleteAction}</div></div></article>`;
+    return `<article class="library-book ${selected ? 'selected' : ''} ${book.source === 'imported_epub' ? 'imported-book' : ''}"><div class="library-cover">${coverUrl ? buildLibraryCoverImage(book, coverUrl, `${book.title}封面`) : fallbackCover}</div><div class="library-book-main"><div><div class="library-book-top"><h3>${escapeHtml(book.title)}</h3>${sourceBadge}</div><div class="card-meta"><span>${escapeHtml(book.author || '未填作者')}</span><span>建立：${createdAt ? formatDate(createdAt) : '未記錄'}</span><span>最後閱讀：${book.last_read_at ? formatDate(book.last_read_at) : '尚未閱讀'}</span><span>${detailLabel}</span></div><p class="library-book-description">${escapeHtml(description)}</p></div><div class="library-progress"><span>${Math.round(progress * 100)}%</span><div><i style="width:${Math.round(progress * 100)}%"></i></div></div><div class="card-actions"><button class="primary-btn" data-open-library-book="${book.id}" data-library-source="${book.source}">開啟閱讀</button><button class="ghost-btn" data-download-library-epub="${book.id}" data-library-source="${book.source}">下載 EPUB</button>${deleteAction}</div></div></article>`;
   }).join('');
+  setElementHtmlIfChanged(list, nextHtml);
+  hydrateLibraryCoverImages(list);
 }
 
 async function deleteLibraryBook(bookId) {
