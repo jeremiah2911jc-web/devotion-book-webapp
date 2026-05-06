@@ -261,7 +261,6 @@ const els = {
   gateSaveConfigBtn: document.getElementById('gate-save-config-btn'),
   gateClearConfigBtn: document.getElementById('gate-clear-config-btn'),
   openSnapshotsBtn: document.getElementById('open-snapshots-btn'),
-  viewAllNotesBtn: document.getElementById('view-all-notes-btn'),
   openAccountSettingsBtn: document.getElementById('open-account-settings-btn'),
   openAccountSettingsButtons: [...document.querySelectorAll('[data-open-account-settings]')],
   accountSignoutBtn: document.getElementById('account-signout-btn'),
@@ -4701,7 +4700,6 @@ function syncDesktopDashboardStaticCopy() {
   document.querySelector('#quick-new-book strong')?.replaceChildren(document.createTextNode('建立一本書'));
   document.querySelector('.home-recent-panel .panel-header h2')?.replaceChildren(document.createTextNode('最近編輯札記'));
   document.querySelector('#recent-books-heading')?.replaceChildren(document.createTextNode('最近編輯書冊'));
-  document.querySelector('#view-all-notes-btn')?.replaceChildren(document.createTextNode('查看全部'));
   document.querySelector('#dashboard-bookshelf-card .panel-header h2')?.replaceChildren(document.createTextNode('書櫃'));
   document.querySelector('.home-today-devotion-card .panel-header h2')?.replaceChildren(document.createTextNode('今日默想'));
 }
