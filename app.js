@@ -164,6 +164,13 @@ const els = {
   summarySnapshotsCount: document.getElementById('summary-snapshots-count'),
   recentNotes: document.getElementById('recent-notes'),
   recentBooks: document.getElementById('recent-books'),
+  noteReaderSearch: document.getElementById('note-reader-search'),
+  noteReaderClearSearch: document.getElementById('note-reader-clear-search'),
+  noteReaderCategory: document.getElementById('note-reader-category'),
+  noteReaderTag: document.getElementById('note-reader-tag'),
+  noteReaderSort: document.getElementById('note-reader-sort'),
+  noteReaderResultCount: document.getElementById('note-reader-result-count'),
+  noteReaderResetFilters: document.getElementById('note-reader-reset-filters'),
   noteReaderList: document.getElementById('note-reader-list'),
   noteReaderDetail: document.getElementById('note-reader-detail'),
   noteReaderWriteBtn: document.getElementById('note-reader-write-btn'),
@@ -338,6 +345,11 @@ const state = {
   selectedBookId: null,
   noteSearch: '',
   noteReaderSelectedId: null,
+  noteReaderSearch: '',
+  noteReaderCategory: '',
+  noteReaderTag: '',
+  noteReaderSort: 'updated-desc',
+  noteReaderListScrollTop: 0,
   contentLibrarySearch: '',
   contentLibraryCategory: '',
   contentLibraryTag: '',
@@ -3626,6 +3638,32 @@ function bindEvents() {
   els.quickNewNote.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
   els.quickNewBook.addEventListener('click', () => { setView('books'); clearBookForm(); });
   els.noteReaderWriteBtn?.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
+  els.noteReaderSearch?.addEventListener('input', event => {
+    state.noteReaderSearch = String(event.target.value || '');
+    renderNoteReader({ preserveScroll: true });
+  });
+  els.noteReaderClearSearch?.addEventListener('click', () => {
+    state.noteReaderSearch = '';
+    renderNoteReader();
+    els.noteReaderSearch?.focus();
+  });
+  els.noteReaderCategory?.addEventListener('change', event => {
+    state.noteReaderCategory = String(event.target.value || '');
+    renderNoteReader();
+  });
+  els.noteReaderTag?.addEventListener('change', event => {
+    state.noteReaderTag = String(event.target.value || '');
+    renderNoteReader();
+  });
+  els.noteReaderSort?.addEventListener('change', event => {
+    state.noteReaderSort = String(event.target.value || 'updated-desc');
+    renderNoteReader();
+  });
+  els.noteReaderResetFilters?.addEventListener('click', () => {
+    resetNoteReaderFilters();
+    renderNoteReader();
+    els.noteReaderSearch?.focus();
+  });
   els.todayDevotionNoteBtn?.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
   els.viewAllNotesBtn?.addEventListener('click', () => setView('notes'));
   els.newNoteBtn.addEventListener('click', clearNoteForm);
@@ -5712,11 +5750,125 @@ function renderNotes() {
   updateChapterSourceOptions();
 }
 
+const NOTE_READER_UNCATEGORIZED_VALUE = '__uncategorized__';
+
+function getNoteReaderDateValue(note, field = 'updated') {
+  const raw = field === 'created'
+    ? (note?.created_at || note?.updated_at || '')
+    : (note?.updated_at || note?.created_at || '');
+  const time = new Date(raw || 0).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function getNoteReaderCategoryValue(note) {
+  return String(note?.category || '').trim() || NOTE_READER_UNCATEGORIZED_VALUE;
+}
+
+function getNoteReaderCategoryLabel(value = '') {
+  return value === NOTE_READER_UNCATEGORIZED_VALUE ? '未分類' : value;
+}
+
+function getNoteReaderFilterOptions() {
+  const categoryValues = new Set();
+  const tags = new Set();
+  state.notes.forEach(note => {
+    categoryValues.add(getNoteReaderCategoryValue(note));
+    getNoteTagList(note).forEach(tag => tags.add(tag));
+  });
+  return {
+    categories: [...categoryValues].sort((left, right) => getNoteReaderCategoryLabel(left).localeCompare(getNoteReaderCategoryLabel(right), 'zh-Hant')),
+    tags: [...tags].sort((left, right) => left.localeCompare(right, 'zh-Hant')),
+  };
+}
+
+function getNoteReaderSearchHaystack(note) {
+  return [
+    note.title,
+    note.scripture_reference,
+    note.category,
+    getNoteTagList(note).join(' '),
+    note.summary,
+    stripScriptureMarkers(note.content || ''),
+  ].join(' ').toLowerCase();
+}
+
+function compareNotesForReading(left, right) {
+  if (state.noteReaderSort === 'created-asc') {
+    return getNoteReaderDateValue(left, 'created') - getNoteReaderDateValue(right, 'created');
+  }
+  if (state.noteReaderSort === 'title-asc') {
+    const leftTitle = sanitizeDisplayText(left.title, '未命名札記');
+    const rightTitle = sanitizeDisplayText(right.title, '未命名札記');
+    return leftTitle.localeCompare(rightTitle, 'zh-Hant');
+  }
+  return getNoteReaderDateValue(right, 'updated') - getNoteReaderDateValue(left, 'updated');
+}
+
 function getNotesForReading() {
-  return [...state.notes].sort((left, right) => {
-    const leftTime = new Date(left.updated_at || left.created_at || 0).getTime() || 0;
-    const rightTime = new Date(right.updated_at || right.created_at || 0).getTime() || 0;
-    return rightTime - leftTime;
+  const query = state.noteReaderSearch.trim().toLowerCase();
+  return state.notes
+    .filter(note => {
+      if (query && !getNoteReaderSearchHaystack(note).includes(query)) return false;
+      if (state.noteReaderCategory && getNoteReaderCategoryValue(note) !== state.noteReaderCategory) return false;
+      if (state.noteReaderTag && !getNoteTagList(note).includes(state.noteReaderTag)) return false;
+      return true;
+    })
+    .sort(compareNotesForReading);
+}
+
+function resetNoteReaderFilters() {
+  state.noteReaderSearch = '';
+  state.noteReaderCategory = '';
+  state.noteReaderTag = '';
+  state.noteReaderSort = 'updated-desc';
+}
+
+function syncNoteReaderControls({ filteredCount = 0, totalCount = 0 } = {}) {
+  const { categories, tags } = getNoteReaderFilterOptions();
+  if (state.noteReaderCategory && !categories.includes(state.noteReaderCategory)) state.noteReaderCategory = '';
+  if (state.noteReaderTag && !tags.includes(state.noteReaderTag)) state.noteReaderTag = '';
+  if (!['updated-desc', 'created-asc', 'title-asc'].includes(state.noteReaderSort)) state.noteReaderSort = 'updated-desc';
+
+  if (els.noteReaderSearch && els.noteReaderSearch.value !== state.noteReaderSearch) {
+    els.noteReaderSearch.value = state.noteReaderSearch;
+  }
+  if (els.noteReaderCategory) {
+    els.noteReaderCategory.innerHTML = [
+      '<option value="">全部分類</option>',
+      ...categories.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(getNoteReaderCategoryLabel(value))}</option>`),
+    ].join('');
+    els.noteReaderCategory.value = state.noteReaderCategory;
+  }
+  if (els.noteReaderTag) {
+    els.noteReaderTag.innerHTML = [
+      '<option value="">全部標籤</option>',
+      ...tags.map(tag => `<option value="${escapeHtml(tag)}">${escapeHtml(tag)}</option>`),
+    ].join('');
+    els.noteReaderTag.value = state.noteReaderTag;
+  }
+  if (els.noteReaderSort) els.noteReaderSort.value = state.noteReaderSort;
+  if (els.noteReaderResultCount) {
+    els.noteReaderResultCount.textContent = `顯示 ${filteredCount} / ${totalCount} 篇`;
+  }
+  els.noteReaderClearSearch?.toggleAttribute('disabled', !state.noteReaderSearch.trim());
+  els.noteReaderResetFilters?.toggleAttribute('disabled', !state.noteReaderSearch && !state.noteReaderCategory && !state.noteReaderTag && state.noteReaderSort === 'updated-desc');
+}
+
+function syncNoteReaderDetailMode() {
+  document.getElementById('view-note-reader')?.classList.toggle('note-reader-detail-open', !!state.noteReaderSelectedId);
+}
+
+function isNoteReaderNarrowView() {
+  return typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches;
+}
+
+function scrollNoteReaderIntoView(target = 'detail') {
+  if (!isNoteReaderNarrowView()) return;
+  const element = target === 'list'
+    ? document.querySelector('#view-note-reader .note-reader-list-panel')
+    : els.noteReaderDetail;
+  requestAnimationFrame(() => {
+    (element || document.getElementById('view-note-reader'))?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   });
 }
 
@@ -5753,7 +5905,27 @@ function renderNoteReaderListCard(note) {
   `;
 }
 
+function renderNoteReaderNoResultsState(totalCount = 0) {
+  state.noteReaderSelectedId = null;
+  syncNoteReaderDetailMode();
+  if (els.noteReaderList) {
+    els.noteReaderList.className = 'note-reader-list note-reader-empty-state empty-state';
+    els.noteReaderList.innerHTML = `
+      <strong>找不到符合條件的札記</strong>
+      <p class="caption">試試清除搜尋、調整分類或標籤篩選。</p>
+      <div class="note-reader-empty-actions">
+        <button class="ghost-btn" type="button" data-note-reader-reset-empty>重設篩選</button>
+      </div>
+    `;
+  }
+  if (els.noteReaderDetail) {
+    els.noteReaderDetail.innerHTML = `<div class="note-reader-detail-placeholder">目前顯示 0 / ${totalCount} 篇。調整條件後再選擇札記閱讀。</div>`;
+  }
+}
+
 function renderNoteReaderEmptyState() {
+  state.noteReaderSelectedId = null;
+  syncNoteReaderDetailMode();
   if (els.noteReaderList) {
     els.noteReaderList.className = 'note-reader-list note-reader-empty-state empty-state';
     els.noteReaderList.innerHTML = `
@@ -5771,11 +5943,13 @@ function renderNoteReaderEmptyState() {
 function renderNoteReaderDetail(notes) {
   if (!els.noteReaderDetail) return;
   if (!state.noteReaderSelectedId) {
+    syncNoteReaderDetailMode();
     els.noteReaderDetail.innerHTML = '<div class="note-reader-detail-placeholder">請先從列表選擇一篇札記。</div>';
     return;
   }
   const note = notes.find(item => String(item.id) === state.noteReaderSelectedId);
   if (!note) {
+    syncNoteReaderDetailMode();
     els.noteReaderDetail.innerHTML = `
       <div class="note-reader-detail-placeholder">
         <strong>找不到這篇札記。</strong>
@@ -5784,6 +5958,7 @@ function renderNoteReaderDetail(notes) {
     `;
     return;
   }
+  syncNoteReaderDetailMode();
 
   const title = sanitizeDisplayText(note.title, '未命名札記');
   const summary = sanitizeDisplayText(note.summary, '尚未填寫摘要。');
@@ -5815,32 +5990,46 @@ function renderNoteReaderDetail(notes) {
 
 function bindNoteReaderActions({ scrollToDetail = false } = {}) {
   els.noteReaderList?.querySelectorAll('[data-note-reader-open]').forEach(button => {
-    button.addEventListener('click', () => openNoteReaderNote(button.dataset.noteReaderOpen, { scrollToDetail: true }));
+    button.addEventListener('click', () => {
+      state.noteReaderListScrollTop = els.noteReaderList?.scrollTop || 0;
+      openNoteReaderNote(button.dataset.noteReaderOpen, { scrollToDetail: true });
+    });
   });
   els.noteReaderList?.querySelector('[data-note-reader-write]')?.addEventListener('click', () => {
     setView('notes');
     clearNoteForm();
   });
-  els.noteReaderDetail?.querySelector('[data-note-reader-back]')?.addEventListener('click', () => {
-    state.noteReaderSelectedId = null;
+  els.noteReaderList?.querySelector('[data-note-reader-reset-empty]')?.addEventListener('click', () => {
+    resetNoteReaderFilters();
     renderNoteReader();
-    els.noteReaderList?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    els.noteReaderSearch?.focus();
+  });
+  els.noteReaderDetail?.querySelector('[data-note-reader-back]')?.addEventListener('click', () => {
+    const restoreListScrollTop = state.noteReaderListScrollTop || 0;
+    state.noteReaderSelectedId = null;
+    renderNoteReader({ restoreListScrollTop });
+    scrollNoteReaderIntoView('list');
   });
   els.noteReaderDetail?.querySelector('[data-note-reader-edit]')?.addEventListener('click', event => {
     const noteId = event.currentTarget?.dataset?.noteReaderEdit;
     if (noteId) populateNoteForm(noteId);
   });
-  if (scrollToDetail && window.innerWidth <= 900) {
-    requestAnimationFrame(() => els.noteReaderDetail?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
-  }
+  if (scrollToDetail) scrollNoteReaderIntoView('detail');
 }
 
 function renderNoteReader(options = {}) {
   if (!els.noteReaderList || !els.noteReaderDetail) return;
+  const previousScrollTop = options.preserveScroll ? els.noteReaderList.scrollTop : 0;
   const notes = getNotesForReading();
-  if (!notes.length) {
-    state.noteReaderSelectedId = null;
+  const totalCount = state.notes.length;
+  syncNoteReaderControls({ filteredCount: notes.length, totalCount });
+  if (!totalCount) {
     renderNoteReaderEmptyState();
+    bindNoteReaderActions();
+    return;
+  }
+  if (!notes.length) {
+    renderNoteReaderNoResultsState(totalCount);
     bindNoteReaderActions();
     return;
   }
@@ -5851,6 +6040,10 @@ function renderNoteReader(options = {}) {
   els.noteReaderList.innerHTML = notes.map(renderNoteReaderListCard).join('');
   renderNoteReaderDetail(notes);
   bindNoteReaderActions(options);
+  if (options.preserveScroll) requestAnimationFrame(() => { els.noteReaderList.scrollTop = previousScrollTop; });
+  if (Number.isFinite(options.restoreListScrollTop)) {
+    requestAnimationFrame(() => { els.noteReaderList.scrollTop = Math.max(0, options.restoreListScrollTop); });
+  }
 }
 
 function openNoteReader() {

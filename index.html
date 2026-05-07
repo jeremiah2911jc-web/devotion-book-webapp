@@ -378,6 +378,37 @@
               </div>
               <button id="note-reader-write-btn" class="ghost-btn" type="button">寫一篇札記</button>
             </div>
+            <div class="note-reader-tools" aria-label="札記閱讀搜尋與篩選">
+              <div class="note-reader-search-row">
+                <label class="note-reader-search-field">
+                  <span class="caption">搜尋札記</span>
+                  <input id="note-reader-search" class="search" type="search" placeholder="搜尋標題、經文、分類、標籤、摘要、內容" autocomplete="off" />
+                </label>
+                <button id="note-reader-clear-search" class="ghost-btn small" type="button">清除搜尋</button>
+              </div>
+              <div class="note-reader-filter-grid">
+                <label class="compact-control note-reader-filter-control">
+                  <span class="caption">分類</span>
+                  <select id="note-reader-category"></select>
+                </label>
+                <label class="compact-control note-reader-filter-control">
+                  <span class="caption">標籤</span>
+                  <select id="note-reader-tag"></select>
+                </label>
+                <label class="compact-control note-reader-filter-control">
+                  <span class="caption">排序</span>
+                  <select id="note-reader-sort">
+                    <option value="updated-desc">最近更新優先</option>
+                    <option value="created-asc">最早建立優先</option>
+                    <option value="title-asc">標題 A-Z</option>
+                  </select>
+                </label>
+              </div>
+              <div class="note-reader-result-row">
+                <strong id="note-reader-result-count">顯示 0 / 0 篇</strong>
+                <button id="note-reader-reset-filters" class="ghost-btn small" type="button">重設篩選</button>
+              </div>
+            </div>
             <div id="note-reader-list" class="note-reader-list"></div>
           </section>
 
