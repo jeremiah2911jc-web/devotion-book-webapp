@@ -261,13 +261,13 @@
           </section>
 
           <section class="summary-cards home-summary-cards">
-            <article class="summary-card">
+            <button id="summary-notes-card" class="summary-card summary-card-action" type="button" aria-label="開啟札記閱讀">
               <span class="summary-icon summary-icon-notes" aria-hidden="true"></span>
               <div class="summary-content">
                 <span>札記</span>
                 <strong><span id="summary-notes-count">0</span><small>篇</small></strong>
               </div>
-            </article>
+            </button>
             <article class="summary-card">
               <span class="summary-icon summary-icon-books" aria-hidden="true"></span>
               <div class="summary-content">
@@ -366,6 +366,25 @@
 
           <span id="summary-snapshots-count" class="hidden">0</span>
         </section>
+      </section>
+
+      <section id="view-note-reader" class="view note-reader-view">
+        <div class="note-reader-shell">
+          <section class="panel note-reader-list-panel">
+            <div class="panel-header note-reader-header">
+              <div>
+                <h2>札記閱讀</h2>
+                <p class="caption">選擇一篇札記，安靜重讀自己的領受與整理。</p>
+              </div>
+              <button id="note-reader-write-btn" class="ghost-btn" type="button">寫一篇札記</button>
+            </div>
+            <div id="note-reader-list" class="note-reader-list"></div>
+          </section>
+
+          <section id="note-reader-detail" class="panel note-reader-detail-panel" aria-live="polite">
+            <div class="note-reader-detail-placeholder">請先從列表選擇一篇札記。</div>
+          </section>
+        </div>
       </section>
 
       <section id="view-notes" class="view">

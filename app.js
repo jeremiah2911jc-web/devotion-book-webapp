@@ -158,11 +158,15 @@ const els = {
   views: [...document.querySelectorAll('.view')],
   quickNewNote: document.getElementById('quick-new-note'),
   quickNewBook: document.getElementById('quick-new-book'),
+  summaryNotesCard: document.getElementById('summary-notes-card'),
   summaryNotesCount: document.getElementById('summary-notes-count'),
   summaryBooksCount: document.getElementById('summary-books-count'),
   summarySnapshotsCount: document.getElementById('summary-snapshots-count'),
   recentNotes: document.getElementById('recent-notes'),
   recentBooks: document.getElementById('recent-books'),
+  noteReaderList: document.getElementById('note-reader-list'),
+  noteReaderDetail: document.getElementById('note-reader-detail'),
+  noteReaderWriteBtn: document.getElementById('note-reader-write-btn'),
   noteForm: document.getElementById('note-form'),
   noteId: document.getElementById('note-id'),
   noteTitle: document.getElementById('note-title'),
@@ -333,6 +337,7 @@ const state = {
   snapshots: [],
   selectedBookId: null,
   noteSearch: '',
+  noteReaderSelectedId: null,
   contentLibrarySearch: '',
   contentLibraryCategory: '',
   contentLibraryTag: '',
@@ -3617,8 +3622,10 @@ function bindEvents() {
   els.downloadBackupBtn?.addEventListener('click', () => { try { downloadBackupJson(); } catch (error) { handleError(error); } });
 
   bindViewTriggers();
+  els.summaryNotesCard?.addEventListener('click', openNoteReader);
   els.quickNewNote.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
   els.quickNewBook.addEventListener('click', () => { setView('books'); clearBookForm(); });
+  els.noteReaderWriteBtn?.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
   els.todayDevotionNoteBtn?.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
   els.viewAllNotesBtn?.addEventListener('click', () => setView('notes'));
   els.newNoteBtn.addEventListener('click', clearNoteForm);
@@ -4771,6 +4778,7 @@ function refreshUi() {
   renderDesktopBookshelfCard();
   renderTodayDevotionCard();
   renderNotes();
+  renderNoteReader();
   renderContentLibrary();
   renderBooks();
   renderSelectedBookPanel();
@@ -5702,6 +5710,158 @@ function renderNotes() {
   `).join('');
   els.notesList.querySelectorAll('[data-edit-note]').forEach(btn => btn.addEventListener('click', () => populateNoteForm(btn.dataset.editNote)));
   updateChapterSourceOptions();
+}
+
+function getNotesForReading() {
+  return [...state.notes].sort((left, right) => {
+    const leftTime = new Date(left.updated_at || left.created_at || 0).getTime() || 0;
+    const rightTime = new Date(right.updated_at || right.created_at || 0).getTime() || 0;
+    return rightTime - leftTime;
+  });
+}
+
+function getNoteReaderMetaItems(note, { includeDate = true } = {}) {
+  const tags = getNoteTagList(note);
+  const items = [
+    `經文｜${sanitizeDisplayText(note.scripture_reference, '未填經文')}`,
+    `分類｜${sanitizeDisplayText(note.category, '未分類')}`,
+    `標籤｜${tags.length ? tags.map(tag => `#${tag}`).join(' ') : '未設標籤'}`,
+  ];
+  if (includeDate) items.push(`日期｜${formatDate(note.updated_at || note.created_at)}`);
+  return items;
+}
+
+function renderNoteReaderMeta(note, options = {}) {
+  return `<div class="note-reader-meta">${getNoteReaderMetaItems(note, options)
+    .map(item => `<span>${escapeHtml(item)}</span>`)
+    .join('')}</div>`;
+}
+
+function renderNoteReaderListCard(note) {
+  const noteId = String(note.id);
+  const title = sanitizeDisplayText(note.title, '未命名札記');
+  const excerpt = sanitizeDisplayText(note.summary, '')
+    || sanitizeDisplayText(stripScriptureMarkers(note.content || ''), '')
+    || '尚未填寫摘要。';
+  const isSelected = state.noteReaderSelectedId === noteId;
+  return `
+    <button class="note-reader-list-card ${isSelected ? 'active' : ''}" type="button" data-note-reader-open="${escapeHtml(noteId)}">
+      <span class="note-reader-card-title">${escapeHtml(title)}</span>
+      ${renderNoteReaderMeta(note)}
+      <span class="note-reader-summary">${escapeHtml(excerpt.slice(0, 180))}</span>
+    </button>
+  `;
+}
+
+function renderNoteReaderEmptyState() {
+  if (els.noteReaderList) {
+    els.noteReaderList.className = 'note-reader-list note-reader-empty-state empty-state';
+    els.noteReaderList.innerHTML = `
+      <strong>目前還沒有札記，可以先寫一篇札記。</strong>
+      <div class="note-reader-empty-actions">
+        <button class="primary-btn" type="button" data-note-reader-write>寫一篇札記</button>
+      </div>
+    `;
+  }
+  if (els.noteReaderDetail) {
+    els.noteReaderDetail.innerHTML = '<div class="note-reader-detail-placeholder">寫下第一篇札記後，就可以在這裡安靜閱讀。</div>';
+  }
+}
+
+function renderNoteReaderDetail(notes) {
+  if (!els.noteReaderDetail) return;
+  if (!state.noteReaderSelectedId) {
+    els.noteReaderDetail.innerHTML = '<div class="note-reader-detail-placeholder">請先從列表選擇一篇札記。</div>';
+    return;
+  }
+  const note = notes.find(item => String(item.id) === state.noteReaderSelectedId);
+  if (!note) {
+    els.noteReaderDetail.innerHTML = `
+      <div class="note-reader-detail-placeholder">
+        <strong>找不到這篇札記。</strong>
+        <button class="ghost-btn" type="button" data-note-reader-back>返回札記閱讀列表</button>
+      </div>
+    `;
+    return;
+  }
+
+  const title = sanitizeDisplayText(note.title, '未命名札記');
+  const summary = sanitizeDisplayText(note.summary, '尚未填寫摘要。');
+  const content = stripScriptureMarkers(note.content || '');
+  const contentBlocks = content
+    ? renderMarkdownContent(content)
+    : '<p class="note-preview-placeholder">這篇札記尚未填寫內容。</p>';
+
+  els.noteReaderDetail.innerHTML = `
+    <article class="note-preview-article note-reader-article">
+      <div class="note-reader-detail-actions">
+        <button class="ghost-btn" type="button" data-note-reader-back>返回札記閱讀列表</button>
+        <button class="secondary-btn" type="button" data-note-reader-edit="${escapeHtml(String(note.id))}">前往編輯</button>
+      </div>
+      <header class="note-preview-header">
+        <h4>${escapeHtml(title)}</h4>
+        ${renderNoteReaderMeta(note)}
+      </header>
+      <section class="note-preview-summary">
+        <span class="note-preview-kicker">摘要</span>
+        <p>${escapeHtml(summary)}</p>
+      </section>
+      <section class="note-preview-content">
+        ${contentBlocks}
+      </section>
+    </article>
+  `;
+}
+
+function bindNoteReaderActions({ scrollToDetail = false } = {}) {
+  els.noteReaderList?.querySelectorAll('[data-note-reader-open]').forEach(button => {
+    button.addEventListener('click', () => openNoteReaderNote(button.dataset.noteReaderOpen, { scrollToDetail: true }));
+  });
+  els.noteReaderList?.querySelector('[data-note-reader-write]')?.addEventListener('click', () => {
+    setView('notes');
+    clearNoteForm();
+  });
+  els.noteReaderDetail?.querySelector('[data-note-reader-back]')?.addEventListener('click', () => {
+    state.noteReaderSelectedId = null;
+    renderNoteReader();
+    els.noteReaderList?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  });
+  els.noteReaderDetail?.querySelector('[data-note-reader-edit]')?.addEventListener('click', event => {
+    const noteId = event.currentTarget?.dataset?.noteReaderEdit;
+    if (noteId) populateNoteForm(noteId);
+  });
+  if (scrollToDetail && window.innerWidth <= 900) {
+    requestAnimationFrame(() => els.noteReaderDetail?.scrollIntoView({ block: 'start', behavior: 'smooth' }));
+  }
+}
+
+function renderNoteReader(options = {}) {
+  if (!els.noteReaderList || !els.noteReaderDetail) return;
+  const notes = getNotesForReading();
+  if (!notes.length) {
+    state.noteReaderSelectedId = null;
+    renderNoteReaderEmptyState();
+    bindNoteReaderActions();
+    return;
+  }
+  if (state.noteReaderSelectedId && !notes.some(note => String(note.id) === state.noteReaderSelectedId)) {
+    state.noteReaderSelectedId = null;
+  }
+  els.noteReaderList.className = 'note-reader-list';
+  els.noteReaderList.innerHTML = notes.map(renderNoteReaderListCard).join('');
+  renderNoteReaderDetail(notes);
+  bindNoteReaderActions(options);
+}
+
+function openNoteReader() {
+  state.noteReaderSelectedId = null;
+  setView('note-reader');
+}
+
+function openNoteReaderNote(noteId, options = {}) {
+  state.noteReaderSelectedId = noteId || null;
+  if (document.body.dataset.currentView !== 'note-reader') setView('note-reader');
+  renderNoteReader(options);
 }
 
 function renderNotePreview() {
@@ -6983,6 +7143,7 @@ function setView(viewName) {
   const isReaderView = viewName === 'reader';
   const titleMap = {
     dashboard: ['總覽', ''],
+    'note-reader': ['札記閱讀', '單純閱讀已寫下的札記，不進入編輯器。'],
     notes: ['寫札記', '專注寫下今天的領受、禱告與整理。'],
     'content-library': ['札記庫', '搜尋、篩選並挑選已寫下的札記，加入目前正在編排的書稿。'],
     books: ['選稿編排', '管理成書前的選稿編排，整理章節順序並進行成書設定。'],
@@ -7006,6 +7167,9 @@ function setView(viewName) {
   }
   if (viewName === 'library') {
     refreshLibraryCoverUrls().catch(console.warn);
+  }
+  if (viewName === 'note-reader') {
+    renderNoteReader();
   }
   if (isReaderView) {
     document.body.dataset.readerScrollY = String(window.scrollY || 0);
