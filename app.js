@@ -159,6 +159,8 @@ const els = {
   quickNewNote: document.getElementById('quick-new-note'),
   quickNewBook: document.getElementById('quick-new-book'),
   summaryNotesCard: document.getElementById('summary-notes-card'),
+  summaryBooksCard: document.getElementById('summary-books-card'),
+  summaryLibraryCard: document.getElementById('summary-library-card'),
   summaryNotesCount: document.getElementById('summary-notes-count'),
   summaryBooksCount: document.getElementById('summary-books-count'),
   summarySnapshotsCount: document.getElementById('summary-snapshots-count'),
@@ -3635,6 +3637,8 @@ function bindEvents() {
 
   bindViewTriggers();
   els.summaryNotesCard?.addEventListener('click', openNoteReader);
+  els.summaryBooksCard?.addEventListener('click', () => setView('books'));
+  els.summaryLibraryCard?.addEventListener('click', () => setView('library'));
   els.quickNewNote.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
   els.quickNewBook.addEventListener('click', () => { setView('books'); clearBookForm(); });
   els.noteReaderWriteBtn?.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
