@@ -5077,6 +5077,21 @@ body:not(.auth-locked) .main {
   }
 }
 
+@media (max-width: 1023px) {
+  #view-dashboard .hero-copy p {
+    max-width: none;
+    white-space: nowrap;
+    letter-spacing: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  #view-dashboard .hero-copy p {
+    font-size: clamp(11px, 3.05vw, 13px);
+    line-height: 1.26;
+  }
+}
+
 @media (min-width: 1024px) {
   body:not(.auth-locked) {
     --desktop-main-pad-x: 32px;
