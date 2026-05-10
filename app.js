@@ -2874,7 +2874,7 @@ function localizeAuthError(error, fallback = '操作失敗，請稍後再試。'
   const text = getErrorText(error);
   if (!text) return fallback;
   if (text.includes('invalid login credentials')) return 'Email 或密碼錯誤，請重新輸入。';
-  if (text.includes('email not confirmed') || text.includes('email_not_confirmed')) return '此 Email 尚未完成驗證，請先完成信箱驗證。';
+  if (text.includes('email not confirmed') || text.includes('email_not_confirmed')) return '這個 Email 尚未完成驗證，請先到信箱點擊驗證連結。';
   if (text.includes('email rate limit')
     || text.includes('rate limit exceeded')
     || text.includes('too many requests')
@@ -3076,6 +3076,91 @@ function getPasswordRecoveryUrlState() {
 function clearAuthRecoveryUrl() {
   if (!window.history?.replaceState) return;
   window.history.replaceState({}, document.title, `${window.location.origin}${window.location.pathname}`);
+}
+function getAuthRedirectUrlState() {
+  const hashParams = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+  const searchParams = new URLSearchParams((window.location.search || '').replace(/^\?/, ''));
+  const getParam = key => searchParams.get(key) || hashParams.get(key) || '';
+  const type = getParam('type');
+  const error = getParam('error') || getParam('error_code');
+  const errorDescription = getParam('error_description');
+  const code = getParam('code');
+  const tokenHash = getParam('token_hash');
+  const accessToken = getParam('access_token');
+  const refreshToken = getParam('refresh_token');
+  return {
+    type,
+    isRecovery: type === 'recovery',
+    hasError: !!error,
+    error,
+    errorDescription,
+    code,
+    tokenHash,
+    accessToken,
+    refreshToken,
+    hasAuthParams: !!(error || code || tokenHash || accessToken || refreshToken),
+  };
+}
+function clearAuthCallbackUrl() {
+  if (!window.history?.replaceState) return;
+  window.history.replaceState({}, document.title, `${window.location.origin}${window.location.pathname}`);
+}
+function normalizeAuthOtpType(type = '') {
+  const normalized = String(type || '').trim().toLowerCase();
+  if (['signup', 'magiclink', 'recovery', 'invite', 'email_change', 'email'].includes(normalized)) return normalized;
+  return 'signup';
+}
+async function handleSupabaseAuthRedirect(urlState = getAuthRedirectUrlState()) {
+  if (!state.supabase || !urlState.hasAuthParams || urlState.isRecovery) return { handled: false };
+  if (urlState.hasError) {
+    clearAuthCallbackUrl();
+    return {
+      handled: true,
+      success: false,
+      message: 'Email 驗證連結無效或已過期，請重新申請驗證信。',
+    };
+  }
+
+  try {
+    if (urlState.code) {
+      if (typeof state.supabase.auth.exchangeCodeForSession !== 'function') throw new Error('unsupported_auth_callback');
+      const { error } = await state.supabase.auth.exchangeCodeForSession(urlState.code);
+      if (error) throw error;
+    } else if (urlState.tokenHash) {
+      if (typeof state.supabase.auth.verifyOtp !== 'function') throw new Error('unsupported_auth_callback');
+      const { error } = await state.supabase.auth.verifyOtp({
+        token_hash: urlState.tokenHash,
+        type: normalizeAuthOtpType(urlState.type),
+      });
+      if (error) throw error;
+    } else if (urlState.accessToken && urlState.refreshToken) {
+      if (typeof state.supabase.auth.setSession !== 'function') throw new Error('unsupported_auth_callback');
+      const { error } = await state.supabase.auth.setSession({
+        access_token: urlState.accessToken,
+        refresh_token: urlState.refreshToken,
+      });
+      if (error) throw error;
+    } else {
+      return { handled: false };
+    }
+
+    clearAuthCallbackUrl();
+    const { data } = await state.supabase.auth.getSession();
+    const session = data?.session || null;
+    return {
+      handled: true,
+      success: true,
+      session,
+      message: session?.user ? 'Email 驗證完成，已登入。' : 'Email 驗證完成，請登入。',
+    };
+  } catch (error) {
+    clearAuthCallbackUrl();
+    return {
+      handled: true,
+      success: false,
+      message: 'Email 驗證連結無效或已過期，請重新申請驗證信。',
+    };
+  }
 }
 function enterPasswordRecoveryMode() {
   state.passwordRecoveryActive = true;
@@ -3616,6 +3701,7 @@ async function bootstrap() {
   bindEvents();
   if (state.supabase) {
     const recoveryUrlState = getPasswordRecoveryUrlState();
+    const authRedirectResult = await handleSupabaseAuthRedirect();
     if (recoveryUrlState.isRecovery) state.passwordRecoveryActive = true;
     state.supabase.auth.onAuthStateChange((event, session) => {
       handleSupabaseAuthStateChange(event, session);
@@ -3631,6 +3717,18 @@ async function bootstrap() {
       state.currentUser = data.session?.user || null;
       ensureAdminUi();
       if (state.currentUser) setupCloudRealtime();
+    }
+    if (authRedirectResult.handled) {
+      if (authRedirectResult.success && authRedirectResult.session?.user) {
+        state.currentUser = authRedirectResult.session.user;
+        ensureAdminUi();
+        setupCloudRealtime();
+      } else if (!authRedirectResult.success) {
+        state.currentUser = null;
+        setSyncState({ status: '尚未登入', detail: authRedirectResult.message, at: '' });
+        openAuthInline('login');
+      }
+      showToast(authRedirectResult.message);
     }
   } else {
     state.currentUser = getLocalUser();
@@ -3874,7 +3972,7 @@ async function handleRegister() {
     if (Array.isArray(data?.user?.identities) && data.user.identities.length === 0) {
       throw new Error('\u6b64\u5e33\u865f\u5df2\u8a3b\u518a\u3002');
     }
-    showToast('\u5e33\u6236\u5df2\u5efa\u7acb\uff0c\u8acb\u4f9d\u7167 Supabase \u8a2d\u5b9a\u5b8c\u6210\u9a57\u8b49\u3002');
+    showToast('帳戶已建立，請到信箱點擊驗證連結完成 Email 驗證。若沒看到信件，請檢查垃圾郵件匣。');
     return;
   }
   if (findLocalAccountByEmail(email)) throw new Error('\u9019\u500b Email \u5df2\u7d93\u5efa\u7acb\u904e\u5e33\u6236\u3002');
