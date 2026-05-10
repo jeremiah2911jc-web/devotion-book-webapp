@@ -4218,6 +4218,22 @@ function requireUser() {
   if (!state.currentUser) throw new Error('請先登入或以本機模式建立測試帳號。');
 }
 
+function hashStorageScope(value = '') {
+  let hash = 2166136261;
+  for (const char of String(value)) {
+    hash ^= char.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `email-${(hash >>> 0).toString(36)}`;
+}
+
+function getUserScopedStorageKey(baseKey) {
+  const userId = String(state.currentUser?.id || '').trim();
+  const email = String(state.currentUser?.email || '').trim().toLowerCase();
+  const scope = userId || (email ? hashStorageScope(email) : 'guest');
+  return `${baseKey}:${scope.replace(/[^A-Za-z0-9_.:-]/g, '_')}`;
+}
+
 function normalizeBookProjectRow(book = {}, { detailLoaded = false } = {}) {
   return {
     ...book,
@@ -8103,7 +8119,7 @@ function revokeImportedCoverUrls() {
 }
 
 function getSystemLibraryProgressMap() {
-  return loadJson(systemLibrary.progressKey, {});
+  return loadJson(getUserScopedStorageKey(systemLibrary.progressKey), {});
 }
 
 function saveSystemLibraryProgress(bookId, payload = {}) {
@@ -8112,7 +8128,7 @@ function saveSystemLibraryProgress(bookId, payload = {}) {
     ...(progressMap[bookId] || {}),
     ...payload,
   };
-  saveJson(systemLibrary.progressKey, progressMap);
+  saveJson(getUserScopedStorageKey(systemLibrary.progressKey), progressMap);
 }
 
 function isSystemLibraryBook(book) {
@@ -8374,6 +8390,18 @@ function normalizeLibraryBook(book) {
   };
 }
 
+function hasLibraryReadingProgress(book) {
+  const lastReadAt = String(book?.last_read_at || book?.lastReadAt || '').trim();
+  if (!lastReadAt) return false;
+  const timestamp = Date.parse(lastReadAt);
+  return Number.isFinite(timestamp) && timestamp > 0;
+}
+
+function getLibraryReadingProgress(book) {
+  if (!hasLibraryReadingProgress(book)) return 0;
+  return Math.max(0, Math.min(1, Number(book?.reading_progress || book?.readingProgress || 0)));
+}
+
 function normalizeLibraryChapters(chapters = []) {
   return [...chapters].map(chapter => ({
     ...chapter,
@@ -8623,18 +8651,21 @@ function renderLibrary() {
   list.className = 'library-list';
   const nextHtml = books.map(book => {
     const coverUrl = getLibraryCoverUrl(book);
-    const progress = Math.max(0, Math.min(1, book.reading_progress || 0));
+    const isSystemBook = isSystemLibraryBook(book);
+    const hasProgress = hasLibraryReadingProgress(book);
+    const progress = getLibraryReadingProgress(book);
+    const progressPercent = Math.round(progress * 100);
     const sourceBadge = book.source === 'imported_epub'
       ? '<span class="library-badge library-badge-imported">外部匯入</span>'
-      : isSystemLibraryBook(book)
+      : isSystemBook
         ? '<span class="library-badge library-badge-system">系統預設</span>'
         : '';
-    const createdAt = book.created_at || book.importedAt || '';
+    const createdAt = isSystemBook ? '' : (book.created_at || book.importedAt || '');
     const selected = book.id === cloudLibrary.selectedBookId || book.id === cloudLibrary.readerBook?.id;
     const description = getBookDraftDescription(book)
       || (book.source === 'imported_epub'
         ? '這本 EPUB 已匯入本機書櫃，可直接開啟閱讀。'
-        : isSystemLibraryBook(book)
+        : isSystemBook
           ? '這是系統內建的聖經電子書，可直接開啟閱讀。'
         : '這本書已保存於雲端書櫃，可在登入後跨裝置閱讀。');
     const fallbackCover = book.source === 'imported_epub'
@@ -8642,13 +8673,19 @@ function renderLibrary() {
       : `<span>${escapeHtml((book.title || '書').slice(0, 2))}</span>`;
     const detailLabel = book.source === 'imported_epub'
       ? `檔案 ${(book.fileSize / 1024 / 1024 || 0).toFixed(1)} MB`
-      : isSystemLibraryBook(book)
+      : isSystemBook
         ? '系統內建電子書'
         : `版本 ${escapeHtml(book.version)}`;
-    const deleteAction = isSystemLibraryBook(book)
+    const metaItems = [
+      escapeHtml(book.author || '未填作者'),
+      createdAt ? `建立：${formatDate(createdAt)}` : '',
+      hasProgress ? `最後閱讀：${formatDate(book.last_read_at || book.lastReadAt)}` : '尚未開始閱讀',
+      detailLabel,
+    ].filter(Boolean);
+    const deleteAction = isSystemBook
       ? ''
       : `<button class="danger-btn" data-delete-library-book="${book.id}" data-library-source="${book.source}">刪除書籍</button>`;
-    return `<article class="library-book ${selected ? 'selected' : ''} ${book.source === 'imported_epub' ? 'imported-book' : ''}"><div class="library-cover">${coverUrl ? buildLibraryCoverImage(book, coverUrl, `${book.title}封面`) : fallbackCover}</div><div class="library-book-main"><div><div class="library-book-top"><h3>${escapeHtml(book.title)}</h3>${sourceBadge}</div><div class="card-meta"><span>${escapeHtml(book.author || '未填作者')}</span><span>建立：${createdAt ? formatDate(createdAt) : '未記錄'}</span><span>最後閱讀：${book.last_read_at ? formatDate(book.last_read_at) : '尚未閱讀'}</span><span>${detailLabel}</span></div><p class="library-book-description">${escapeHtml(description)}</p></div><div class="library-progress"><span>${Math.round(progress * 100)}%</span><div><i style="width:${Math.round(progress * 100)}%"></i></div></div><div class="card-actions"><button class="primary-btn" data-open-library-book="${book.id}" data-library-source="${book.source}">開啟閱讀</button><button class="ghost-btn" data-download-library-epub="${book.id}" data-library-source="${book.source}">下載 EPUB</button>${deleteAction}</div></div></article>`;
+    return `<article class="library-book ${selected ? 'selected' : ''} ${book.source === 'imported_epub' ? 'imported-book' : ''}"><div class="library-cover">${coverUrl ? buildLibraryCoverImage(book, coverUrl, `${book.title}封面`) : fallbackCover}</div><div class="library-book-main"><div><div class="library-book-top"><h3>${escapeHtml(book.title)}</h3>${sourceBadge}</div><div class="card-meta">${metaItems.map(item => `<span>${item}</span>`).join('')}</div><p class="library-book-description">${escapeHtml(description)}</p></div><div class="library-progress"><span>${progressPercent}%</span><div><i style="width:${progressPercent}%"></i></div></div><div class="card-actions"><button class="primary-btn" data-open-library-book="${book.id}" data-library-source="${book.source}">開啟閱讀</button><button class="ghost-btn" data-download-library-epub="${book.id}" data-library-source="${book.source}">下載 EPUB</button>${deleteAction}</div></div></article>`;
   }).join('');
   setElementHtmlIfChanged(list, nextHtml);
   hydrateLibraryCoverImages(list);
@@ -9150,12 +9187,12 @@ function getReaderBookSource(book = cloudLibrary.readerBook) {
 }
 
 function loadReaderProgressMap() {
-  const data = loadJson(cloudLibrary.readerProgressKey, {});
+  const data = loadJson(getUserScopedStorageKey(cloudLibrary.readerProgressKey), {});
   return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
 }
 
 function saveReaderProgressMap(map) {
-  saveJson(cloudLibrary.readerProgressKey, map && typeof map === 'object' ? map : {});
+  saveJson(getUserScopedStorageKey(cloudLibrary.readerProgressKey), map && typeof map === 'object' ? map : {});
 }
 
 function getReaderProgress(bookKey) {
