@@ -267,6 +267,8 @@ const els = {
   gateAuthPasswordConfirm: document.getElementById('gate-auth-password-confirm'),
   gateSubmitBtn: document.getElementById('gate-submit-btn'),
   gateResetPasswordBtn: document.getElementById('gate-reset-password-btn'),
+  gateResendVerificationHint: document.getElementById('gate-resend-verification-hint'),
+  gateResendVerificationBtn: document.getElementById('gate-resend-verification-btn'),
   authSettingsSheet: document.getElementById('auth-settings-sheet'),
   closeAuthSettingsBtn: document.getElementById('close-auth-settings-btn'),
   gateSupabaseUrl: document.getElementById('gate-supabase-url'),
@@ -305,6 +307,8 @@ const els = {
   todayDevotionNoteBtn: document.getElementById('today-devotion-note-btn'),
   topbarForceSyncBtn: document.getElementById('topbar-force-sync-btn'),
   resetPasswordBtn: document.getElementById('reset-password-btn'),
+  resendVerificationHint: document.getElementById('resend-verification-hint'),
+  resendVerificationBtn: document.getElementById('resend-verification-btn'),
   bookSaveFeedback: document.getElementById('book-save-feedback'),
   importEpubBtn: document.getElementById('import-epub-btn'),
   importEpubInput: document.getElementById('import-epub-input'),
@@ -329,6 +333,51 @@ function removeRetiredInterfaceElements() {
   document.querySelectorAll('#view-dashboard .steps li').forEach(item => {
     if (item.textContent.includes('快照')) item.textContent = '調整章節順序，確認後直接匯出 EPUB。';
   });
+}
+
+function createResendVerificationHint() {
+  const hint = document.createElement('p');
+  hint.className = 'caption auth-verification-hint';
+  hint.textContent = 'Email 尚未驗證？請先到信箱點擊驗證連結，或重新寄送驗證信。';
+  return hint;
+}
+function createResendVerificationButton() {
+  const row = document.createElement('div');
+  row.className = 'row wrap gap-sm auth-verification-actions';
+  const button = document.createElement('button');
+  button.className = 'ghost-btn subtle-action';
+  button.type = 'button';
+  button.textContent = '重新寄送驗證信';
+  row.append(button);
+  return { row, button };
+}
+function ensureAuthVerificationResendUi() {
+  if (!els.gateResendVerificationBtn && els.gateResetPasswordBtn) {
+    const secondaryActions = els.gateResetPasswordBtn.closest('.auth-modal-secondary-actions');
+    if (secondaryActions) {
+      const hint = createResendVerificationHint();
+      hint.id = 'gate-resend-verification-hint';
+      const { row, button } = createResendVerificationButton();
+      button.id = 'gate-resend-verification-btn';
+      secondaryActions.insertAdjacentElement('afterend', row);
+      secondaryActions.insertAdjacentElement('afterend', hint);
+      els.gateResendVerificationHint = hint;
+      els.gateResendVerificationBtn = button;
+    }
+  }
+  if (!els.resendVerificationBtn && els.resetPasswordBtn) {
+    const resetRow = els.resetPasswordBtn.closest('.row');
+    if (resetRow) {
+      const hint = createResendVerificationHint();
+      hint.id = 'resend-verification-hint';
+      const { row, button } = createResendVerificationButton();
+      button.id = 'resend-verification-btn';
+      resetRow.insertAdjacentElement('afterend', row);
+      resetRow.insertAdjacentElement('afterend', hint);
+      els.resendVerificationHint = hint;
+      els.resendVerificationBtn = button;
+    }
+  }
 }
 
 const state = {
@@ -2870,11 +2919,15 @@ function getErrorText(error) {
     error?.error_description,
   ].filter(Boolean).join(' ')).toLowerCase();
 }
+function isEmailNotConfirmedError(error) {
+  const text = getErrorText(error);
+  return text.includes('email not confirmed') || text.includes('email_not_confirmed');
+}
 function localizeAuthError(error, fallback = '操作失敗，請稍後再試。') {
   const text = getErrorText(error);
   if (!text) return fallback;
   if (text.includes('invalid login credentials')) return 'Email 或密碼錯誤，請重新輸入。';
-  if (text.includes('email not confirmed') || text.includes('email_not_confirmed')) return '這個 Email 尚未完成驗證，請先到信箱點擊驗證連結。';
+  if (isEmailNotConfirmedError(error)) return '這個 Email 尚未完成驗證，請先到信箱點擊驗證連結。';
   if (text.includes('email rate limit')
     || text.includes('rate limit exceeded')
     || text.includes('too many requests')
@@ -3036,6 +3089,9 @@ function openAuthInline(mode = 'register') {
     els.gateResetPasswordBtn.classList.toggle('hidden', isPasswordRecovery);
     els.gateResetPasswordBtn.textContent = '忘記密碼';
   }
+  const showResendVerification = !isPasswordRecovery;
+  els.gateResendVerificationHint?.classList.toggle('hidden', !showResendVerification);
+  els.gateResendVerificationBtn?.classList.toggle('hidden', !showResendVerification);
   els.closeAuthInlineBtn?.classList.toggle('hidden', isPasswordRecovery);
   (isPasswordRecovery ? els.gateAuthPassword : els.gateAuthEmail)?.focus();
 }
@@ -3692,6 +3748,7 @@ async function clearConnectionSettings() {
 
 async function bootstrap() {
   removeRetiredInterfaceElements();
+  ensureAuthVerificationResendUi();
   ensureContentLibraryUi();
   ensureOperationManualUi();
   ensureBookDraftWorkspaceUi();
@@ -3769,6 +3826,8 @@ function bindEvents() {
   });
   els.gateResetPasswordBtn?.addEventListener('click', () => handleResetPassword().catch(handleError));
   els.resetPasswordBtn?.addEventListener('click', () => handleResetPassword().catch(handleError));
+  els.gateResendVerificationBtn?.addEventListener('click', () => handleResendVerificationEmail().catch(handleError));
+  els.resendVerificationBtn?.addEventListener('click', () => handleResendVerificationEmail().catch(handleError));
   els.gateSaveConfigBtn?.addEventListener('click', () => applyConnectionSettings({
     supabaseUrl: els.gateSupabaseUrl.value,
     supabaseAnonKey: els.gateSupabaseAnonKey.value,
@@ -3955,6 +4014,64 @@ function isEmailRateLimitError(error) {
     || message.includes('over_email_send_rate_limit');
 }
 
+function isValidEmailAddress(email = '') {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || '').trim());
+}
+
+function localizeResendVerificationError(error) {
+  const text = getErrorText(error);
+  if (!text) return '驗證信暫時無法寄出，請稍後再試。';
+  if (text.includes('invalid email') || text.includes('email address is invalid')) return '請先輸入正確的 Email。';
+  if (isEmailRateLimitError(error)) return '驗證信寄送太頻繁，請稍後再試。';
+  if (text.includes('user not found')
+    || text.includes('user_not_found')
+    || text.includes('not found')
+    || text.includes('signup required')) return '若你尚未建立帳戶，請先建立帳戶。';
+  if (text.includes('already confirmed') || text.includes('already verified')) return '這個 Email 已完成驗證，請直接登入。';
+  return '驗證信暫時無法寄出，請稍後再試。';
+}
+
+function setResendVerificationLoading(isLoading = false) {
+  [els.gateResendVerificationBtn, els.resendVerificationBtn].forEach((button) => {
+    if (!button) return;
+    if (!button.dataset.defaultText) button.dataset.defaultText = button.textContent || '重新寄送驗證信';
+    button.disabled = isLoading;
+    button.textContent = isLoading ? '寄送中...' : button.dataset.defaultText;
+  });
+}
+
+async function handleResendVerificationEmail() {
+  const { email } = getAuthCredentials();
+  if (!email) {
+    showToast('請先輸入 Email。');
+    return;
+  }
+  if (!isValidEmailAddress(email)) {
+    showToast('請先輸入正確的 Email。');
+    return;
+  }
+  if (!state.supabase || typeof state.supabase.auth?.resend !== 'function') {
+    showToast('驗證信暫時無法寄出，請稍後再試。');
+    return;
+  }
+  setResendVerificationLoading(true);
+  try {
+    const { error } = await state.supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: {
+        emailRedirectTo: window.location.origin + window.location.pathname,
+      },
+    });
+    if (error) throw error;
+    showToast('驗證信已重新寄出，請到信箱完成 Email 驗證。若沒看到信件，請檢查垃圾郵件匣。');
+  } catch (error) {
+    showToast(localizeResendVerificationError(error));
+  } finally {
+    setResendVerificationLoading(false);
+  }
+}
+
 async function handleRegister() {
   const { email, password } = getAuthCredentials();
   if (!email) throw new Error('\u8acb\u5148\u8f38\u5165 Email\u3002');
@@ -3966,11 +4083,11 @@ async function handleRegister() {
       options: { emailRedirectTo: window.location.origin + window.location.pathname },
     });
     if (error) {
-      if (isDuplicateRegistrationError(error)) throw new Error('\u6b64\u5e33\u865f\u5df2\u8a3b\u518a\u3002');
+      if (isDuplicateRegistrationError(error)) throw new Error('這個 Email 已建立帳戶。如果尚未完成驗證，請使用「重新寄送驗證信」。');
       throw createAuthError(error);
     }
     if (Array.isArray(data?.user?.identities) && data.user.identities.length === 0) {
-      throw new Error('\u6b64\u5e33\u865f\u5df2\u8a3b\u518a\u3002');
+      throw new Error('這個 Email 已建立帳戶。如果尚未完成驗證，請使用「重新寄送驗證信」。');
     }
     showToast('帳戶已建立，請到信箱點擊驗證連結完成 Email 驗證。若沒看到信件，請檢查垃圾郵件匣。');
     return;
