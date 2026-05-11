@@ -1,13 +1,11 @@
 const SUPABASE_API_BASE = 'https://api.supabase.com/v1';
 const DEFAULT_ADMIN_EMAILS = ['allen680552@gmail.com'];
 const BYTES_PER_MB = 1024 * 1024;
-const BYTES_PER_GB = 1024 * BYTES_PER_MB;
 const USER_PAGE_SIZE = 100;
 const USER_PAGE_LIMIT = 10;
 const FALLBACK_LIMITS = {
   database: 500 * BYTES_PER_MB,
   storage: 1024 * BYTES_PER_MB,
-  egress: 250 * BYTES_PER_GB,
 };
 
 function logUsage(message, extra = null) {
@@ -39,23 +37,14 @@ function getMissingAuthEnv(projectRef) {
   return missing;
 }
 
-function metricNotConfigured(message) {
+function metricNotConfigured(message, missingEnv = []) {
   return {
     status: 'not_configured',
     used: null,
     limit: null,
     percent: null,
     message,
-  };
-}
-
-function metricUnsupported(message) {
-  return {
-    status: 'unsupported',
-    used: null,
-    limit: null,
-    percent: null,
-    message,
+    missingEnv,
   };
 }
 
@@ -86,7 +75,11 @@ function usageMetric({ used = null, limit = null, message = '', limitSource = 'c
   };
 }
 
-function emptyAuthUsers(status = 'not_configured', message = '尚未設定使用者統計連線') {
+function emptyAuthUsers(
+  status = 'not_configured',
+  message = '缺少 SUPABASE_SERVICE_ROLE_KEY，無法讀取 Auth 使用者統計。',
+  missingEnv = status === 'not_configured' ? ['SUPABASE_SERVICE_ROLE_KEY'] : [],
+) {
   return {
     status,
     total: 0,
@@ -98,26 +91,81 @@ function emptyAuthUsers(status = 'not_configured', message = '尚未設定使用
     newThisMonth: 0,
     recentUsers: [],
     message,
+    missingEnv,
   };
 }
 
 function emptySupabaseSection() {
   return {
-    database: metricNotConfigured('尚未設定 Supabase 平台連線'),
-    storage: metricNotConfigured('尚未設定 Supabase 平台連線'),
-    egress: metricNotConfigured('尚未設定 Supabase 平台連線'),
+    database: metricNotConfigured(
+      '缺少 SUPABASE_ACCESS_TOKEN，無法透過 Supabase Management API 讀取資料庫大小。',
+      ['SUPABASE_ACCESS_TOKEN'],
+    ),
+    storage: metricNotConfigured(
+      '缺少 SUPABASE_ACCESS_TOKEN，無法透過 Supabase Management API 查詢 storage.objects 用量。',
+      ['SUPABASE_ACCESS_TOKEN'],
+    ),
     authUsers: emptyAuthUsers(),
-    apiRequests: metricUnsupported('平台 API 暫不提供此數據，請至 Supabase Dashboard 查看'),
-    logs: metricUnsupported('平台 API 暫不提供此數據，請至 Supabase Dashboard 查看'),
   };
 }
 
-function emptyVercelSection(message = '尚未設定 Vercel 平台連線') {
+function emptyVercelSection() {
   return {
-    visitors: metricNotConfigured(message),
-    bandwidth: metricNotConfigured(message),
-    functions: metricNotConfigured(message),
-    deployment: metricNotConfigured(message),
+    deployment: metricNotConfigured(
+      '缺少 VERCEL_ACCESS_TOKEN 或 VERCEL_PROJECT_ID，無法讀取 Vercel production deployment 狀態。',
+      ['VERCEL_ACCESS_TOKEN', 'VERCEL_PROJECT_ID'],
+    ),
+  };
+}
+
+function buildManualChecks() {
+  return {
+    supabase: [
+      {
+        key: 'supabase-egress',
+        label: 'Bandwidth / Egress',
+        dashboardPath: 'Supabase Dashboard -> Billing / Usage，或 Project Reports -> Custom Reports -> Database API -> API Egress',
+        reason: 'Supabase 官方建議從 Billing Dashboard 或 Project Reports 檢視 Egress；目前不放在主監控卡，避免保留永遠 unsupported 的假卡片。',
+        warning: '建議低於方案額度 70% 為正常，70% 至 89% 注意，90% 以上警告。',
+      },
+      {
+        key: 'supabase-api-requests',
+        label: 'API Requests',
+        dashboardPath: 'Supabase Dashboard -> Logs / API 或 Reports',
+        reason: 'API request 分析通常來自 Logs / Reports，不適合用目前管理後台做穩定、低成本即時卡片。',
+        warning: '若正式站操作變慢或 egress 暴增，再到 Dashboard 檢查 API request 分布。',
+      },
+      {
+        key: 'supabase-error-logs',
+        label: 'Logs / Error Logs',
+        dashboardPath: 'Supabase Dashboard -> Logs Explorer',
+        reason: 'Logs API 需要 analytics/logs 權限與查詢範圍設計，容易回傳大量資料；目前改成人工檢查清單較安全。',
+        warning: '發布前後查看 Auth、PostgREST、Storage、Edge Function 是否有連續錯誤。',
+      },
+    ],
+    vercel: [
+      {
+        key: 'vercel-visitors',
+        label: 'Visitors',
+        dashboardPath: 'Vercel Dashboard -> Project -> Analytics',
+        reason: 'Visitors 屬於 Vercel Web Analytics；需確認專案已啟用 Web Analytics，管理後台不保留沒有資料來源的假卡片。',
+        warning: '若需要此數據，先在 Vercel 啟用 Web Analytics，再評估是否接正式 Analytics API。',
+      },
+      {
+        key: 'vercel-bandwidth',
+        label: 'Bandwidth',
+        dashboardPath: 'Vercel Dashboard -> Usage，或使用具備權限的 Vercel CLI `vercel usage --format json` 人工匯出',
+        reason: 'Vercel 用量目前官方穩定入口以 Dashboard / CLI usage 為主；不在前端後台保留長期 not_configured 卡片。',
+        warning: '發布初期每日查看流量與費用變化。',
+      },
+      {
+        key: 'vercel-functions',
+        label: 'Function Usage',
+        dashboardPath: 'Vercel Dashboard -> Usage / Functions',
+        reason: 'Function usage 屬帳務用量，需 Dashboard 或 usage 匯出檢查；目前管理後台僅自動讀 deployment 狀態。',
+        warning: '若 /api/admin-usage 或收款證明 API 頻率升高，再人工查看 Function usage。',
+      },
+    ],
   };
 }
 
@@ -142,7 +190,7 @@ async function authorizeAdminRequest(projectRef, accessToken) {
   const email = String(user?.email || '').trim().toLowerCase();
   if (!email) return { ok: false, status: 401, error: 'unauthorized' };
   if (!getAdminEmailSet().has(email)) return { ok: false, status: 403, error: 'forbidden' };
-  return { ok: true, userEmail: email };
+  return { ok: true };
 }
 
 async function runReadOnlyQuery(projectRef, accessToken, query, label) {
@@ -163,8 +211,9 @@ async function runReadOnlyQuery(projectRef, accessToken, query, label) {
 
     if (!response.ok) {
       logUsage(`${label} query failed`, { status: response.status });
-      if (response.status === 401 || response.status === 403) return { payload: null, error: 'unauthorized' };
-      if (response.status >= 500) return { payload: null, error: 'provider_error' };
+      if (response.status === 401) return { payload: null, error: 'unauthorized' };
+      if (response.status === 403) return { payload: null, error: 'forbidden' };
+      if (response.status === 408 || response.status === 429) return { payload: null, error: 'timeout' };
       return { payload: null, error: 'provider_error' };
     }
 
@@ -216,6 +265,19 @@ function findFirstNumericField(payload, candidateKeys = []) {
   return null;
 }
 
+function buildReadOnlyQueryError(label, error) {
+  if (error === 'unauthorized' || error === 'forbidden') {
+    return metricProviderError(
+      `SUPABASE_ACCESS_TOKEN 權限不足，無法透過 Management API read-only query 讀取 ${label}。`,
+      'forbidden',
+    );
+  }
+  if (error === 'timeout') {
+    return metricProviderError(`${label} 查詢逾時，請稍後再試。`, 'timeout');
+  }
+  return metricProviderError(`${label} 暫時無法自動讀取，請稍後再試。`);
+}
+
 async function loadDatabaseSize(projectRef, accessToken) {
   const result = await runReadOnlyQuery(
     projectRef,
@@ -223,7 +285,7 @@ async function loadDatabaseSize(projectRef, accessToken) {
     'select pg_database_size(current_database()) as database_size_bytes;',
     'databaseSize',
   );
-  if (result?.error) return metricProviderError('資料庫用量暫時無法讀取', result.error);
+  if (result?.error) return buildReadOnlyQueryError('Database Size', result.error);
 
   const bytes = findFirstNumericField(result?.payload, [
     'database_size_bytes',
@@ -231,12 +293,12 @@ async function loadDatabaseSize(projectRef, accessToken) {
     'size',
   ]);
 
-  if (bytes === null) return metricProviderError('資料庫用量暫時無法解析');
+  if (bytes === null) return metricProviderError('Database Size 查詢有回應，但回傳格式無法解析。');
   return usageMetric({
     used: bytes,
     limit: FALLBACK_LIMITS.database,
     limitSource: 'fallback',
-    message: '以 read-only 查詢取得目前資料庫大小；上限先以安全預設值估算，正式上限仍以 Supabase Dashboard 為準。',
+    message: '以 Supabase Management API read-only query 取得目前資料庫大小；上限採保守預設，正式額度仍以 Supabase Dashboard 為準。',
   });
 }
 
@@ -246,33 +308,28 @@ async function loadStorageUsed(projectRef, accessToken) {
     accessToken,
     `
       select
-        sum(size) as total_bytes
+        coalesce(sum(
+          case
+            when metadata ? 'size'
+              and (metadata ->> 'size') ~ '^[0-9]+$'
+            then (metadata ->> 'size')::bigint
+            else 0
+          end
+        ), 0) as total_bytes
       from storage.objects;
     `,
     'storageUsed',
   );
-  if (result?.error) return metricProviderError('Storage 用量暫時無法讀取', result.error);
+  if (result?.error) return buildReadOnlyQueryError('Storage 用量', result.error);
 
   const totalBytes = findFirstNumericField(result?.payload, ['total_bytes']);
-  if (totalBytes === null) {
-    const rows = collectPrimitiveRows(result?.payload);
-    const hasNullTotal = rows.some((row) => Object.prototype.hasOwnProperty.call(row, 'total_bytes') && row.total_bytes === null);
-    if (hasNullTotal) {
-      return usageMetric({
-        used: 0,
-        limit: FALLBACK_LIMITS.storage,
-        limitSource: 'fallback',
-        message: '目前 storage.objects 無檔案大小總和。',
-      });
-    }
-    return metricProviderError('Storage 用量暫時無法解析');
-  }
+  if (totalBytes === null) return metricProviderError('Storage 用量查詢有回應，但回傳格式無法解析。');
 
   return usageMetric({
     used: totalBytes,
     limit: FALLBACK_LIMITS.storage,
     limitSource: 'fallback',
-    message: '以 read-only 查詢取得 storage.objects 檔案總量；正式上限仍以 Supabase Dashboard 為準。',
+    message: '以 storage.objects.metadata 的 size 欄位加總估算 Storage 用量；正式帳務用量仍以 Supabase Dashboard 為準。',
   });
 }
 
@@ -303,8 +360,8 @@ function buildActiveLabel(lastSignInAt) {
   if (!lastSignIn) return '未活躍';
   const now = Date.now();
   const days = (now - lastSignIn.getTime()) / (24 * 60 * 60 * 1000);
-  if (days <= 7) return '7天內活躍';
-  if (days <= 30) return '30天內活躍';
+  if (days <= 7) return '7 天內活躍';
+  if (days <= 30) return '30 天內活躍';
   return '未活躍';
 }
 
@@ -362,7 +419,7 @@ function summarizeAuthUsers(users = []) {
     newToday,
     newThisMonth,
     recentUsers,
-    message: '使用者統計由後端讀取 Supabase Auth Admin API 後去敏感化回傳。',
+    message: '使用者統計由 server-side Auth Admin API 讀取，前端只收到遮蔽後 Email 與統計數字。',
   };
 }
 
@@ -371,7 +428,8 @@ async function loadAuthUsers(projectRef) {
   if (!serviceRoleKey) {
     return emptyAuthUsers(
       'not_configured',
-      '尚未設定 Supabase Auth 使用者統計連線；需要 server-side service role key。',
+      '缺少 SUPABASE_SERVICE_ROLE_KEY，無法讀取 Auth 使用者統計。此 env 必須只設定在 Vercel Production 的 server-side 環境。',
+      ['SUPABASE_SERVICE_ROLE_KEY'],
     );
   }
 
@@ -391,7 +449,14 @@ async function loadAuthUsers(projectRef) {
       });
       if (!response.ok) {
         logUsage('auth users query failed', { status: response.status });
-        return emptyAuthUsers('provider_error', '使用者統計暫時無法讀取，請稍後再試。');
+        if (response.status === 401 || response.status === 403) {
+          return emptyAuthUsers(
+            'forbidden',
+            'SUPABASE_SERVICE_ROLE_KEY 權限不足或不屬於此專案，無法讀取 Auth 使用者統計。',
+            ['SUPABASE_SERVICE_ROLE_KEY'],
+          );
+        }
+        return emptyAuthUsers('provider_error', 'Auth 使用者統計暫時無法讀取，請稍後再試。', []);
       }
       const payload = await response.json().catch(() => null);
       const pageUsers = Array.isArray(payload?.users)
@@ -403,10 +468,10 @@ async function loadAuthUsers(projectRef) {
       if (pageUsers.length < USER_PAGE_SIZE) break;
     } catch (error) {
       if (error?.name === 'AbortError' || error === 'timeout') {
-        return emptyAuthUsers('timeout', '使用者統計讀取逾時，請稍後再試。');
+        return emptyAuthUsers('timeout', 'Auth 使用者統計讀取逾時，請稍後再試。', []);
       }
       logUsage('auth users query error', error?.message || String(error));
-      return emptyAuthUsers('provider_error', '使用者統計暫時無法讀取，請稍後再試。');
+      return emptyAuthUsers('provider_error', 'Auth 使用者統計暫時無法讀取，請稍後再試。', []);
     } finally {
       clearTimeout(timeoutId);
     }
@@ -419,7 +484,7 @@ async function loadSupabaseUsage(projectRef) {
   const accessToken = String(process.env.SUPABASE_ACCESS_TOKEN || '').trim();
   const authUsersPromise = loadAuthUsers(projectRef).catch((error) => {
     logUsage('auth users fallback', error?.message || String(error));
-    return emptyAuthUsers('provider_error', '使用者統計暫時無法讀取，請稍後再試。');
+    return emptyAuthUsers('provider_error', 'Auth 使用者統計暫時無法讀取，請稍後再試。', []);
   });
 
   if (!accessToken) {
@@ -438,14 +503,11 @@ async function loadSupabaseUsage(projectRef) {
   return {
     database,
     storage,
-    egress: metricUnsupported('Supabase Management API 此端點尚未接入 Egress 自動讀取；請至 Supabase Dashboard 查看。'),
     authUsers,
-    apiRequests: metricUnsupported('平台 API 暫不提供此數據，請至 Supabase Dashboard 查看。'),
-    logs: metricUnsupported('平台 API 暫不提供此數據，請至 Supabase Dashboard 查看。'),
   };
 }
 
-function getVercelQueryString() {
+function getVercelTeamQuery() {
   const params = new URLSearchParams();
   const teamId = String(process.env.VERCEL_TEAM_ID || process.env.VERCEL_ORG_ID || '').trim();
   if (teamId) params.set('teamId', teamId);
@@ -455,14 +517,22 @@ function getVercelQueryString() {
 async function loadVercelDeployment() {
   const token = String(process.env.VERCEL_ACCESS_TOKEN || '').trim();
   const projectId = String(process.env.VERCEL_PROJECT_ID || '').trim();
-  if (!token || !projectId) return metricNotConfigured('尚未設定 Vercel 平台連線');
+  const missing = [];
+  if (!token) missing.push('VERCEL_ACCESS_TOKEN');
+  if (!projectId) missing.push('VERCEL_PROJECT_ID');
+  if (missing.length) {
+    return metricNotConfigured(
+      `缺少 ${missing.join('、')}，無法讀取 Vercel production deployment 狀態。若專案屬於 Team，還需要 VERCEL_TEAM_ID。`,
+      missing,
+    );
+  }
 
   const params = new URLSearchParams({
     projectId,
     limit: '1',
     target: 'production',
   });
-  const teamQuery = getVercelQueryString();
+  const teamQuery = getVercelTeamQuery();
   if (teamQuery) {
     const teamParams = new URLSearchParams(teamQuery);
     teamParams.forEach((value, key) => params.set(key, value));
@@ -480,35 +550,39 @@ async function loadVercelDeployment() {
     });
     if (!response.ok) {
       logUsage('vercel deployment query failed', { status: response.status });
-      return metricProviderError('Vercel 部署狀態暫時無法讀取');
+      if (response.status === 401 || response.status === 403) {
+        return metricProviderError(
+          'VERCEL_ACCESS_TOKEN 權限不足，或 VERCEL_PROJECT_ID / VERCEL_TEAM_ID 與專案不匹配，無法讀取部署狀態。',
+          'forbidden',
+        );
+      }
+      return metricProviderError('Vercel deployment 狀態暫時無法讀取，請稍後再試。');
     }
     const payload = await response.json().catch(() => null);
     const deployment = Array.isArray(payload?.deployments) ? payload.deployments[0] : null;
-    if (!deployment) return metricUnsupported('目前沒有可讀取的 Vercel production deployment。');
+    if (!deployment) {
+      return metricProviderError('目前沒有可讀取的 Vercel production deployment。', 'unknown');
+    }
+    const state = String(deployment.readyState || deployment.state || 'unknown');
     return {
       status: 'ok',
-      value: String(deployment.state || 'unknown'),
-      message: deployment.url ? `最新 production deployment：${deployment.url}` : '已讀取最新 production deployment 狀態。',
+      value: state,
+      message: `最新 production deployment 狀態：${state}。`,
       updatedAt: deployment.createdAt ? new Date(deployment.createdAt).toISOString() : null,
     };
   } catch (error) {
-    if (error?.name === 'AbortError' || error === 'timeout') return metricProviderError('Vercel 部署狀態讀取逾時', 'timeout');
+    if (error?.name === 'AbortError' || error === 'timeout') {
+      return metricProviderError('Vercel deployment 狀態讀取逾時，請稍後再試。', 'timeout');
+    }
     logUsage('vercel deployment query error', error?.message || String(error));
-    return metricProviderError('Vercel 部署狀態暫時無法讀取');
+    return metricProviderError('Vercel deployment 狀態暫時無法讀取，請稍後再試。');
   } finally {
     clearTimeout(timeoutId);
   }
 }
 
 async function loadVercelUsage() {
-  const token = String(process.env.VERCEL_ACCESS_TOKEN || '').trim();
-  const projectId = String(process.env.VERCEL_PROJECT_ID || '').trim();
-  if (!token || !projectId) return emptyVercelSection();
-
   return {
-    visitors: metricUnsupported('Vercel Visitors 需透過 Vercel Dashboard 或 Analytics API 查看。'),
-    bandwidth: metricUnsupported('Vercel Bandwidth 需透過 Vercel Dashboard 或 Usage API 查看。'),
-    functions: metricUnsupported('Vercel Function Usage 需透過 Vercel Dashboard 或 Usage API 查看。'),
     deployment: await loadVercelDeployment(),
   };
 }
@@ -545,6 +619,7 @@ export default async function handler(req, res) {
       updatedAt: new Date().toISOString(),
       supabase,
       vercel,
+      manualChecks: buildManualChecks(),
     });
   } catch (error) {
     logUsage('handler fallback', error?.message || String(error));
@@ -553,6 +628,7 @@ export default async function handler(req, res) {
       updatedAt: new Date().toISOString(),
       supabase: emptySupabaseSection(),
       vercel: emptyVercelSection(),
+      manualChecks: buildManualChecks(),
     });
   }
 }

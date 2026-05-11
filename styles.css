@@ -6274,6 +6274,94 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
   border-bottom: 0;
 }
 
+.admin-requirement-panel {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgba(191, 211, 208, 0.72);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.admin-requirement-panel h4 {
+  margin: 10px 0 4px;
+  color: #244248;
+  font-size: 17px;
+  line-height: 1.35;
+}
+
+.admin-env-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-env-list code {
+  display: inline-flex;
+  max-width: 100%;
+  padding: 7px 10px;
+  border-radius: 10px;
+  color: #245e64;
+  background: rgba(232, 242, 240, 0.92);
+  border: 1px solid rgba(191, 211, 208, 0.72);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.admin-manual-check-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.admin-manual-check-column {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.admin-manual-check-column h4 {
+  margin: 0;
+  color: #244248;
+  font-size: 16px;
+}
+
+.admin-manual-check-list {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-manual-check-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(191, 211, 208, 0.66);
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.admin-manual-check-card strong {
+  color: #245e64;
+  font-size: 15px;
+}
+
+.admin-manual-check-card p {
+  margin: 0;
+  color: #536765;
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.admin-manual-check-card span {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
 @media (max-width: 840px) {
   .admin-monitoring-group {
     padding: 16px;
@@ -6354,6 +6442,24 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
 
   .admin-user-table td:nth-child(6)::before {
     content: "Provider";
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-user-table td:nth-child(2)::before {
+    content: "驗證";
+  }
+
+  .admin-user-table td:nth-child(3)::before {
+    content: "最近登入";
+  }
+
+  .admin-user-table td:nth-child(4)::before {
+    content: "建立時間";
+  }
+
+  .admin-user-table td:nth-child(5)::before {
+    content: "活躍";
   }
 }
 

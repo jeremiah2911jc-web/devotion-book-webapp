@@ -70,9 +70,8 @@ const HTML_REMOVE_WITH_CONTENT_TAGS = new Set(['script', 'style', 'iframe', 'obj
 const EMPTY_ADMIN_USAGE = {
   updatedAt: '',
   supabase: {
-    database: { status: 'not_configured', used: null, limit: null, percent: null, message: '尚未設定 Supabase 平台連線' },
-    storage: { status: 'not_configured', used: null, limit: null, percent: null, message: '尚未設定 Supabase 平台連線' },
-    egress: { status: 'not_configured', used: null, limit: null, percent: null, message: '尚未設定 Supabase 平台連線' },
+    database: { status: 'not_configured', used: null, limit: null, percent: null, message: '缺少 SUPABASE_ACCESS_TOKEN，無法讀取資料庫大小。', missingEnv: ['SUPABASE_ACCESS_TOKEN'] },
+    storage: { status: 'not_configured', used: null, limit: null, percent: null, message: '缺少 SUPABASE_ACCESS_TOKEN，無法讀取 Storage 用量。', missingEnv: ['SUPABASE_ACCESS_TOKEN'] },
     authUsers: {
       status: 'not_configured',
       total: 0,
@@ -83,16 +82,60 @@ const EMPTY_ADMIN_USAGE = {
       newToday: 0,
       newThisMonth: 0,
       recentUsers: [],
-      message: '尚未設定使用者統計連線',
+      message: '缺少 SUPABASE_SERVICE_ROLE_KEY，無法讀取 Auth 使用者統計。',
+      missingEnv: ['SUPABASE_SERVICE_ROLE_KEY'],
     },
-    apiRequests: { status: 'unsupported', message: '平台 API 暫不提供此數據' },
-    logs: { status: 'unsupported', message: '平台 API 暫不提供此數據' },
   },
   vercel: {
-    visitors: { status: 'not_configured', message: '尚未設定 Vercel 平台連線' },
-    bandwidth: { status: 'not_configured', message: '尚未設定 Vercel 平台連線' },
-    functions: { status: 'not_configured', message: '尚未設定 Vercel 平台連線' },
-    deployment: { status: 'not_configured', message: '尚未設定 Vercel 平台連線' },
+    deployment: { status: 'not_configured', message: '缺少 VERCEL_ACCESS_TOKEN 或 VERCEL_PROJECT_ID，無法讀取 deployment 狀態。', missingEnv: ['VERCEL_ACCESS_TOKEN', 'VERCEL_PROJECT_ID'] },
+  },
+  manualChecks: {
+    supabase: [
+      {
+        key: 'supabase-egress',
+        label: 'Bandwidth / Egress',
+        dashboardPath: 'Supabase Dashboard -> Billing / Usage，或 Project Reports -> Custom Reports -> Database API -> API Egress',
+        reason: 'Egress 目前改為人工檢查，避免在主監控區保留永遠無資料的卡片。',
+        warning: '低於方案額度 70% 為正常，70% 至 89% 注意，90% 以上警告。',
+      },
+      {
+        key: 'supabase-api-requests',
+        label: 'API Requests',
+        dashboardPath: 'Supabase Dashboard -> Logs / API 或 Reports',
+        reason: 'API request 分析來自 Logs / Reports，目前不做成低成本自動卡片。',
+        warning: '若 egress 暴增或操作變慢，再到 Dashboard 檢查 request 分布。',
+      },
+      {
+        key: 'supabase-error-logs',
+        label: 'Logs / Error Logs',
+        dashboardPath: 'Supabase Dashboard -> Logs Explorer',
+        reason: 'Logs API 需要額外權限與查詢範圍設計，目前列為人工檢查。',
+        warning: '發布前後查看 Auth、PostgREST、Storage 是否有連續錯誤。',
+      },
+    ],
+    vercel: [
+      {
+        key: 'vercel-visitors',
+        label: 'Visitors',
+        dashboardPath: 'Vercel Dashboard -> Project -> Analytics',
+        reason: 'Visitors 需要確認 Vercel Web Analytics 啟用；目前不保留假卡片。',
+        warning: '需要流量分析時，先確認 Web Analytics 狀態。',
+      },
+      {
+        key: 'vercel-bandwidth',
+        label: 'Bandwidth',
+        dashboardPath: 'Vercel Dashboard -> Usage，或具權限 CLI `vercel usage --format json`',
+        reason: '帳務用量以 Dashboard / CLI usage 為穩定入口，目前列為人工檢查。',
+        warning: '發布初期每日檢查流量與費用變化。',
+      },
+      {
+        key: 'vercel-functions',
+        label: 'Function Usage',
+        dashboardPath: 'Vercel Dashboard -> Usage / Functions',
+        reason: 'Function usage 屬帳務用量，目前不做成自動卡片。',
+        warning: '若 API 使用量升高，再人工查看 Function usage。',
+      },
+    ],
   },
 };
 
@@ -658,7 +701,7 @@ function renderAdminHealthLegend() {
       <span class="admin-health-badge is-attention">注意：70%～89%</span>
       <span class="admin-health-badge is-warning">警告：90% 以上</span>
       <span class="admin-health-badge is-critical">危急：超過上限</span>
-      <span class="admin-health-badge is-muted">未接入 / 不支援</span>
+      <span class="admin-health-badge is-muted">缺少設定 / 人工檢查</span>
     </div>
   `;
 }
@@ -703,15 +746,15 @@ function getAdminUsageErrorText(errorCode = '') {
   return {
     unauthorized: '權限錯誤',
     forbidden: '權限不足',
-    missing_env: '尚未設定平台連線',
-    not_configured: '尚未設定平台連線',
-    unsupported: '平台 API 暫不提供',
-    provider_error: '查詢暫時失敗，請稍後再試',
+    missing_env: '缺少必要環境變數',
+    not_configured: '缺少設定',
+    unsupported: '需人工檢查',
+    provider_error: '平台回應失敗',
     timeout: '連線逾時',
-    server_error: '查詢暫時失敗',
-    query_error: '查詢暫時失敗',
-    unknown: '暫無資料',
-  }[errorCode] || '暫無資料';
+    server_error: '平台回應失敗',
+    query_error: '平台查詢失敗',
+    unknown: '沒有可讀資料',
+  }[errorCode] || '沒有可讀資料';
 }
 
 function getAdminUsageStatusText(status = '') {
@@ -758,6 +801,9 @@ function normalizeAdminMetric(raw = {}, fallback = {}) {
     message: typeof metric.message === 'string' ? metric.message : (fallback.message || ''),
     updatedAt: typeof metric.updatedAt === 'string' ? metric.updatedAt : (fallback.updatedAt || ''),
     limitSource: typeof metric.limitSource === 'string' ? metric.limitSource : (fallback.limitSource || ''),
+    missingEnv: Array.isArray(metric.missingEnv)
+      ? metric.missingEnv.map(item => String(item || '').trim()).filter(Boolean)
+      : (Array.isArray(fallback.missingEnv) ? fallback.missingEnv : []),
   };
 }
 
@@ -787,6 +833,25 @@ function normalizeAdminAuthUsers(raw = {}) {
     newThisMonth: Number.isFinite(Number(metric.newThisMonth)) ? Number(metric.newThisMonth) : 0,
     recentUsers,
     message: typeof metric.message === 'string' ? metric.message : fallback.message,
+    missingEnv: Array.isArray(metric.missingEnv)
+      ? metric.missingEnv.map(item => String(item || '').trim()).filter(Boolean)
+      : (Array.isArray(fallback.missingEnv) ? fallback.missingEnv : []),
+  };
+}
+
+function normalizeAdminManualChecks(raw = {}, fallback = {}) {
+  const normalizeList = (items, fallbackItems = []) => (
+    Array.isArray(items) ? items : fallbackItems
+  ).slice(0, 12).map((item = {}, index) => ({
+    key: String(item.key || `manual-${index}`),
+    label: String(item.label || '人工檢查項目'),
+    dashboardPath: String(item.dashboardPath || '請至平台 Dashboard 查看'),
+    reason: String(item.reason || '此項目前不列入自動監控。'),
+    warning: String(item.warning || '請依平台 Dashboard 顯示的方案額度判斷。'),
+  }));
+  return {
+    supabase: normalizeList(raw?.supabase, fallback.supabase),
+    vercel: normalizeList(raw?.vercel, fallback.vercel),
   };
 }
 
@@ -799,17 +864,12 @@ function normalizeAdminUsagePayload(payload = {}) {
     supabase: {
       database: normalizeAdminMetric(supabase.database, defaults.supabase.database),
       storage: normalizeAdminMetric(supabase.storage, defaults.supabase.storage),
-      egress: normalizeAdminMetric(supabase.egress, defaults.supabase.egress),
       authUsers: normalizeAdminAuthUsers(supabase.authUsers),
-      apiRequests: normalizeAdminMetric(supabase.apiRequests, defaults.supabase.apiRequests),
-      logs: normalizeAdminMetric(supabase.logs, defaults.supabase.logs),
     },
     vercel: {
-      visitors: normalizeAdminMetric(vercel.visitors, defaults.vercel.visitors),
-      bandwidth: normalizeAdminMetric(vercel.bandwidth, defaults.vercel.bandwidth),
-      functions: normalizeAdminMetric(vercel.functions, defaults.vercel.functions),
       deployment: normalizeAdminMetric(vercel.deployment, defaults.vercel.deployment),
     },
+    manualChecks: normalizeAdminManualChecks(payload?.manualChecks, defaults.manualChecks),
   };
 }
 
@@ -829,12 +889,15 @@ function buildUsageMetricCard(label, metric = {}, status = 'ready') {
   if (metricStatus !== 'ok') {
     const errorText = getAdminUsageErrorText(metricStatus);
     const isMuted = metricStatus === 'not_configured' || metricStatus === 'unsupported';
+    const missingEnvText = Array.isArray(metric?.missingEnv) && metric.missingEnv.length
+      ? `缺少 env：${metric.missingEnv.join('、')}。`
+      : '';
     return {
       label,
       value: errorText,
-      detail: metric?.message || (isMuted
-        ? '此項目前無法自動讀取，請至平台 Dashboard 查看。'
-        : '此卡片暫時無法讀取，請稍後再試或檢查後端平台連線。'),
+      detail: metric?.message || missingEnvText || (isMuted
+        ? '此項目前已改為人工檢查，請看下方人工檢查清單。'
+        : '此卡片暫時無法讀取，請稍後再試或檢查 server-side env 與權限。'),
       badgeText: errorText,
       badgeClass: isMuted ? 'is-muted' : 'is-warning',
       levelClass: isMuted ? 'admin-usage-muted' : 'admin-usage-danger',
@@ -868,7 +931,7 @@ function buildUsageMetricCard(label, metric = {}, status = 'ready') {
     return {
       label,
       value: '尚無資料',
-      detail: metric?.message || '目前後端尚未回傳這項用量數值；若此指標暫不支援，請至平台 Dashboard 查看。',
+      detail: metric?.message || '目前後端沒有回傳可計算的用量數值，請確認 server-side env 與平台權限。',
       badgeText: '尚無資料',
       badgeClass: 'is-muted',
       levelClass: 'admin-usage-muted',
@@ -898,24 +961,9 @@ function buildUsageMetricCard(label, metric = {}, status = 'ready') {
 function getAdminSupabaseUsageCards() {
   const { status, data } = state.adminUsage;
   const supabase = data.supabase || createEmptyAdminUsage().supabase;
-  const authUsers = supabase.authUsers || {};
-  const authUsersCard = authUsers.status === 'ok'
-    ? {
-      label: 'Auth Users',
-      value: `${Number(authUsers.total || 0).toLocaleString('zh-TW')} 位`,
-      detail: `已驗證 ${authUsers.verified || 0} 位，未驗證 ${authUsers.unverified || 0} 位，最近 30 天活躍 ${authUsers.active30d || 0} 位。`,
-      badgeText: '正常',
-      badgeClass: 'is-normal',
-      levelClass: 'admin-usage-normal',
-    }
-    : buildUsageMetricCard('Auth Users', authUsers, status);
   return [
     buildUsageMetricCard('Database Size', supabase.database, status),
     buildUsageMetricCard('Storage 用量', supabase.storage, status),
-    buildUsageMetricCard('Bandwidth / Egress', supabase.egress, status),
-    authUsersCard,
-    buildUsageMetricCard('API Requests', supabase.apiRequests, status),
-    buildUsageMetricCard('Logs / Error Logs', supabase.logs, status),
   ];
 }
 
@@ -923,9 +971,6 @@ function getAdminVercelUsageCards() {
   const { status, data } = state.adminUsage;
   const vercel = data.vercel || createEmptyAdminUsage().vercel;
   return [
-    buildUsageMetricCard('Visitors', vercel.visitors, status),
-    buildUsageMetricCard('Bandwidth', vercel.bandwidth, status),
-    buildUsageMetricCard('Function Usage', vercel.functions, status),
     buildUsageMetricCard('Build / Deployment 狀態', vercel.deployment, status),
   ];
 }
@@ -935,9 +980,9 @@ function renderAdminPlatformCards(items = []) {
     <article class="admin-usage-card ${escapeHtml(item.levelClass || 'admin-usage-normal')}" data-health-level="${escapeHtml(item.levelClass || 'admin-usage-normal')}">
       <div class="admin-usage-card-head">
         <h4>${escapeHtml(item.label)}</h4>
-        <span class="admin-health-badge ${escapeHtml(item.badgeClass || 'is-normal')}">${escapeHtml(item.badgeText || '尚未設定平台連線')}</span>
+        <span class="admin-health-badge ${escapeHtml(item.badgeClass || 'is-normal')}">${escapeHtml(item.badgeText || '尚無資料')}</span>
       </div>
-      <p class="admin-usage-placeholder">${escapeHtml(item.value || '尚未設定平台連線')}</p>
+      <p class="admin-usage-placeholder">${escapeHtml(item.value || '尚無資料')}</p>
       <p class="caption">${escapeHtml(item.detail || '此項需透過 Supabase / Vercel 後台 API 或 Dashboard 取得，不能把平台 Token 放在前端。')}</p>
     </article>
   `).join('');
@@ -963,16 +1008,27 @@ function renderAdminUsersSection() {
   }
 
   if (authUsers.status !== 'ok') {
+    const missingEnv = Array.isArray(authUsers.missingEnv) && authUsers.missingEnv.length
+      ? authUsers.missingEnv
+      : ['SUPABASE_SERVICE_ROLE_KEY'];
     return `
       <section class="admin-monitoring-group">
         <div class="panel-header">
           <div>
             <h3>使用者概況</h3>
-            <p class="muted">只顯示後端去敏感化後的使用者統計，不回傳 raw user 或 metadata。</p>
+            <p class="muted">只顯示後端去敏感化後的使用者統計，不回傳 raw user、完整 Email、metadata 或 token。</p>
           </div>
         </div>
-        <div class="admin-usage-grid">
-          ${renderAdminPlatformCards([buildUsageMetricCard('Auth Users', authUsers, status)])}
+        <div class="admin-requirement-panel">
+          <div>
+            <span class="admin-health-badge is-muted">${escapeHtml(getAdminUsageStatusText(authUsers.status))}</span>
+            <h4>Auth Users 統計尚未啟用</h4>
+            <p class="caption">${escapeHtml(authUsers.message || '缺少 SUPABASE_SERVICE_ROLE_KEY，無法讀取 Auth 使用者統計。')}</p>
+          </div>
+          <div class="admin-env-list" aria-label="缺少的環境變數">
+            ${missingEnv.map(name => `<code>${escapeHtml(name)}</code>`).join('')}
+          </div>
+          <p class="caption">這個 key 高敏感，只能放在 Vercel Production Environment Variables，並且只能由 serverless API 使用。</p>
         </div>
       </section>
     `;
@@ -1032,6 +1088,42 @@ function renderAdminUsersSection() {
         </table>
       </div>
       <p class="caption">${escapeHtml(authUsers.message || '最近使用者列表最多顯示 20 位。')}</p>
+    </section>
+  `;
+}
+
+function renderAdminManualChecksSection() {
+  const checks = state.adminUsage.data?.manualChecks || createEmptyAdminUsage().manualChecks;
+  const groups = [
+    ['Supabase 人工檢查', checks.supabase || []],
+    ['Vercel 人工檢查', checks.vercel || []],
+  ];
+  const content = groups.map(([title, items]) => `
+    <div class="admin-manual-check-column">
+      <h4>${escapeHtml(title)}</h4>
+      <div class="admin-manual-check-list">
+        ${items.map(item => `
+          <article class="admin-manual-check-card">
+            <div>
+              <strong>${escapeHtml(item.label)}</strong>
+              <p>${escapeHtml(item.reason)}</p>
+            </div>
+            <p><span>查看位置</span>${escapeHtml(item.dashboardPath)}</p>
+            <p><span>警戒值</span>${escapeHtml(item.warning)}</p>
+          </article>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+  return `
+    <section class="admin-monitoring-group">
+      <div class="panel-header">
+        <div>
+          <h3>人工檢查清單</h3>
+          <p class="muted">以下項目不放在主監控卡，因為目前沒有穩定、低成本且可維護的自動資料來源。</p>
+        </div>
+      </div>
+      <div class="admin-manual-check-grid">${content}</div>
     </section>
   `;
 }
@@ -1123,7 +1215,7 @@ function renderAdminDashboard() {
       <div class="panel-header">
         <div>
           <h3>Supabase</h3>
-          <p class="muted">透過後端 /api/admin-usage 讀取平台用量，前端不直接持有平台 Token。</p>
+          <p class="muted">主監控區只保留可透過後端安全代理自動讀取的 Database Size 與 Storage 用量；其他平台用量列入人工檢查。</p>
           <p class="caption">${escapeHtml(usageUpdatedText)}</p>
         </div>
       </div>
@@ -1137,7 +1229,7 @@ function renderAdminDashboard() {
       <div class="panel-header">
         <div>
           <h3>Vercel</h3>
-          <p class="muted">透過後端安全代理顯示部署與用量狀態，缺少平台連線時顯示友善提示。</p>
+          <p class="muted">主監控區只保留可由 Vercel REST API 穩定讀取的 deployment 狀態；帳務用量改列人工檢查。</p>
           <p class="caption">${escapeHtml(usageUpdatedText)}</p>
         </div>
       </div>
@@ -1146,6 +1238,7 @@ function renderAdminDashboard() {
         ${renderAdminPlatformCards(getAdminVercelUsageCards())}
       </div>
     </section>
+    ${renderAdminManualChecksSection()}
   `;
   document.getElementById('admin-export-backup-btn')?.addEventListener('click', () => downloadBackupJson(), { once: true });
   document.getElementById('admin-export-system-backup-btn')?.addEventListener('click', () => {
