@@ -9384,7 +9384,7 @@ function injectReaderViewStyles() {
       #view-reader .reader-flow .chapter-summary p { margin: 0; line-height: 1.84; color: #4d4339; }
       #view-reader .reader-flow .markdown-spacer { height: 1rem; }
       #view-reader .reader-flow .markdown-spacer-2 { height: 1.8rem; }
-      #view-reader .reader-turn-zone { position: absolute; top: 0; bottom: 0; width: 34%; border: 0; background: transparent; cursor: pointer; }
+      #view-reader .reader-turn-zone { position: absolute; top: 0; bottom: 0; z-index: 2; width: 34%; border: 0; background: transparent; cursor: pointer; }
     #view-reader .reader-turn-zone:disabled, #view-reader .reader-footer button:disabled { cursor: default; opacity: .35; }
     #view-reader .reader-turn-left { left: 0; }
     #view-reader .reader-turn-right { right: 0; }
@@ -9394,13 +9394,13 @@ function injectReaderViewStyles() {
     #view-reader .reader-progress { display: grid; grid-template-columns: auto auto; gap: 6px 12px; align-items: center; font-size: .9rem; }
     #view-reader .reader-progress div { grid-column: 1 / -1; height: 4px; border-radius: 999px; overflow: hidden; background: rgba(120,100,70,.22); }
     #view-reader .reader-progress i { display: block; height: 100%; width: 0; background: #9b7a48; }
-    #view-reader .reader-close-button { position: absolute; top: 14px; right: clamp(12px, 3vw, 28px); z-index: 8; min-height: 38px; padding: 0 14px; border: 1px solid rgba(80,70,55,.16); border-radius: 999px; background: rgba(255,255,255,.82); color: #26494c; font-weight: 700; box-shadow: 0 10px 28px rgba(45,35,25,.12); backdrop-filter: blur(12px); transition: opacity .18s ease, transform .18s ease; }
+    #view-reader .reader-close-button { position: absolute; top: 14px; right: clamp(12px, 3vw, 28px); z-index: 30; min-width: 64px; min-height: 44px; padding: 0 16px; border: 1px solid rgba(80,70,55,.16); border-radius: 999px; background: rgba(255,255,255,.86); color: #26494c; font-weight: 700; box-shadow: 0 10px 28px rgba(45,35,25,.12); backdrop-filter: blur(12px); pointer-events: auto; touch-action: manipulation; transition: opacity .18s ease, transform .18s ease; }
     #view-reader.reader-dark .reader-close-button { border-color: rgba(255,255,255,.14); background: rgba(30,30,30,.82); color: #eee7dd; }
     #view-reader .reader-action-button { position: absolute; right: clamp(16px, 3vw, 36px); bottom: calc(var(--reader-stage-bottom) + clamp(18px, 3vh, 28px)); z-index: 6; min-height: 46px; padding: 0 18px; border: 0; border-radius: 999px; background: #3f9890; color: #fff; font-weight: 800; box-shadow: 0 12px 28px rgba(42,112,106,.26); transition: opacity .18s ease, transform .18s ease; }
-    #view-reader.reader-controls-hidden .reader-close-button,
     #view-reader.reader-controls-hidden .reader-action-button,
-    #view-reader.reader-panel-open .reader-close-button,
     #view-reader.reader-panel-open .reader-action-button { opacity: 0; pointer-events: none; transform: translateY(8px); }
+    #view-reader.reader-controls-hidden .reader-close-button,
+    #view-reader.reader-panel-open .reader-close-button { opacity: .96; pointer-events: auto; transform: none; }
     #view-reader .reader-panel-root { position: absolute; inset: 0; z-index: 7; pointer-events: none; }
     #view-reader .reader-panel-backdrop { position: absolute; inset: 0; border: 0; background: rgba(38,32,26,.18); pointer-events: auto; }
     #view-reader.reader-dark .reader-panel-backdrop { background: rgba(0,0,0,.42); }
@@ -9481,7 +9481,7 @@ function injectReaderViewStyles() {
       #view-reader .reader-footer { grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; padding-inline: 8px; }
       #view-reader .reader-footer > button { min-width: 0; padding-inline: 10px; }
       #view-reader .reader-action-button { right: 14px; bottom: calc(var(--reader-stage-bottom) + 14px); min-height: 42px; padding-inline: 14px; }
-      #view-reader .reader-close-button { top: 10px; right: 10px; min-height: 34px; padding-inline: 12px; font-size: .82rem; }
+      #view-reader .reader-close-button { top: 10px; right: 10px; min-width: 64px; min-height: 44px; padding-inline: 14px; font-size: .82rem; }
       #view-reader .reader-action-menu { right: 8px; bottom: calc(var(--reader-stage-bottom) + 62px); }
       #view-reader .reader-panel { top: auto; right: 10px; bottom: calc(var(--reader-stage-bottom) + 10px); left: 10px; width: auto; height: min(78dvh, calc(100dvh - var(--reader-stage-bottom) - 20px)); max-height: min(78dvh, calc(100dvh - var(--reader-stage-bottom) - 20px)); border-radius: 18px 18px 12px 12px; }
       #view-reader .reader-book-heading h2 { font-size: .95rem; }
