@@ -11,6 +11,9 @@
   autoBackups: 'devotion-auto-backups',
 };
 
+const APP_VERSION = '2026.05.12-01';
+const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
+
 const TEMPLATE_LABELS = {
   devotion: '靈修札記版',
   sermon: '講章整理版',
@@ -173,6 +176,99 @@ function initVercelWebAnalytics() {
   script.src = '/_vercel/insights/script.js';
   script.dataset.vercelAnalytics = 'true';
   document.head.appendChild(script);
+}
+
+function ensureAppUpdatePromptUi() {
+  if (document.getElementById('app-update-prompt')) return;
+  const prompt = document.createElement('aside');
+  prompt.id = 'app-update-prompt';
+  prompt.className = 'app-update-prompt hidden';
+  prompt.setAttribute('role', 'status');
+  prompt.setAttribute('aria-live', 'polite');
+  prompt.innerHTML = `
+    <div class="app-update-copy">
+      <strong>已有新版本</strong>
+      <p>系統已有新版本，請重新整理以套用更新。</p>
+      <span id="app-update-version-text" class="app-update-version-text"></span>
+    </div>
+    <div class="app-update-actions">
+      <button id="app-update-later-btn" class="ghost-btn small" type="button">稍後</button>
+      <button id="app-update-now-btn" class="primary-btn small" type="button">立即更新</button>
+    </div>
+  `;
+  document.body.appendChild(prompt);
+  els.appUpdatePrompt = prompt;
+  els.appUpdateVersionText = document.getElementById('app-update-version-text');
+  els.appUpdateLaterBtn = document.getElementById('app-update-later-btn');
+  els.appUpdateNowBtn = document.getElementById('app-update-now-btn');
+}
+
+function showAppUpdatePrompt(remote = {}) {
+  ensureAppUpdatePromptUi();
+  const remoteVersion = String(remote.version || '').trim();
+  if (!remoteVersion || state.appVersion.dismissedVersion === remoteVersion) return;
+  state.appVersion.remote = remote;
+  state.appVersion.updateAvailable = true;
+  if (els.appUpdateVersionText) {
+    els.appUpdateVersionText.textContent = `目前版本：${APP_VERSION}｜新版：${remoteVersion}`;
+  }
+  els.appUpdatePrompt?.classList.remove('hidden');
+}
+
+function hideAppUpdatePrompt({ dismiss = false } = {}) {
+  if (dismiss && state.appVersion.remote?.version) {
+    state.appVersion.dismissedVersion = String(state.appVersion.remote.version);
+  }
+  els.appUpdatePrompt?.classList.add('hidden');
+}
+
+function reloadForAppUpdate() {
+  hideAppUpdatePrompt();
+  window.location.reload();
+}
+
+async function checkAppVersion({ force = false } = {}) {
+  if (typeof window === 'undefined' || typeof fetch !== 'function') return null;
+  if (state.appVersion.checkPromise) return state.appVersion.checkPromise;
+  const now = Date.now();
+  if (!force && now - state.appVersion.lastCheckedAt < APP_VERSION_CHECK_MIN_INTERVAL_MS) {
+    return state.appVersion.remote;
+  }
+  state.appVersion.lastCheckedAt = now;
+  state.appVersion.checkPromise = (async () => {
+    try {
+      const response = await fetch(`/version.json?ts=${now}`, {
+        cache: 'no-store',
+        headers: { Accept: 'application/json' },
+      });
+      if (!response.ok) return null;
+      const remote = await response.json();
+      const remoteVersion = String(remote?.version || '').trim();
+      if (!remoteVersion) return null;
+      state.appVersion.remote = remote;
+      if (remoteVersion !== APP_VERSION) {
+        showAppUpdatePrompt(remote);
+      }
+      return remote;
+    } catch {
+      return null;
+    } finally {
+      state.appVersion.checkPromise = null;
+    }
+  })();
+  return state.appVersion.checkPromise;
+}
+
+function bindAppVersionEvents() {
+  ensureAppUpdatePromptUi();
+  if (state.appVersion.eventsBound) return;
+  state.appVersion.eventsBound = true;
+  els.appUpdateLaterBtn?.addEventListener('click', () => hideAppUpdatePrompt({ dismiss: true }));
+  els.appUpdateNowBtn?.addEventListener('click', reloadForAppUpdate);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') checkAppVersion().catch(() => {});
+  });
+  window.addEventListener('focus', () => checkAppVersion().catch(() => {}));
 }
 
 function buildMergedConfig(raw = null) {
@@ -544,6 +640,14 @@ const state = {
     status: 'idle',
     data: createEmptyAdminUsage(),
     promise: null,
+  },
+  appVersion: {
+    remote: null,
+    lastCheckedAt: 0,
+    checkPromise: null,
+    dismissedVersion: '',
+    updateAvailable: false,
+    eventsBound: false,
   },
   epubDownloadPromises: new Map(),
   backupImportPreview: {
@@ -1778,6 +1882,7 @@ function ensureOperationManualUi() {
           <section id="manual-faq" class="manual-section">
             <h2>十六、常見問題</h2>
             <div class="manual-faq-list">
+              <div class="manual-faq-item"><h3>網站更新後需要重新安裝嗎？</h3><p>不需要。若系統更新，畫面會出現「系統已有新版本」提示，點「立即更新」即可套用新版。iPhone、Android、Mac、Windows 都適用。</p></div>
               <div class="manual-faq-item"><h3>找不到剛寫的札記怎麼辦？</h3><p>先到「札記閱讀」或「札記庫」確認。若有使用搜尋或篩選，請點「重設篩選」或「清除篩選」。也可以回到「寫札記」確認是否已儲存成功。</p></div>
               <div class="manual-faq-item"><h3>札記閱讀和札記庫有什麼差別？</h3><p>札記閱讀適合單純重讀、搜尋和查看單篇札記；札記庫適合管理札記、回到編輯器修改，或勾選文章加入目前正在編排。</p></div>
               <div class="manual-faq-item"><h3>禱告或代禱事項要寫在哪裡？</h3><p>可以直接寫在「寫札記」裡。分類可以選「禱告」或「代禱」，再用標籤補充對象或主題。日後可以在札記庫用分類或標籤搜尋，也可以整理成禱告操練或代禱紀錄。</p></div>
@@ -1821,6 +1926,7 @@ function ensureOperationManualUi() {
             <p>這套系統的目的，是幫助你把平常寫下的內容好好保存下來。</p>
             <p>不用一開始就想著要完成一本很完整的書。可以先從一篇札記開始，慢慢累積，慢慢整理。</p>
             <p>當那些日子裡的領受、禱告、眼淚、感恩與提醒被留下來，它們有一天可能就會成為一本值得回頭閱讀的書。</p>
+            <p class="manual-app-version">版本：${APP_VERSION}</p>
           </section>
         </article>
       </section>
@@ -4079,10 +4185,12 @@ async function bootstrap() {
   ensureContentLibraryUi();
   ensureOperationManualUi();
   ensureBookDraftWorkspaceUi();
+  ensureAppUpdatePromptUi();
   document.body.dataset.currentView = document.querySelector('.view.active')?.id?.replace('view-', '') || 'dashboard';
   syncConfigInputs();
   initSupabase();
   bindEvents();
+  bindAppVersionEvents();
   if (state.supabase) {
     const recoveryUrlState = getPasswordRecoveryUrlState();
     const authRedirectResult = await handleSupabaseAuthRedirect();
@@ -4124,6 +4232,7 @@ async function bootstrap() {
   refreshUi();
   if (state.passwordRecoveryActive) openAuthInline('password-recovery');
   renderNotePreview();
+  checkAppVersion({ force: true }).catch(() => {});
 }
 
 function bindEvents() {
@@ -4958,6 +5067,7 @@ function ensureAdminUi() {
                 <h3>平台用量監控</h3>
                 <p class="muted">透過後端 API 讀取平台用量與使用者統計，前端不持有平台 Token。</p>
                 <p class="caption">缺少環境變數或平台 API 不支援的項目會以友善狀態顯示，不會阻斷管理後台。</p>
+                <p class="caption">目前網站版本：${APP_VERSION}</p>
               </div>
             </div>
             <div id="admin-monitoring-groups" class="admin-monitoring-stack"></div>

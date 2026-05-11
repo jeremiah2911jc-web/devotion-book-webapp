@@ -7875,3 +7875,104 @@ body:not(.auth-locked) .summary-content strong small {
     font-size: 0.82rem;
   }
 }
+
+.app-update-prompt {
+  position: fixed;
+  left: max(16px, env(safe-area-inset-left));
+  right: max(16px, env(safe-area-inset-right));
+  bottom: calc(92px + env(safe-area-inset-bottom));
+  z-index: 10000;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  width: auto;
+  max-width: min(560px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 14px 16px;
+  border: 1px solid rgba(165, 137, 77, 0.34);
+  border-radius: 18px;
+  background: rgba(255, 252, 244, 0.97);
+  box-shadow: 0 18px 42px rgba(39, 58, 57, 0.18);
+  color: #253f42;
+  backdrop-filter: blur(12px);
+}
+
+body.auth-locked .app-update-prompt,
+body[data-current-view="reader"] .app-update-prompt {
+  bottom: calc(18px + env(safe-area-inset-bottom));
+}
+
+.app-update-copy {
+  min-width: 0;
+}
+
+.app-update-copy strong {
+  display: block;
+  color: #2f4f4e;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.app-update-copy p {
+  margin: 4px 0 0;
+  color: #536866;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.app-update-version-text,
+.manual-app-version {
+  display: block;
+  margin-top: 6px;
+  color: #8d7a54;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.app-update-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.app-update-actions .ghost-btn,
+.app-update-actions .primary-btn {
+  min-height: 38px;
+  white-space: nowrap;
+}
+
+@media (min-width: 1024px) {
+  .app-update-prompt,
+  body.auth-locked .app-update-prompt,
+  body[data-current-view="reader"] .app-update-prompt {
+    left: auto;
+    right: 24px;
+    bottom: 24px;
+    width: min(420px, calc(100vw - 48px));
+    max-width: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .app-update-prompt {
+    grid-template-columns: minmax(0, 1fr);
+    bottom: calc(88px + env(safe-area-inset-bottom));
+    padding: 13px;
+  }
+
+  body.auth-locked .app-update-prompt,
+  body[data-current-view="reader"] .app-update-prompt {
+    bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+
+  .app-update-actions {
+    justify-content: stretch;
+  }
+
+  .app-update-actions .ghost-btn,
+  .app-update-actions .primary-btn {
+    flex: 1 1 0;
+  }
+}
