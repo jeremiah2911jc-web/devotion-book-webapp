@@ -6160,6 +6160,11 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
   box-shadow: inset 0 0 0 1px rgba(212, 107, 114, 0.14);
 }
 
+.admin-usage-card.admin-usage-muted {
+  border-color: rgba(137, 151, 148, 0.24);
+  background: rgba(255, 255, 255, 0.74);
+}
+
 .admin-usage-placeholder {
   margin: 0;
   color: #245e64;
@@ -6208,6 +6213,67 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
   border-color: rgba(212, 107, 114, 0.32);
 }
 
+.admin-health-badge.is-muted {
+  color: #657370;
+  background: rgba(137, 151, 148, 0.12);
+  border-color: rgba(137, 151, 148, 0.22);
+}
+
+.admin-user-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 12px;
+}
+
+.admin-user-stat-card {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(191, 211, 208, 0.66);
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.admin-user-stat-card strong {
+  color: #245e64;
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.admin-user-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid rgba(191, 211, 208, 0.72);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.admin-user-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.admin-user-table th,
+.admin-user-table td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid rgba(191, 211, 208, 0.48);
+  vertical-align: middle;
+}
+
+.admin-user-table th {
+  color: #455b5e;
+  font-weight: 700;
+  background: rgba(248, 252, 252, 0.92);
+}
+
+.admin-user-table tr:last-child td {
+  border-bottom: 0;
+}
+
 @media (max-width: 840px) {
   .admin-monitoring-group {
     padding: 16px;
@@ -6215,6 +6281,79 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
 
   .admin-usage-card-head {
     display: grid;
+  }
+
+  .admin-user-table {
+    min-width: 660px;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-user-table-wrap {
+    overflow-x: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .admin-user-table {
+    min-width: 0;
+    display: block;
+  }
+
+  .admin-user-table thead {
+    display: none;
+  }
+
+  .admin-user-table tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  .admin-user-table tr {
+    display: grid;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid rgba(191, 211, 208, 0.66);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.86);
+  }
+
+  .admin-user-table td {
+    display: grid;
+    grid-template-columns: minmax(82px, 0.38fr) minmax(0, 1fr);
+    gap: 8px;
+    padding: 0;
+    border-bottom: 0;
+    word-break: break-word;
+  }
+
+  .admin-user-table td::before {
+    color: var(--muted);
+    font-weight: 700;
+  }
+
+  .admin-user-table td:nth-child(1)::before {
+    content: "Email";
+  }
+
+  .admin-user-table td:nth-child(2)::before {
+    content: "驗證";
+  }
+
+  .admin-user-table td:nth-child(3)::before {
+    content: "最近登入";
+  }
+
+  .admin-user-table td:nth-child(4)::before {
+    content: "建立時間";
+  }
+
+  .admin-user-table td:nth-child(5)::before {
+    content: "活躍";
+  }
+
+  .admin-user-table td:nth-child(6)::before {
+    content: "Provider";
   }
 }
 

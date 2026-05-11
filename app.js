@@ -68,22 +68,37 @@ const IMPORTED_EPUB_SAFE_TAGS = new Set([
 ]);
 const HTML_REMOVE_WITH_CONTENT_TAGS = new Set(['script', 'style', 'iframe', 'object', 'embed', 'link', 'meta', 'base', 'svg']);
 const EMPTY_ADMIN_USAGE = {
-  database: {
-    used: null,
-    limit: null,
-    error: null,
+  updatedAt: '',
+  supabase: {
+    database: { status: 'not_configured', used: null, limit: null, percent: null, message: '尚未設定 Supabase 平台連線' },
+    storage: { status: 'not_configured', used: null, limit: null, percent: null, message: '尚未設定 Supabase 平台連線' },
+    egress: { status: 'not_configured', used: null, limit: null, percent: null, message: '尚未設定 Supabase 平台連線' },
+    authUsers: {
+      status: 'not_configured',
+      total: 0,
+      verified: 0,
+      unverified: 0,
+      active7d: 0,
+      active30d: 0,
+      newToday: 0,
+      newThisMonth: 0,
+      recentUsers: [],
+      message: '尚未設定使用者統計連線',
+    },
+    apiRequests: { status: 'unsupported', message: '平台 API 暫不提供此數據' },
+    logs: { status: 'unsupported', message: '平台 API 暫不提供此數據' },
   },
-  storage: {
-    used: null,
-    limit: null,
-    error: null,
-  },
-  egress: {
-    used: null,
-    limit: null,
-    error: null,
+  vercel: {
+    visitors: { status: 'not_configured', message: '尚未設定 Vercel 平台連線' },
+    bandwidth: { status: 'not_configured', message: '尚未設定 Vercel 平台連線' },
+    functions: { status: 'not_configured', message: '尚未設定 Vercel 平台連線' },
+    deployment: { status: 'not_configured', message: '尚未設定 Vercel 平台連線' },
   },
 };
+
+function createEmptyAdminUsage() {
+  return JSON.parse(JSON.stringify(EMPTY_ADMIN_USAGE));
+}
 
 const DEFAULT_CONFIG = {
   supabaseUrl: 'https://kknyldzvgvuewkpwkwyj.supabase.co',
@@ -467,7 +482,7 @@ const state = {
   latestExportedBook: null,
   adminUsage: {
     status: 'idle',
-    data: { ...EMPTY_ADMIN_USAGE },
+    data: createEmptyAdminUsage(),
     promise: null,
   },
   epubDownloadPromises: new Map(),
@@ -563,6 +578,10 @@ function bindViewTriggers(scope = document) {
 function getAdminDashboardStats() {
   const allLibraryBooks = getAllLibraryBooksForView();
   const importedEpubCount = Array.isArray(importedLibrary?.books) ? importedLibrary.books.length : 0;
+  const usage = state.adminUsage?.data || createEmptyAdminUsage();
+  const authUsers = usage.supabase?.authUsers || createEmptyAdminUsage().supabase.authUsers;
+  const database = usage.supabase?.database || {};
+  const storage = usage.supabase?.storage || {};
   const today = new Date();
   const sevenDaysAgo = new Date(today);
   sevenDaysAgo.setHours(0, 0, 0, 0);
@@ -580,12 +599,17 @@ function getAdminDashboardStats() {
   };
   const todayNewNotes = state.notes.filter(note => isToday(note.created_at || note.updated_at)).length;
   const lastSevenDaysNotes = state.notes.filter(note => isInLastSevenDays(note.created_at || note.updated_at)).length;
+  const authUsersReady = authUsers.status === 'ok';
+  const databaseStat = buildAdminStatFromMetric(database);
+  const storageStat = buildAdminStatFromMetric(storage);
   return [
     {
       label: '總使用者數',
-      value: '尚未接入',
-      detail: '目前前端無法直接從 Supabase Auth 取得所有使用者清單，需後續安全接入後台 API。',
-      valueClass: 'admin-stat-value-placeholder',
+      value: authUsersReady ? String(authUsers.total || 0) : getAdminUsageStatusText(authUsers.status),
+      detail: authUsersReady
+        ? `已驗證 ${authUsers.verified || 0} 位，未驗證 ${authUsers.unverified || 0} 位。`
+        : (authUsers.message || '需設定後端使用者統計連線。'),
+      valueClass: authUsersReady ? '' : 'admin-stat-value-placeholder',
     },
     { label: '總札記數', value: String(state.notes.length), detail: '目前登入帳號可存取的札記總數' },
     { label: '總書籍數', value: String(allLibraryBooks.length), detail: '書櫃中的已匯出與外部匯入書籍總數' },
@@ -594,10 +618,10 @@ function getAdminDashboardStats() {
     { label: '近 7 天新增札記數', value: String(lastSevenDaysNotes), detail: '最近七天新增或建立的札記數' },
     {
       label: '資料庫目前用量提醒',
-      value: '尚未接入平台 API',
-      detail: '需透過 Supabase 平台 API 或 Dashboard 取得資料庫用量後，才能依比例顯示提醒。',
-      valueClass: 'admin-stat-value-placeholder',
-      healthClass: 'is-normal',
+      value: databaseStat.value,
+      detail: databaseStat.detail,
+      valueClass: databaseStat.valueClass,
+      healthClass: databaseStat.healthClass,
     },
     {
       label: '最近錯誤紀錄',
@@ -607,10 +631,10 @@ function getAdminDashboardStats() {
     },
     {
       label: 'Storage 使用提醒',
-      value: '尚未接入平台 API',
-      detail: '需透過 Supabase Storage / 平台 Dashboard 取得用量後，才能依比例顯示提醒。',
-      valueClass: 'admin-stat-value-placeholder',
-      healthClass: 'is-normal',
+      value: storageStat.value,
+      detail: storageStat.detail,
+      valueClass: storageStat.valueClass,
+      healthClass: storageStat.healthClass,
     },
     {
       label: '匯入 EPUB 數量',
@@ -634,6 +658,7 @@ function renderAdminHealthLegend() {
       <span class="admin-health-badge is-attention">注意：70%～89%</span>
       <span class="admin-health-badge is-warning">警告：90% 以上</span>
       <span class="admin-health-badge is-critical">危急：超過上限</span>
+      <span class="admin-health-badge is-muted">未接入 / 不支援</span>
     </div>
   `;
 }
@@ -665,6 +690,7 @@ function getAdminUsageBadgeClass(levelClass = '') {
     'admin-usage-warning': 'is-attention',
     'admin-usage-danger': 'is-warning',
     'admin-usage-critical': 'is-critical',
+    'admin-usage-muted': 'is-muted',
   }[levelClass] || 'is-warning';
 }
 
@@ -676,11 +702,115 @@ function normalizeUsageNumber(value) {
 function getAdminUsageErrorText(errorCode = '') {
   return {
     unauthorized: '權限錯誤',
+    forbidden: '權限不足',
+    missing_env: '尚未設定平台連線',
+    not_configured: '尚未設定平台連線',
+    unsupported: '平台 API 暫不提供',
+    provider_error: '查詢暫時失敗，請稍後再試',
     timeout: '連線逾時',
-    server_error: '伺服器錯誤',
-    query_error: '查詢錯誤',
-    unknown: '未知錯誤',
-  }[errorCode] || '未知錯誤';
+    server_error: '查詢暫時失敗',
+    query_error: '查詢暫時失敗',
+    unknown: '暫無資料',
+  }[errorCode] || '暫無資料';
+}
+
+function getAdminUsageStatusText(status = '') {
+  return getAdminUsageErrorText(String(status || 'not_configured'));
+}
+
+function buildAdminStatFromMetric(metric = {}) {
+  const card = buildUsageMetricCard('', metric, state.adminUsage.status);
+  return {
+    value: card.value,
+    detail: card.detail,
+    valueClass: card.levelClass === 'admin-usage-normal' ? '' : 'admin-stat-value-placeholder',
+    healthClass: card.badgeClass || 'is-normal',
+    healthText: card.badgeText || '尚無資料',
+  };
+}
+
+function normalizeAdminStatus(value = '') {
+  const status = String(value || '').trim();
+  return [
+    'ok',
+    'not_configured',
+    'unsupported',
+    'provider_error',
+    'timeout',
+    'unauthorized',
+    'forbidden',
+    'missing_env',
+    'server_error',
+    'query_error',
+    'unknown',
+  ].includes(status) ? status : 'unknown';
+}
+
+function normalizeAdminMetric(raw = {}, fallback = {}) {
+  const metric = raw && typeof raw === 'object' ? raw : {};
+  return {
+    ...fallback,
+    status: normalizeAdminStatus(metric.status || metric.error || fallback.status || 'not_configured'),
+    used: normalizeUsageNumber(metric.used),
+    limit: normalizeUsageNumber(metric.limit),
+    percent: normalizeUsageNumber(metric.percent),
+    value: typeof metric.value === 'number' || typeof metric.value === 'string' ? metric.value : fallback.value,
+    message: typeof metric.message === 'string' ? metric.message : (fallback.message || ''),
+    updatedAt: typeof metric.updatedAt === 'string' ? metric.updatedAt : (fallback.updatedAt || ''),
+    limitSource: typeof metric.limitSource === 'string' ? metric.limitSource : (fallback.limitSource || ''),
+  };
+}
+
+function normalizeAdminAuthUsers(raw = {}) {
+  const fallback = createEmptyAdminUsage().supabase.authUsers;
+  const metric = raw && typeof raw === 'object' ? raw : {};
+  const recentUsers = Array.isArray(metric.recentUsers)
+    ? metric.recentUsers.slice(0, 20).map(user => ({
+      emailMasked: String(user?.emailMasked || '未顯示'),
+      verified: !!user?.verified,
+      createdAt: typeof user?.createdAt === 'string' ? user.createdAt : '',
+      lastSignInAt: typeof user?.lastSignInAt === 'string' ? user.lastSignInAt : '',
+      activeLabel: String(user?.activeLabel || '未活躍'),
+      provider: String(user?.provider || 'email'),
+      idPrefix: String(user?.idPrefix || ''),
+    }))
+    : [];
+  return {
+    ...fallback,
+    status: normalizeAdminStatus(metric.status || fallback.status),
+    total: Number.isFinite(Number(metric.total)) ? Number(metric.total) : 0,
+    verified: Number.isFinite(Number(metric.verified)) ? Number(metric.verified) : 0,
+    unverified: Number.isFinite(Number(metric.unverified)) ? Number(metric.unverified) : 0,
+    active7d: Number.isFinite(Number(metric.active7d)) ? Number(metric.active7d) : 0,
+    active30d: Number.isFinite(Number(metric.active30d)) ? Number(metric.active30d) : 0,
+    newToday: Number.isFinite(Number(metric.newToday)) ? Number(metric.newToday) : 0,
+    newThisMonth: Number.isFinite(Number(metric.newThisMonth)) ? Number(metric.newThisMonth) : 0,
+    recentUsers,
+    message: typeof metric.message === 'string' ? metric.message : fallback.message,
+  };
+}
+
+function normalizeAdminUsagePayload(payload = {}) {
+  const defaults = createEmptyAdminUsage();
+  const supabase = payload?.supabase && typeof payload.supabase === 'object' ? payload.supabase : {};
+  const vercel = payload?.vercel && typeof payload.vercel === 'object' ? payload.vercel : {};
+  return {
+    updatedAt: typeof payload?.updatedAt === 'string' ? payload.updatedAt : '',
+    supabase: {
+      database: normalizeAdminMetric(supabase.database, defaults.supabase.database),
+      storage: normalizeAdminMetric(supabase.storage, defaults.supabase.storage),
+      egress: normalizeAdminMetric(supabase.egress, defaults.supabase.egress),
+      authUsers: normalizeAdminAuthUsers(supabase.authUsers),
+      apiRequests: normalizeAdminMetric(supabase.apiRequests, defaults.supabase.apiRequests),
+      logs: normalizeAdminMetric(supabase.logs, defaults.supabase.logs),
+    },
+    vercel: {
+      visitors: normalizeAdminMetric(vercel.visitors, defaults.vercel.visitors),
+      bandwidth: normalizeAdminMetric(vercel.bandwidth, defaults.vercel.bandwidth),
+      functions: normalizeAdminMetric(vercel.functions, defaults.vercel.functions),
+      deployment: normalizeAdminMetric(vercel.deployment, defaults.vercel.deployment),
+    },
+  };
 }
 
 function buildUsageMetricCard(label, metric = {}, status = 'ready') {
@@ -695,20 +825,38 @@ function buildUsageMetricCard(label, metric = {}, status = 'ready') {
     };
   }
 
-  if (metric?.error) {
-    const errorText = getAdminUsageErrorText(metric.error);
+  const metricStatus = normalizeAdminStatus(metric?.status || metric?.error || 'not_configured');
+  if (metricStatus !== 'ok') {
+    const errorText = getAdminUsageErrorText(metricStatus);
+    const isMuted = metricStatus === 'not_configured' || metricStatus === 'unsupported';
     return {
       label,
       value: errorText,
-      detail: '此卡片目前以錯誤狀態為主，不顯示任何用量數值或百分比。請依錯誤類型檢查權限、查詢語法、平台狀態或連線情況。',
+      detail: metric?.message || (isMuted
+        ? '此項目前無法自動讀取，請至平台 Dashboard 查看。'
+        : '此卡片暫時無法讀取，請稍後再試或檢查後端平台連線。'),
       badgeText: errorText,
-      badgeClass: 'is-warning',
-      levelClass: 'admin-usage-danger',
+      badgeClass: isMuted ? 'is-muted' : 'is-warning',
+      levelClass: isMuted ? 'admin-usage-muted' : 'admin-usage-danger',
     };
   }
 
   const used = normalizeUsageNumber(metric?.used);
   const limit = normalizeUsageNumber(metric?.limit);
+  const explicitValue = typeof metric?.value === 'number' || typeof metric?.value === 'string'
+    ? String(metric.value)
+    : '';
+
+  if (explicitValue) {
+    return {
+      label,
+      value: explicitValue,
+      detail: metric?.message || '資料由後端安全代理取得，前端不直接持有平台 Token。',
+      badgeText: '正常',
+      badgeClass: 'is-normal',
+      levelClass: 'admin-usage-normal',
+    };
+  }
 
   if (
     typeof used !== 'number'
@@ -720,15 +868,15 @@ function buildUsageMetricCard(label, metric = {}, status = 'ready') {
     return {
       label,
       value: '尚無資料',
-      detail: '目前後端尚未回傳這項用量數值；若此指標暫不支援，前端會先保留卡片位置。',
+      detail: metric?.message || '目前後端尚未回傳這項用量數值；若此指標暫不支援，請至平台 Dashboard 查看。',
       badgeText: '尚無資料',
-      badgeClass: 'is-normal',
-      levelClass: 'admin-usage-normal',
+      badgeClass: 'is-muted',
+      levelClass: 'admin-usage-muted',
     };
   }
 
-  const ratio = used / limit;
-  const percent = Math.round(ratio * 100);
+  const percent = Number.isFinite(Number(metric?.percent)) ? Math.round(Number(metric.percent)) : Math.round((used / limit) * 100);
+  const ratio = percent / 100;
   const levelClass = getAdminUsageStateClass(ratio);
   const levelText = {
     'admin-usage-normal': '正常',
@@ -740,7 +888,7 @@ function buildUsageMetricCard(label, metric = {}, status = 'ready') {
   return {
     label,
     value: `${formatUsageAmount(used)} / ${formatUsageAmount(limit)}（${percent}%）`,
-    detail: '資料由 /api/admin-usage 透過後端安全代理取得，前端不直接持有 Supabase / Vercel 平台 Token。',
+    detail: metric?.message || '資料由 /api/admin-usage 透過後端安全代理取得，前端不直接持有 Supabase / Vercel 平台 Token。',
     badgeText: levelText,
     badgeClass: getAdminUsageBadgeClass(levelClass),
     levelClass,
@@ -749,34 +897,36 @@ function buildUsageMetricCard(label, metric = {}, status = 'ready') {
 
 function getAdminSupabaseUsageCards() {
   const { status, data } = state.adminUsage;
-  return [
-    buildUsageMetricCard('Database Size', data.database, status),
-    buildUsageMetricCard('Storage 用量', data.storage, status),
-    buildUsageMetricCard('Bandwidth / Egress', data.egress, status),
-    {
+  const supabase = data.supabase || createEmptyAdminUsage().supabase;
+  const authUsers = supabase.authUsers || {};
+  const authUsersCard = authUsers.status === 'ok'
+    ? {
       label: 'Auth Users',
-      value: '尚未接入平台 API',
-      detail: '此項需透過 Supabase / Vercel 後台 API 或 Dashboard 取得，不能把平台 Token 放在前端。',
-      badgeText: '尚未接入平台 API',
+      value: `${Number(authUsers.total || 0).toLocaleString('zh-TW')} 位`,
+      detail: `已驗證 ${authUsers.verified || 0} 位，未驗證 ${authUsers.unverified || 0} 位，最近 30 天活躍 ${authUsers.active30d || 0} 位。`,
+      badgeText: '正常',
       badgeClass: 'is-normal',
       levelClass: 'admin-usage-normal',
-    },
-    {
-      label: 'API Requests',
-      value: '尚未接入平台 API',
-      detail: '此項需透過 Supabase / Vercel 後台 API 或 Dashboard 取得，不能把平台 Token 放在前端。',
-      badgeText: '尚未接入平台 API',
-      badgeClass: 'is-normal',
-      levelClass: 'admin-usage-normal',
-    },
-    {
-      label: 'Logs / Error Logs',
-      value: '尚未接入平台 API',
-      detail: '此項需透過 Supabase / Vercel 後台 API 或 Dashboard 取得，不能把平台 Token 放在前端。',
-      badgeText: '尚未接入平台 API',
-      badgeClass: 'is-normal',
-      levelClass: 'admin-usage-normal',
-    },
+    }
+    : buildUsageMetricCard('Auth Users', authUsers, status);
+  return [
+    buildUsageMetricCard('Database Size', supabase.database, status),
+    buildUsageMetricCard('Storage 用量', supabase.storage, status),
+    buildUsageMetricCard('Bandwidth / Egress', supabase.egress, status),
+    authUsersCard,
+    buildUsageMetricCard('API Requests', supabase.apiRequests, status),
+    buildUsageMetricCard('Logs / Error Logs', supabase.logs, status),
+  ];
+}
+
+function getAdminVercelUsageCards() {
+  const { status, data } = state.adminUsage;
+  const vercel = data.vercel || createEmptyAdminUsage().vercel;
+  return [
+    buildUsageMetricCard('Visitors', vercel.visitors, status),
+    buildUsageMetricCard('Bandwidth', vercel.bandwidth, status),
+    buildUsageMetricCard('Function Usage', vercel.functions, status),
+    buildUsageMetricCard('Build / Deployment 狀態', vercel.deployment, status),
   ];
 }
 
@@ -785,16 +935,109 @@ function renderAdminPlatformCards(items = []) {
     <article class="admin-usage-card ${escapeHtml(item.levelClass || 'admin-usage-normal')}" data-health-level="${escapeHtml(item.levelClass || 'admin-usage-normal')}">
       <div class="admin-usage-card-head">
         <h4>${escapeHtml(item.label)}</h4>
-        <span class="admin-health-badge ${escapeHtml(item.badgeClass || 'is-normal')}">${escapeHtml(item.badgeText || '尚未接入平台 API')}</span>
+        <span class="admin-health-badge ${escapeHtml(item.badgeClass || 'is-normal')}">${escapeHtml(item.badgeText || '尚未設定平台連線')}</span>
       </div>
-      <p class="admin-usage-placeholder">${escapeHtml(item.value || '尚未接入平台 API')}</p>
+      <p class="admin-usage-placeholder">${escapeHtml(item.value || '尚未設定平台連線')}</p>
       <p class="caption">${escapeHtml(item.detail || '此項需透過 Supabase / Vercel 後台 API 或 Dashboard 取得，不能把平台 Token 放在前端。')}</p>
     </article>
   `).join('');
 }
 
+function renderAdminUsersSection() {
+  const { status, data } = state.adminUsage;
+  const authUsers = data.supabase?.authUsers || createEmptyAdminUsage().supabase.authUsers;
+  if (status === 'loading') {
+    return `
+      <section class="admin-monitoring-group">
+        <div class="panel-header">
+          <div>
+            <h3>使用者概況</h3>
+            <p class="muted">正在透過後端安全代理讀取使用者統計。</p>
+          </div>
+        </div>
+        <div class="admin-usage-grid">
+          ${renderAdminPlatformCards([buildUsageMetricCard('Auth Users', authUsers, status)])}
+        </div>
+      </section>
+    `;
+  }
+
+  if (authUsers.status !== 'ok') {
+    return `
+      <section class="admin-monitoring-group">
+        <div class="panel-header">
+          <div>
+            <h3>使用者概況</h3>
+            <p class="muted">只顯示後端去敏感化後的使用者統計，不回傳 raw user 或 metadata。</p>
+          </div>
+        </div>
+        <div class="admin-usage-grid">
+          ${renderAdminPlatformCards([buildUsageMetricCard('Auth Users', authUsers, status)])}
+        </div>
+      </section>
+    `;
+  }
+
+  const statItems = [
+    ['總使用者', authUsers.total],
+    ['已驗證', authUsers.verified],
+    ['未驗證', authUsers.unverified],
+    ['7 天活躍', authUsers.active7d],
+    ['30 天活躍', authUsers.active30d],
+    ['今日新增', authUsers.newToday],
+    ['本月新增', authUsers.newThisMonth],
+  ];
+  const rows = Array.isArray(authUsers.recentUsers) && authUsers.recentUsers.length
+    ? authUsers.recentUsers.map(user => `
+      <tr>
+        <td>${escapeHtml(user.emailMasked || '未顯示')}</td>
+        <td><span class="admin-health-badge ${user.verified ? 'is-normal' : 'is-attention'}">${user.verified ? '已驗證' : '未驗證'}</span></td>
+        <td>${escapeHtml(user.lastSignInAt ? formatDate(user.lastSignInAt) : '尚未登入')}</td>
+        <td>${escapeHtml(user.createdAt ? formatDate(user.createdAt) : '未記錄')}</td>
+        <td>${escapeHtml(user.activeLabel || '未活躍')}</td>
+        <td>${escapeHtml(user.provider || 'email')}</td>
+      </tr>
+    `).join('')
+    : '<tr><td colspan="6">目前沒有可顯示的最近使用者。</td></tr>';
+
+  return `
+    <section class="admin-monitoring-group">
+      <div class="panel-header">
+        <div>
+          <h3>使用者概況</h3>
+          <p class="muted">使用 Supabase Auth 的 last_sign_in_at 判斷 7 天與 30 天活躍，前端只顯示遮蔽後 Email。</p>
+        </div>
+      </div>
+      <div class="admin-user-stats-grid">
+        ${statItems.map(([label, value]) => `
+          <article class="admin-user-stat-card">
+            <span class="admin-stat-label">${escapeHtml(label)}</span>
+            <strong>${Number(value || 0).toLocaleString('zh-TW')}</strong>
+          </article>
+        `).join('')}
+      </div>
+      <div class="admin-user-table-wrap">
+        <table class="admin-user-table">
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>驗證</th>
+              <th>最近登入</th>
+              <th>建立時間</th>
+              <th>活躍</th>
+              <th>Provider</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <p class="caption">${escapeHtml(authUsers.message || '最近使用者列表最多顯示 20 位。')}</p>
+    </section>
+  `;
+}
+
 async function loadAdminUsage() {
-  if (!isAdminUser()) return { ...EMPTY_ADMIN_USAGE };
+  if (!isAdminUser()) return createEmptyAdminUsage();
   if (state.adminUsage.status === 'loading' && state.adminUsage.promise) return state.adminUsage.promise;
 
   const request = (async () => {
@@ -814,27 +1057,11 @@ async function loadAdminUsage() {
       if (!response.ok) throw new Error(`admin usage request failed: ${response.status}`);
       const payload = await response.json();
       state.adminUsage.status = 'ready';
-      state.adminUsage.data = {
-        database: {
-          used: normalizeUsageNumber(payload?.database?.used),
-          limit: normalizeUsageNumber(payload?.database?.limit),
-          error: typeof payload?.database?.error === 'string' ? payload.database.error : null,
-        },
-        storage: {
-          used: normalizeUsageNumber(payload?.storage?.used),
-          limit: normalizeUsageNumber(payload?.storage?.limit),
-          error: typeof payload?.storage?.error === 'string' ? payload.storage.error : null,
-        },
-        egress: {
-          used: normalizeUsageNumber(payload?.egress?.used),
-          limit: normalizeUsageNumber(payload?.egress?.limit),
-          error: typeof payload?.egress?.error === 'string' ? payload.egress.error : null,
-        },
-      };
+      state.adminUsage.data = normalizeAdminUsagePayload(payload);
       return state.adminUsage.data;
     } catch {
       state.adminUsage.status = 'ready';
-      state.adminUsage.data = { ...EMPTY_ADMIN_USAGE };
+      state.adminUsage.data = createEmptyAdminUsage();
       return state.adminUsage.data;
     } finally {
       state.adminUsage.promise = null;
@@ -852,11 +1079,14 @@ function renderAdminDashboard() {
   if (!summaryContainer || !monitoringContainer) return;
 
   const stats = getAdminDashboardStats();
+  const usageUpdatedText = state.adminUsage.data?.updatedAt
+    ? `最後更新：${formatDate(state.adminUsage.data.updatedAt)}`
+    : '尚未完成平台用量更新';
   summaryContainer.innerHTML = stats.map(item => `
     <article class="admin-stat-card">
       <span class="admin-stat-label">${escapeHtml(item.label)}</span>
       <strong class="admin-stat-value${item.valueClass ? ` ${item.valueClass}` : ''}">${escapeHtml(item.value)}</strong>
-      ${item.healthClass ? `<span class="admin-health-badge ${item.healthClass}">待接入後可顯示比例警示</span>` : ''}
+      ${item.healthClass ? `<span class="admin-health-badge ${item.healthClass}">${escapeHtml(item.healthText || '尚無資料')}</span>` : ''}
       <p class="caption">${escapeHtml(item.detail)}</p>
     </article>
   `).join('');
@@ -894,6 +1124,7 @@ function renderAdminDashboard() {
         <div>
           <h3>Supabase</h3>
           <p class="muted">透過後端 /api/admin-usage 讀取平台用量，前端不直接持有平台 Token。</p>
+          <p class="caption">${escapeHtml(usageUpdatedText)}</p>
         </div>
       </div>
       ${renderAdminHealthLegend()}
@@ -901,49 +1132,18 @@ function renderAdminDashboard() {
         ${renderAdminPlatformCards(getAdminSupabaseUsageCards())}
       </div>
     </section>
+    ${renderAdminUsersSection()}
     <section class="admin-monitoring-group">
       <div class="panel-header">
         <div>
           <h3>Vercel</h3>
-          <p class="muted">先保留監控卡位置，後續若要接資料，需走後端安全代理，不可把平台 Token 放在前端。</p>
+          <p class="muted">透過後端安全代理顯示部署與用量狀態，缺少平台連線時顯示友善提示。</p>
+          <p class="caption">${escapeHtml(usageUpdatedText)}</p>
         </div>
       </div>
       ${renderAdminHealthLegend()}
       <div class="admin-usage-grid">
-        ${renderAdminPlatformCards([
-          {
-            label: 'Visitors',
-            value: '尚未接入平台 API',
-            detail: '此項需透過 Supabase / Vercel 後台 API 或 Dashboard 取得，不能把平台 Token 放在前端。',
-            badgeText: '尚未接入平台 API',
-            badgeClass: 'is-normal',
-            levelClass: 'admin-usage-normal',
-          },
-          {
-            label: 'Bandwidth',
-            value: '尚未接入平台 API',
-            detail: '此項需透過 Supabase / Vercel 後台 API 或 Dashboard 取得，不能把平台 Token 放在前端。',
-            badgeText: '尚未接入平台 API',
-            badgeClass: 'is-normal',
-            levelClass: 'admin-usage-normal',
-          },
-          {
-            label: 'Function Usage',
-            value: '尚未接入平台 API',
-            detail: '此項需透過 Supabase / Vercel 後台 API 或 Dashboard 取得，不能把平台 Token 放在前端。',
-            badgeText: '尚未接入平台 API',
-            badgeClass: 'is-normal',
-            levelClass: 'admin-usage-normal',
-          },
-          {
-            label: 'Build / Deployment 狀態',
-            value: '尚未接入平台 API',
-            detail: '此項需透過 Supabase / Vercel 後台 API 或 Dashboard 取得，不能把平台 Token 放在前端。',
-            badgeText: '尚未接入平台 API',
-            badgeClass: 'is-normal',
-            levelClass: 'admin-usage-normal',
-          },
-        ])}
+        ${renderAdminPlatformCards(getAdminVercelUsageCards())}
       </div>
     </section>
   `;
@@ -4645,8 +4845,8 @@ function ensureAdminUi() {
             <div class="panel-header">
               <div>
                 <h3>平台用量監控</h3>
-                <p class="muted">先做監控卡佔位與狀態樣式，暫不直連任何平台 API。</p>
-                <p class="caption">目前尚未接入 Supabase / Vercel 平台 API，因此本區尚非即時監控。後續接入後，將於開啟管理後台時更新，並可依用量比例顯示正常、注意、警告或危急。</p>
+                <p class="muted">透過後端 API 讀取平台用量與使用者統計，前端不持有平台 Token。</p>
+                <p class="caption">缺少環境變數或平台 API 不支援的項目會以友善狀態顯示，不會阻斷管理後台。</p>
               </div>
             </div>
             <div id="admin-monitoring-groups" class="admin-monitoring-stack"></div>
