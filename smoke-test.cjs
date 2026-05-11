@@ -1,8 +1,12 @@
 ﻿const fs = require('fs');
+const http = require('http');
 const path = require('path');
+const { spawn } = require('child_process');
 const { chromium } = require('playwright');
 
-const baseUrl = 'http://127.0.0.1:4173/index.html';
+const smokePort = Number(process.env.SMOKE_PORT || process.env.PORT || 4173);
+const baseUrl = process.env.SMOKE_BASE_URL || `http://127.0.0.1:${smokePort}/index.html`;
+const shouldAutoStartServer = !process.env.SMOKE_BASE_URL && process.env.SMOKE_AUTO_SERVER !== '0';
 const artifactsDir = path.join(process.cwd(), 'artifacts');
 fs.mkdirSync(artifactsDir, { recursive: true });
 
@@ -174,6 +178,61 @@ async function clickElement(page, selector) {
   }, selector);
 }
 
+function checkLocalServer(url) {
+  return new Promise((resolve) => {
+    const request = http.get(url, (response) => {
+      response.resume();
+      resolve(response.statusCode >= 200 && response.statusCode < 500);
+    });
+    request.setTimeout(1000, () => {
+      request.destroy();
+      resolve(false);
+    });
+    request.on('error', () => resolve(false));
+  });
+}
+
+async function waitForLocalServer(url, childProcess) {
+  const deadline = Date.now() + 20000;
+  while (Date.now() < deadline) {
+    if (await checkLocalServer(url)) return;
+    if (childProcess?.exitCode !== null) break;
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+  throw new Error(`本機測試 server 未啟動或無法連線：${url}`);
+}
+
+async function ensureSmokeServer() {
+  if (!shouldAutoStartServer) return null;
+  if (await checkLocalServer(baseUrl)) {
+    console.log(`smoke test using existing local server: ${baseUrl}`);
+    return null;
+  }
+
+  const child = spawn(process.execPath, ['static-server.cjs'], {
+    cwd: process.cwd(),
+    env: { ...process.env, PORT: String(smokePort) },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  child.stdout.on('data', (chunk) => process.stdout.write(chunk));
+  child.stderr.on('data', (chunk) => process.stderr.write(chunk));
+  await waitForLocalServer(baseUrl, child);
+  console.log(`smoke test started local server: ${baseUrl}`);
+  return child;
+}
+
+async function stopSmokeServer(child) {
+  if (!child || child.exitCode !== null) return;
+  child.kill();
+  await new Promise((resolve) => {
+    const timer = setTimeout(resolve, 2000);
+    child.once('exit', () => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
+}
+
 async function verifyWelcomeScreen(page, results) {
   await expectVisible(page, '#auth-gate', '登入前 welcome screen 已顯示');
   const ctas = page.locator('#auth-gate .auth-gate-actions .auth-cta');
@@ -240,6 +299,7 @@ async function launchSmokeBrowser() {
 }
 
 async function run() {
+  let serverProcess = null;
   const browser = await launchSmokeBrowser();
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
@@ -253,6 +313,7 @@ async function run() {
   const results = [];
 
   try {
+    serverProcess = await ensureSmokeServer();
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
     await verifyWelcomeScreen(page, results);
     await verifyAuthModal(page, '#open-register-btn', '建立帳戶', '建立帳戶', results);
@@ -342,6 +403,7 @@ async function run() {
   } finally {
     fs.writeFileSync(path.join(artifactsDir, 'smoke-test-results.json'), JSON.stringify({ results }, null, 2));
     await browser.close();
+    await stopSmokeServer(serverProcess);
   }
 }
 

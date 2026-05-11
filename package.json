@@ -4,7 +4,13 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "start": "python3 -m http.server 3000",
-    "check": "node --check app.js"
+    "start": "npm run serve:local",
+    "check": "node --check app.js && node --check api/admin-usage.js && node --check api/system-backup.js && node --check api/support-receipt-request.js",
+    "serve:local": "node static-server.cjs",
+    "smoke": "node smoke-test.cjs",
+    "verify": "npm run check && npm run smoke"
+  },
+  "devDependencies": {
+    "playwright": "^1.59.1"
   }
 }

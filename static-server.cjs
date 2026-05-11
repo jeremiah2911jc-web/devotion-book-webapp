@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 const root = process.cwd();
+const host = '127.0.0.1';
 const port = Number(process.env.PORT || 4173);
 
 const mimeTypes = {
@@ -22,7 +23,7 @@ function send(res, status, body, type = 'text/plain; charset=utf-8') {
   res.end(body);
 }
 
-http.createServer((req, res) => {
+const server = http.createServer((req, res) => {
   const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
   const targetPath = path.join(root, urlPath === '/' ? 'index.html' : urlPath.replace(/^\/+/, ''));
   const resolvedPath = path.resolve(targetPath);
@@ -39,6 +40,24 @@ http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' });
     fs.createReadStream(resolvedPath).pipe(res);
   });
-}).listen(port, '127.0.0.1', () => {
-  console.log(`static server running on http://127.0.0.1:${port}`);
+});
+
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`Port ${port} is already in use. Stop the old local test server or set PORT to another value.`);
+    process.exit(1);
+  }
+  console.error(error);
+  process.exit(1);
+});
+
+function shutdown() {
+  server.close(() => process.exit(0));
+}
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
+
+server.listen(port, host, () => {
+  console.log(`static server running on http://${host}:${port}`);
 });
