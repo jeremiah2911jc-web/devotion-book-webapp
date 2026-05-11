@@ -7357,6 +7357,21 @@ body:not(.auth-locked) .summary-content strong small {
     box-shadow: 0 12px 24px rgba(65, 92, 72, 0.14);
   }
 
+  .note-reader-date-chip.is-empty {
+    color: #8b9b97;
+    opacity: 0.72;
+  }
+
+  .note-reader-date-chip.is-empty:not(.active) {
+    background: rgba(255, 255, 255, 0.58);
+    box-shadow: none;
+  }
+
+  .note-reader-date-chip.is-today:not(.active) {
+    border-color: rgba(143, 114, 64, 0.45);
+    color: #6d5b37;
+  }
+
   .note-reader-date-weekday,
   .note-reader-date-count {
     font-size: 0.72rem;
@@ -7378,6 +7393,10 @@ body:not(.auth-locked) .summary-content strong small {
   .note-reader-date-chip.active .note-reader-date-day {
     background: #536d58;
     color: #fffaf0;
+  }
+
+  .note-reader-date-chip.is-empty:not(.active) .note-reader-date-day {
+    color: #7a8c88;
   }
 
   .note-reader-date-chip-all {

@@ -6148,10 +6148,16 @@ function getNoteReaderDateOptions() {
   return [...dateMap.values()].sort((left, right) => right.date - left.date);
 }
 
+function parseNoteReaderDateKey(key = '') {
+  const match = String(key || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function syncNoteReaderDateState() {
   if (!state.noteReaderDate) return;
-  const validDates = new Set(getNoteReaderDateOptions().map(option => option.key));
-  if (!validDates.has(state.noteReaderDate)) state.noteReaderDate = '';
+  if (!parseNoteReaderDateKey(state.noteReaderDate)) state.noteReaderDate = '';
 }
 
 function formatNoteReaderMonthLabel(date) {
@@ -6170,21 +6176,74 @@ function getNoteReaderWeekdayLabel(date) {
   return new Intl.DateTimeFormat('zh-TW', { weekday: 'short' }).format(date);
 }
 
+function getNoteReaderCalendarMonthDate() {
+  return parseNoteReaderDateKey(state.noteReaderDate) || getNoteReaderDateOptions()[0]?.date || new Date();
+}
+
+function getNoteReaderDateCountMap() {
+  return new Map(getNoteReaderDateOptions().map(option => [option.key, option.count]));
+}
+
+function getNoteReaderDateCount(key = '') {
+  return getNoteReaderDateCountMap().get(key) || 0;
+}
+
+function isSameCalendarDay(left, right) {
+  return left instanceof Date
+    && right instanceof Date
+    && !Number.isNaN(left.getTime())
+    && !Number.isNaN(right.getTime())
+    && left.getFullYear() === right.getFullYear()
+    && left.getMonth() === right.getMonth()
+    && left.getDate() === right.getDate();
+}
+
+function getNoteReaderCalendarDateOptions(monthDate = getNoteReaderCalendarMonthDate()) {
+  const base = monthDate instanceof Date && !Number.isNaN(monthDate.getTime()) ? monthDate : new Date();
+  const year = base.getFullYear();
+  const month = base.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const countMap = getNoteReaderDateCountMap();
+  return Array.from({ length: daysInMonth }, (_, index) => {
+    const date = new Date(year, month, index + 1);
+    const key = formatNoteReaderDateKey(date);
+    const count = countMap.get(key) || 0;
+    return {
+      key,
+      date,
+      count,
+      hasNotes: count > 0,
+      isToday: isSameCalendarDay(date, new Date()),
+    };
+  });
+}
+
+function formatNoteReaderSelectedDateLabel(key = state.noteReaderDate) {
+  const date = parseNoteReaderDateKey(key);
+  if (!date) return '';
+  return `${date.getMonth() + 1}月${date.getDate()}日`;
+}
+
 function renderNoteReaderMobileCalendar() {
   const target = document.getElementById('note-reader-mobile-calendar');
   if (!target) return;
-  const dateOptions = getNoteReaderDateOptions();
-  const selected = dateOptions.find(option => option.key === state.noteReaderDate) || null;
-  const monthSource = selected?.date || dateOptions[0]?.date || new Date();
+  const monthSource = getNoteReaderCalendarMonthDate();
+  const calendarOptions = getNoteReaderCalendarDateOptions(monthSource);
   const allActive = !state.noteReaderDate;
   const totalCount = state.notes.length;
-  const dateChips = dateOptions.map(option => {
+  const dateChips = calendarOptions.map(option => {
     const active = option.key === state.noteReaderDate;
+    const classes = [
+      'note-reader-date-chip',
+      active ? 'active' : '',
+      option.hasNotes ? 'has-notes' : 'is-empty',
+      option.isToday ? 'is-today' : '',
+    ].filter(Boolean).join(' ');
     return `
-      <button class="note-reader-date-chip ${active ? 'active' : ''}" type="button" data-note-reader-date="${escapeHtml(option.key)}" aria-pressed="${active ? 'true' : 'false'}">
+      <button class="${classes}" type="button" data-note-reader-date="${escapeHtml(option.key)}" aria-pressed="${active ? 'true' : 'false'}">
         <span class="note-reader-date-weekday">${escapeHtml(getNoteReaderWeekdayLabel(option.date))}</span>
         <span class="note-reader-date-day">${option.date.getDate()}</span>
-        <span class="note-reader-date-count">${option.count}篇</span>
+        <span class="note-reader-date-count">${option.count ? `${option.count}篇` : '無札記'}</span>
       </button>
     `;
   }).join('');
@@ -6199,7 +6258,7 @@ function renderNoteReaderMobileCalendar() {
         <span class="note-reader-date-day">All</span>
         <span class="note-reader-date-count">${totalCount}篇</span>
       </button>
-      ${dateChips || '<span class="note-reader-date-empty">尚未有札記日期</span>'}
+      ${dateChips}
     </div>
   `;
 }
@@ -6314,11 +6373,18 @@ function renderNoteReaderListCard(note) {
 function renderNoteReaderNoResultsState(totalCount = 0) {
   state.noteReaderSelectedId = null;
   syncNoteReaderDetailMode();
+  const selectedDateLabel = formatNoteReaderSelectedDateLabel();
+  const selectedDateCount = state.noteReaderDate ? getNoteReaderDateCount(state.noteReaderDate) : 0;
+  const emptyDateSelected = !!state.noteReaderDate && selectedDateCount === 0;
+  const title = emptyDateSelected ? '這一天還沒有札記' : '找不到符合條件的札記';
+  const caption = emptyDateSelected
+    ? `${selectedDateLabel} 目前沒有札記。可以點「全部」回到所有札記，或先寫一篇新札記。`
+    : '試試清除搜尋、日期、分類或標籤篩選。';
   if (els.noteReaderList) {
     els.noteReaderList.className = 'note-reader-list note-reader-empty-state empty-state';
     els.noteReaderList.innerHTML = `
-      <strong>找不到符合條件的札記</strong>
-      <p class="caption">試試清除搜尋、日期、分類或標籤篩選。</p>
+      <strong>${escapeHtml(title)}</strong>
+      <p class="caption">${escapeHtml(caption)}</p>
       <div class="note-reader-empty-actions">
         <button class="ghost-btn" type="button" data-note-reader-reset-empty>重設篩選</button>
       </div>
