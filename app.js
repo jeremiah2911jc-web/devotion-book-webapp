@@ -158,6 +158,23 @@ function isLocalDevelopmentHost() {
   return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 }
 
+function initVercelWebAnalytics() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  if (isLocalDevelopmentHost() || window.location.protocol !== 'https:') return;
+  const host = window.location.hostname;
+  const isProductionHost = host === 'www.devotionbook.com.tw'
+    || host === 'devotionbook.com.tw'
+    || host === 'devotion-book-webapp.vercel.app'
+    || host.endsWith('.vercel.app');
+  if (!isProductionHost) return;
+  if (document.querySelector('script[data-vercel-analytics]')) return;
+  const script = document.createElement('script');
+  script.defer = true;
+  script.src = '/_vercel/insights/script.js';
+  script.dataset.vercelAnalytics = 'true';
+  document.head.appendChild(script);
+}
+
 function buildMergedConfig(raw = null) {
   const next = raw && typeof raw === 'object' ? raw : {};
   const hasStoredConfig = !!raw && typeof raw === 'object';
@@ -4055,6 +4072,7 @@ async function clearConnectionSettings() {
 }
 
 async function bootstrap() {
+  initVercelWebAnalytics();
   removeRetiredInterfaceElements();
   ensureAuthVerificationResendUi();
   ensureNoteReaderMobileUi();
