@@ -187,6 +187,7 @@ const els = {
   noteCategory: document.getElementById('note-category'),
   noteTags: document.getElementById('note-tags'),
   noteSummary: document.getElementById('note-summary'),
+  noteShowSummary: document.getElementById('note-show-summary'),
   markdownHeadingBtn: document.getElementById('markdown-heading-btn'),
   markdownBoldBtn: document.getElementById('markdown-bold-btn'),
   markdownQuoteBtn: document.getElementById('markdown-quote-btn'),
@@ -431,6 +432,7 @@ const state = {
   realtimeChannel: null,
   noteDraftSaveTimer: null,
   noteDraftDirty: false,
+  noteSummaryVisibilityTouched: false,
   currentNoteDraftNotice: null,
   profileAvatarUrlCache: new Map(),
   libraryCoverUrlCache: new Map(),
@@ -1639,7 +1641,7 @@ async function uploadLocalDataToCloud() {
 
   const notesToUpload = localPack.notes
     .filter(item => isIncomingNewer(item, remoteNotes.get(item.id)))
-    .map(item => ({ ...item, user_id: state.currentUser.id }));
+    .map(item => buildNotePersistencePayload({ ...item, user_id: state.currentUser.id }));
   const booksToUpload = localPack.books
     .filter(item => isIncomingNewer(item, remoteBooks.get(item.id)))
     .map(item => ({
@@ -2293,7 +2295,7 @@ async function clearDangerRestoreData(userId = '') {
 }
 
 async function writeDangerRestoreNotes(notes = [], userId = '') {
-  const payloadNotes = (Array.isArray(notes) ? notes : []).map(note => ({ ...note, user_id: userId }));
+  const payloadNotes = (Array.isArray(notes) ? notes : []).map(note => buildNotePersistencePayload({ ...note, user_id: userId }));
   if (state.supabase) {
     if (payloadNotes.length) {
       const { error } = await state.supabase.from('devotion_notes').insert(payloadNotes);
@@ -2403,7 +2405,7 @@ async function restoreBackupMerge() {
       if (!exists) existingNoteIds.add(id);
       return !exists;
     })
-    .map(note => ({ ...note, user_id: userId }));
+    .map(note => buildNotePersistencePayload({ ...note, user_id: userId }));
   result.addedNotes = newNotes.length;
 
   if (newNotes.length) {
@@ -3916,12 +3918,15 @@ function bindEvents() {
   els.noteForm.addEventListener('submit', event => { event.preventDefault(); saveNote().catch(handleNoteSaveError); });
   els.noteForm.addEventListener('input', event => {
     if (isNoteFormField(event.target)) {
+      if (event.target === els.noteSummary) syncNoteSummaryVisibilityDefault();
       renderNotePreview();
       scheduleCurrentNoteDraftSave();
     }
   });
   els.noteForm.addEventListener('change', event => {
     if (isNoteFormField(event.target)) {
+      if (event.target === els.noteShowSummary) state.noteSummaryVisibilityTouched = true;
+      if (event.target === els.noteSummary) syncNoteSummaryVisibilityDefault();
       renderNotePreview();
       scheduleCurrentNoteDraftSave();
     }
@@ -4347,7 +4352,7 @@ async function loadAllData({ silent = false, syncReason = '', reason = '', minIn
         books: { count: (booksRes.data || []).length, bytes: estimatePayloadBytes(booksRes.data || []) },
         snapshots: { count: (snapshotsRes.data || []).length, bytes: estimatePayloadBytes(snapshotsRes.data || []) },
       });
-      state.notes = notesRes.data || [];
+      state.notes = (notesRes.data || []).map(normalizeNoteRecord);
       forgetBookProjectDetails();
       state.books = (booksRes.data || []).map(book => normalizeBookProjectRow(book, { detailLoaded: false }));
       state.snapshots = (snapshotsRes.data || []).map(s => ({ ...s, snapshot_json: parseMaybeJson(s.snapshot_json, null) }));
@@ -4356,7 +4361,7 @@ async function loadAllData({ silent = false, syncReason = '', reason = '', minIn
       markCloudSynced(syncReason || '雲端資料已讀取完成。');
     } else {
       const userId = getUserId();
-      state.notes = loadJson(STORAGE_KEYS.notes, []).filter(item => item.user_id === userId);
+      state.notes = loadJson(STORAGE_KEYS.notes, []).filter(item => item.user_id === userId).map(normalizeNoteRecord);
       state.books = loadJson(STORAGE_KEYS.books, []).filter(item => item.user_id === userId).map(book => ({
         ...book,
         language: resolveBookLanguage(book.language),
@@ -4394,6 +4399,105 @@ function parseMaybeJson(value, fallback) {
   if (value == null) return fallback;
   if (typeof value === 'object') return value;
   try { return JSON.parse(value); } catch { return fallback; }
+}
+
+const NOTE_SUMMARY_SETTINGS_MARKER_RE = /\n*<!--\s*devotion-note-summary-settings:([A-Za-z0-9+/=_-]+)\s*-->\s*$/;
+
+function encodeNoteSummarySettings(settings = {}) {
+  try {
+    const json = JSON.stringify(settings);
+    return btoa(unescape(encodeURIComponent(json)));
+  } catch {
+    return '';
+  }
+}
+
+function decodeNoteSummarySettings(raw = '') {
+  try {
+    const json = decodeURIComponent(escape(atob(String(raw || ''))));
+    return JSON.parse(json);
+  } catch {
+    return {};
+  }
+}
+
+function splitNoteSummary(summary = '') {
+  const raw = String(summary || '');
+  const match = raw.match(NOTE_SUMMARY_SETTINGS_MARKER_RE);
+  if (!match) {
+    const visibleSummary = raw.trim();
+    return {
+      visibleSummary,
+      hasSettings: false,
+      settings: { show_summary: !!visibleSummary },
+    };
+  }
+  const visibleSummary = raw.replace(NOTE_SUMMARY_SETTINGS_MARKER_RE, '').trim();
+  const decoded = decodeNoteSummarySettings(match[1]);
+  return {
+    visibleSummary,
+    hasSettings: true,
+    settings: {
+      show_summary: typeof decoded.show_summary === 'boolean'
+        ? decoded.show_summary
+        : typeof decoded.showSummary === 'boolean'
+          ? decoded.showSummary
+          : !!visibleSummary,
+    },
+  };
+}
+
+function resolveNoteShowSummary(note = {}) {
+  if (typeof note.show_summary === 'boolean') return note.show_summary;
+  if (typeof note.showSummary === 'boolean') return note.showSummary;
+  return splitNoteSummary(note.summary || '').settings.show_summary;
+}
+
+function getNoteVisibleSummary(note = {}) {
+  return splitNoteSummary(note.summary || '').visibleSummary;
+}
+
+function normalizeNoteRecord(note = {}) {
+  const visibleSummary = getNoteVisibleSummary(note);
+  return {
+    ...note,
+    summary: visibleSummary,
+    show_summary: resolveNoteShowSummary(note),
+  };
+}
+
+function buildNoteSummaryValue(summary = '', showSummary = false) {
+  const visible = String(summary || '').trim();
+  const show = !!showSummary;
+  if (!visible && !show) return '';
+  if (visible && show) return visible;
+  const encoded = encodeNoteSummarySettings({ show_summary: show });
+  if (!encoded) return visible;
+  const marker = `<!-- devotion-note-summary-settings:${encoded} -->`;
+  return visible ? `${visible}\n\n${marker}` : marker;
+}
+
+function buildNotePersistencePayload(note = {}) {
+  const normalized = normalizeNoteRecord(note);
+  const rest = { ...normalized };
+  delete rest.show_summary;
+  delete rest.showSummary;
+  return {
+    ...rest,
+    summary: buildNoteSummaryValue(normalized.summary, normalized.show_summary),
+  };
+}
+
+function getRenderableNoteSummary(note = {}) {
+  const normalized = normalizeNoteRecord(note);
+  const summary = sanitizeDisplayText(normalized.summary, '');
+  return normalized.show_summary && summary ? summary : '';
+}
+
+function getNotePreviewText(note = {}, maxLength = 140) {
+  const summary = getRenderableNoteSummary(note);
+  const fallback = sanitizeDisplayText(stripScriptureMarkers(note.content || ''), '');
+  return (summary || fallback).slice(0, maxLength);
 }
 
 const BOOK_DRAFT_SETTINGS_MARKER_RE = /\n*<!--\s*devotion-book-draft-settings:([A-Za-z0-9+/=_-]+)\s*-->\s*$/;
@@ -5140,14 +5244,12 @@ function renderRecentCards() {
   renderCardList(els.recentNotes, state.notes.slice(0, 3), note => {
     const title = sanitizeDisplayText(note.title, '未命名札記');
     const scripture = sanitizeDisplayText(note.scripture_reference, '未設定經文');
-    const summary = sanitizeDisplayText(note.summary, '')
-      || sanitizeDisplayText(note.content, '')
-      || '尚無摘要';
+    const preview = getNotePreviewText(note, 90) || '尚無預覽';
     return `
       <div class="card">
         <h3>${escapeHtml(title)}</h3>
         <div class="card-meta"><span>${escapeHtml(scripture)}</span><span>${formatDate(note.updated_at)}</span></div>
-        <div>${escapeHtml(summary.slice(0, 90))}</div>
+        <div>${escapeHtml(preview)}</div>
       </div>`;
   }, '目前還沒有札記。');
   renderCardList(els.recentBooks, state.books.slice(0, 3), book => {
@@ -5278,7 +5380,7 @@ function renderContentLibrary() {
           <span>${escapeHtml(tagsText || '未設標籤')}</span>
           <span>${escapeHtml(formatDate(note.updated_at || note.created_at))}</span>
         </div>
-        <div>${escapeHtml((note.summary || note.content || '').slice(0, 160) || '尚未填寫摘要。')}</div>
+        <div>${escapeHtml(getNotePreviewText(note, 160) || '尚無內容預覽')}</div>
         <div class="card-actions">
           <button class="secondary-btn" type="button" data-content-library-edit-note="${note.id}">編輯</button>
         </div>
@@ -6050,7 +6152,7 @@ function renderNotes() {
         <span>${escapeHtml(note.category || '未分類')}</span>
         <span>${formatDate(note.updated_at)}</span>
       </div>
-      <div>${escapeHtml((note.summary || note.content || '').slice(0, 140))}</div>
+      <div>${escapeHtml(getNotePreviewText(note, 140))}</div>
       <div class="card-actions">
         <button class="secondary-btn" data-edit-note="${note.id}">編輯</button>
       </div>
@@ -6384,9 +6486,7 @@ function renderNoteReaderListCard(note) {
   const noteId = String(note.id);
   const title = sanitizeDisplayText(note.title, '未命名札記');
   const scripture = sanitizeDisplayText(note.scripture_reference, '未填經文');
-  const excerpt = sanitizeDisplayText(note.summary, '')
-    || sanitizeDisplayText(stripScriptureMarkers(note.content || ''), '')
-    || '尚未填寫摘要。';
+  const excerpt = getNotePreviewText(note, 180);
   const isSelected = state.noteReaderSelectedId === noteId;
   return `
     <button class="note-reader-list-card ${isSelected ? 'active' : ''}" type="button" data-note-reader-open="${escapeHtml(noteId)}">
@@ -6394,7 +6494,7 @@ function renderNoteReaderListCard(note) {
       <span class="note-reader-card-title">${escapeHtml(title)}</span>
       <span class="note-reader-card-scripture">${escapeHtml(scripture)}</span>
       ${renderNoteReaderMeta(note)}
-      <span class="note-reader-summary">${escapeHtml(excerpt.slice(0, 180))}</span>
+      ${excerpt ? `<span class="note-reader-summary">${escapeHtml(excerpt)}</span>` : ''}
     </button>
   `;
 }
@@ -6462,7 +6562,7 @@ function renderNoteReaderDetail(notes) {
   syncNoteReaderDetailMode();
 
   const title = sanitizeDisplayText(note.title, '未命名札記');
-  const summary = sanitizeDisplayText(note.summary, '尚未填寫摘要。');
+  const summary = getRenderableNoteSummary(note);
   const content = stripScriptureMarkers(note.content || '');
   const contentBlocks = content
     ? renderMarkdownContent(content)
@@ -6478,10 +6578,10 @@ function renderNoteReaderDetail(notes) {
         <h4>${escapeHtml(title)}</h4>
         ${renderNoteReaderMeta(note)}
       </header>
-      <section class="note-preview-summary">
+      ${summary ? `<section class="note-preview-summary">
         <span class="note-preview-kicker">摘要</span>
         <p>${escapeHtml(summary)}</p>
-      </section>
+      </section>` : ''}
       <section class="note-preview-content">
         ${contentBlocks}
       </section>
@@ -6592,6 +6692,7 @@ function renderNotePreview() {
     .map(value => value.trim())
     .filter(Boolean);
   const summary = els.noteSummary?.value.trim();
+  const showSummary = !!els.noteShowSummary?.checked;
   const content = els.noteContent?.value.trim();
 
   const metaItems = [
@@ -6600,12 +6701,12 @@ function renderNotePreview() {
     `<span>標籤｜${tags.length ? tags.map(tag => `#${escapeHtml(tag)}`).join(' ') : '尚未設定標籤'}</span>`,
   ];
 
-  const summaryBlock = `
+  const summaryBlock = showSummary && summary ? `
     <section class="note-preview-summary">
       <span class="note-preview-kicker">摘要</span>
-      <p>${escapeHtml(summary || '尚未填寫摘要')}</p>
+      <p>${escapeHtml(summary)}</p>
     </section>
-  `;
+  ` : '';
 
   const contentBlocks = content
     ? renderMarkdownContent(content)
@@ -6914,6 +7015,21 @@ function closeNotePreview() {
   els.notePreviewModal?.setAttribute('aria-hidden', 'true');
 }
 
+function getDefaultShowSummaryForText(summary = '') {
+  return !!String(summary || '').trim();
+}
+
+function syncNoteSummaryVisibilityDefault() {
+  if (!els.noteShowSummary || state.noteSummaryVisibilityTouched) return;
+  els.noteShowSummary.checked = getDefaultShowSummaryForText(els.noteSummary?.value || '');
+}
+
+function getDraftShowSummary(draft = {}) {
+  if (typeof draft.showSummary === 'boolean') return draft.showSummary;
+  if (typeof draft.show_summary === 'boolean') return draft.show_summary;
+  return getDefaultShowSummaryForText(draft.summary || '');
+}
+
 function getCurrentNoteDraftPayload() {
   return {
     title: els.noteTitle?.value || '',
@@ -6921,6 +7037,7 @@ function getCurrentNoteDraftPayload() {
     category: els.noteCategory?.value || '',
     tags: els.noteTags?.value || '',
     summary: els.noteSummary?.value || '',
+    showSummary: !!els.noteShowSummary?.checked,
     content: els.noteContent?.value || '',
     editingNoteId: els.noteId?.value || '',
     userId: getUserId(),
@@ -7068,6 +7185,8 @@ function restoreCurrentNoteDraft() {
   els.noteCategory.value = draft.category || '';
   els.noteTags.value = draft.tags || '';
   els.noteSummary.value = draft.summary || '';
+  if (els.noteShowSummary) els.noteShowSummary.checked = getDraftShowSummary(draft);
+  state.noteSummaryVisibilityTouched = typeof draft.showSummary === 'boolean' || typeof draft.show_summary === 'boolean';
   els.noteContent.value = draft.content || '';
   state.scriptureAppliedBlocks = [];
   state.scriptureLastAppliedBlock = '';
@@ -7099,6 +7218,8 @@ function populateNoteForm(noteId) {
   els.noteCategory.value = note.category || '';
   els.noteTags.value = (note.tags || []).join(', ');
   els.noteSummary.value = note.summary || '';
+  if (els.noteShowSummary) els.noteShowSummary.checked = resolveNoteShowSummary(note);
+  state.noteSummaryVisibilityTouched = true;
   state.scriptureAppliedBlocks = [];
   state.scriptureLastAppliedBlock = '';
   els.noteContent.value = stripScriptureMarkers(note.content || '');
@@ -7116,6 +7237,8 @@ function populateNoteForm(noteId) {
 function clearNoteForm({ clearDraft = false } = {}) {
   els.noteForm.reset();
   els.noteId.value = '';
+  if (els.noteShowSummary) els.noteShowSummary.checked = false;
+  state.noteSummaryVisibilityTouched = false;
   els.deleteNoteBtn.classList.add('hidden');
   resetScripturePreview({ clearApplied: true });
   els.scriptureAppendToContent.checked = true;
@@ -7135,6 +7258,7 @@ async function saveNote() {
     category: els.noteCategory.value.trim(),
     tags: els.noteTags.value.split(',').map(v => v.trim()).filter(Boolean),
     summary: els.noteSummary.value.trim(),
+    show_summary: !!els.noteShowSummary?.checked,
     content: stripScriptureMarkers(els.noteContent.value.trim()),
     updated_at: nowIso(),
     created_at: els.noteId.value ? (state.notes.find(n => n.id === els.noteId.value)?.created_at || nowIso()) : nowIso(),
@@ -7142,13 +7266,14 @@ async function saveNote() {
   if (!payload.title || !payload.content) throw new Error('請填入標題與內容。');
   persistCurrentNoteDraft({ immediate: true });
   try {
+    const persistencePayload = buildNotePersistencePayload(payload);
     if (state.supabase) {
-      const { error } = await state.supabase.from('devotion_notes').upsert(payload);
+      const { error } = await state.supabase.from('devotion_notes').upsert(persistencePayload);
       if (error) throw error;
     } else {
       const notes = loadJson(STORAGE_KEYS.notes, []);
       const idx = notes.findIndex(item => item.id === payload.id && item.user_id === payload.user_id);
-      if (idx >= 0) notes[idx] = payload; else notes.unshift(payload);
+      if (idx >= 0) notes[idx] = persistencePayload; else notes.unshift(persistencePayload);
       saveJson(STORAGE_KEYS.notes, notes);
     }
   } catch (error) {
@@ -7423,12 +7548,12 @@ function renderSelectedNotePreview() {
     els.selectedNotePreview.textContent = '請先選擇一篇札記';
     return;
   }
-  const excerpt = previewText(note.summary || note.content || '', 100);
+  const excerpt = previewText(getNotePreviewText(note, 100), 100);
   els.selectedNotePreview.className = 'selected-note-preview';
   els.selectedNotePreview.innerHTML = `
     <h4>${escapeHtml(note.title || '未命名札記')}</h4>
     <div class="card-meta"><span>${escapeHtml(note.scripture_reference || '未填經文')}</span></div>
-    <p>${escapeHtml(excerpt || '這篇札記尚未填寫摘要。')}</p>
+    ${excerpt ? `<p>${escapeHtml(excerpt)}</p>` : ''}
   `;
 }
 
@@ -7812,7 +7937,8 @@ function buildBookSnapshot(book) {
         source_note_id: sourceNoteId,
         note_title: note?.title || '',
         scripture_reference: note?.scripture_reference || '',
-        summary: note?.summary || '',
+        summary: note ? getRenderableNoteSummary(note) : '',
+        show_summary: note ? resolveNoteShowSummary(note) : false,
         content: note?.content || '',
       };
     }),
@@ -8074,7 +8200,7 @@ function simpleSection(title, content, language = DEFAULT_BOOK_LANGUAGE) {
 function chapterXhtml(chapter, order, book = {}) {
   const language = resolveBookLanguage(book.language);
   const summaryHtml = escapeHtml(chapter.summary || '').replaceAll('\n', '<br/>');
-  const summaryBlock = book.include_chapter_summary && chapter.summary
+  const summaryBlock = book.include_chapter_summary && chapter.show_summary !== false && chapter.summary
     ? `<section class="chapter-summary"><span class="kicker">本章摘要</span><p>${summaryHtml}</p></section>`
     : '';
   return xhtmlWrap(chapter.chapter_title, `

@@ -453,7 +453,11 @@
               <label><span class="field-label-row"><span>摘要</span><span class="desktop-voice-input-hint">語音輸入：Windows 鍵 + H；Mac 使用聽寫。</span></span>
                 <textarea id="note-summary" rows="3" placeholder="這篇內容的重點摘要"></textarea>
               </label>
-              <p class="caption note-summary-hint">可在文章完成後整理重點，供列表預覽或未來成書時選擇顯示。</p>
+              <label class="checkbox-inline note-summary-toggle">
+                <input id="note-show-summary" type="checkbox" />
+                <span>閱讀與成書時顯示摘要</span>
+              </label>
+              <p class="caption note-summary-hint">短篇札記可關閉摘要，讓閱讀畫面更簡潔；摘要文字會保留在表單中。</p>
               <div class="markdown-toolbar" role="toolbar" aria-label="札記 Markdown 工具列">
                 <button type="button" id="markdown-heading-btn" class="ghost-btn small markdown-toolbar-btn">小標題</button>
                 <button type="button" id="markdown-bold-btn" class="ghost-btn small markdown-toolbar-btn">粗體</button>
@@ -539,7 +543,7 @@
                     <input id="book-include-chapter-summary" type="checkbox" />
                     <span>成書時顯示章節摘要</span>
                   </label>
-                  <p class="caption book-export-option-caption">勾選後，匯出 EPUB 時會在每章開頭顯示該札記摘要。</p>
+                  <p class="caption book-export-option-caption">勾選後，匯出 EPUB 時會在每章開頭顯示已開啟的札記摘要。</p>
                 </div>
               </section>
               <div class="row gap-sm wrap">
