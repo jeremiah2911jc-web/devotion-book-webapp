@@ -7319,6 +7319,34 @@ body:not(.auth-locked) .summary-content strong small {
     letter-spacing: 0.18em;
   }
 
+  .note-reader-week-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .note-reader-week-nav {
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(191, 211, 208, 0.9);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.82);
+    color: #496468;
+    font: inherit;
+    font-size: 1.18rem;
+    font-weight: 800;
+    line-height: 1;
+    display: grid;
+    place-items: center;
+    box-shadow: 0 8px 18px rgba(42, 72, 72, 0.05);
+  }
+
+  .note-reader-week-nav:focus-visible {
+    outline: 3px solid rgba(89, 132, 126, 0.25);
+    outline-offset: 2px;
+  }
+
   .note-reader-date-strip {
     display: flex;
     gap: 9px;

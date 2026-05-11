@@ -412,6 +412,7 @@ const state = {
   noteReaderTag: '',
   noteReaderSort: 'updated-desc',
   noteReaderDate: '',
+  noteReaderWeekDate: '',
   noteReaderListScrollTop: 0,
   contentLibrarySearch: '',
   contentLibraryCategory: '',
@@ -6176,8 +6177,24 @@ function getNoteReaderWeekdayLabel(date) {
   return new Intl.DateTimeFormat('zh-TW', { weekday: 'short' }).format(date);
 }
 
-function getNoteReaderCalendarMonthDate() {
-  return parseNoteReaderDateKey(state.noteReaderDate) || getNoteReaderDateOptions()[0]?.date || new Date();
+function addNoteReaderDays(date, days = 0) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function getNoteReaderWeekStartDate(date = new Date()) {
+  const base = date instanceof Date && !Number.isNaN(date.getTime()) ? new Date(date) : new Date();
+  base.setHours(0, 0, 0, 0);
+  const day = base.getDay();
+  const offset = day === 0 ? -6 : 1 - day;
+  return addNoteReaderDays(base, offset);
+}
+
+function getNoteReaderWeekBaseDate() {
+  return parseNoteReaderDateKey(state.noteReaderWeekDate)
+    || parseNoteReaderDateKey(state.noteReaderDate)
+    || new Date();
 }
 
 function getNoteReaderDateCountMap() {
@@ -6198,14 +6215,11 @@ function isSameCalendarDay(left, right) {
     && left.getDate() === right.getDate();
 }
 
-function getNoteReaderCalendarDateOptions(monthDate = getNoteReaderCalendarMonthDate()) {
-  const base = monthDate instanceof Date && !Number.isNaN(monthDate.getTime()) ? monthDate : new Date();
-  const year = base.getFullYear();
-  const month = base.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+function getNoteReaderWeekDateOptions(weekBaseDate = getNoteReaderWeekBaseDate()) {
+  const weekStart = getNoteReaderWeekStartDate(weekBaseDate);
   const countMap = getNoteReaderDateCountMap();
-  return Array.from({ length: daysInMonth }, (_, index) => {
-    const date = new Date(year, month, index + 1);
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = addNoteReaderDays(weekStart, index);
     const key = formatNoteReaderDateKey(date);
     const count = countMap.get(key) || 0;
     return {
@@ -6218,6 +6232,18 @@ function getNoteReaderCalendarDateOptions(monthDate = getNoteReaderCalendarMonth
   });
 }
 
+function formatNoteReaderWeekLabel(weekOptions = []) {
+  const first = weekOptions[0]?.date || getNoteReaderWeekStartDate();
+  const last = weekOptions[weekOptions.length - 1]?.date || addNoteReaderDays(first, 6);
+  const firstLabel = formatNoteReaderMonthLabel(first);
+  const lastLabel = formatNoteReaderMonthLabel(last);
+  if (firstLabel === lastLabel) return firstLabel;
+  if (first.getFullYear() === last.getFullYear()) {
+    return `${first.getFullYear()}年${first.getMonth() + 1}月 / ${last.getMonth() + 1}月`;
+  }
+  return `${firstLabel} / ${lastLabel}`;
+}
+
 function formatNoteReaderSelectedDateLabel(key = state.noteReaderDate) {
   const date = parseNoteReaderDateKey(key);
   if (!date) return '';
@@ -6227,11 +6253,10 @@ function formatNoteReaderSelectedDateLabel(key = state.noteReaderDate) {
 function renderNoteReaderMobileCalendar() {
   const target = document.getElementById('note-reader-mobile-calendar');
   if (!target) return;
-  const monthSource = getNoteReaderCalendarMonthDate();
-  const calendarOptions = getNoteReaderCalendarDateOptions(monthSource);
+  const weekOptions = getNoteReaderWeekDateOptions();
   const allActive = !state.noteReaderDate;
   const totalCount = state.notes.length;
-  const dateChips = calendarOptions.map(option => {
+  const dateChips = weekOptions.map(option => {
     const active = option.key === state.noteReaderDate;
     const classes = [
       'note-reader-date-chip',
@@ -6250,7 +6275,11 @@ function renderNoteReaderMobileCalendar() {
   target.innerHTML = `
     <div class="note-reader-mobile-month-row">
       <span class="note-reader-mobile-kicker">DEVOTION</span>
-      <strong>${escapeHtml(formatNoteReaderMonthLabel(monthSource))}</strong>
+      <div class="note-reader-week-controls" aria-label="切換札記週別">
+        <button class="note-reader-week-nav" type="button" data-note-reader-week="-1" aria-label="上一週">‹</button>
+        <strong>${escapeHtml(formatNoteReaderWeekLabel(weekOptions))}</strong>
+        <button class="note-reader-week-nav" type="button" data-note-reader-week="1" aria-label="下一週">›</button>
+      </div>
     </div>
     <div class="note-reader-date-strip" aria-label="依日期篩選札記">
       <button class="note-reader-date-chip note-reader-date-chip-all ${allActive ? 'active' : ''}" type="button" data-note-reader-date="" aria-pressed="${allActive ? 'true' : 'false'}">
@@ -6461,9 +6490,23 @@ function renderNoteReaderDetail(notes) {
 }
 
 function bindNoteReaderActions({ scrollToDetail = false } = {}) {
+  document.querySelectorAll('[data-note-reader-week]').forEach(button => {
+    button.addEventListener('click', () => {
+      const direction = Number(button.dataset.noteReaderWeek || 0);
+      if (!direction) return;
+      const weekStart = getNoteReaderWeekStartDate(getNoteReaderWeekBaseDate());
+      state.noteReaderWeekDate = formatNoteReaderDateKey(addNoteReaderDays(weekStart, direction * 7));
+      state.noteReaderDate = '';
+      state.noteReaderSelectedId = null;
+      renderNoteReader();
+      scrollNoteReaderIntoView('list');
+    });
+  });
   document.querySelectorAll('[data-note-reader-date]').forEach(button => {
     button.addEventListener('click', () => {
-      state.noteReaderDate = String(button.dataset.noteReaderDate || '');
+      const nextDate = String(button.dataset.noteReaderDate || '');
+      state.noteReaderDate = nextDate;
+      if (nextDate) state.noteReaderWeekDate = nextDate;
       state.noteReaderSelectedId = null;
       renderNoteReader();
       scrollNoteReaderIntoView('list');
