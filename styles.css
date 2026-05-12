@@ -681,10 +681,11 @@ input:focus, textarea:focus, select:focus {
 .summary-card span { color: var(--muted); }
 .summary-card strong { font-size: 22px; color: #2b6266; }
 .prayer-workspace { display: grid; gap: 18px; min-width: 0; }
+.prayer-action-bar,
 .prayer-hero {
   display: flex;
-  justify-content: space-between;
-  align-items: end;
+  justify-content: flex-end;
+  align-items: center;
   gap: 18px;
   min-width: 0;
 }
@@ -721,7 +722,17 @@ input:focus, textarea:focus, select:focus {
   line-height: 1;
 }
 .prayer-form-panel,
+.prayer-detail-panel,
 .prayer-list-panel { min-width: 0; }
+#prayer-request-input {
+  min-height: 240px;
+  line-height: 1.75;
+}
+#prayer-review-input,
+#prayer-grace-reflection-input {
+  min-height: 132px;
+  line-height: 1.7;
+}
 .prayer-filter-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -767,6 +778,72 @@ input:focus, textarea:focus, select:focus {
 .prayer-related-note { max-width: 100%; overflow-wrap: anywhere; }
 .prayer-card-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .prayer-cloud-notice p { margin: 0; color: #4d666b; line-height: 1.65; }
+.prayer-detail-panel {
+  display: grid;
+  gap: 16px;
+  overflow-x: hidden;
+}
+.prayer-detail-panel.hidden { display: none !important; }
+.prayer-detail-panel-header {
+  align-items: flex-start;
+  gap: 14px;
+}
+.prayer-detail-actions {
+  justify-content: flex-end;
+}
+.prayer-detail-body,
+.prayer-detail-article,
+.prayer-detail-sections,
+.prayer-detail-section {
+  min-width: 0;
+}
+.prayer-detail-article {
+  display: grid;
+  gap: 16px;
+}
+.prayer-detail-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  min-width: 0;
+}
+.prayer-detail-heading h3 {
+  margin: 0 0 8px;
+  color: #203f45;
+  font-size: 26px;
+  line-height: 1.28;
+  overflow-wrap: anywhere;
+}
+.prayer-detail-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.prayer-detail-related {
+  font-size: 14px;
+}
+.prayer-detail-sections {
+  display: grid;
+  gap: 18px;
+}
+.prayer-detail-section {
+  border-top: 1px solid rgba(191, 211, 208, 0.72);
+  padding-top: 16px;
+}
+.prayer-detail-section h3 {
+  margin: 0 0 8px;
+  color: #284f55;
+  font-size: 17px;
+  line-height: 1.35;
+}
+.prayer-detail-text {
+  color: #31545a;
+  font-size: 16px;
+  line-height: 1.9;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .text-link {
   appearance: none;
   border: 0;
@@ -1402,13 +1479,49 @@ body.account-settings-open {
   }
 }
 @media (max-width: 720px) {
+  .prayer-action-bar {
+    display: grid;
+    align-items: stretch;
+  }
   .prayer-hero {
     display: grid;
     align-items: start;
   }
   .prayer-hero h1 { font-size: 28px; }
+  .prayer-action-bar .primary-btn,
   .prayer-hero .primary-btn { width: 100%; }
   .prayer-workspace { gap: 14px; }
+  #prayer-request-input {
+    min-height: 200px;
+  }
+  #prayer-review-input,
+  #prayer-grace-reflection-input {
+    min-height: 118px;
+  }
+  .prayer-detail-panel {
+    gap: 14px;
+    padding-bottom: max(22px, calc(16px + env(safe-area-inset-bottom)));
+  }
+  .prayer-detail-panel-header {
+    display: grid;
+  }
+  .prayer-detail-actions {
+    justify-content: flex-start;
+  }
+  .prayer-detail-actions > * {
+    flex: 1 1 150px;
+  }
+  .prayer-detail-heading {
+    display: grid;
+    gap: 10px;
+  }
+  .prayer-detail-heading h3 {
+    font-size: 22px;
+  }
+  .prayer-detail-text {
+    font-size: 16px;
+    line-height: 1.9;
+  }
   .prayer-stats-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 6px;

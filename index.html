@@ -349,12 +349,7 @@
 
       <section id="view-prayer" class="view prayer-view" data-testid="view-prayer">
         <section class="prayer-workspace">
-          <header class="prayer-hero">
-            <div>
-              <span class="section-kicker">PRAYER</span>
-              <h1>禱告與回顧</h1>
-              <p>記錄禱告與回顧，整理神的恩典與帶領。</p>
-            </div>
+          <header class="prayer-action-bar" aria-label="禱告操作">
             <button id="prayer-create-button" class="primary-btn" type="button" data-testid="prayer-create-button">新增禱告</button>
           </header>
 
@@ -394,7 +389,7 @@
                 <input id="prayer-title-input" type="text" placeholder="例：為家人的健康禱告" data-testid="prayer-title-input" />
               </label>
               <label>禱告內容
-                <textarea id="prayer-request-input" rows="4" placeholder="寫下想持續禱告與記念的內容。" data-testid="prayer-request-input"></textarea>
+                <textarea id="prayer-request-input" rows="10" placeholder="寫下想持續禱告與記念的內容。" data-testid="prayer-request-input"></textarea>
               </label>
               <div class="grid two prayer-form-grid">
                 <label>狀態
@@ -422,6 +417,20 @@
                 <button id="prayer-cancel-button" class="ghost-btn" type="button">取消</button>
               </div>
             </form>
+          </section>
+
+          <section id="prayer-detail-panel" class="panel prayer-detail-panel hidden" data-testid="prayer-detail-view" aria-live="polite">
+            <div class="panel-header prayer-detail-panel-header">
+              <div>
+                <span class="section-kicker">REVIEW</span>
+                <h2>禱告回顧</h2>
+              </div>
+              <div class="row gap-sm wrap prayer-detail-actions">
+                <button id="prayer-detail-back-button" class="ghost-btn small" type="button" data-testid="prayer-detail-back-button">返回禱告列表</button>
+                <button id="prayer-detail-edit-button" class="secondary-btn small" type="button" data-testid="prayer-detail-edit-button">編輯禱告</button>
+              </div>
+            </div>
+            <div id="prayer-detail-body" class="prayer-detail-body"></div>
           </section>
 
           <section class="panel prayer-list-panel">
@@ -954,6 +963,6 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./app.js?v=prayer-dashboard-wording-20260512"></script>
+  <script type="module" src="./app.js?v=prayer-writing-review-layout-20260512"></script>
 </body>
 </html>

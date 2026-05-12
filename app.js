@@ -11,7 +11,7 @@
   autoBackups: 'devotion-auto-backups',
 };
 
-const APP_VERSION = '2026.05.12-06';
+const APP_VERSION = '2026.05.12-07';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 
 const TEMPLATE_LABELS = {
@@ -380,6 +380,10 @@ const els = {
   prayerFormFeedback: document.getElementById('prayer-form-feedback'),
   prayerSaveButton: document.getElementById('prayer-save-button'),
   prayerCancelButton: document.getElementById('prayer-cancel-button'),
+  prayerDetailPanel: document.getElementById('prayer-detail-panel'),
+  prayerDetailBody: document.getElementById('prayer-detail-body'),
+  prayerDetailBackButton: document.getElementById('prayer-detail-back-button'),
+  prayerDetailEditButton: document.getElementById('prayer-detail-edit-button'),
   prayerList: document.getElementById('prayer-list'),
   prayerFilterButtons: [...document.querySelectorAll('[data-prayer-filter]')],
   prayerStatTotal: document.getElementById('prayer-stat-total'),
@@ -659,6 +663,7 @@ const state = {
   prayerFilter: 'all',
   prayerFormOpen: false,
   editingPrayerId: null,
+  prayerDetailId: null,
   prayerSaving: false,
   prayerSyncError: '',
   scriptureCache: new Map(),
@@ -873,14 +878,14 @@ function getPrayerStatusLabel(status = '') {
 function normalizePrayerRecord(record = {}, fallbackUserId = getUserId()) {
   const now = nowIso();
   const status = normalizePrayerStatus(String(record.status || ''));
-  const reviewText = sanitizeDisplayText(record.review_text ?? record.reviewText ?? '');
-  const graceReflection = sanitizeDisplayText(record.grace_reflection ?? record.graceReflection ?? '');
+  const reviewText = sanitizeMultilineDisplayText(record.review_text ?? record.reviewText ?? '');
+  const graceReflection = sanitizeMultilineDisplayText(record.grace_reflection ?? record.graceReflection ?? '');
   const updatedAt = record.updated_at || record.updatedAt || record.created_at || now;
   return {
     id: String(record.id || ''),
     user_id: String(record.user_id || record.userId || fallbackUserId || ''),
     title: sanitizeDisplayText(record.title, '未命名禱告'),
-    prayer_request: sanitizeDisplayText(record.prayer_request ?? record.prayerRequest ?? ''),
+    prayer_request: sanitizeMultilineDisplayText(record.prayer_request ?? record.prayerRequest ?? ''),
     status,
     related_note_id: String(record.related_note_id || record.relatedNoteId || ''),
     review_text: reviewText,
@@ -917,6 +922,11 @@ function getPrayerRelatedNote(prayer = {}) {
   const noteId = String(prayer.related_note_id || '');
   if (!noteId) return null;
   return getPublishedNotes().find(note => String(note.id || '') === noteId) || null;
+}
+
+function getPrayerById(prayerId = '') {
+  const id = String(prayerId || '');
+  return (state.prayers || []).find(prayer => String(prayer.id || '') === id) || null;
 }
 
 function getPrayerExcerpt(value = '', fallback = '尚未填寫內容') {
@@ -1972,9 +1982,9 @@ function ensureOperationManualUi() {
             <h2>五、禱告與回顧</h2>
             <p>「禱告」是獨立於單篇札記之外的長期禱告紀錄。它適合用來記錄個人的禱告，也可以記錄需要持續記念的代禱事項，之後再補上後續回顧，並整理「回顧神的恩典與帶領」。</p>
             <div class="manual-card-grid">
-              <div class="manual-card"><h3>禱告內容</h3><p>可以寫下禱告標題與禱告內容，讓需要持續記念的事不會散落在不同札記裡。</p></div>
+              <div class="manual-card"><h3>禱告內容</h3><p>可以寫下禱告標題與較長的禱告內容，主要欄位有較大的書寫空間，適合完整記錄需要持續記念的事。</p></div>
               <div class="manual-card"><h3>狀態追蹤</h3><p>每筆紀錄可標示為持續禱告中、回顧中或已蒙應允，也可以用狀態篩選快速查看。</p></div>
-              <div class="manual-card"><h3>後續回顧</h3><p>事情有新的進展時，可以回來補上回顧文字，並記錄這段過程中的恩典、帶領與學習。</p></div>
+              <div class="manual-card"><h3>後續回顧</h3><p>點「回顧」會先開啟完整禱告內容，閱讀整筆禱告後，再按「編輯禱告」補充後續回顧與整理。</p></div>
               <div class="manual-card"><h3>關聯札記</h3><p>若某筆禱告與一篇正式札記有關，可以選擇關聯該札記。草稿不會出現在關聯選項中。</p></div>
             </div>
             <ul>
@@ -1982,6 +1992,7 @@ function ensureOperationManualUi() {
               <li>回顧中：正在整理後續經歷與回顧。</li>
               <li>已蒙應允：已記錄這項禱告的回應與感恩。</li>
             </ul>
+            <p>禱告詳情會完整顯示禱告內容、後續回顧，以及「回顧神的恩典與帶領」。若某個欄位尚未填寫，系統不會顯示空白區塊；需要補充時再進入編輯即可。</p>
             <p>「今日禱告」屬於單篇札記最後的回應禱告；「禱告與回顧」則適合長期追蹤禱告事項與代禱事項。禱告資料會跟著雲端帳號同步，手機與桌機登入同一個帳號後，手動同步或重新整理即可看到同一份資料。</p>
           </section>
 
@@ -4612,10 +4623,21 @@ function bindEvents() {
   els.quickNewNote?.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
   els.quickNewBook?.addEventListener('click', () => { setView('books'); clearBookForm(); });
   els.prayerCreateButton?.addEventListener('click', () => openPrayerForm());
-  els.prayerCancelButton?.addEventListener('click', closePrayerForm);
+  els.prayerCancelButton?.addEventListener('click', () => closePrayerForm({ scrollToList: true }));
   els.prayerForm?.addEventListener('submit', event => savePrayer(event));
+  els.prayerDetailBackButton?.addEventListener('click', () => closePrayerDetail({ scrollToList: true }));
+  els.prayerDetailEditButton?.addEventListener('click', editPrayerFromDetail);
+  els.prayerDetailPanel?.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const openNoteButton = target?.closest('[data-prayer-open-note]');
+    if (openNoteButton) {
+      openNoteReaderNote(openNoteButton.dataset.prayerOpenNote || '', { scrollToDetail: true });
+    }
+  });
   els.prayerFilterButtons.forEach(button => button.addEventListener('click', () => {
     state.prayerFilter = String(button.dataset.prayerFilter || 'all');
+    if (state.prayerFormOpen) closePrayerForm();
+    if (state.prayerDetailId) closePrayerDetail();
     renderPrayerWorkspace();
   }));
   els.prayerList?.addEventListener('click', (event) => {
@@ -4625,10 +4647,15 @@ function bindEvents() {
       openNoteReaderNote(openNoteButton.dataset.prayerOpenNote || '', { scrollToDetail: true });
       return;
     }
-    const editButton = target?.closest('[data-edit-prayer], [data-review-prayer]');
+    const reviewButton = target?.closest('[data-review-prayer]');
+    if (reviewButton) {
+      const prayer = getPrayerById(reviewButton.dataset.reviewPrayer || '');
+      if (prayer) openPrayerDetail(prayer);
+      return;
+    }
+    const editButton = target?.closest('[data-edit-prayer]');
     if (!editButton) return;
-    const prayerId = editButton.dataset.editPrayer || editButton.dataset.reviewPrayer || '';
-    const prayer = state.prayers.find(item => String(item.id || '') === String(prayerId));
+    const prayer = getPrayerById(editButton.dataset.editPrayer || '');
     if (prayer) openPrayerForm(prayer);
   });
   els.noteReaderWriteBtn?.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
@@ -5558,6 +5585,21 @@ function sanitizeDisplayText(value, fallback = '') {
   return text;
 }
 
+function sanitizeMultilineDisplayText(value, fallback = '') {
+  const text = String(value ?? '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .split('\n')
+    .map(line => line.replace(/[ \t]+$/g, ''))
+    .join('\n')
+    .trim();
+  if (!text) return fallback;
+  if (text.includes('??') || text.includes('\uFFFD')) return fallback;
+  const stripped = text.replace(/[?\uFFFD]/g, '').trim();
+  if (!stripped) return fallback;
+  return text;
+}
+
 function getPrimaryViewLabel(viewName = '') {
   return {
     dashboard: '總覽',
@@ -6165,6 +6207,81 @@ function clearPrayerForm() {
   setPrayerFormFeedback('');
 }
 
+function renderPrayerDetailSection(title, value, testId) {
+  const text = sanitizeMultilineDisplayText(value, '');
+  if (!text) return '';
+  return `
+    <section class="prayer-detail-section" data-testid="${testId}">
+      <h3>${escapeHtml(title)}</h3>
+      <div class="prayer-detail-text">${escapeHtml(text)}</div>
+    </section>
+  `;
+}
+
+function renderPrayerDetail() {
+  if (!els.prayerDetailPanel || !els.prayerDetailBody) return;
+  const prayer = getPrayerById(state.prayerDetailId);
+  if (!prayer) {
+    els.prayerDetailPanel.classList.add('hidden');
+    els.prayerDetailBody.innerHTML = '';
+    els.prayerDetailEditButton?.toggleAttribute('disabled', true);
+    return;
+  }
+  const relatedNote = getPrayerRelatedNote(prayer);
+  const hasRelatedId = !!String(prayer.related_note_id || '');
+  const relatedHtml = hasRelatedId
+    ? (relatedNote
+      ? `<button class="text-link prayer-related-note" type="button" data-prayer-open-note="${escapeHtml(String(relatedNote.id || ''))}">關聯札記：${escapeHtml(getNoteDisplayTitle(relatedNote))}</button>`
+      : '<span class="prayer-related-note muted">關聯札記已不存在</span>')
+    : '';
+  const sections = [
+    renderPrayerDetailSection('禱告內容', prayer.prayer_request, 'prayer-detail-content'),
+    renderPrayerDetailSection('後續回顧', prayer.review_text, 'prayer-detail-review'),
+    renderPrayerDetailSection('回顧神的恩典與帶領', prayer.grace_reflection, 'prayer-detail-grace-reflection'),
+  ].filter(Boolean).join('');
+  els.prayerDetailBody.innerHTML = `
+    <article class="prayer-detail-article">
+      <div class="prayer-detail-heading">
+        <div>
+          <h3>${escapeHtml(prayer.title || '未命名禱告')}</h3>
+          <div class="card-meta prayer-detail-meta">
+            <span>建立：${formatDate(prayer.created_at)}</span>
+            <span>最近回顧：${prayer.last_reviewed_at ? formatDate(prayer.last_reviewed_at) : '尚未回顧'}</span>
+          </div>
+        </div>
+        <span class="prayer-status-badge prayer-status-${escapeHtml(normalizePrayerStatus(prayer.status))}">${escapeHtml(getPrayerStatusLabel(prayer.status))}</span>
+      </div>
+      ${relatedHtml ? `<div class="prayer-detail-related">${relatedHtml}</div>` : ''}
+      <div class="prayer-detail-sections">
+        ${sections || '<p class="muted">這筆禱告目前還沒有可閱讀的內容。</p>'}
+      </div>
+    </article>
+  `;
+  els.prayerDetailPanel.classList.remove('hidden');
+  els.prayerDetailEditButton?.toggleAttribute('disabled', false);
+}
+
+function openPrayerDetail(prayer) {
+  const target = prayer || getPrayerById(state.prayerDetailId);
+  if (!target) return;
+  closePrayerForm();
+  state.prayerDetailId = String(target.id || '');
+  renderPrayerDetail();
+  els.prayerDetailPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closePrayerDetail({ scrollToList = false } = {}) {
+  state.prayerDetailId = null;
+  renderPrayerDetail();
+  if (scrollToList) els.prayerList?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function editPrayerFromDetail() {
+  const prayer = getPrayerById(state.prayerDetailId);
+  if (!prayer) return;
+  openPrayerForm(prayer);
+}
+
 function openPrayerForm(prayer = null, { focus = true } = {}) {
   if (!isPrayerCloudReady()) {
     showToast('禱告紀錄需要登入雲端帳號後才能同步。');
@@ -6174,6 +6291,8 @@ function openPrayerForm(prayer = null, { focus = true } = {}) {
     showToast(state.prayerSyncError);
     return;
   }
+  state.prayerDetailId = null;
+  renderPrayerDetail();
   state.prayerFormOpen = true;
   state.editingPrayerId = prayer?.id || null;
   renderPrayerRelatedNoteOptions(prayer?.related_note_id || '');
@@ -6191,12 +6310,13 @@ function openPrayerForm(prayer = null, { focus = true } = {}) {
   if (focus) setTimeout(() => els.prayerTitleInput?.focus(), 80);
 }
 
-function closePrayerForm() {
+function closePrayerForm({ scrollToList = false } = {}) {
   state.prayerFormOpen = false;
   state.editingPrayerId = null;
   state.prayerSaving = false;
   els.prayerFormPanel?.classList.add('hidden');
   clearPrayerForm();
+  if (scrollToList) els.prayerList?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function getPrayerFormRelatedNoteId() {
@@ -6213,7 +6333,7 @@ async function savePrayer(event) {
     return;
   }
   const title = sanitizeDisplayText(els.prayerTitleInput?.value || '');
-  const prayerRequest = sanitizeDisplayText(els.prayerRequestInput?.value || '');
+  const prayerRequest = sanitizeMultilineDisplayText(els.prayerRequestInput?.value || '');
   if (!title) {
     setPrayerFormFeedback('請先為這筆禱告加上一個標題。', true);
     els.prayerTitleInput?.focus();
@@ -6228,8 +6348,8 @@ async function savePrayer(event) {
   const id = String(els.prayerId?.value || state.editingPrayerId || '');
   const existing = id ? state.prayers.find(prayer => String(prayer.id || '') === id) : null;
   const status = normalizePrayerStatus(els.prayerStatusSelect?.value || PRAYER_STATUS_ACTIVE);
-  const reviewText = sanitizeDisplayText(els.prayerReviewInput?.value || '');
-  const graceReflection = sanitizeDisplayText(els.prayerGraceReflectionInput?.value || '');
+  const reviewText = sanitizeMultilineDisplayText(els.prayerReviewInput?.value || '');
+  const graceReflection = sanitizeMultilineDisplayText(els.prayerGraceReflectionInput?.value || '');
   const now = nowIso();
   const shouldMarkReviewed = [PRAYER_STATUS_REVIEWING, PRAYER_STATUS_ANSWERED].includes(status)
     && (reviewText || graceReflection)
@@ -6333,6 +6453,7 @@ function renderPrayerWorkspace() {
   if (cloudNoticeParagraph) cloudNoticeParagraph.textContent = cloudNoticeText;
   els.prayerCloudNotice?.classList.toggle('hidden', cloudReady && !state.prayerSyncError);
   const prayerActionsAvailable = cloudReady && !state.prayerSyncError;
+  if (!state.prayerFormOpen) els.prayerFormPanel?.classList.add('hidden');
   els.prayerCreateButton?.toggleAttribute('disabled', !prayerActionsAvailable);
   els.prayerSaveButton?.toggleAttribute('disabled', !prayerActionsAvailable || state.prayerSaving);
   els.prayerFilterButtons.forEach(button => {
@@ -6341,6 +6462,7 @@ function renderPrayerWorkspace() {
     button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
   });
   renderPrayerRelatedNoteOptions();
+  renderPrayerDetail();
 
   const visiblePrayers = getVisiblePrayerRecords();
   if (!visiblePrayers.length) {
@@ -9231,7 +9353,10 @@ function setView(viewName) {
     viewName = 'dashboard';
   }
   if (viewName === 'snapshots') viewName = 'dashboard';
-  if (viewName !== 'prayer' && state.prayerFormOpen) closePrayerForm();
+  if (viewName !== 'prayer') {
+    if (state.prayerFormOpen) closePrayerForm();
+    if (state.prayerDetailId) closePrayerDetail();
+  }
   if (viewName !== 'books') state.bookDraftModalOpen = false;
   if (viewName !== 'books' && state.bookDraftSettingsModalOpen) closeBookDraftSettingsModal();
   if (viewName !== 'books' && state.bookExportSettingsModalOpen) closeBookExportSettingsModal();
