@@ -5574,7 +5574,7 @@ function getPrimaryViewLabel(viewName = '') {
 function getPrimaryViewIconClass(viewName = '') {
   return {
     dashboard: 'icon-home',
-    prayer: 'icon-note',
+    prayer: 'icon-prayer',
     notes: 'icon-note',
     'content-library': 'icon-note',
     books: 'icon-book',

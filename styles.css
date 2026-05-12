@@ -2880,6 +2880,7 @@ body:not(.auth-locked) .main {
 .icon-sync,
 .icon-gear,
 .icon-home,
+.icon-prayer,
 .icon-note,
 .icon-book,
 .icon-library,
@@ -2893,6 +2894,7 @@ body:not(.auth-locked) .main {
 .icon-sync { background-image: url("./assets/ui/sync.png"); }
 .icon-gear { background-image: url("./assets/ui/gear.png"); }
 .icon-home { background-image: url("./assets/ui/home.png"); }
+.icon-prayer { background-image: url("./assets/ui/prayer.png"); }
 .icon-note { background-image: url("./assets/ui/note.png"); }
 .icon-book { background-image: url("./assets/ui/book.png"); }
 .icon-library { background-image: url("./assets/ui/library.png"); }
