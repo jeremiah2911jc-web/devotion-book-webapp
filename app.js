@@ -8591,16 +8591,18 @@ function handleError(error) {
   showToast(error?.message || '發生錯誤，請檢查設定。');
 }
 
+const NOTE_SAVE_VALIDATION_MESSAGES = new Set([
+  '請先為這篇札記加上一個主題，方便日後閱讀與編排。',
+  '請填入札記內容。',
+]);
+
 function handleNoteSaveError(error) {
-  console.error(error);
   persistCurrentNoteDraft({ immediate: true });
-  if ([
-    '請先為這篇札記加上一個主題，方便日後閱讀與編排。',
-    '請填入札記內容。',
-  ].includes(error?.message)) {
+  if (NOTE_SAVE_VALIDATION_MESSAGES.has(error?.message)) {
     showToast(error.message);
     return;
   }
+  console.error(error);
   showToast('札記儲存失敗，內容已保留，請稍後再試。');
 }
 
