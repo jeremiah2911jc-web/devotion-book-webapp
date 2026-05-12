@@ -1532,10 +1532,12 @@ body.account-settings-open {
   display: grid; gap: 10px; padding: 12px; border: 1px solid rgba(191,211,208,0.82);
   border-radius: 16px; background: rgba(255,255,255,0.72);
 }
-.note-summary-hint {
+.note-summary-hint,
+.note-prayer-hint {
   margin: -4px 0 2px;
 }
-.note-summary-toggle {
+.note-summary-toggle,
+.note-prayer-toggle {
   align-self: flex-start;
   margin: -2px 0 0;
   padding: 9px 12px;
@@ -1623,13 +1625,25 @@ body.account-settings-open {
   background: rgba(244, 240, 232, 0.9);
   border: 1px solid rgba(210, 198, 180, 0.5);
 }
+.note-preview-prayer {
+  display: grid;
+  gap: 10px;
+  padding: 18px 20px;
+  border-radius: 20px;
+  background: rgba(236, 247, 244, 0.9);
+  border: 1px solid rgba(181, 212, 204, 0.58);
+}
 .note-preview-kicker {
   color: #886d59;
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.08em;
 }
+.note-preview-prayer .note-preview-kicker {
+  color: #52746e;
+}
 .note-preview-summary p,
+.note-preview-prayer p,
 .note-preview-content p,
 .note-preview-empty,
 .note-preview-placeholder {
@@ -1641,19 +1655,23 @@ body.account-settings-open {
   gap: 18px;
   font-size: 17px;
 }
-.note-preview-content .markdown-spacer {
+.note-preview-content .markdown-spacer,
+.note-preview-prayer .markdown-spacer {
   height: 1rem;
 }
-.note-preview-content .markdown-spacer-2 {
+.note-preview-content .markdown-spacer-2,
+.note-preview-prayer .markdown-spacer-2 {
   height: 1.8rem;
 }
-.note-preview-content h2 {
+.note-preview-content h2,
+.note-preview-prayer h2 {
   margin: 0;
   color: #21484c;
   font-size: 24px;
   line-height: 1.45;
 }
-.note-preview-content blockquote {
+.note-preview-content blockquote,
+.note-preview-prayer blockquote {
   margin: 0;
   padding: 14px 16px;
   border-left: 4px solid rgba(136, 109, 89, 0.48);
@@ -1662,38 +1680,50 @@ body.account-settings-open {
   color: #4f4135;
   line-height: 1.9;
 }
-.note-preview-content hr {
+.note-preview-content hr,
+.note-preview-prayer hr {
   width: 100%;
   margin: 6px 0;
   border: 0;
   border-top: 1px solid rgba(136, 109, 89, 0.32);
 }
-.note-preview-content ul {
+.note-preview-content ul,
+.note-preview-prayer ul {
   margin: 0;
   padding-left: 1.4em;
 }
-.note-preview-content li {
+.note-preview-content li,
+.note-preview-prayer li {
   margin: 0.4em 0;
   line-height: 1.9;
 }
-.note-preview-content strong {
+.note-preview-content strong,
+.note-preview-prayer strong {
   font-weight: 700;
   color: #27494d;
 }
 .note-preview-content .text-red,
-.note-preview-content .text-red strong {
+.note-preview-content .text-red strong,
+.note-preview-prayer .text-red,
+.note-preview-prayer .text-red strong {
   color: #8a3b3b !important;
 }
 .note-preview-content .text-blue,
-.note-preview-content .text-blue strong {
+.note-preview-content .text-blue strong,
+.note-preview-prayer .text-blue,
+.note-preview-prayer .text-blue strong {
   color: #355d8d !important;
 }
 .note-preview-content .text-gold,
-.note-preview-content .text-gold strong {
+.note-preview-content .text-gold strong,
+.note-preview-prayer .text-gold,
+.note-preview-prayer .text-gold strong {
   color: #8a6a1f !important;
 }
 .note-preview-content .text-purple,
-.note-preview-content .text-purple strong {
+.note-preview-content .text-purple strong,
+.note-preview-prayer .text-purple,
+.note-preview-prayer .text-purple strong {
   color: #6a4a82 !important;
 }
 .note-preview-empty,
@@ -1796,24 +1826,29 @@ body.account-settings-open {
     gap: 6px;
   }
 
-  .note-preview-content {
+  .note-preview-content,
+  .note-preview-prayer {
     gap: 14px;
     font-size: 15px;
   }
 
-  .note-preview-content h2 {
+  .note-preview-content h2,
+  .note-preview-prayer h2 {
     font-size: 20px;
   }
 
-  .note-preview-content blockquote {
+  .note-preview-content blockquote,
+  .note-preview-prayer blockquote {
     padding: 12px 14px;
   }
 
-  .note-preview-content hr {
+  .note-preview-content hr,
+  .note-preview-prayer hr {
     margin: 4px 0;
   }
 
-  .note-preview-summary {
+  .note-preview-summary,
+  .note-preview-prayer {
     padding: 14px 15px;
     border-radius: 16px;
   }

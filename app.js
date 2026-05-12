@@ -11,7 +11,7 @@
   autoBackups: 'devotion-auto-backups',
 };
 
-const APP_VERSION = '2026.05.12-02';
+const APP_VERSION = '2026.05.12-03';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 
 const TEMPLATE_LABELS = {
@@ -361,6 +361,8 @@ const els = {
   noteTags: document.getElementById('note-tags'),
   noteSummary: document.getElementById('note-summary'),
   noteShowSummary: document.getElementById('note-show-summary'),
+  notePrayer: document.getElementById('note-prayer'),
+  noteShowPrayer: document.getElementById('note-show-prayer'),
   markdownHeadingBtn: document.getElementById('markdown-heading-btn'),
   markdownBoldBtn: document.getElementById('markdown-bold-btn'),
   markdownQuoteBtn: document.getElementById('markdown-quote-btn'),
@@ -610,6 +612,7 @@ const state = {
   noteDraftSaveTimer: null,
   noteDraftDirty: false,
   noteSummaryVisibilityTouched: false,
+  notePrayerVisibilityTouched: false,
   currentNoteStatus: NOTE_STATUS_PUBLISHED,
   currentNoteDraftNotice: null,
   profileAvatarUrlCache: new Map(),
@@ -1654,7 +1657,7 @@ function ensureOperationManualUi() {
 
           <section id="manual-writing-note" class="manual-section">
             <h2>四、寫札記</h2>
-            <p>「寫札記」是整套系統的起點。你可以從總覽的「寫一篇札記」、側邊欄或手機底部導覽進入。還沒寫完時可先按「儲存草稿」，草稿可以沒有主題，之後可從「我的草稿」回來繼續編輯。完成後按「儲存為正式札記」或「完成並儲存」，這篇內容才會進入札記閱讀、札記庫與成書流程。</p>
+            <p>「寫札記」是整套系統的起點。你可以從總覽的「寫一篇札記」、側邊欄或手機底部導覽進入。還沒寫完時可先按「儲存草稿」，草稿可以沒有主題，今日禱告也會一起保存，之後可從「我的草稿」回來繼續編輯。完成後按「儲存為正式札記」或「完成並儲存」，這篇內容才會進入札記閱讀、札記庫與成書流程。</p>
 
             <div class="manual-card-grid manual-card-grid-three">
               <div class="manual-card">
@@ -1685,12 +1688,13 @@ function ensureOperationManualUi() {
               <div class="manual-card"><h3>標籤</h3><p>用逗號分隔多個標籤，幫助日後搜尋同一個主題、對象或禱告狀態。</p></div>
               <div class="manual-card"><h3>摘要</h3><p>用二到四句整理重點。日後在札記庫瀏覽或成書時，可以快速知道這篇在說什麼。</p></div>
               <div class="manual-card"><h3>內容</h3><p>完整寫下觀察、默想、禱告、回應與操練。段落短一點，手機閱讀會更舒服。</p></div>
+              <div class="manual-card"><h3>今日禱告</h3><p>另外寫下這篇札記最後想向神禱告的回應。若內容較私人，可以取消「閱讀與成書時顯示禱告」，文字仍會保存在札記中。</p></div>
             </div>
 
             <section id="manual-voice-input" class="manual-subsection">
               <h3>語音輸入</h3>
               <p>如果你不方便打字，也可以使用手機或電腦內建的語音輸入法。</p>
-              <p>在手機上，點進「摘要」或「內容」欄位後，可以使用鍵盤上的麥克風按鈕，直接用中文或英文說出想記錄的內容。</p>
+              <p>在手機上，點進「摘要」、「內容」或「今日禱告」欄位後，可以使用鍵盤上的麥克風按鈕，直接用中文或英文說出想記錄的內容。</p>
               <p>在 Windows 電腦上，可以先點進輸入欄位，再按 Windows 鍵 + H，開啟系統語音輸入。</p>
               <p>在 Mac 上，可以使用系統內建的聽寫功能。</p>
               <p>語音輸入完成後，建議再檢查一次文字，特別是人名、經文、標點與專有名詞。尚未整理完可以先按「儲存草稿」；確認無誤後，再儲存為正式札記。</p>
@@ -1740,7 +1744,7 @@ function ensureOperationManualUi() {
               <p><strong>簡單記法：</strong>如果要做段落標題，就讓小標題單獨一行。如果要標記一句重要提醒，就另起一行使用重點色。</p>
             </section>
 
-            <p>完成後可以先點「預覽文章」，檢查小標題、重點色、經文區塊和段落間距，再儲存為正式札記。若從草稿區或札記庫點「編輯」，系統會回到寫札記並載入該篇內容；草稿按「儲存草稿」會保持草稿，按「完成並儲存」會成為正式札記。</p>
+            <p>完成後可以先點「預覽文章」，檢查小標題、重點色、經文區塊、今日禱告和段落間距，再儲存為正式札記。若從草稿區或札記庫點「編輯」，系統會回到寫札記並載入該篇內容；草稿按「儲存草稿」會保持草稿，按「完成並儲存」會成為正式札記。今日禱告會跟著草稿與正式札記保存，是否出現在閱讀與成書中由勾選狀態決定。</p>
           </section>
 
           <section id="manual-note-reader" class="manual-section">
@@ -1756,7 +1760,7 @@ function ensureOperationManualUi() {
               <li>結果數：畫面會顯示目前符合條件與全部札記的篇數。</li>
             </ul>
             <p>若沒有符合條件的札記，畫面會出現無結果提示，可調整搜尋字、分類、標籤，或使用「重設篩選」回到完整列表。</p>
-            <p>點一篇札記後會進入單篇閱讀。單篇閱讀中可以點「返回札記閱讀列表」回到列表，也可以點「前往編輯」回到寫札記頁修改內容。前往編輯只會載入該篇札記，仍需按「儲存札記」才會更新資料。</p>
+            <p>點一篇札記後會進入單篇閱讀。單篇閱讀中可以點「返回札記閱讀列表」回到列表，也可以點「前往編輯」回到寫札記頁修改內容。前往編輯只會載入該篇札記，仍需按「儲存札記」才會更新資料。若札記勾選「閱讀與成書時顯示禱告」且有今日禱告內容，單篇閱讀會在正文後顯示今日禱告。</p>
             <p>手機版流程是「列表 → 單篇閱讀 → 返回列表」。桌機版則較接近左右分欄，左側用來搜尋、篩選與選擇札記，右側閱讀單篇內容。</p>
             <p>若只是想閱讀與查找，建議使用「札記閱讀」。若要批次挑選文章加入選稿編排，請使用「札記庫」。</p>
           </section>
@@ -1793,7 +1797,7 @@ function ensureOperationManualUi() {
             <p>這裡顯示目前沒有被選為工作狀態的編排。每張卡片可點「開始編這本」切換成目前正在編排，也可點「整理章節」、「加入札記」、「編輯設定」或「刪除」。</p>
             <p>點選「開始編這本」後，該卡片會移到「目前正在編排」，原本的目前編排會回到其他選稿編排。畫面會立即更新並顯示切換提示。</p>
             <p>若建立選稿編排後，想修改編排代稱、整理說明、日期範圍、分類或標籤，可以在選稿編排卡片上點「編輯設定」。「編輯設定」只修改這份選稿編排的基本資料，不會直接改動已收錄的札記內容，也不會改變章節排序。若要調整章節順序或章節標題，請使用「整理章節」。</p>
-            <p>選稿編排只接收正式札記。草稿不會出現在可加入候選，也不會被加入章節。</p>
+            <p>選稿編排只接收正式札記。草稿不會出現在可加入候選，也不會被加入章節。今日禱告是否出現在成書中，會依照每篇札記內的「閱讀與成書時顯示禱告」設定處理。</p>
             <h3>新增選稿編排</h3>
             <p>這裡可以建立新的編排，只需要先填「編排代稱」與「整理說明」。若目前沒有正在編排，新建立的編排會直接成為目前正在編排。若已經有目前編排，新編排會先放在其他選稿編排中。</p>
           </section>
@@ -1825,7 +1829,7 @@ function ensureOperationManualUi() {
               <li>封面圖片。</li>
               <li>前言與後記。</li>
             </ul>
-            <p>若只想先保存設定，可以點「儲存設定」。若要直接產生電子書，請點「儲存並匯出 EPUB」。匯出只會使用已加入編排的正式札記，草稿不會進入 EPUB。匯出完成後，系統會把書加入書櫃，並在畫面提供「立即閱讀」、「下載 EPUB」與「前往書櫃」。</p>
+            <p>若只想先保存設定，可以點「儲存設定」。若要直接產生電子書，請點「儲存並匯出 EPUB」。匯出只會使用已加入編排的正式札記，草稿不會進入 EPUB。若札記勾選「閱讀與成書時顯示禱告」且有今日禱告內容，禱告會跟著該篇章節匯出；私人禱告可取消顯示。匯出完成後，系統會把書加入書櫃，並在畫面提供「立即閱讀」、「下載 EPUB」與「前往書櫃」。</p>
             <p>下載後的 EPUB 可用 iOS「書籍」、Android「Google Play 圖書」或其他 EPUB 閱讀器開啟。</p>
           </section>
 
@@ -1898,7 +1902,8 @@ function ensureOperationManualUi() {
               <div class="manual-faq-item"><h3>草稿可以沒有標題嗎？</h3><p>可以。草稿可以先沒有主題，畫面會以「未命名草稿」顯示。完成後要儲存為正式札記時，建議先補上主題，方便日後閱讀與編排。</p></div>
               <div class="manual-faq-item"><h3>草稿會出現在札記閱讀、選稿或成書裡嗎？</h3><p>不會。草稿只會保存在「寫札記」的草稿區，不會進入札記閱讀，不會出現在選稿編排候選，也不會匯出到 EPUB。完成後儲存為正式札記，才會進入這些流程。</p></div>
               <div class="manual-faq-item"><h3>札記閱讀和札記庫有什麼差別？</h3><p>札記閱讀適合單純重讀、搜尋和查看單篇札記；札記庫適合管理札記、回到編輯器修改，或勾選文章加入目前正在編排。</p></div>
-              <div class="manual-faq-item"><h3>禱告或代禱事項要寫在哪裡？</h3><p>可以直接寫在「寫札記」裡。分類可以選「禱告」或「代禱」，再用標籤補充對象或主題。日後可以在札記庫用分類或標籤搜尋，也可以整理成禱告操練或代禱紀錄。</p></div>
+              <div class="manual-faq-item"><h3>禱告或代禱事項要寫在哪裡？</h3><p>每篇札記可以在「今日禱告」欄位另外寫下最後的禱告回應。若是較完整的代禱紀錄，也可以在內容中整理，分類選「禱告」或「代禱」，再用標籤補充對象或主題。</p></div>
+              <div class="manual-faq-item"><h3>今日禱告一定會出現在閱讀或成書裡嗎？</h3><p>不一定。只有勾選「閱讀與成書時顯示禱告」且今日禱告有內容時，札記閱讀與 EPUB 才會顯示。取消勾選時，禱告文字仍會保存在札記中，但不會出現在閱讀與成書裡。</p></div>
               <div class="manual-faq-item"><h3>可以用語音輸入寫札記嗎？</h3><p>可以。你可以使用手機或電腦內建的語音輸入法。手機可使用鍵盤上的麥克風；Windows 可按 Windows 鍵 + H；Mac 可使用系統聽寫。語音輸入後，建議再檢查文字內容，避免經文、人名或標點辨識錯誤。</p></div>
               <div class="manual-faq-item"><h3>如何申請支持款項收款證明？</h3><p>完成轉帳後，可在「支持平台／支持事工」中點選「申請收款證明」，填寫姓名或抬頭、Email、支持金額、轉帳日期與匯款帳號後五碼。系統會通知平台端處理，確認後會再依你填寫的 Email 聯繫。本證明為支持款項收款紀錄，不作為稅務扣抵憑證。</p></div>
               <div class="manual-faq-item"><h3>為什麼編輯區會出現 ##、{red}、{/red} 這些符號？</h3><p>這些是格式標記，用來讓系統在預覽與成書時轉成小標題或重點色。寫作時會先看到標記，點「預覽文章」後可以確認實際效果。</p></div>
@@ -4354,6 +4359,7 @@ function bindEvents() {
   els.noteForm.addEventListener('input', event => {
     if (isNoteFormField(event.target)) {
       if (event.target === els.noteSummary) syncNoteSummaryVisibilityDefault();
+      if (event.target === els.notePrayer) syncNotePrayerVisibilityDefault();
       renderNotePreview();
       scheduleCurrentNoteDraftSave();
     }
@@ -4361,7 +4367,9 @@ function bindEvents() {
   els.noteForm.addEventListener('change', event => {
     if (isNoteFormField(event.target)) {
       if (event.target === els.noteShowSummary) state.noteSummaryVisibilityTouched = true;
+      if (event.target === els.noteShowPrayer) state.notePrayerVisibilityTouched = true;
       if (event.target === els.noteSummary) syncNoteSummaryVisibilityDefault();
+      if (event.target === els.notePrayer) syncNotePrayerVisibilityDefault();
       renderNotePreview();
       scheduleCurrentNoteDraftSave();
     }
@@ -4864,11 +4872,21 @@ function splitNoteSummary(summary = '') {
     return {
       visibleSummary,
       hasSettings: false,
-      settings: { show_summary: !!visibleSummary },
+      settings: { show_summary: !!visibleSummary, status: NOTE_STATUS_PUBLISHED, prayer_text: '', show_prayer: false },
     };
   }
   const visibleSummary = raw.replace(NOTE_SUMMARY_SETTINGS_MARKER_RE, '').trim();
   const decoded = decodeNoteSummarySettings(match[1]);
+  const prayerText = typeof decoded.prayer_text === 'string'
+    ? decoded.prayer_text
+    : typeof decoded.prayerText === 'string'
+      ? decoded.prayerText
+      : '';
+  const showPrayer = typeof decoded.show_prayer === 'boolean'
+    ? decoded.show_prayer
+    : typeof decoded.showPrayer === 'boolean'
+      ? decoded.showPrayer
+      : false;
   return {
     visibleSummary,
     hasSettings: true,
@@ -4879,12 +4897,18 @@ function splitNoteSummary(summary = '') {
           ? decoded.showSummary
           : !!visibleSummary,
       status: normalizeNoteStatus(decoded.status),
+      prayer_text: normalizeNotePrayerText(prayerText),
+      show_prayer: showPrayer,
     },
   };
 }
 
 function normalizeNoteStatus(value = '') {
   return String(value || '').trim() === NOTE_STATUS_DRAFT ? NOTE_STATUS_DRAFT : NOTE_STATUS_PUBLISHED;
+}
+
+function normalizeNotePrayerText(value = '') {
+  return String(value || '').trim();
 }
 
 function resolveNoteStatus(note = {}) {
@@ -4922,6 +4946,18 @@ function getNoteVisibleSummary(note = {}) {
   return splitNoteSummary(note.summary || '').visibleSummary;
 }
 
+function resolveNotePrayerText(note = {}) {
+  if (typeof note.prayer_text === 'string') return normalizeNotePrayerText(note.prayer_text);
+  if (typeof note.prayerText === 'string') return normalizeNotePrayerText(note.prayerText);
+  return normalizeNotePrayerText(splitNoteSummary(note.summary || '').settings.prayer_text);
+}
+
+function resolveNoteShowPrayer(note = {}) {
+  if (typeof note.show_prayer === 'boolean') return note.show_prayer;
+  if (typeof note.showPrayer === 'boolean') return note.showPrayer;
+  return !!splitNoteSummary(note.summary || '').settings.show_prayer;
+}
+
 function normalizeNoteRecord(note = {}) {
   const visibleSummary = getNoteVisibleSummary(note);
   return {
@@ -4929,16 +4965,32 @@ function normalizeNoteRecord(note = {}) {
     summary: visibleSummary,
     show_summary: resolveNoteShowSummary(note),
     status: resolveNoteStatus(note),
+    prayer_text: resolveNotePrayerText(note),
+    show_prayer: resolveNoteShowPrayer(note),
   };
 }
 
-function buildNoteSummaryValue(summary = '', showSummary = false, status = NOTE_STATUS_PUBLISHED) {
+function buildNoteSummaryValue(
+  summary = '',
+  showSummary = false,
+  status = NOTE_STATUS_PUBLISHED,
+  prayerText = '',
+  showPrayer = false,
+) {
   const visible = String(summary || '').trim();
   const show = !!showSummary;
   const normalizedStatus = normalizeNoteStatus(status);
-  if (normalizedStatus === NOTE_STATUS_PUBLISHED && !visible && !show) return '';
-  if (normalizedStatus === NOTE_STATUS_PUBLISHED && visible && show) return visible;
-  const encoded = encodeNoteSummarySettings({ show_summary: show, status: normalizedStatus });
+  const prayer = normalizeNotePrayerText(prayerText);
+  const showPrayerInOutput = !!showPrayer;
+  const hasPrayerSettings = !!prayer || showPrayerInOutput;
+  if (normalizedStatus === NOTE_STATUS_PUBLISHED && !visible && !show && !hasPrayerSettings) return '';
+  if (normalizedStatus === NOTE_STATUS_PUBLISHED && visible && show && !hasPrayerSettings) return visible;
+  const encoded = encodeNoteSummarySettings({
+    show_summary: show,
+    status: normalizedStatus,
+    prayer_text: prayer,
+    show_prayer: showPrayerInOutput,
+  });
   if (!encoded) return visible;
   const marker = `<!-- devotion-note-summary-settings:${encoded} -->`;
   return visible ? `${visible}\n\n${marker}` : marker;
@@ -4950,9 +5002,19 @@ function buildNotePersistencePayload(note = {}) {
   delete rest.show_summary;
   delete rest.showSummary;
   delete rest.status;
+  delete rest.prayer_text;
+  delete rest.prayerText;
+  delete rest.show_prayer;
+  delete rest.showPrayer;
   return {
     ...rest,
-    summary: buildNoteSummaryValue(normalized.summary, normalized.show_summary, normalized.status),
+    summary: buildNoteSummaryValue(
+      normalized.summary,
+      normalized.show_summary,
+      normalized.status,
+      normalized.prayer_text,
+      normalized.show_prayer,
+    ),
   };
 }
 
@@ -4960,6 +5022,12 @@ function getRenderableNoteSummary(note = {}) {
   const normalized = normalizeNoteRecord(note);
   const summary = sanitizeDisplayText(normalized.summary, '');
   return normalized.show_summary && summary ? summary : '';
+}
+
+function getRenderableNotePrayer(note = {}) {
+  const normalized = normalizeNoteRecord(note);
+  const prayer = normalizeNotePrayerText(normalized.prayer_text);
+  return normalized.show_prayer && prayer ? prayer : '';
 }
 
 function getNotePreviewText(note = {}, maxLength = 140) {
@@ -6712,6 +6780,7 @@ function getNoteReaderSearchHaystack(note) {
     getNoteTagList(note).join(' '),
     note.summary,
     stripScriptureMarkers(note.content || ''),
+    getRenderableNotePrayer(note),
   ].join(' ').toLowerCase();
 }
 
@@ -6994,6 +7063,17 @@ function renderNoteReaderMeta(note, options = {}) {
     .join('')}</div>`;
 }
 
+function renderNotePrayerBlock(prayer = '') {
+  const prayerContent = normalizeNotePrayerText(prayer);
+  if (!prayerContent) return '';
+  return `
+    <section class="note-preview-prayer">
+      <span class="note-preview-kicker">今日禱告</span>
+      ${renderMarkdownContent(prayerContent)}
+    </section>
+  `;
+}
+
 function renderNoteReaderListCard(note) {
   const noteId = String(note.id);
   const title = getNoteDisplayTitle(note);
@@ -7075,6 +7155,7 @@ function renderNoteReaderDetail(notes) {
 
   const title = getNoteDisplayTitle(note);
   const summary = getRenderableNoteSummary(note);
+  const prayer = getRenderableNotePrayer(note);
   const content = stripScriptureMarkers(note.content || '');
   const contentBlocks = content
     ? renderMarkdownContent(content)
@@ -7097,6 +7178,7 @@ function renderNoteReaderDetail(notes) {
       <section class="note-preview-content">
         ${contentBlocks}
       </section>
+      ${renderNotePrayerBlock(prayer)}
     </article>
   `;
 }
@@ -7206,6 +7288,8 @@ function renderNotePreview() {
   const summary = els.noteSummary?.value.trim();
   const showSummary = !!els.noteShowSummary?.checked;
   const content = els.noteContent?.value.trim();
+  const prayer = els.notePrayer?.value.trim();
+  const showPrayer = !!els.noteShowPrayer?.checked;
 
   const metaItems = [
     `<span>經文｜${escapeHtml(scripture || '尚未填寫經文')}</span>`,
@@ -7223,6 +7307,7 @@ function renderNotePreview() {
   const contentBlocks = content
     ? renderMarkdownContent(content)
     : '<p class="note-preview-placeholder">尚未輸入內容</p>';
+  const prayerBlock = showPrayer && prayer ? renderNotePrayerBlock(prayer) : '';
 
   els.notePreview.innerHTML = `
     <header class="note-preview-header">
@@ -7233,6 +7318,7 @@ function renderNotePreview() {
     <section class="note-preview-content">
       ${contentBlocks}
     </section>
+    ${prayerBlock}
   `;
   updateMarkdownSyntaxHint();
 }
@@ -7536,10 +7622,29 @@ function syncNoteSummaryVisibilityDefault() {
   els.noteShowSummary.checked = getDefaultShowSummaryForText(els.noteSummary?.value || '');
 }
 
+function getDefaultShowPrayerForText(prayer = '') {
+  return !!String(prayer || '').trim();
+}
+
+function syncNotePrayerVisibilityDefault() {
+  if (!els.noteShowPrayer || state.notePrayerVisibilityTouched) return;
+  els.noteShowPrayer.checked = getDefaultShowPrayerForText(els.notePrayer?.value || '');
+}
+
 function getDraftShowSummary(draft = {}) {
   if (typeof draft.showSummary === 'boolean') return draft.showSummary;
   if (typeof draft.show_summary === 'boolean') return draft.show_summary;
   return getDefaultShowSummaryForText(draft.summary || '');
+}
+
+function getDraftPrayerText(draft = {}) {
+  return normalizeNotePrayerText(draft.prayerText ?? draft.prayer_text ?? '');
+}
+
+function getDraftShowPrayer(draft = {}) {
+  if (typeof draft.showPrayer === 'boolean') return draft.showPrayer;
+  if (typeof draft.show_prayer === 'boolean') return draft.show_prayer;
+  return getDefaultShowPrayerForText(getDraftPrayerText(draft));
 }
 
 function getCurrentNoteDraftPayload() {
@@ -7550,6 +7655,9 @@ function getCurrentNoteDraftPayload() {
     tags: els.noteTags?.value || '',
     summary: els.noteSummary?.value || '',
     showSummary: !!els.noteShowSummary?.checked,
+    prayerText: els.notePrayer?.value || '',
+    showPrayer: !!els.noteShowPrayer?.checked,
+    prayerVisibilityTouched: !!state.notePrayerVisibilityTouched,
     content: els.noteContent?.value || '',
     editingNoteId: els.noteId?.value || '',
     status: state.currentNoteStatus || NOTE_STATUS_PUBLISHED,
@@ -7560,7 +7668,7 @@ function getCurrentNoteDraftPayload() {
 
 function hasCurrentNoteDraftContent(draft) {
   if (!draft || typeof draft !== 'object') return false;
-  return ['title', 'scripture', 'category', 'tags', 'summary', 'content']
+  return ['title', 'scripture', 'category', 'tags', 'summary', 'prayerText', 'prayer_text', 'content']
     .some(key => String(draft[key] || '').trim());
 }
 
@@ -7663,7 +7771,7 @@ function ensureCurrentNoteDraftNotice() {
   notice.innerHTML = `
     <div class="current-note-draft-copy">
       <strong>偵測到尚未儲存的札記草稿，是否恢復？</strong>
-      <p>恢復後會回填上次尚未儲存的標題、經文、分類、標籤、摘要與內容。</p>
+      <p>恢復後會回填上次尚未儲存的標題、經文、分類、標籤、摘要、今日禱告與內容。</p>
     </div>
     <div class="current-note-draft-actions">
       <button type="button" class="primary-btn small" data-restore-current-note-draft>恢復草稿</button>
@@ -7701,6 +7809,12 @@ function restoreCurrentNoteDraft() {
   els.noteSummary.value = draft.summary || '';
   if (els.noteShowSummary) els.noteShowSummary.checked = getDraftShowSummary(draft);
   state.noteSummaryVisibilityTouched = typeof draft.showSummary === 'boolean' || typeof draft.show_summary === 'boolean';
+  const draftPrayerText = getDraftPrayerText(draft);
+  if (els.notePrayer) els.notePrayer.value = draftPrayerText;
+  if (els.noteShowPrayer) els.noteShowPrayer.checked = getDraftShowPrayer(draft);
+  state.notePrayerVisibilityTouched = typeof draft.prayerVisibilityTouched === 'boolean'
+    ? draft.prayerVisibilityTouched
+    : !!draftPrayerText || getDraftShowPrayer(draft);
   els.noteContent.value = draft.content || '';
   state.scriptureAppliedBlocks = [];
   state.scriptureLastAppliedBlock = '';
@@ -7736,6 +7850,11 @@ function populateNoteForm(noteId) {
   els.noteSummary.value = note.summary || '';
   if (els.noteShowSummary) els.noteShowSummary.checked = resolveNoteShowSummary(note);
   state.noteSummaryVisibilityTouched = true;
+  const prayerText = resolveNotePrayerText(note);
+  const showPrayer = resolveNoteShowPrayer(note);
+  if (els.notePrayer) els.notePrayer.value = prayerText;
+  if (els.noteShowPrayer) els.noteShowPrayer.checked = showPrayer;
+  state.notePrayerVisibilityTouched = !!prayerText || showPrayer;
   state.scriptureAppliedBlocks = [];
   state.scriptureLastAppliedBlock = '';
   els.noteContent.value = stripScriptureMarkers(note.content || '');
@@ -7757,6 +7876,8 @@ function clearNoteForm({ clearDraft = false } = {}) {
   state.currentNoteStatus = NOTE_STATUS_PUBLISHED;
   if (els.noteShowSummary) els.noteShowSummary.checked = false;
   state.noteSummaryVisibilityTouched = false;
+  if (els.noteShowPrayer) els.noteShowPrayer.checked = false;
+  state.notePrayerVisibilityTouched = false;
   els.deleteNoteBtn.classList.add('hidden');
   resetScripturePreview({ clearApplied: true });
   els.scriptureAppendToContent.checked = true;
@@ -7796,6 +7917,8 @@ async function saveNote({ status = NOTE_STATUS_PUBLISHED } = {}) {
     tags: els.noteTags.value.split(',').map(v => v.trim()).filter(Boolean),
     summary: els.noteSummary.value.trim(),
     show_summary: !!els.noteShowSummary?.checked,
+    prayer_text: normalizeNotePrayerText(els.notePrayer?.value || ''),
+    show_prayer: !!els.noteShowPrayer?.checked,
     content: stripScriptureMarkers(els.noteContent.value.trim()),
     status: finalStatus,
     updated_at: nowIso(),
@@ -8484,6 +8607,8 @@ function buildBookSnapshot(book) {
         scripture_reference: note?.scripture_reference || '',
         summary: note ? getRenderableNoteSummary(note) : '',
         show_summary: note ? resolveNoteShowSummary(note) : false,
+        prayer_text: note ? getRenderableNotePrayer(note) : '',
+        show_prayer: note ? resolveNoteShowPrayer(note) : false,
         content: note?.content || '',
       };
     }).filter(Boolean),
@@ -8705,9 +8830,12 @@ nav ol{padding-left:1.3em;}
 .chapter-head h1{margin:0;font-size:1.28em;line-height:1.54;font-weight:700;letter-spacing:.01em;text-align:left;}
 .chapter-head .scripture{margin:.95em 0 0;}
 .scripture{color:#736453;font-size:.96em;line-height:1.78;letter-spacing:.04em;font-style:italic;}
-.chapter-summary{margin:1.15em 0 1.95em;padding:1.15em 1.2em 1.08em;border:1px solid rgba(160,142,112,.22);border-radius:18px;background:linear-gradient(180deg, rgba(248,244,237,.96), rgba(243,236,226,.82));box-shadow:0 10px 24px rgba(94,76,54,.06);}
-.chapter-summary .kicker{display:block;margin-bottom:.45em;color:#7a6753;font-size:.8em;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
-.chapter-summary p{margin:0;line-height:1.86;color:#4d4339;}
+.chapter-summary,.chapter-prayer{margin:1.15em 0 1.95em;padding:1.15em 1.2em 1.08em;border:1px solid rgba(160,142,112,.22);border-radius:18px;background:linear-gradient(180deg, rgba(248,244,237,.96), rgba(243,236,226,.82));box-shadow:0 10px 24px rgba(94,76,54,.06);}
+.chapter-prayer{margin-top:2em;background:linear-gradient(180deg, rgba(239,247,245,.96), rgba(232,242,239,.84));border-color:rgba(126,166,158,.24);}
+.chapter-summary .kicker,.chapter-prayer .kicker{display:block;margin-bottom:.45em;color:#7a6753;font-size:.8em;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
+.chapter-prayer .kicker{color:#52746e;}
+.chapter-summary p,.chapter-prayer p{margin:0 0 .8em;line-height:1.86;color:#4d4339;}
+.chapter-summary p:last-child,.chapter-prayer p:last-child{margin-bottom:0;}
 blockquote{margin:1.35em 0 1.55em;padding:1.05em 1.2em 1.05em 1.3em;border-left:4px solid rgba(155,122,72,.42);border-radius:0 18px 18px 0;background:linear-gradient(180deg, rgba(247,242,234,.92), rgba(243,236,226,.7));color:#4a4034;line-height:1.92;}
 hr{width:38%;margin:2em auto 1.9em;border:0;border-top:1px solid rgba(155,122,72,.34);}
 ul{margin:0 0 1.45em;padding-left:1.5em;}
@@ -8753,6 +8881,10 @@ function chapterXhtml(chapter, order, book = {}) {
   const summaryBlock = book.include_chapter_summary && chapter.show_summary !== false && chapter.summary
     ? `<section class="chapter-summary"><span class="kicker">本章摘要</span><p>${summaryHtml}</p></section>`
     : '';
+  const prayer = normalizeNotePrayerText(chapter.prayer_text || chapter.prayerText || '');
+  const prayerBlock = chapter.show_prayer !== false && prayer
+    ? `<section class="chapter-prayer"><span class="kicker">今日禱告</span>${renderMarkdownContent(prayer)}</section>`
+    : '';
   return xhtmlWrap(chapter.chapter_title, `
     <main>
       <header class="chapter-head">
@@ -8762,6 +8894,7 @@ function chapterXhtml(chapter, order, book = {}) {
       </header>
       ${summaryBlock}
       ${renderMarkdownContent(chapter.content || '')}
+      ${prayerBlock}
     </main>
   `, false, "../styles/book.css", language);
 }
@@ -9929,9 +10062,12 @@ function injectReaderViewStyles() {
       #view-reader .reader-flow .chapter-head .scripture { margin: .92em 0 0; }
       #view-reader .reader-flow .scripture { color: #736453; font-size: .95em; line-height: 1.78; letter-spacing: .04em; font-style: italic; }
       #view-reader .reader-flow blockquote { margin: 1.32em 0 1.52em; padding: 1.02em 1.12em 1.02em 1.22em; border-left: 4px solid rgba(155,122,72,.4); border-radius: 0 18px 18px 0; background: linear-gradient(180deg, rgba(247,242,234,.92), rgba(243,236,226,.68)); color: inherit; line-height: 1.9; }
-      #view-reader .reader-flow .chapter-summary { margin: 1.18em 0 1.8em; padding: 1.12em 1.15em 1.05em; border-radius: 18px; border: 1px solid rgba(160,142,112,.22); background: linear-gradient(180deg, rgba(248,244,237,.96), rgba(243,236,226,.82)); box-shadow: 0 10px 24px rgba(94,76,54,.06); }
-      #view-reader .reader-flow .chapter-summary .kicker { display: block; margin-bottom: .45em; color: #7a6753; font-size: .82em; font-weight: 700; letter-spacing: .06em; }
-      #view-reader .reader-flow .chapter-summary p { margin: 0; line-height: 1.84; color: #4d4339; }
+      #view-reader .reader-flow .chapter-summary, #view-reader .reader-flow .chapter-prayer { margin: 1.18em 0 1.8em; padding: 1.12em 1.15em 1.05em; border-radius: 18px; border: 1px solid rgba(160,142,112,.22); background: linear-gradient(180deg, rgba(248,244,237,.96), rgba(243,236,226,.82)); box-shadow: 0 10px 24px rgba(94,76,54,.06); }
+      #view-reader .reader-flow .chapter-prayer { margin-top: 2em; background: linear-gradient(180deg, rgba(239,247,245,.96), rgba(232,242,239,.84)); border-color: rgba(126,166,158,.24); }
+      #view-reader .reader-flow .chapter-summary .kicker, #view-reader .reader-flow .chapter-prayer .kicker { display: block; margin-bottom: .45em; color: #7a6753; font-size: .82em; font-weight: 700; letter-spacing: .06em; }
+      #view-reader .reader-flow .chapter-prayer .kicker { color: #52746e; }
+      #view-reader .reader-flow .chapter-summary p, #view-reader .reader-flow .chapter-prayer p { margin: 0 0 .75em; line-height: 1.84; color: #4d4339; }
+      #view-reader .reader-flow .chapter-summary p:last-child, #view-reader .reader-flow .chapter-prayer p:last-child { margin-bottom: 0; }
       #view-reader .reader-flow .markdown-spacer { height: 1rem; }
       #view-reader .reader-flow .markdown-spacer-2 { height: 1.8rem; }
       #view-reader .reader-turn-zone { position: absolute; top: 0; bottom: 0; z-index: 2; width: 34%; border: 0; background: transparent; cursor: pointer; }
@@ -10027,7 +10163,7 @@ function injectReaderViewStyles() {
       #view-reader .reader-flow .chapter-head { margin-bottom: 1.75em; padding: .92em 0 1.05em; }
       #view-reader .reader-flow .chapter-kicker { font-size: 1.24em; letter-spacing: .09em; margin-bottom: .66em; }
       #view-reader .reader-flow .chapter-head h1 { font-size: 1.16em; line-height: 1.5; }
-      #view-reader .reader-flow .chapter-summary { margin-bottom: 1.55em; padding: 1em 1em .96em; }
+      #view-reader .reader-flow .chapter-summary, #view-reader .reader-flow .chapter-prayer { margin-bottom: 1.55em; padding: 1em 1em .96em; }
       #view-reader .reader-footer { grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; padding-inline: 8px; }
       #view-reader .reader-footer > button { min-width: 0; padding-inline: 10px; }
       #view-reader .reader-action-button { right: 14px; bottom: calc(var(--reader-stage-bottom) + 14px); min-height: 42px; padding-inline: 14px; }
