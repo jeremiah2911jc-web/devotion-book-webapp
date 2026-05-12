@@ -737,8 +737,8 @@ input:focus, textarea:focus, select:focus {
   color: #31565a;
   background: rgba(247,251,251,0.95);
 }
-.prayer-status-reviewed { color: #5b557a; background: rgba(244, 243, 252, 0.92); }
-.prayer-status-closed { color: #6d5a38; background: rgba(252, 248, 237, 0.95); }
+.prayer-status-reviewing { color: #5b557a; background: rgba(244, 243, 252, 0.92); }
+.prayer-status-answered { color: #6d5a38; background: rgba(252, 248, 237, 0.95); }
 .prayer-card-related { font-size: 14px; min-width: 0; }
 .prayer-related-note { max-width: 100%; overflow-wrap: anywhere; }
 .prayer-card-actions { display: flex; flex-wrap: wrap; gap: 8px; }

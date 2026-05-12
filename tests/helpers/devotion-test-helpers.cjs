@@ -15,8 +15,8 @@ const NOTE_STATUS_DRAFT = 'draft';
 const NOTE_STATUS_PUBLISHED = 'published';
 const NOTE_SUMMARY_SETTINGS_PREFIX = 'devotion-note-summary-settings:';
 const PRAYER_STATUS_ACTIVE = 'active';
-const PRAYER_STATUS_REVIEWED = 'reviewed';
-const PRAYER_STATUS_CLOSED = 'closed';
+const PRAYER_STATUS_REVIEWING = 'reviewing';
+const PRAYER_STATUS_ANSWERED = 'answered';
 
 const DEFAULT_TEST_USER = {
   id: 'local_user_test',
@@ -197,8 +197,10 @@ function createPrayerRecord({
   createdAt = nowIso(),
   updatedAt = createdAt,
 } = {}) {
-  const normalizedStatus = [PRAYER_STATUS_ACTIVE, PRAYER_STATUS_REVIEWED, PRAYER_STATUS_CLOSED].includes(status)
-    ? status
+  const legacyStatusMap = { reviewed: PRAYER_STATUS_REVIEWING, closed: PRAYER_STATUS_ANSWERED };
+  const mappedStatus = legacyStatusMap[status] || status;
+  const normalizedStatus = [PRAYER_STATUS_ACTIVE, PRAYER_STATUS_REVIEWING, PRAYER_STATUS_ANSWERED].includes(mappedStatus)
+    ? mappedStatus
     : PRAYER_STATUS_ACTIVE;
   return {
     id,

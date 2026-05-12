@@ -364,20 +364,20 @@
 
           <section class="prayer-stats-grid" aria-label="禱告統計">
             <article class="summary-card prayer-stat-card">
-              <span>持續禱告中</span>
+              <span>全部代禱</span>
+              <strong id="prayer-stat-total">0</strong>
+            </article>
+            <article class="summary-card prayer-stat-card">
+              <span>持續禱告</span>
               <strong id="prayer-stat-active">0</strong>
             </article>
             <article class="summary-card prayer-stat-card">
-              <span>已回顧</span>
-              <strong id="prayer-stat-reviewed">0</strong>
+              <span>回顧中</span>
+              <strong id="prayer-stat-reviewing">0</strong>
             </article>
             <article class="summary-card prayer-stat-card">
-              <span>已結束</span>
-              <strong id="prayer-stat-closed">0</strong>
-            </article>
-            <article class="summary-card prayer-stat-card">
-              <span>本月新增</span>
-              <strong id="prayer-stat-month">0</strong>
+              <span>已蒙應允</span>
+              <strong id="prayer-stat-answered">0</strong>
             </article>
           </section>
 
@@ -400,8 +400,8 @@
                 <label>狀態
                   <select id="prayer-status-select" data-testid="prayer-status-select">
                     <option value="active">持續禱告中</option>
-                    <option value="reviewed">已回顧</option>
-                    <option value="closed">已結束</option>
+                    <option value="reviewing">回顧中</option>
+                    <option value="answered">已蒙應允</option>
                   </select>
                 </label>
                 <label>關聯札記，可選
@@ -428,13 +428,13 @@
             <div class="panel-header prayer-list-header">
               <div>
                 <h2>代禱事項</h2>
-                <p>用狀態篩選正在禱告、已回顧或已結束的紀錄。</p>
+                <p>用狀態篩選正在禱告、整理回顧或已記錄回應的紀錄。</p>
               </div>
               <div class="prayer-filter-tabs" role="tablist" aria-label="禱告狀態篩選">
                 <button class="ghost-btn small active" type="button" data-prayer-filter="all" data-testid="prayer-filter-all">全部</button>
                 <button class="ghost-btn small" type="button" data-prayer-filter="active" data-testid="prayer-filter-active">持續禱告中</button>
-                <button class="ghost-btn small" type="button" data-prayer-filter="reviewed" data-testid="prayer-filter-reviewed">已回顧</button>
-                <button class="ghost-btn small" type="button" data-prayer-filter="closed" data-testid="prayer-filter-closed">已結束</button>
+                <button class="ghost-btn small" type="button" data-prayer-filter="reviewing" data-testid="prayer-filter-reviewing">回顧中</button>
+                <button class="ghost-btn small" type="button" data-prayer-filter="answered" data-testid="prayer-filter-answered">已蒙應允</button>
               </div>
             </div>
             <div id="prayer-list" class="prayer-list list-stack empty-state" data-testid="prayer-list">
@@ -954,6 +954,6 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./app.js?v=prayer-cloud-workspace-20260512"></script>
+  <script type="module" src="./app.js?v=update-prompt-prayer-status-20260512"></script>
 </body>
 </html>
