@@ -325,6 +325,10 @@ const els = {
   currentUserText: document.getElementById('current-user-text'),
   accountEmail: document.getElementById('account-email'),
   desktopAccountEmail: document.getElementById('desktop-account-email'),
+  accountSyncStatus: document.getElementById('account-sync-status'),
+  accountSyncTime: document.getElementById('account-sync-time'),
+  accountSyncDetail: document.getElementById('account-sync-detail'),
+  accountSyncButton: document.getElementById('account-sync-button'),
   viewNavLinks: [...document.querySelectorAll('.desktop-sidebar-link[data-view], .mobile-bottom-link[data-view], .nav-link[data-view]')],
   viewTitle: document.getElementById('view-title'),
   viewSubtitle: document.getElementById('view-subtitle'),
@@ -725,6 +729,44 @@ function setSyncState({ status, detail, at } = {}) {
 }
 function markCloudSynced(detail = '雲端資料已同步。') {
   setSyncState({ status: '已同步', detail, at: nowIso() });
+}
+
+function isSyncInProgress(status = state.syncStatus) {
+  return String(status || '').trim() === '同步中';
+}
+
+function getAccountSyncStatusLabel(status = state.syncStatus) {
+  const raw = String(status || '').trim();
+  if (!raw) return '未啟用';
+  if (raw.includes('異常') || raw.includes('失敗')) return '同步失敗，請稍後再試';
+  return raw;
+}
+
+function refreshAccountSyncUi({ isSignedIn = false } = {}) {
+  const statusLabel = isSignedIn ? getAccountSyncStatusLabel() : '尚未登入';
+  const syncTime = state.lastSyncAt ? formatDate(state.lastSyncAt) : '尚未同步';
+  const fallbackDetail = state.supabase
+    ? '登入同一個雲端帳號後，可在多裝置同步。'
+    : '目前資料只保存在這台裝置。';
+  const detail = isSignedIn ? (state.syncDetail || fallbackDetail) : '登入後可查看同步狀態。';
+  if (els.accountSyncStatus) els.accountSyncStatus.textContent = statusLabel;
+  if (els.accountSyncTime) els.accountSyncTime.textContent = syncTime;
+  if (els.accountSyncDetail) els.accountSyncDetail.textContent = detail;
+  els.accountSyncButton?.toggleAttribute('disabled', !isSignedIn || isSyncInProgress());
+}
+
+async function handleManualSync() {
+  if (isSyncInProgress()) return;
+  setSyncState({ status: '同步中', detail: '正在同步資料…' });
+  refreshUi();
+  try {
+    await loadAllData({ syncReason: '已手動同步雲端資料。', force: true });
+    showToast('同步完成。');
+  } catch (error) {
+    setSyncState({ status: '同步失敗', detail: '同步失敗，請稍後再試。' });
+    refreshUi();
+    throw error;
+  }
 }
 
 function getCurrentUserEmail() {
@@ -1653,13 +1695,13 @@ function ensureOperationManualUi() {
               <li>「書稿」卡：進入「選稿編排」，繼續整理目前正在編排的內容。</li>
               <li>「書櫃」卡：進入「書櫃」，開啟已完成或已匯入的電子書。</li>
             </ul>
-            <p>總覽也提供常用快捷按鈕，例如「寫一篇札記」與「建立編排」。若今日默想有內容，也可以從卡片上的「寫成札記」開始記錄今天的回應。</p>
-            <p>手機版主要使用底部導覽切換總覽、寫札記、札記庫、選稿編排、書櫃與操作手冊；桌機版則使用左側側欄切換。</p>
+            <p>若今日默想有內容，可以從卡片上的「寫成札記」開始記錄今天的回應；平常則可使用側邊欄或手機底部導覽進入寫札記與選稿編排。</p>
+            <p>手機版主要使用底部導覽切換總覽、寫札記、札記庫、選稿編排、書櫃與操作手冊；桌機版則使用左側側欄切換，並在側欄底部帳號卡查看同步狀態與手動同步。</p>
           </section>
 
           <section id="manual-writing-note" class="manual-section">
             <h2>四、寫札記</h2>
-            <p>「寫札記」是整套系統的起點。你可以從總覽的「寫一篇札記」、側邊欄或手機底部導覽進入。還沒寫完時可先按「儲存草稿」，草稿可以沒有主題，今日禱告也會一起保存，之後可從「我的草稿」回來繼續編輯。完成後按「儲存為正式札記」或「完成並儲存」，這篇內容才會進入札記閱讀、札記庫與成書流程。</p>
+            <p>「寫札記」是整套系統的起點。你可以從側邊欄或手機底部導覽進入。還沒寫完時可先按「儲存草稿」，草稿可以沒有主題，今日禱告也會一起保存，之後可從「我的草稿」回來繼續編輯。完成後按「儲存為正式札記」或「完成並儲存」，這篇內容才會進入札記閱讀、札記庫與成書流程。</p>
 
             <div class="manual-card-grid manual-card-grid-three">
               <div class="manual-card">
@@ -1883,7 +1925,7 @@ function ensureOperationManualUi() {
 
           <section id="manual-account-data" class="manual-section">
             <h2>十四、帳號設定與資料</h2>
-            <p>登入後，畫面會顯示帳號資訊與同步狀態。桌機可從側邊欄帳號卡進入「帳號設定」或「登出」；手機可在總覽中的帳號區塊操作。</p>
+            <p>登入後，畫面會顯示帳號資訊與同步狀態。桌機可從側邊欄帳號卡查看同步狀態、按「立即同步」，也可進入「帳號設定」或「登出」；手機可在總覽中的帳號區塊操作帳號設定與登出。</p>
             <p>「帳號設定」可以查看目前帳號、上傳或移除頭像、修改密碼、上傳本機資料、下載雲端備份，也可以登出。若目前帳號有管理權限，帳號設定中也會顯示前往管理後台的入口。</p>
             <p>若目前使用雲端登入，札記、選稿編排與書櫃資料會依同步狀態與網路狀況保存。若使用本機模式、離線，或某些外部匯入資料，資料可能只保存在目前裝置與瀏覽器中。</p>
             <p>閱讀位置、外部 EPUB 與部分使用偏好可能依目前裝置保存。清除瀏覽器資料、更換裝置或更換瀏覽器前，建議先確認重要資料已有備份或下載檔案。</p>
@@ -4303,8 +4345,9 @@ function bindEvents() {
   els.accountSignoutBtn?.addEventListener('click', () => handleSignOut().catch(handleError));
   els.desktopSidebarSignoutBtn?.addEventListener('click', () => handleSignOut().catch(handleError));
   els.refreshBtn?.addEventListener('click', () => loadAllData({ syncReason: '已手動重新整理雲端資料。' }).then(refreshUi).then(() => showToast('資料已重新整理。')).catch(handleError));
-  els.forceSyncBtn?.addEventListener('click', () => loadAllData({ syncReason: '已手動同步雲端資料。' }).then(() => showToast('同步完成。')).catch(handleError));
-  els.topbarForceSyncBtn?.addEventListener('click', () => loadAllData({ syncReason: '已手動同步雲端資料。' }).then(() => showToast('同步完成。')).catch(handleError));
+  els.forceSyncBtn?.addEventListener('click', () => handleManualSync().catch(handleError));
+  els.topbarForceSyncBtn?.addEventListener('click', () => handleManualSync().catch(handleError));
+  els.accountSyncButton?.addEventListener('click', () => handleManualSync().catch(handleError));
   els.pushLocalToCloudBtn?.addEventListener('click', () => uploadLocalDataToCloud().catch(handleError));
   els.downloadBackupBtn?.addEventListener('click', () => { try { downloadBackupJson(); } catch (error) { handleError(error); } });
 
@@ -4312,8 +4355,8 @@ function bindEvents() {
   els.summaryNotesCard?.addEventListener('click', openNoteReader);
   els.summaryBooksCard?.addEventListener('click', () => setView('books'));
   els.summaryLibraryCard?.addEventListener('click', () => setView('library'));
-  els.quickNewNote.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
-  els.quickNewBook.addEventListener('click', () => { setView('books'); clearBookForm(); });
+  els.quickNewNote?.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
+  els.quickNewBook?.addEventListener('click', () => { setView('books'); clearBookForm(); });
   els.noteReaderWriteBtn?.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
   els.noteReaderSearch?.addEventListener('input', event => {
     state.noteReaderSearch = String(event.target.value || '');
@@ -5685,7 +5728,7 @@ function syncDesktopDashboardStaticCopy() {
   document.querySelector('.desktop-sidebar-footer-label')?.replaceChildren(document.createTextNode('帳號'));
   document.querySelector('.desktop-sidebar-account-copy p')?.replaceChildren(document.createTextNode('願你的文字成為祝福'));
   document.querySelector('.desktop-sidebar-account-actions [data-open-account-settings]')?.replaceChildren(document.createTextNode('帳號設定'));
-  document.querySelector('#force-sync-btn .sync-btn-content span:last-child')?.replaceChildren(document.createTextNode('立即同步'));
+  document.querySelector('#account-sync-button')?.replaceChildren(document.createTextNode('立即同步'));
   document.querySelector('#desktop-sidebar-signout-btn')?.replaceChildren(document.createTextNode('登出'));
   document.querySelector('.hero-copy h1')?.replaceChildren(document.createTextNode('我的靈修書房'));
   document.querySelector('.hero-copy p')?.replaceChildren(document.createTextNode('整理每日札記，慢慢編成一本書'));
@@ -5695,8 +5738,6 @@ function syncDesktopDashboardStaticCopy() {
   document.querySelector('#summary-notes-count + small')?.replaceChildren(document.createTextNode('篇'));
   document.querySelector('#summary-books-count + small')?.replaceChildren(document.createTextNode('本'));
   document.querySelector('#library-count + small')?.replaceChildren(document.createTextNode('本'));
-  document.querySelector('#quick-new-note strong')?.replaceChildren(document.createTextNode('寫一篇札記'));
-  document.querySelector('#quick-new-book strong')?.replaceChildren(document.createTextNode('建立一本書'));
   document.querySelector('.home-recent-panel .panel-header h2')?.replaceChildren(document.createTextNode('最近編輯札記'));
   document.querySelector('#recent-books-heading')?.replaceChildren(document.createTextNode('最近編輯書冊'));
   document.querySelector('#dashboard-bookshelf-card .panel-header h2')?.replaceChildren(document.createTextNode('書櫃'));
@@ -5758,6 +5799,7 @@ function refreshUi() {
   if (els.syncStatusText) els.syncStatusText.textContent = state.syncStatus || '未啟用';
   if (els.syncLastTime) els.syncLastTime.textContent = state.lastSyncAt ? formatDate(state.lastSyncAt) : '尚未同步';
   if (els.syncDetailText) els.syncDetailText.textContent = state.syncDetail || '登入同一個雲端帳號後，可在多裝置同步。';
+  refreshAccountSyncUi({ isSignedIn });
   if (isSignedIn) {
     closeAuthInline();
     closeAuthSettings();

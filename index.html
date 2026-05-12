@@ -201,6 +201,14 @@
               <p>願你的文字成為祝福</p>
             </div>
           </div>
+          <div class="desktop-sidebar-sync" data-testid="account-sync">
+            <div class="desktop-sidebar-sync-main">
+              <strong id="account-sync-status" data-testid="account-sync-status">同步狀態</strong>
+              <p id="account-sync-time" data-testid="account-sync-time">尚未同步</p>
+              <span id="account-sync-detail" class="desktop-sidebar-sync-detail" data-testid="account-sync-detail">目前資料只保存在這台裝置。</span>
+            </div>
+            <button id="account-sync-button" class="ghost-btn small desktop-sidebar-sync-btn" type="button" data-testid="account-sync-button">立即同步</button>
+          </div>
           <div class="desktop-sidebar-account-actions">
             <button class="ghost-btn small" data-open-account-settings type="button">帳號設定</button>
             <button id="desktop-sidebar-signout-btn" class="ghost-btn small" type="button">登出</button>
@@ -242,25 +250,6 @@
             </div>
           </section>
 
-          <section id="cloud-sync-panel" class="sync-panel sync-banner">
-            <div class="sync-banner-copy">
-              <div class="sync-banner-main">
-                <span class="sync-banner-icon asset-icon asset-sprite-system icon-cloud-check" aria-hidden="true"></span>
-                <div>
-                  <strong id="sync-status-text">同步狀態</strong>
-                  <p id="sync-last-time">尚未同步</p>
-                </div>
-              </div>
-              <span id="sync-detail-text" class="sync-detail hidden">登入同一個雲端帳號後，可在多裝置同步。</span>
-            </div>
-            <button id="force-sync-btn" class="primary-btn sync-btn" type="button">
-              <span class="sync-btn-content">
-                <span class="asset-icon asset-sprite-system icon-sync" aria-hidden="true"></span>
-                <span>立即同步</span>
-              </span>
-            </button>
-          </section>
-
           <section class="summary-cards home-summary-cards">
             <button id="summary-notes-card" class="summary-card summary-card-action" type="button" aria-label="開啟札記閱讀">
               <span class="summary-icon summary-icon-notes" aria-hidden="true"></span>
@@ -282,19 +271,6 @@
                 <span>書櫃</span>
                 <strong><span id="library-count">0</span><small>本</small></strong>
               </div>
-            </button>
-          </section>
-
-          <section class="home-primary-actions">
-            <button id="quick-new-note" class="hero-action-card hero-action-primary" type="button">
-              <span class="hero-action-text">
-                <strong>寫一篇札記</strong>
-              </span>
-            </button>
-            <button id="quick-new-book" class="hero-action-card hero-action-secondary" type="button">
-              <span class="hero-action-text">
-                <strong>建立一本書</strong>
-              </span>
             </button>
           </section>
 

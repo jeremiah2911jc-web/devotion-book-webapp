@@ -334,29 +334,31 @@ async function run() {
     await captureNamedScreenshots(page);
     await page.screenshot({ path: path.join(artifactsDir, 'homepage-mobile.png'), fullPage: true });
     results.push('首頁 dashboard 已顯示');
+    await expectNoVisibleLocator(page.locator('.home-primary-actions'), 'Dashboard 不應顯示舊的大圖快捷卡');
+    await expectNoVisibleLocator(page.locator('#cloud-sync-panel'), 'Dashboard 不應顯示舊的同步長條');
 
     const navTexts = await page.locator('.bottom-nav .nav-link span:last-child').allTextContents();
     results.push(`底部導覽文字：${navTexts.join(' / ')}`);
 
-    await clickElement(page, '#quick-new-note');
-    await expectVisible(page, '#view-notes.view.active', '已由首頁 CTA 進入札記頁');
+    await clickElement(page, '.mobile-bottom-link[data-view="notes"]');
+    await expectVisible(page, '#view-notes.view.active', '已由底部導覽進入札記頁');
     await assertNoHorizontalScroll(page, { label: 'smoke notes mobile' });
-    results.push('已由首頁 CTA 進入札記頁');
+    results.push('已由底部導覽進入札記頁');
 
-    await clickElement(page, '[data-view="dashboard"]');
+    await clickElement(page, '.mobile-bottom-link[data-view="dashboard"]');
     await expectVisible(page, '#view-dashboard.view.active', '已返回 dashboard');
 
-    await clickElement(page, '#quick-new-book');
-    await expectVisible(page, '#view-books.view.active', '已由首頁 CTA 進入書籍頁');
+    await clickElement(page, '.mobile-bottom-link[data-view="books"]');
+    await expectVisible(page, '#view-books.view.active', '已由底部導覽進入書籍頁');
     await assertNoHorizontalScroll(page, { label: 'smoke books mobile' });
     results.push('已切換到書籍頁');
 
     const exportBtnExists = await page.locator('#export-epub-btn').count();
     if (exportBtnExists) results.push('書籍頁可見 EPUB 匯出按鈕');
 
-    await clickElement(page, '[data-view="dashboard"]');
+    await clickElement(page, '.mobile-bottom-link[data-view="dashboard"]');
     await expectVisible(page, '.home-recent-panel #recent-notes .card', '最近編輯已顯示內容');
-    await clickElement(page, '[data-view="notes"]');
+    await clickElement(page, '.mobile-bottom-link[data-view="notes"]');
     await expectVisible(page, '#view-notes.view.active', '已切換到札記頁');
     const editNoteCount = await page.locator('[data-edit-note]').count();
     if (editNoteCount) {
@@ -366,11 +368,14 @@ async function run() {
     } else {
       results.push('札記列表目前沒有編輯按鈕，略過表單帶入檢查');
     }
-    const forceSyncVisible = await page.locator('#force-sync-btn:visible').count();
-    if (forceSyncVisible) {
-      await clickElement(page, '#force-sync-btn');
+    const accountSyncButtonExists = await page.locator('[data-testid="account-sync-button"]').count();
+    const accountSyncVisible = await page.locator('[data-testid="account-sync-button"]:visible').count();
+    if (accountSyncVisible) {
+      await clickElement(page, '[data-testid="account-sync-button"]');
       await expectVisible(page, '#toast:not(.hidden)', '同步提示已出現');
       results.push('同步提示已出現');
+    } else if (accountSyncButtonExists) {
+      results.push('帳號卡同步按鈕 DOM 已存在，手機版不顯示桌機側欄同步按鈕');
     } else {
       results.push('同步按鈕目前不可見');
     }
