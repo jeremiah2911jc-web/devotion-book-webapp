@@ -325,6 +325,59 @@ input:focus, textarea:focus, select:focus {
   max-width: 100%;
   margin-inline: auto;
 }
+.note-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: -2px 0 0;
+}
+.note-status-text {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 6px 10px;
+  border: 1px solid rgba(191,211,208,0.82);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.78);
+  color: #45676a;
+  font-size: 13px;
+  font-weight: 700;
+}
+.note-status-text.is-draft,
+.note-status-badge.is-draft {
+  border-color: rgba(186, 142, 65, 0.36);
+  background: rgba(255, 247, 226, 0.95);
+  color: #8a6426;
+}
+.note-status-badge.is-published {
+  border-color: rgba(126, 180, 176, 0.4);
+  background: rgba(238,248,247,0.95);
+  color: #3c7f82;
+}
+.note-draft-hint {
+  margin: -6px 0 0;
+}
+.note-save-actions > button {
+  min-height: 42px;
+}
+.note-drafts-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(191,211,208,0.72);
+}
+.note-drafts-panel .panel-header {
+  margin-bottom: 0;
+}
+.note-drafts-panel h3 {
+  margin: 0;
+  font-size: 18px;
+}
+.note-draft-card {
+  overflow-wrap: anywhere;
+}
 .current-note-draft-notice {
   display: flex;
   align-items: center;
@@ -361,6 +414,13 @@ input:focus, textarea:focus, select:focus {
   justify-content: flex-end;
 }
 @media (max-width: 720px) {
+  .note-save-actions {
+    align-items: stretch;
+  }
+  .note-save-actions > button {
+    flex: 1 1 150px;
+    min-width: 0;
+  }
   .current-note-draft-notice {
     align-items: stretch;
     flex-direction: column;

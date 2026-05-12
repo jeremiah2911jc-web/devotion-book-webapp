@@ -429,8 +429,12 @@
             <form id="note-form" class="form-stack">
               <input type="hidden" id="note-id" />
               <label>標題
-                <input id="note-title" required placeholder="例：在恩典中重新學會感恩" />
+                <input id="note-title" placeholder="例：在恩典中重新學會感恩" />
               </label>
+              <div class="note-status-row">
+                <span id="note-status-text" class="note-status-text">狀態：正式札記</span>
+              </div>
+              <p class="caption note-draft-hint">草稿只會保存在草稿區，不會出現在札記閱讀與成書編排中。</p>
               <label>經文
                 <input id="note-scripture" placeholder="例：詩篇 103:1-11；約翰福音 3:16-18" />
               </label>
@@ -472,14 +476,24 @@
               </div>
               <p id="markdown-syntax-hint" class="caption markdown-syntax-hint hidden" aria-live="polite"></p>
               <label><span class="field-label-row"><span>內容</span><span class="desktop-voice-input-hint">語音輸入：Windows 鍵 + H；Mac 使用聽寫。</span></span>
-                <textarea id="note-content" rows="14" required placeholder="輸入靈修札記全文"></textarea>
+                <textarea id="note-content" rows="14" placeholder="輸入靈修札記全文"></textarea>
               </label>
-              <div class="row gap-sm wrap">
-                <button type="submit" class="primary-btn">儲存札記</button>
+              <div class="row gap-sm wrap note-save-actions">
+                <button type="button" id="save-note-draft-btn" class="ghost-btn">儲存草稿</button>
+                <button type="button" id="publish-note-btn" class="primary-btn">儲存為正式札記</button>
                 <button type="button" id="note-preview-btn" class="ghost-btn">預覽文章</button>
                 <button type="button" id="delete-note-btn" class="danger-btn hidden">刪除札記</button>
               </div>
             </form>
+            <section class="note-drafts-panel" aria-labelledby="note-drafts-title">
+              <div class="panel-header">
+                <div>
+                  <h3 id="note-drafts-title">我的草稿</h3>
+                  <p class="caption">尚未完成的札記可先放在這裡，之後再回來繼續編輯。</p>
+                </div>
+              </div>
+              <div id="note-drafts-list" class="list-stack note-drafts-list empty-state">目前沒有草稿。</div>
+            </section>
           </section>
 
           <section class="panel">

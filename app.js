@@ -11,7 +11,7 @@
   autoBackups: 'devotion-auto-backups',
 };
 
-const APP_VERSION = '2026.05.12-01';
+const APP_VERSION = '2026.05.12-02';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 
 const TEMPLATE_LABELS = {
@@ -37,6 +37,8 @@ const SUPPORT_PAYMENT_INFO = {
 };
 const CURRENT_NOTE_DRAFT_KEY = 'devotion-current-note-draft';
 const CURRENT_NOTE_DRAFT_DEBOUNCE_MS = 700;
+const NOTE_STATUS_DRAFT = 'draft';
+const NOTE_STATUS_PUBLISHED = 'published';
 const SIGNED_URL_CACHE_TTL_SECONDS = 6 * 60 * 60;
 const SIGNED_URL_CACHE_REFRESH_BUFFER_MS = 10 * 60 * 1000;
 const TRANSPARENT_IMAGE_PLACEHOLDER = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
@@ -371,6 +373,10 @@ const els = {
   markdownPurpleBtn: document.getElementById('markdown-purple-btn'),
   markdownSyntaxHint: document.getElementById('markdown-syntax-hint'),
   noteContent: document.getElementById('note-content'),
+  saveNoteDraftBtn: document.getElementById('save-note-draft-btn'),
+  publishNoteBtn: document.getElementById('publish-note-btn'),
+  noteStatusText: document.getElementById('note-status-text'),
+  noteDraftsList: document.getElementById('note-drafts-list'),
   notePreviewBtn: document.getElementById('note-preview-btn'),
   notePreview: document.getElementById('note-preview'),
   notePreviewModal: document.getElementById('note-preview-modal'),
@@ -604,6 +610,7 @@ const state = {
   noteDraftSaveTimer: null,
   noteDraftDirty: false,
   noteSummaryVisibilityTouched: false,
+  currentNoteStatus: NOTE_STATUS_PUBLISHED,
   currentNoteDraftNotice: null,
   profileAvatarUrlCache: new Map(),
   libraryCoverUrlCache: new Map(),
@@ -761,8 +768,9 @@ function getAdminDashboardStats() {
     const date = new Date(value || 0);
     return !Number.isNaN(date.getTime()) && date >= sevenDaysAgo;
   };
-  const todayNewNotes = state.notes.filter(note => isToday(note.created_at || note.updated_at)).length;
-  const lastSevenDaysNotes = state.notes.filter(note => isInLastSevenDays(note.created_at || note.updated_at)).length;
+  const publishedNotes = getPublishedNotes();
+  const todayNewNotes = publishedNotes.filter(note => isToday(note.created_at || note.updated_at)).length;
+  const lastSevenDaysNotes = publishedNotes.filter(note => isInLastSevenDays(note.created_at || note.updated_at)).length;
   const authUsersReady = authUsers.status === 'ok';
   const databaseStat = buildAdminStatFromMetric(database);
   const storageStat = buildAdminStatFromMetric(storage);
@@ -775,7 +783,7 @@ function getAdminDashboardStats() {
         : (authUsers.message || '需設定後端使用者統計連線。'),
       valueClass: authUsersReady ? '' : 'admin-stat-value-placeholder',
     },
-    { label: '總札記數', value: String(state.notes.length), detail: '目前登入帳號可存取的札記總數' },
+    { label: '總札記數', value: String(publishedNotes.length), detail: '目前登入帳號可存取的正式札記總數' },
     { label: '總書籍數', value: String(allLibraryBooks.length), detail: '書櫃中的已匯出與外部匯入書籍總數' },
     { label: '總選稿編排數', value: String(state.books.length), detail: '目前登入帳號的選稿編排總數' },
     { label: '今日新增札記數', value: String(todayNewNotes), detail: '以札記 created_at / updated_at 推估今日新增' },
@@ -1619,7 +1627,7 @@ function ensureOperationManualUi() {
             </ul>
             <p>常用流程可以這樣走：</p>
             <ol>
-              <li>進入「寫札記」，建立一篇札記並儲存。</li>
+              <li>進入「寫札記」，可以先儲存草稿，完成後再儲存為正式札記。</li>
               <li>想單純閱讀時，進入「札記閱讀」搜尋、篩選或重讀單篇札記。</li>
               <li>想整理成書時，進入「札記庫」，用搜尋、日期、分類、標籤找到適合整理的文章。</li>
               <li>進入「選稿編排」，建立新的選稿編排，或從既有編排點選「開始編這本」。</li>
@@ -1633,7 +1641,7 @@ function ensureOperationManualUi() {
 
           <section id="manual-dashboard" class="manual-section">
             <h2>三、總覽 Dashboard</h2>
-            <p>「總覽」是登入後的起點。這裡會顯示札記、書稿與書櫃統計，也會整理最近編輯札記、最近編輯書冊、書櫃預覽與今日默想。</p>
+            <p>「總覽」是登入後的起點。這裡會顯示正式札記、書稿與書櫃統計，也會整理最近編輯的正式札記、最近編輯書冊、書櫃預覽與今日默想。尚未完成的草稿不會混入正式札記統計。</p>
             <p>三張統計卡本身就是快速入口：</p>
             <ul>
               <li>「札記」卡：進入「札記閱讀」，適合回顧和查找自己已寫下的內容。</li>
@@ -1646,7 +1654,7 @@ function ensureOperationManualUi() {
 
           <section id="manual-writing-note" class="manual-section">
             <h2>四、寫札記</h2>
-            <p>「寫札記」是整套系統的起點。你可以從總覽的「寫一篇札記」、側邊欄或手機底部導覽進入。寫完後按「儲存札記」，這篇內容就會進入札記庫，之後可以被挑選、編排、整理成書。</p>
+            <p>「寫札記」是整套系統的起點。你可以從總覽的「寫一篇札記」、側邊欄或手機底部導覽進入。還沒寫完時可先按「儲存草稿」，草稿可以沒有主題，之後可從「我的草稿」回來繼續編輯。完成後按「儲存為正式札記」或「完成並儲存」，這篇內容才會進入札記閱讀、札記庫與成書流程。</p>
 
             <div class="manual-card-grid manual-card-grid-three">
               <div class="manual-card">
@@ -1671,7 +1679,7 @@ function ensureOperationManualUi() {
 
             <h3>欄位怎麼填</h3>
             <div class="manual-card-grid">
-              <div class="manual-card"><h3>標題</h3><p>寫成日後容易辨認的名稱，也可以當作未來章節標題。例：在等待中學習信靠。</p></div>
+              <div class="manual-card"><h3>標題</h3><p>草稿可以先空著，畫面會以「未命名草稿」顯示。正式札記建議補上主題，方便日後閱讀、搜尋與編排。例：在等待中學習信靠。</p></div>
               <div class="manual-card"><h3>經文</h3><p>可以填經文範圍，也可以用經文抓取功能帶入內容。若經文很長，建議分段放進正文。</p></div>
               <div class="manual-card"><h3>分類</h3><p>選一個主要方向，例如靈修、講道、查經、代禱或感恩。</p></div>
               <div class="manual-card"><h3>標籤</h3><p>用逗號分隔多個標籤，幫助日後搜尋同一個主題、對象或禱告狀態。</p></div>
@@ -1685,7 +1693,7 @@ function ensureOperationManualUi() {
               <p>在手機上，點進「摘要」或「內容」欄位後，可以使用鍵盤上的麥克風按鈕，直接用中文或英文說出想記錄的內容。</p>
               <p>在 Windows 電腦上，可以先點進輸入欄位，再按 Windows 鍵 + H，開啟系統語音輸入。</p>
               <p>在 Mac 上，可以使用系統內建的聽寫功能。</p>
-              <p>語音輸入完成後，建議再檢查一次文字，特別是人名、經文、標點與專有名詞。確認無誤後，再按「儲存札記」。</p>
+              <p>語音輸入完成後，建議再檢查一次文字，特別是人名、經文、標點與專有名詞。尚未整理完可以先按「儲存草稿」；確認無誤後，再儲存為正式札記。</p>
             </section>
 
             <section id="manual-toolbar-guide" class="manual-subsection">
@@ -1732,12 +1740,12 @@ function ensureOperationManualUi() {
               <p><strong>簡單記法：</strong>如果要做段落標題，就讓小標題單獨一行。如果要標記一句重要提醒，就另起一行使用重點色。</p>
             </section>
 
-            <p>完成後可以先點「預覽文章」，檢查小標題、重點色、經文區塊和段落間距，再儲存札記。若從札記庫點「編輯」，系統會回到寫札記並載入該篇內容，儲存時會更新原本的札記。</p>
+            <p>完成後可以先點「預覽文章」，檢查小標題、重點色、經文區塊和段落間距，再儲存為正式札記。若從草稿區或札記庫點「編輯」，系統會回到寫札記並載入該篇內容；草稿按「儲存草稿」會保持草稿，按「完成並儲存」會成為正式札記。</p>
           </section>
 
           <section id="manual-note-reader" class="manual-section">
             <h2>五、札記閱讀</h2>
-            <p>「札記閱讀」是專門用來重讀與查找札記的閱讀頁，不是編輯器。你可以從總覽點「札記」統計卡進入，也可以在需要安靜回顧時使用它。</p>
+            <p>「札記閱讀」是專門用來重讀與查找正式札記的閱讀頁，不是編輯器。草稿不會出現在這裡；若要繼續未完成的內容，請回到「寫札記」的「我的草稿」。</p>
             <p>札記閱讀支援這些方式找到內容：</p>
             <ul>
               <li>搜尋：可搜尋標題、經文、分類、標籤、摘要與內容。</li>
@@ -1755,7 +1763,7 @@ function ensureOperationManualUi() {
 
           <section id="manual-content-library" class="manual-section">
             <h2>六、札記庫</h2>
-            <p>「札記庫」保存已儲存的札記，也是管理、搜尋、編輯與挑選成書素材的地方。它和「札記閱讀」的用途不同：札記閱讀偏向安靜閱讀與查找；札記庫偏向整理、編輯與加入選稿編排。</p>
+            <p>「札記庫」保存可加入選稿編排的正式札記，也是管理、搜尋、編輯與挑選成書素材的地方。草稿不會出現在札記庫候選中；尚未完成的內容請先在「寫札記」的「我的草稿」繼續整理。</p>
             <p>你可以用以下方式找到文章：</p>
             <ul>
               <li>搜尋：搜尋標題、摘要、內容與經文。</li>
@@ -1772,6 +1780,7 @@ function ensureOperationManualUi() {
               <li>已選 1 篇以上：按鈕顯示「加入「{title}」（已選 {count} 篇）」。</li>
             </ul>
             <p>加入成功後，系統會清除勾選狀態並更新目前正在編排的章節數。若有重複札記，系統會略過並提示略過數量。</p>
+            <p>草稿完成為正式札記後，才會出現在札記庫，也才可以被加入目前正在編排的書稿。</p>
           </section>
 
           <section id="manual-selection-workbench" class="manual-section">
@@ -1784,6 +1793,7 @@ function ensureOperationManualUi() {
             <p>這裡顯示目前沒有被選為工作狀態的編排。每張卡片可點「開始編這本」切換成目前正在編排，也可點「整理章節」、「加入札記」、「編輯設定」或「刪除」。</p>
             <p>點選「開始編這本」後，該卡片會移到「目前正在編排」，原本的目前編排會回到其他選稿編排。畫面會立即更新並顯示切換提示。</p>
             <p>若建立選稿編排後，想修改編排代稱、整理說明、日期範圍、分類或標籤，可以在選稿編排卡片上點「編輯設定」。「編輯設定」只修改這份選稿編排的基本資料，不會直接改動已收錄的札記內容，也不會改變章節排序。若要調整章節順序或章節標題，請使用「整理章節」。</p>
+            <p>選稿編排只接收正式札記。草稿不會出現在可加入候選，也不會被加入章節。</p>
             <h3>新增選稿編排</h3>
             <p>這裡可以建立新的編排，只需要先填「編排代稱」與「整理說明」。若目前沒有正在編排，新建立的編排會直接成為目前正在編排。若已經有目前編排，新編排會先放在其他選稿編排中。</p>
           </section>
@@ -1800,6 +1810,7 @@ function ensureOperationManualUi() {
               <li>點「儲存編排」保存章節調整。</li>
             </ul>
             <p>整理時建議先排出讀者容易理解的順序，再微調章節標題。手機版視窗可上下滑動，儲存前請確認調整已完成。</p>
+            <p>第一版不提供把已儲存的正式札記改回草稿，以避免已加入章節後狀態變得複雜。</p>
           </section>
 
           <section id="manual-export" class="manual-section">
@@ -1814,7 +1825,7 @@ function ensureOperationManualUi() {
               <li>封面圖片。</li>
               <li>前言與後記。</li>
             </ul>
-            <p>若只想先保存設定，可以點「儲存設定」。若要直接產生電子書，請點「儲存並匯出 EPUB」。匯出完成後，系統會把書加入書櫃，並在畫面提供「立即閱讀」、「下載 EPUB」與「前往書櫃」。</p>
+            <p>若只想先保存設定，可以點「儲存設定」。若要直接產生電子書，請點「儲存並匯出 EPUB」。匯出只會使用已加入編排的正式札記，草稿不會進入 EPUB。匯出完成後，系統會把書加入書櫃，並在畫面提供「立即閱讀」、「下載 EPUB」與「前往書櫃」。</p>
             <p>下載後的 EPUB 可用 iOS「書籍」、Android「Google Play 圖書」或其他 EPUB 閱讀器開啟。</p>
           </section>
 
@@ -1883,7 +1894,9 @@ function ensureOperationManualUi() {
             <h2>十六、常見問題</h2>
             <div class="manual-faq-list">
               <div class="manual-faq-item"><h3>網站更新後需要重新安裝嗎？</h3><p>不需要。若系統更新，畫面會出現「系統已有新版本」提示，點「立即更新」即可套用新版。iPhone、Android、Mac、Windows 都適用。</p></div>
-              <div class="manual-faq-item"><h3>找不到剛寫的札記怎麼辦？</h3><p>先到「札記閱讀」或「札記庫」確認。若有使用搜尋或篩選，請點「重設篩選」或「清除篩選」。也可以回到「寫札記」確認是否已儲存成功。</p></div>
+              <div class="manual-faq-item"><h3>找不到剛寫的札記怎麼辦？</h3><p>如果剛剛按的是「儲存草稿」，請回到「寫札記」的「我的草稿」查看。若已儲存為正式札記，請到「札記閱讀」或「札記庫」確認。若有使用搜尋或篩選，請點「重設篩選」或「清除篩選」。</p></div>
+              <div class="manual-faq-item"><h3>草稿可以沒有標題嗎？</h3><p>可以。草稿可以先沒有主題，畫面會以「未命名草稿」顯示。完成後要儲存為正式札記時，建議先補上主題，方便日後閱讀與編排。</p></div>
+              <div class="manual-faq-item"><h3>草稿會出現在札記閱讀、選稿或成書裡嗎？</h3><p>不會。草稿只會保存在「寫札記」的草稿區，不會進入札記閱讀，不會出現在選稿編排候選，也不會匯出到 EPUB。完成後儲存為正式札記，才會進入這些流程。</p></div>
               <div class="manual-faq-item"><h3>札記閱讀和札記庫有什麼差別？</h3><p>札記閱讀適合單純重讀、搜尋和查看單篇札記；札記庫適合管理札記、回到編輯器修改，或勾選文章加入目前正在編排。</p></div>
               <div class="manual-faq-item"><h3>禱告或代禱事項要寫在哪裡？</h3><p>可以直接寫在「寫札記」裡。分類可以選「禱告」或「代禱」，再用標籤補充對象或主題。日後可以在札記庫用分類或標籤搜尋，也可以整理成禱告操練或代禱紀錄。</p></div>
               <div class="manual-faq-item"><h3>可以用語音輸入寫札記嗎？</h3><p>可以。你可以使用手機或電腦內建的語音輸入法。手機可使用鍵盤上的麥克風；Windows 可按 Windows 鍵 + H；Mac 可使用系統聽寫。語音輸入後，建議再檢查文字內容，避免經文、人名或標點辨識錯誤。</p></div>
@@ -4335,7 +4348,9 @@ function bindEvents() {
   els.markdownBlueBtn?.addEventListener('click', () => applyMarkdownBlueText());
   els.markdownGoldBtn?.addEventListener('click', () => applyMarkdownGoldText());
   els.markdownPurpleBtn?.addEventListener('click', () => applyMarkdownPurpleText());
-  els.noteForm.addEventListener('submit', event => { event.preventDefault(); saveNote().catch(handleNoteSaveError); });
+  els.noteForm.addEventListener('submit', event => { event.preventDefault(); saveNote({ status: NOTE_STATUS_PUBLISHED }).catch(handleNoteSaveError); });
+  els.saveNoteDraftBtn?.addEventListener('click', () => saveNote({ status: NOTE_STATUS_DRAFT }).catch(handleNoteSaveError));
+  els.publishNoteBtn?.addEventListener('click', () => saveNote({ status: NOTE_STATUS_PUBLISHED }).catch(handleNoteSaveError));
   els.noteForm.addEventListener('input', event => {
     if (isNoteFormField(event.target)) {
       if (event.target === els.noteSummary) syncNoteSummaryVisibilityDefault();
@@ -4863,8 +4878,38 @@ function splitNoteSummary(summary = '') {
         : typeof decoded.showSummary === 'boolean'
           ? decoded.showSummary
           : !!visibleSummary,
+      status: normalizeNoteStatus(decoded.status),
     },
   };
+}
+
+function normalizeNoteStatus(value = '') {
+  return String(value || '').trim() === NOTE_STATUS_DRAFT ? NOTE_STATUS_DRAFT : NOTE_STATUS_PUBLISHED;
+}
+
+function resolveNoteStatus(note = {}) {
+  if (note.status) return normalizeNoteStatus(note.status);
+  return normalizeNoteStatus(splitNoteSummary(note.summary || '').settings.status);
+}
+
+function isDraftNote(note = {}) {
+  return resolveNoteStatus(note) === NOTE_STATUS_DRAFT;
+}
+
+function isPublishedNote(note = {}) {
+  return resolveNoteStatus(note) === NOTE_STATUS_PUBLISHED;
+}
+
+function getPublishedNotes() {
+  return state.notes.filter(isPublishedNote);
+}
+
+function getDraftNotes() {
+  return state.notes.filter(isDraftNote);
+}
+
+function getNoteDisplayTitle(note = {}, fallback = '未命名札記') {
+  return sanitizeDisplayText(note.title, isDraftNote(note) ? '未命名草稿' : fallback);
 }
 
 function resolveNoteShowSummary(note = {}) {
@@ -4883,15 +4928,17 @@ function normalizeNoteRecord(note = {}) {
     ...note,
     summary: visibleSummary,
     show_summary: resolveNoteShowSummary(note),
+    status: resolveNoteStatus(note),
   };
 }
 
-function buildNoteSummaryValue(summary = '', showSummary = false) {
+function buildNoteSummaryValue(summary = '', showSummary = false, status = NOTE_STATUS_PUBLISHED) {
   const visible = String(summary || '').trim();
   const show = !!showSummary;
-  if (!visible && !show) return '';
-  if (visible && show) return visible;
-  const encoded = encodeNoteSummarySettings({ show_summary: show });
+  const normalizedStatus = normalizeNoteStatus(status);
+  if (normalizedStatus === NOTE_STATUS_PUBLISHED && !visible && !show) return '';
+  if (normalizedStatus === NOTE_STATUS_PUBLISHED && visible && show) return visible;
+  const encoded = encodeNoteSummarySettings({ show_summary: show, status: normalizedStatus });
   if (!encoded) return visible;
   const marker = `<!-- devotion-note-summary-settings:${encoded} -->`;
   return visible ? `${visible}\n\n${marker}` : marker;
@@ -4902,9 +4949,10 @@ function buildNotePersistencePayload(note = {}) {
   const rest = { ...normalized };
   delete rest.show_summary;
   delete rest.showSummary;
+  delete rest.status;
   return {
     ...rest,
-    summary: buildNoteSummaryValue(normalized.summary, normalized.show_summary),
+    summary: buildNoteSummaryValue(normalized.summary, normalized.show_summary, normalized.status),
   };
 }
 
@@ -5643,7 +5691,7 @@ function refreshUi() {
     closeAuthSettings();
     syncAuthInputs({ email: state.currentUser.email || '', password: '' });
   }
-  els.summaryNotesCount.textContent = state.notes.length;
+  els.summaryNotesCount.textContent = getPublishedNotes().length;
   els.summaryBooksCount.textContent = state.books.length;
   const libraryCount = document.getElementById('library-count');
   if (libraryCount) libraryCount.textContent = String(getAllLibraryBooksForView().length);
@@ -5658,12 +5706,13 @@ function refreshUi() {
   renderLibrary();
   renderAdminDashboard();
   renderReaderSettings();
+  syncNoteStatusUi();
   syncCurrentNoteDraftNotice();
 }
 
 function renderRecentCards() {
-  renderCardList(els.recentNotes, state.notes.slice(0, 3), note => {
-    const title = sanitizeDisplayText(note.title, '未命名札記');
+  renderCardList(els.recentNotes, getPublishedNotes().slice(0, 3), note => {
+    const title = getNoteDisplayTitle(note);
     const scripture = sanitizeDisplayText(note.scripture_reference, '未設定經文');
     const preview = getNotePreviewText(note, 90) || '尚無預覽';
     return `
@@ -5707,7 +5756,7 @@ function getChapterSourceNoteId(chapter = {}) {
 
 function getContentLibraryFilteredNotes() {
   const query = state.contentLibrarySearch.trim().toLowerCase();
-  return state.notes.filter(note => {
+  return getPublishedNotes().filter(note => {
     const searchHaystack = [
       note.title,
       note.content,
@@ -5726,9 +5775,10 @@ function getContentLibraryFilteredNotes() {
 
 function renderContentLibrary() {
   if (!els.contentLibraryList) return;
-  const categories = [...new Set(state.notes.map(note => String(note.category || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
-  const tags = [...new Set(state.notes.flatMap(note => getNoteTagList(note)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
-  const validNoteIds = new Set(state.notes.map(note => note.id));
+  const publishedNotes = getPublishedNotes();
+  const categories = [...new Set(publishedNotes.map(note => String(note.category || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+  const tags = [...new Set(publishedNotes.flatMap(note => getNoteTagList(note)).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+  const validNoteIds = new Set(publishedNotes.map(note => note.id));
   state.contentLibrarySelectedNoteIds = state.contentLibrarySelectedNoteIds.filter(id => validNoteIds.has(id));
 
   if (els.contentLibrarySearch && els.contentLibrarySearch.value !== state.contentLibrarySearch) els.contentLibrarySearch.value = state.contentLibrarySearch;
@@ -5776,7 +5826,7 @@ function renderContentLibrary() {
 
   if (!filteredNotes.length) {
     els.contentLibraryList.className = 'list-stack empty-state';
-    els.contentLibraryList.textContent = state.notes.length ? '找不到符合條件的文章。' : '目前還沒有可整理的札記。';
+    els.contentLibraryList.textContent = publishedNotes.length ? '找不到符合條件的文章。' : '目前還沒有可整理的正式札記。草稿完成後才會出現在這裡。';
     return;
   }
 
@@ -5794,7 +5844,7 @@ function renderContentLibrary() {
           </label>
           ${inBook ? '<span class="badge">已在書中</span>' : ''}
         </div>
-        <h3>${escapeHtml(note.title || '未命名札記')}</h3>
+        <h3>${escapeHtml(getNoteDisplayTitle(note))}</h3>
         <div class="card-meta">
           <span>${escapeHtml(note.scripture_reference || '未填經文')}</span>
           <span>${escapeHtml(note.category || '未分類')}</span>
@@ -5827,7 +5877,7 @@ function getBookDraftLabel(book) {
 function getBookDraftSourceNotes(book) {
   return getBookDisplayChapters(book)
     .map(chapter => getNoteById(getChapterSourceNoteId(chapter)))
-    .filter(Boolean);
+    .filter(note => note && isPublishedNote(note));
 }
 
 function getBookDraftScopeSummary(book) {
@@ -6169,7 +6219,7 @@ async function addSelectedNotesToCurrentBookDraft() {
   book = await loadBookProjectDetail(book.id) || book;
   if (!state.contentLibrarySelectedNoteIds.length) throw new Error('請先勾選至少一篇文章。');
   if (state.bookArrangementSaving) return;
-  const selectedNotes = state.notes.filter(note => state.contentLibrarySelectedNoteIds.includes(note.id));
+  const selectedNotes = getPublishedNotes().filter(note => state.contentLibrarySelectedNoteIds.includes(note.id));
   const baseChapters = getBookDisplayChapters(book);
   const existingSourceIds = new Set(baseChapters.map(chapter => getChapterSourceNoteId(chapter)).filter(Boolean));
   const nextChapters = cloneBookChapters(baseChapters);
@@ -6562,12 +6612,16 @@ function renderNotes() {
     els.notesList.className = 'list-stack empty-state';
     els.notesList.textContent = '還沒有札記。';
     updateChapterSourceOptions();
+    renderNoteDraftsList();
     return;
   }
   els.notesList.className = 'list-stack';
   els.notesList.innerHTML = filtered.map(note => `
     <article class="card">
-      <h3>${escapeHtml(note.title)}</h3>
+      <div class="row gap-sm wrap">
+        ${isDraftNote(note) ? '<span class="badge note-status-badge is-draft">草稿</span>' : '<span class="badge note-status-badge is-published">正式札記</span>'}
+      </div>
+      <h3>${escapeHtml(getNoteDisplayTitle(note))}</h3>
       <div class="card-meta">
         <span>${escapeHtml(note.scripture_reference || '未填經文')}</span>
         <span>${escapeHtml(note.category || '未分類')}</span>
@@ -6581,6 +6635,42 @@ function renderNotes() {
   `).join('');
   els.notesList.querySelectorAll('[data-edit-note]').forEach(btn => btn.addEventListener('click', () => populateNoteForm(btn.dataset.editNote)));
   updateChapterSourceOptions();
+  renderNoteDraftsList();
+}
+
+function renderNoteDraftsList() {
+  if (!els.noteDraftsList) return;
+  const drafts = getDraftNotes();
+  if (!drafts.length) {
+    els.noteDraftsList.className = 'list-stack note-drafts-list empty-state';
+    els.noteDraftsList.textContent = '目前沒有草稿。';
+    return;
+  }
+  els.noteDraftsList.className = 'list-stack note-drafts-list';
+  els.noteDraftsList.innerHTML = drafts.map(note => {
+    const title = getNoteDisplayTitle(note);
+    const excerpt = getNotePreviewText(note, 120);
+    return `
+      <article class="card note-draft-card">
+        <div class="row gap-sm wrap">
+          <span class="badge note-status-badge is-draft">草稿</span>
+          <span class="caption">最近更新：${escapeHtml(formatDate(note.updated_at || note.created_at))}</span>
+        </div>
+        <h3>${escapeHtml(title)}</h3>
+        <div class="card-meta">
+          <span>${escapeHtml(note.scripture_reference || '未填經文')}</span>
+          <span>${escapeHtml(note.category || '未分類')}</span>
+        </div>
+        <div>${escapeHtml(excerpt || '尚無內容預覽')}</div>
+        <div class="card-actions">
+          <button class="secondary-btn" type="button" data-edit-note-draft="${escapeHtml(String(note.id))}">繼續編輯</button>
+        </div>
+      </article>
+    `;
+  }).join('');
+  els.noteDraftsList.querySelectorAll('[data-edit-note-draft]').forEach(btn => {
+    btn.addEventListener('click', () => populateNoteForm(btn.dataset.editNoteDraft));
+  });
 }
 
 const NOTE_READER_UNCATEGORIZED_VALUE = '__uncategorized__';
@@ -6604,7 +6694,7 @@ function getNoteReaderCategoryLabel(value = '') {
 function getNoteReaderFilterOptions() {
   const categoryValues = new Set();
   const tags = new Set();
-  state.notes.forEach(note => {
+  getPublishedNotes().forEach(note => {
     categoryValues.add(getNoteReaderCategoryValue(note));
     getNoteTagList(note).forEach(tag => tags.add(tag));
   });
@@ -6658,7 +6748,7 @@ function getNoteReaderDateKey(note) {
 
 function getNoteReaderDateOptions() {
   const dateMap = new Map();
-  state.notes.forEach(note => {
+  getPublishedNotes().forEach(note => {
     const date = getNoteReaderDate(note);
     const key = formatNoteReaderDateKey(date);
     if (!key) return;
@@ -6778,7 +6868,7 @@ function renderNoteReaderMobileCalendar() {
   if (!target) return;
   const weekOptions = getNoteReaderWeekDateOptions();
   const allActive = !state.noteReaderDate;
-  const totalCount = state.notes.length;
+  const totalCount = getPublishedNotes().length;
   const dateChips = weekOptions.map(option => {
     const active = option.key === state.noteReaderDate;
     const classes = [
@@ -6819,6 +6909,7 @@ function getNotesForReading() {
   syncNoteReaderDateState();
   const query = state.noteReaderSearch.trim().toLowerCase();
   return state.notes
+    .filter(isPublishedNote)
     .filter(note => {
       if (query && !getNoteReaderSearchHaystack(note).includes(query)) return false;
       if (state.noteReaderCategory && getNoteReaderCategoryValue(note) !== state.noteReaderCategory) return false;
@@ -6905,7 +6996,7 @@ function renderNoteReaderMeta(note, options = {}) {
 
 function renderNoteReaderListCard(note) {
   const noteId = String(note.id);
-  const title = sanitizeDisplayText(note.title, '未命名札記');
+  const title = getNoteDisplayTitle(note);
   const scripture = sanitizeDisplayText(note.scripture_reference, '未填經文');
   const excerpt = getNotePreviewText(note, 180);
   const isSelected = state.noteReaderSelectedId === noteId;
@@ -6951,14 +7042,14 @@ function renderNoteReaderEmptyState() {
   if (els.noteReaderList) {
     els.noteReaderList.className = 'note-reader-list note-reader-empty-state empty-state';
     els.noteReaderList.innerHTML = `
-      <strong>目前還沒有札記，可以先寫一篇札記。</strong>
+      <strong>目前還沒有正式札記，可以先寫一篇札記。</strong>
       <div class="note-reader-empty-actions">
         <button class="primary-btn" type="button" data-note-reader-write>寫一篇札記</button>
       </div>
     `;
   }
   if (els.noteReaderDetail) {
-    els.noteReaderDetail.innerHTML = '<div class="note-reader-detail-placeholder">寫下第一篇札記後，就可以在這裡安靜閱讀。</div>';
+    els.noteReaderDetail.innerHTML = '<div class="note-reader-detail-placeholder">草稿完成為正式札記後，就可以在這裡安靜閱讀。</div>';
   }
 }
 
@@ -6982,7 +7073,7 @@ function renderNoteReaderDetail(notes) {
   }
   syncNoteReaderDetailMode();
 
-  const title = sanitizeDisplayText(note.title, '未命名札記');
+  const title = getNoteDisplayTitle(note);
   const summary = getRenderableNoteSummary(note);
   const content = stripScriptureMarkers(note.content || '');
   const contentBlocks = content
@@ -7065,7 +7156,7 @@ function renderNoteReader(options = {}) {
   if (!els.noteReaderList || !els.noteReaderDetail) return;
   const previousScrollTop = options.preserveScroll ? els.noteReaderList.scrollTop : 0;
   const notes = getNotesForReading();
-  const totalCount = state.notes.length;
+  const totalCount = getPublishedNotes().length;
   syncNoteReaderControls({ filteredCount: notes.length, totalCount });
   renderNoteReaderMobileCalendar();
   if (!totalCount) {
@@ -7105,7 +7196,7 @@ function openNoteReaderNote(noteId, options = {}) {
 
 function renderNotePreview() {
   if (!els.notePreview) return;
-  const title = els.noteTitle?.value.trim() || '未命名札記';
+  const title = els.noteTitle?.value.trim() || (state.currentNoteStatus === NOTE_STATUS_DRAFT ? '未命名草稿' : '未命名札記');
   const scripture = els.noteScripture?.value.trim();
   const category = els.noteCategory?.value.trim();
   const tags = (els.noteTags?.value || '')
@@ -7461,6 +7552,7 @@ function getCurrentNoteDraftPayload() {
     showSummary: !!els.noteShowSummary?.checked,
     content: els.noteContent?.value || '',
     editingNoteId: els.noteId?.value || '',
+    status: state.currentNoteStatus || NOTE_STATUS_PUBLISHED,
     userId: getUserId(),
     updatedAt: nowIso(),
   };
@@ -7600,6 +7692,7 @@ function syncCurrentNoteDraftNotice() {
 function restoreCurrentNoteDraft() {
   const draft = loadCurrentNoteDraft();
   if (!draft || !isCurrentUserNoteDraft(draft)) return;
+  state.currentNoteStatus = normalizeNoteStatus(draft.status);
   els.noteId.value = draft.editingNoteId || '';
   els.noteTitle.value = draft.title || '';
   els.noteScripture.value = draft.scripture || '';
@@ -7619,6 +7712,7 @@ function restoreCurrentNoteDraft() {
     resetScripturePreview({ clearApplied: true });
   }
   renderNotePreview();
+  syncNoteStatusUi();
   state.noteDraftDirty = true;
   persistCurrentNoteDraft({ immediate: true });
   showToast('已恢復尚未儲存的草稿。');
@@ -7633,6 +7727,7 @@ function populateNoteForm(noteId) {
   const note = state.notes.find(item => item.id === noteId);
   if (!note) return;
   setView('notes');
+  state.currentNoteStatus = resolveNoteStatus(note);
   els.noteId.value = note.id;
   els.noteTitle.value = note.title || '';
   els.noteScripture.value = note.scripture_reference || '';
@@ -7651,6 +7746,7 @@ function populateNoteForm(noteId) {
     resetScripturePreview();
   }
   renderNotePreview();
+  syncNoteStatusUi();
   state.noteDraftDirty = false;
   syncCurrentNoteDraftNotice();
 }
@@ -7658,19 +7754,39 @@ function populateNoteForm(noteId) {
 function clearNoteForm({ clearDraft = false } = {}) {
   els.noteForm.reset();
   els.noteId.value = '';
+  state.currentNoteStatus = NOTE_STATUS_PUBLISHED;
   if (els.noteShowSummary) els.noteShowSummary.checked = false;
   state.noteSummaryVisibilityTouched = false;
   els.deleteNoteBtn.classList.add('hidden');
   resetScripturePreview({ clearApplied: true });
   els.scriptureAppendToContent.checked = true;
   renderNotePreview();
+  syncNoteStatusUi();
   state.noteDraftDirty = false;
   if (clearDraft) clearCurrentNoteDraft();
   else syncCurrentNoteDraftNotice();
 }
 
-async function saveNote() {
+function syncNoteStatusUi() {
+  const status = normalizeNoteStatus(state.currentNoteStatus);
+  if (els.noteStatusText) {
+    els.noteStatusText.textContent = status === NOTE_STATUS_DRAFT ? '狀態：草稿' : '狀態：正式札記';
+    els.noteStatusText.classList.toggle('is-draft', status === NOTE_STATUS_DRAFT);
+    els.noteStatusText.classList.toggle('is-published', status === NOTE_STATUS_PUBLISHED);
+  }
+  if (els.saveNoteDraftBtn) {
+    els.saveNoteDraftBtn.classList.toggle('hidden', status === NOTE_STATUS_PUBLISHED && !!els.noteId?.value);
+  }
+  if (els.publishNoteBtn) {
+    els.publishNoteBtn.textContent = status === NOTE_STATUS_DRAFT ? '完成並儲存' : '儲存為正式札記';
+  }
+}
+
+async function saveNote({ status = NOTE_STATUS_PUBLISHED } = {}) {
   requireUser();
+  const normalizedStatus = normalizeNoteStatus(status);
+  const existingNote = els.noteId.value ? state.notes.find(n => n.id === els.noteId.value) : null;
+  const finalStatus = existingNote && isPublishedNote(existingNote) ? NOTE_STATUS_PUBLISHED : normalizedStatus;
   const payload = {
     id: els.noteId.value || uid('note'),
     user_id: getUserId(),
@@ -7681,10 +7797,14 @@ async function saveNote() {
     summary: els.noteSummary.value.trim(),
     show_summary: !!els.noteShowSummary?.checked,
     content: stripScriptureMarkers(els.noteContent.value.trim()),
+    status: finalStatus,
     updated_at: nowIso(),
-    created_at: els.noteId.value ? (state.notes.find(n => n.id === els.noteId.value)?.created_at || nowIso()) : nowIso(),
+    created_at: els.noteId.value ? (existingNote?.created_at || nowIso()) : nowIso(),
   };
-  if (!payload.title || !payload.content) throw new Error('請填入標題與內容。');
+  if (finalStatus === NOTE_STATUS_PUBLISHED && !payload.title) {
+    throw new Error('請先為這篇札記加上一個主題，方便日後閱讀與編排。');
+  }
+  if (finalStatus === NOTE_STATUS_PUBLISHED && !payload.content) throw new Error('請填入札記內容。');
   persistCurrentNoteDraft({ immediate: true });
   try {
     const persistencePayload = buildNotePersistencePayload(payload);
@@ -7704,6 +7824,7 @@ async function saveNote() {
   }
 
   els.noteId.value = payload.id;
+  state.currentNoteStatus = finalStatus;
   try {
     await loadAllData({ silent: true, syncReason: state.supabase ? '札記已同步到雲端。' : '' });
   } catch (error) {
@@ -7714,7 +7835,7 @@ async function saveNote() {
   }
   setView('notes');
   clearNoteForm({ clearDraft: true });
-  showToast('札記已儲存。');
+  showToast(finalStatus === NOTE_STATUS_DRAFT ? '草稿已儲存。' : '札記已儲存。');
 }
 
 async function deleteNote() {
@@ -7946,11 +8067,12 @@ async function deleteBook(targetBookId = els.bookId.value) {
 
 function updateChapterSourceOptions() {
   const selectedNoteId = els.chapterSourceNote.value;
+  const publishedNotes = getPublishedNotes();
   els.chapterSourceNote.innerHTML = [
     '<option value="">請先選擇一篇札記</option>',
-    ...state.notes.map(note => `<option value="${note.id}">${escapeHtml(note.title)}</option>`),
+    ...publishedNotes.map(note => `<option value="${note.id}">${escapeHtml(getNoteDisplayTitle(note))}</option>`),
   ].join('');
-  if (state.notes.some(note => note.id === selectedNoteId)) {
+  if (publishedNotes.some(note => note.id === selectedNoteId)) {
     els.chapterSourceNote.value = selectedNoteId;
   }
   renderSelectedNotePreview();
@@ -7964,7 +8086,7 @@ function previewText(text = '', maxLength = 100) {
 function renderSelectedNotePreview() {
   if (!els.selectedNotePreview) return;
   const note = getNoteById(els.chapterSourceNote.value);
-  if (!note) {
+  if (!note || !isPublishedNote(note)) {
     els.selectedNotePreview.className = 'selected-note-preview empty-note-preview';
     els.selectedNotePreview.textContent = '請先選擇一篇札記';
     return;
@@ -7972,7 +8094,7 @@ function renderSelectedNotePreview() {
   const excerpt = previewText(getNotePreviewText(note, 100), 100);
   els.selectedNotePreview.className = 'selected-note-preview';
   els.selectedNotePreview.innerHTML = `
-    <h4>${escapeHtml(note.title || '未命名札記')}</h4>
+    <h4>${escapeHtml(getNoteDisplayTitle(note))}</h4>
     <div class="card-meta"><span>${escapeHtml(note.scripture_reference || '未填經文')}</span></div>
     ${excerpt ? `<p>${escapeHtml(excerpt)}</p>` : ''}
   `;
@@ -8189,6 +8311,7 @@ async function addChapterFromSelectedNote() {
   const noteId = els.chapterSourceNote.value;
   const note = getNoteById(noteId);
   if (!note) throw new Error('請先選取要加入的札記。');
+  if (!isPublishedNote(note)) throw new Error('草稿完成為正式札記後，才能加入選稿編排。');
   const nextChapters = [...(book.chapters || []), {
     id: uid('chapter'),
     source_note_id: note.id,
@@ -8351,6 +8474,7 @@ function buildBookSnapshot(book) {
     chapters: chapters.map(chapter => {
       const sourceNoteId = getChapterSourceNoteId(chapter);
       const note = getNoteById(sourceNoteId);
+      if (note && !isPublishedNote(note)) return null;
       return {
         id: chapter.id,
         chapter_title: chapter.chapter_title,
@@ -8362,7 +8486,7 @@ function buildBookSnapshot(book) {
         show_summary: note ? resolveNoteShowSummary(note) : false,
         content: note?.content || '',
       };
-    }),
+    }).filter(Boolean),
   };
 }
 
@@ -8470,7 +8594,10 @@ function handleError(error) {
 function handleNoteSaveError(error) {
   console.error(error);
   persistCurrentNoteDraft({ immediate: true });
-  if (error?.message === '請填入標題與內容。') {
+  if ([
+    '請先為這篇札記加上一個主題，方便日後閱讀與編排。',
+    '請填入札記內容。',
+  ].includes(error?.message)) {
     showToast(error.message);
     return;
   }
