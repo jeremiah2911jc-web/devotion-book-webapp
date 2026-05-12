@@ -8073,52 +8073,95 @@ body[data-current-view="reader"] .app-update-prompt {
 }
 
 .desktop-sidebar-sync {
-  display: grid;
-  gap: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
-  margin-top: 10px;
-  padding: 10px;
-  border: 1px solid rgba(191, 211, 208, 0.68);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.72);
+  margin-top: 8px;
+  color: #496468;
 }
 
-.desktop-sidebar-sync-main {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.desktop-sidebar-sync-main strong {
+.desktop-sidebar-sync-status {
   overflow: hidden;
+  min-width: 0;
   color: #155f69;
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 700;
   line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.desktop-sidebar-sync-main p {
-  margin: 0;
+.desktop-sidebar-sync-time {
+  flex: 0 0 auto;
   color: #496468;
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.desktop-sidebar-sync-detail {
-  display: block;
-  color: #6a7d79;
   font-size: 11px;
-  line-height: 1.45;
+  line-height: 1.4;
+  white-space: nowrap;
 }
 
 .desktop-sidebar-sync-btn {
-  width: 100%;
-  justify-content: center;
-  min-height: 34px;
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1;
 }
 
-.desktop-sidebar-sync-btn[disabled] {
+.account-settings-sync-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.account-settings-sync-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.account-settings-sync-copy strong {
+  overflow: hidden;
+  color: #155f69;
+  font-size: 14px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-settings-sync-copy span {
+  color: #617873;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.account-settings-sync-detail {
+  color: #7a8985;
+}
+
+.account-settings-sync-btn {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 14px;
+  white-space: nowrap;
+}
+
+.desktop-sidebar-sync-btn[disabled],
+.account-settings-sync-btn[disabled] {
   cursor: not-allowed;
   opacity: 0.58;
+}
+
+@media (max-width: 640px) {
+  .account-settings-sync-row {
+    gap: 10px;
+  }
+
+  .account-settings-sync-btn {
+    min-height: 32px;
+    padding: 0 12px;
+  }
 }

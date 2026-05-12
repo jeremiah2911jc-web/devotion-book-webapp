@@ -336,6 +336,7 @@ async function run() {
     results.push('首頁 dashboard 已顯示');
     await expectNoVisibleLocator(page.locator('.home-primary-actions'), 'Dashboard 不應顯示舊的大圖快捷卡');
     await expectNoVisibleLocator(page.locator('#cloud-sync-panel'), 'Dashboard 不應顯示舊的同步長條');
+    await expectNoVisibleLocator(page.locator('[data-testid="account-sync"]'), '手機 Dashboard 不應顯示桌機帳號卡同步列');
 
     const navTexts = await page.locator('.bottom-nav .nav-link span:last-child').allTextContents();
     results.push(`底部導覽文字：${navTexts.join(' / ')}`);
@@ -368,20 +369,35 @@ async function run() {
     } else {
       results.push('札記列表目前沒有編輯按鈕，略過表單帶入檢查');
     }
-    const accountSyncButtonExists = await page.locator('[data-testid="account-sync-button"]').count();
-    const accountSyncVisible = await page.locator('[data-testid="account-sync-button"]:visible').count();
-    if (accountSyncVisible) {
-      await clickElement(page, '[data-testid="account-sync-button"]');
-      await expectVisible(page, '#toast:not(.hidden)', '同步提示已出現');
-      results.push('同步提示已出現');
-    } else if (accountSyncButtonExists) {
-      results.push('帳號卡同步按鈕 DOM 已存在，手機版不顯示桌機側欄同步按鈕');
-    } else {
-      results.push('同步按鈕目前不可見');
-    }
+    await clickElement(page, '.mobile-bottom-link[data-view="dashboard"]');
+    await expectVisible(page, '#view-dashboard.view.active', '已返回 dashboard');
+    await clickElement(page, '.account-summary-settings-btn');
+    await expectVisible(page, '#account-settings-modal:not(.hidden)', '帳號設定已開啟');
+    await expectVisible(page, '[data-testid="account-settings-sync-status"]', '帳號設定同步狀態已顯示');
+    await expectVisible(page, '[data-testid="account-settings-sync-button"]', '帳號設定同步按鈕已顯示');
+    const syncDisabledObserved = await page.evaluate(() => new Promise((resolve) => {
+      const button = document.querySelector('[data-testid="account-settings-sync-button"]');
+      if (!button) return resolve(false);
+      let observed = button.hasAttribute('disabled');
+      const observer = new MutationObserver(() => {
+        if (button.hasAttribute('disabled')) observed = true;
+      });
+      observer.observe(button, { attributes: true, attributeFilter: ['disabled'] });
+      button.click();
+      setTimeout(() => {
+        observer.disconnect();
+        resolve(observed);
+      }, 350);
+    }));
+    if (!syncDisabledObserved) throw new Error('帳號設定同步按鈕未觀察到 disabled 狀態');
+    await expectVisible(page, '#toast:not(.hidden)', '同步提示已出現');
+    results.push('帳號設定同步按鈕可用，且同步中會停用');
+    await clickElement(page, '#close-account-settings-btn');
 
     const accountUiExists = await Promise.all([
       page.locator('#account-settings-modal').count(),
+      page.locator('[data-testid="account-settings-sync-status"]').count(),
+      page.locator('[data-testid="account-settings-sync-button"]').count(),
       page.locator('#push-local-to-cloud-btn').count(),
       page.locator('#download-backup-btn').count(),
       page.locator('#signout-btn').count(),

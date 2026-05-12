@@ -329,6 +329,10 @@ const els = {
   accountSyncTime: document.getElementById('account-sync-time'),
   accountSyncDetail: document.getElementById('account-sync-detail'),
   accountSyncButton: document.getElementById('account-sync-button'),
+  accountSettingsSyncStatus: document.getElementById('account-settings-sync-status'),
+  accountSettingsSyncTime: document.getElementById('account-settings-sync-time'),
+  accountSettingsSyncDetail: document.getElementById('account-settings-sync-detail'),
+  accountSettingsSyncButton: document.getElementById('account-settings-sync-button'),
   viewNavLinks: [...document.querySelectorAll('.desktop-sidebar-link[data-view], .mobile-bottom-link[data-view], .nav-link[data-view]')],
   viewTitle: document.getElementById('view-title'),
   viewSubtitle: document.getElementById('view-subtitle'),
@@ -738,21 +742,39 @@ function isSyncInProgress(status = state.syncStatus) {
 function getAccountSyncStatusLabel(status = state.syncStatus) {
   const raw = String(status || '').trim();
   if (!raw) return '未啟用';
-  if (raw.includes('異常') || raw.includes('失敗')) return '同步失敗，請稍後再試';
+  if (raw === '同步中') return '同步中...';
+  if (raw.includes('異常') || raw.includes('失敗')) return '同步失敗';
   return raw;
+}
+
+function formatSyncClock(value) {
+  if (!value) return '尚未同步';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  return `${hour}:${minute}`;
 }
 
 function refreshAccountSyncUi({ isSignedIn = false } = {}) {
   const statusLabel = isSignedIn ? getAccountSyncStatusLabel() : '尚未登入';
   const syncTime = state.lastSyncAt ? formatDate(state.lastSyncAt) : '尚未同步';
+  const syncClock = state.lastSyncAt ? formatSyncClock(state.lastSyncAt) : '尚未同步';
   const fallbackDetail = state.supabase
     ? '登入同一個雲端帳號後，可在多裝置同步。'
     : '目前資料只保存在這台裝置。';
-  const detail = isSignedIn ? (state.syncDetail || fallbackDetail) : '登入後可查看同步狀態。';
+  const detail = statusLabel === '同步失敗'
+    ? '同步失敗，請稍後再試。'
+    : (isSignedIn ? (state.syncDetail || fallbackDetail) : '登入後可查看同步狀態。');
   if (els.accountSyncStatus) els.accountSyncStatus.textContent = statusLabel;
-  if (els.accountSyncTime) els.accountSyncTime.textContent = syncTime;
+  if (els.accountSyncTime) els.accountSyncTime.textContent = syncClock;
   if (els.accountSyncDetail) els.accountSyncDetail.textContent = detail;
-  els.accountSyncButton?.toggleAttribute('disabled', !isSignedIn || isSyncInProgress());
+  if (els.accountSettingsSyncStatus) els.accountSettingsSyncStatus.textContent = statusLabel;
+  if (els.accountSettingsSyncTime) els.accountSettingsSyncTime.textContent = `最後同步：${syncTime}`;
+  if (els.accountSettingsSyncDetail) els.accountSettingsSyncDetail.textContent = detail;
+  [els.accountSyncButton, els.accountSettingsSyncButton].forEach(button => {
+    button?.toggleAttribute('disabled', !isSignedIn || isSyncInProgress());
+  });
 }
 
 async function handleManualSync() {
@@ -761,6 +783,10 @@ async function handleManualSync() {
   refreshUi();
   try {
     await loadAllData({ syncReason: '已手動同步雲端資料。', force: true });
+    if (!state.lastSyncAt || !state.supabase) {
+      setSyncState({ at: nowIso() });
+      refreshUi();
+    }
     showToast('同步完成。');
   } catch (error) {
     setSyncState({ status: '同步失敗', detail: '同步失敗，請稍後再試。' });
@@ -1696,7 +1722,7 @@ function ensureOperationManualUi() {
               <li>「書櫃」卡：進入「書櫃」，開啟已完成或已匯入的電子書。</li>
             </ul>
             <p>若今日默想有內容，可以從卡片上的「寫成札記」開始記錄今天的回應；平常則可使用側邊欄或手機底部導覽進入寫札記與選稿編排。</p>
-            <p>手機版主要使用底部導覽切換總覽、寫札記、札記庫、選稿編排、書櫃與操作手冊；桌機版則使用左側側欄切換，並在側欄底部帳號卡查看同步狀態與手動同步。</p>
+            <p>手機版主要使用底部導覽切換總覽、寫札記、札記庫、選稿編排、書櫃與操作手冊；桌機版則使用左側側欄切換，並在側欄底部帳號卡查看簡潔同步狀態與手動同步。</p>
           </section>
 
           <section id="manual-writing-note" class="manual-section">
@@ -1925,7 +1951,7 @@ function ensureOperationManualUi() {
 
           <section id="manual-account-data" class="manual-section">
             <h2>十四、帳號設定與資料</h2>
-            <p>登入後，畫面會顯示帳號資訊與同步狀態。桌機可從側邊欄帳號卡查看同步狀態、按「立即同步」，也可進入「帳號設定」或「登出」；手機可在總覽中的帳號區塊操作帳號設定與登出。</p>
+            <p>登入後，畫面會顯示帳號資訊與同步狀態。桌機可從側邊欄帳號卡查看簡潔同步狀態、按「同步」，也可進入「帳號設定」或「登出」；手機可在總覽中的帳號區塊進入「帳號設定」，並在帳號設定裡查看同步狀態與手動同步。</p>
             <p>「帳號設定」可以查看目前帳號、上傳或移除頭像、修改密碼、上傳本機資料、下載雲端備份，也可以登出。若目前帳號有管理權限，帳號設定中也會顯示前往管理後台的入口。</p>
             <p>若目前使用雲端登入，札記、選稿編排與書櫃資料會依同步狀態與網路狀況保存。若使用本機模式、離線，或某些外部匯入資料，資料可能只保存在目前裝置與瀏覽器中。</p>
             <p>閱讀位置、外部 EPUB 與部分使用偏好可能依目前裝置保存。清除瀏覽器資料、更換裝置或更換瀏覽器前，建議先確認重要資料已有備份或下載檔案。</p>
@@ -4348,6 +4374,7 @@ function bindEvents() {
   els.forceSyncBtn?.addEventListener('click', () => handleManualSync().catch(handleError));
   els.topbarForceSyncBtn?.addEventListener('click', () => handleManualSync().catch(handleError));
   els.accountSyncButton?.addEventListener('click', () => handleManualSync().catch(handleError));
+  els.accountSettingsSyncButton?.addEventListener('click', () => handleManualSync().catch(handleError));
   els.pushLocalToCloudBtn?.addEventListener('click', () => uploadLocalDataToCloud().catch(handleError));
   els.downloadBackupBtn?.addEventListener('click', () => { try { downloadBackupJson(); } catch (error) { handleError(error); } });
 
@@ -5728,7 +5755,8 @@ function syncDesktopDashboardStaticCopy() {
   document.querySelector('.desktop-sidebar-footer-label')?.replaceChildren(document.createTextNode('帳號'));
   document.querySelector('.desktop-sidebar-account-copy p')?.replaceChildren(document.createTextNode('願你的文字成為祝福'));
   document.querySelector('.desktop-sidebar-account-actions [data-open-account-settings]')?.replaceChildren(document.createTextNode('帳號設定'));
-  document.querySelector('#account-sync-button')?.replaceChildren(document.createTextNode('立即同步'));
+  document.querySelector('#account-sync-button')?.replaceChildren(document.createTextNode('同步'));
+  document.querySelector('#account-settings-sync-button')?.replaceChildren(document.createTextNode('同步'));
   document.querySelector('#desktop-sidebar-signout-btn')?.replaceChildren(document.createTextNode('登出'));
   document.querySelector('.hero-copy h1')?.replaceChildren(document.createTextNode('我的靈修書房'));
   document.querySelector('.hero-copy p')?.replaceChildren(document.createTextNode('整理每日札記，慢慢編成一本書'));
@@ -5742,6 +5770,7 @@ function syncDesktopDashboardStaticCopy() {
   document.querySelector('#recent-books-heading')?.replaceChildren(document.createTextNode('最近編輯書冊'));
   document.querySelector('#dashboard-bookshelf-card .panel-header h2')?.replaceChildren(document.createTextNode('書櫃'));
   document.querySelector('.home-today-devotion-card .panel-header h2')?.replaceChildren(document.createTextNode('今日默想'));
+  document.querySelector('.account-settings-sync-section .account-settings-label')?.replaceChildren(document.createTextNode('同步狀態'));
 }
 
 function refreshUi() {

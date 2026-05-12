@@ -202,12 +202,10 @@
             </div>
           </div>
           <div class="desktop-sidebar-sync" data-testid="account-sync">
-            <div class="desktop-sidebar-sync-main">
-              <strong id="account-sync-status" data-testid="account-sync-status">同步狀態</strong>
-              <p id="account-sync-time" data-testid="account-sync-time">尚未同步</p>
-              <span id="account-sync-detail" class="desktop-sidebar-sync-detail" data-testid="account-sync-detail">目前資料只保存在這台裝置。</span>
-            </div>
-            <button id="account-sync-button" class="ghost-btn small desktop-sidebar-sync-btn" type="button" data-testid="account-sync-button">立即同步</button>
+            <span id="account-sync-status" class="desktop-sidebar-sync-status" data-testid="account-sync-status">同步狀態</span>
+            <span id="account-sync-time" class="desktop-sidebar-sync-time" data-testid="account-sync-time">尚未同步</span>
+            <button id="account-sync-button" class="ghost-btn small desktop-sidebar-sync-btn" type="button" data-testid="account-sync-button">同步</button>
+            <span id="account-sync-detail" class="visually-hidden" data-testid="account-sync-detail">目前資料只保存在這台裝置。</span>
           </div>
           <div class="desktop-sidebar-account-actions">
             <button class="ghost-btn small" data-open-account-settings type="button">帳號設定</button>
@@ -704,6 +702,17 @@
         <div class="account-settings-section">
           <span class="account-settings-label">目前帳號</span>
           <strong id="account-settings-email">-</strong>
+        </div>
+        <div class="account-settings-section account-settings-sync-section" data-testid="account-settings-sync">
+          <span class="account-settings-label">同步狀態</span>
+          <div class="account-settings-sync-row">
+            <div class="account-settings-sync-copy">
+              <strong id="account-settings-sync-status" data-testid="account-settings-sync-status">同步狀態</strong>
+              <span id="account-settings-sync-time" data-testid="account-settings-sync-time">最後同步：尚未同步</span>
+              <span id="account-settings-sync-detail" class="account-settings-sync-detail">目前資料只保存在這台裝置。</span>
+            </div>
+            <button id="account-settings-sync-button" class="ghost-btn small account-settings-sync-btn" type="button" data-testid="account-settings-sync-button">同步</button>
+          </div>
         </div>
         <div class="account-settings-section account-avatar-settings-section">
           <span class="account-settings-label">個人頭像</span>
