@@ -1417,10 +1417,11 @@ function ensureContentLibraryUi() {
     const section = document.createElement('section');
     section.id = 'view-content-library';
     section.className = 'view';
+    section.dataset.testid = 'content-library-view';
     section.innerHTML = `
         <section class="panel">
         <div class="row gap-sm wrap">
-          <input id="content-library-search" class="search" placeholder="搜尋標題、摘要、內容、經文" />
+          <input id="content-library-search" class="search" placeholder="搜尋標題、摘要、內容、經文" data-testid="content-library-search" />
           <label class="compact-control">
             <span class="caption">日期起</span>
             <input id="content-library-date-from" type="date" />
@@ -1437,16 +1438,16 @@ function ensureContentLibraryUi() {
             <span class="caption">標籤</span>
             <select id="content-library-tag"></select>
           </label>
-          <button id="content-library-clear-filters" class="ghost-btn" type="button">清除篩選</button>
+          <button id="content-library-clear-filters" class="ghost-btn" type="button" data-testid="content-library-clear-filters">清除篩選</button>
         </div>
         <div class="row gap-sm wrap mt-md">
           <strong id="content-library-selection-count">已選 0 篇</strong>
           <span id="content-library-book-hint" class="caption">請先到選稿編排建立或選擇一份書稿。</span>
-          <button id="content-library-add-selected" class="secondary-btn" type="button">請先選擇編排</button>
-          <button id="content-library-go-workbench" class="ghost-btn hidden" type="button">前往選稿編排</button>
-          <button id="content-library-clear-selection" class="ghost-btn" type="button">清除選取</button>
+          <button id="content-library-add-selected" class="secondary-btn" type="button" data-testid="content-library-add-selected">請先選擇編排</button>
+          <button id="content-library-go-workbench" class="ghost-btn hidden" type="button" data-testid="content-library-go-workbench">前往選稿編排</button>
+          <button id="content-library-clear-selection" class="ghost-btn" type="button" data-testid="content-library-clear-selection">清除選取</button>
         </div>
-        <div id="content-library-list" class="list-stack mt-md empty-state">目前還沒有可整理的札記。</div>
+        <div id="content-library-list" class="list-stack mt-md empty-state" data-testid="content-library-list">目前還沒有可整理的札記。</div>
       </section>
     `;
     booksView?.insertAdjacentElement('beforebegin', section);
@@ -1570,6 +1571,7 @@ function ensureOperationManualUi() {
     const section = document.createElement('section');
     section.id = 'view-manual';
     section.className = 'view manual-view';
+    section.dataset.testid = 'manual-view';
     section.innerHTML = `
       <section class="panel manual-panel">
         <section class="manual-hero">
@@ -5160,6 +5162,7 @@ function ensureAdminUi() {
       const section = document.createElement('section');
       section.id = 'view-admin-dashboard';
       section.className = 'view admin-dashboard-view';
+      section.dataset.testid = 'admin-view';
       section.innerHTML = `
         <section class="panel admin-dashboard-panel">
           <div class="panel-header">
@@ -5587,6 +5590,7 @@ function ensureBookExportSettingsUi() {
   const modal = document.createElement('div');
   modal.id = 'book-export-settings-modal';
   modal.className = 'modal book-export-settings-modal hidden';
+  modal.dataset.testid = 'book-export-settings-modal';
   modal.setAttribute('aria-hidden', 'true');
   modal.innerHTML = `
     <div id="book-export-settings-backdrop" class="modal-backdrop"></div>
@@ -5596,7 +5600,7 @@ function ensureBookExportSettingsUi() {
           <h2 id="book-export-settings-title">成書匯出設定</h2>
           <p id="book-export-settings-intro" class="modal-intro">設定目前編排的正式成書資訊，儲存後不會立即匯出 EPUB。</p>
         </div>
-        <button id="close-book-export-settings-btn" class="ghost-btn small" type="button">關閉</button>
+        <button id="close-book-export-settings-btn" class="ghost-btn small" type="button" data-testid="book-export-settings-close">關閉</button>
       </div>
       <form id="book-export-settings-form" class="book-export-settings-form">
         <div id="book-export-settings-body" class="book-export-settings-scroll">
@@ -5637,7 +5641,7 @@ function ensureBookExportSettingsUi() {
         <div class="book-export-settings-actions" role="group" aria-label="成書匯出設定操作">
           <button id="dismiss-book-export-settings-btn" class="ghost-btn" type="button">取消 / 關閉</button>
           <div class="book-export-settings-actions-primary">
-            <button id="save-book-export-settings-btn" class="secondary-btn" type="submit">儲存設定</button>
+            <button id="save-book-export-settings-btn" class="secondary-btn" type="submit" data-testid="book-export-settings-save">儲存設定</button>
             <button id="save-and-export-book-btn" class="primary-btn" type="button">儲存並匯出 EPUB</button>
           </div>
         </div>
@@ -5904,10 +5908,10 @@ function renderContentLibrary() {
     const isSelected = state.contentLibrarySelectedNoteIds.includes(note.id);
     const inBook = chapterSourceIds.has(note.id);
     return `
-      <article class="card">
+      <article class="card" data-testid="content-library-card" data-note-id="${escapeHtml(String(note.id))}">
         <div class="row gap-sm wrap">
           <label class="checkbox-row">
-            <input type="checkbox" data-content-library-note="${note.id}" ${isSelected ? 'checked' : ''} />
+            <input type="checkbox" data-content-library-note="${note.id}" data-testid="content-library-note-checkbox" ${isSelected ? 'checked' : ''} />
             <span>選取</span>
           </label>
           ${inBook ? '<span class="badge">已在書中</span>' : ''}
@@ -5921,7 +5925,7 @@ function renderContentLibrary() {
         </div>
         <div>${escapeHtml(getNotePreviewText(note, 160) || '尚無內容預覽')}</div>
         <div class="card-actions">
-          <button class="secondary-btn" type="button" data-content-library-edit-note="${note.id}">編輯</button>
+          <button class="secondary-btn" type="button" data-content-library-edit-note="${note.id}" data-testid="content-library-edit-note">編輯</button>
         </div>
       </article>
     `;
@@ -6204,6 +6208,7 @@ function ensureBookDraftWorkspaceUi() {
       exportSettingsBtn.id = 'open-book-export-settings-btn';
       exportSettingsBtn.type = 'button';
       exportSettingsBtn.className = 'ghost-btn';
+      exportSettingsBtn.dataset.testid = 'book-export-settings-open';
       exportSettingsBtn.textContent = '成書匯出設定';
       exportSettingsBtn.addEventListener('click', () => openBookExportSettingsModal(getActiveBookDraftId()).catch(handleError));
     }
@@ -6214,6 +6219,7 @@ function ensureBookDraftWorkspaceUi() {
       mobileExportSettingsBtn.id = 'open-book-export-settings-mobile-btn';
       mobileExportSettingsBtn.type = 'button';
       mobileExportSettingsBtn.className = 'ghost-btn';
+      mobileExportSettingsBtn.dataset.testid = 'book-export-settings-open-mobile';
       mobileExportSettingsBtn.textContent = '成書匯出設定';
       mobileExportSettingsBtn.addEventListener('click', () => openBookExportSettingsModal(getActiveBookDraftId()).catch(handleError));
     }
@@ -6685,7 +6691,7 @@ function renderNotes() {
   }
   els.notesList.className = 'list-stack';
   els.notesList.innerHTML = filtered.map(note => `
-    <article class="card">
+    <article class="card" data-testid="note-library-card" data-note-id="${escapeHtml(String(note.id || ''))}">
       <div class="row gap-sm wrap">
         ${isDraftNote(note) ? '<span class="badge note-status-badge is-draft">草稿</span>' : '<span class="badge note-status-badge is-published">正式札記</span>'}
       </div>
@@ -6697,7 +6703,7 @@ function renderNotes() {
       </div>
       <div>${escapeHtml(getNotePreviewText(note, 140))}</div>
       <div class="card-actions">
-        <button class="secondary-btn" data-edit-note="${note.id}">編輯</button>
+        <button class="secondary-btn" data-edit-note="${note.id}" data-testid="note-library-edit">編輯</button>
       </div>
     </article>
   `).join('');
@@ -6719,7 +6725,7 @@ function renderNoteDraftsList() {
     const title = getNoteDisplayTitle(note);
     const excerpt = getNotePreviewText(note, 120);
     return `
-      <article class="card note-draft-card">
+      <article class="card note-draft-card" data-testid="note-draft-card" data-note-id="${escapeHtml(String(note.id))}">
         <div class="row gap-sm wrap">
           <span class="badge note-status-badge is-draft">草稿</span>
           <span class="caption">最近更新：${escapeHtml(formatDate(note.updated_at || note.created_at))}</span>
@@ -6731,7 +6737,7 @@ function renderNoteDraftsList() {
         </div>
         <div>${escapeHtml(excerpt || '尚無內容預覽')}</div>
         <div class="card-actions">
-          <button class="secondary-btn" type="button" data-edit-note-draft="${escapeHtml(String(note.id))}">繼續編輯</button>
+          <button class="secondary-btn" type="button" data-edit-note-draft="${escapeHtml(String(note.id))}" data-testid="note-draft-edit">繼續編輯</button>
         </div>
       </article>
     `;
@@ -7081,7 +7087,7 @@ function renderNoteReaderListCard(note) {
   const excerpt = getNotePreviewText(note, 180);
   const isSelected = state.noteReaderSelectedId === noteId;
   return `
-    <button class="note-reader-list-card ${isSelected ? 'active' : ''}" type="button" data-note-reader-open="${escapeHtml(noteId)}">
+    <button class="note-reader-list-card ${isSelected ? 'active' : ''}" type="button" data-note-reader-open="${escapeHtml(noteId)}" data-testid="note-reader-card">
       <span class="note-reader-card-date">${escapeHtml(formatNoteReaderMobileDate(note))}</span>
       <span class="note-reader-card-title">${escapeHtml(title)}</span>
       <span class="note-reader-card-scripture">${escapeHtml(scripture)}</span>
@@ -7162,10 +7168,10 @@ function renderNoteReaderDetail(notes) {
     : '<p class="note-preview-placeholder">這篇札記尚未填寫內容。</p>';
 
   els.noteReaderDetail.innerHTML = `
-    <article class="note-preview-article note-reader-article">
+    <article class="note-preview-article note-reader-article" data-testid="note-reader-article">
       <div class="note-reader-detail-actions">
-        <button class="ghost-btn" type="button" data-note-reader-back>返回札記閱讀列表</button>
-        <button class="secondary-btn" type="button" data-note-reader-edit="${escapeHtml(String(note.id))}">前往編輯</button>
+        <button class="ghost-btn" type="button" data-note-reader-back data-testid="note-reader-back">返回札記閱讀列表</button>
+        <button class="secondary-btn" type="button" data-note-reader-edit="${escapeHtml(String(note.id))}" data-testid="note-reader-edit">前往編輯</button>
       </div>
       <header class="note-preview-header">
         <h4>${escapeHtml(title)}</h4>
@@ -7994,7 +8000,7 @@ function renderBookDraftCard(book, { current = false } = {}) {
   const statusLabel = current ? '正在編排' : '待成書設定';
   const statusTone = current ? 'is-current' : getBookDraftStatusTone(book);
   return `
-    <article class="card book-draft-card ${current ? 'is-current-draft selected' : ''}" data-book-draft-card="${book.id}">
+    <article class="card book-draft-card ${current ? 'is-current-draft selected' : ''}" data-book-draft-card="${book.id}" data-testid="book-draft-card">
       <div class="book-draft-card-header">
         <h3>${escapeHtml(getBookDraftLabel(book))}</h3>
         <span class="badge book-draft-status-badge ${statusTone}">${escapeHtml(statusLabel)}</span>
@@ -8008,17 +8014,17 @@ function renderBookDraftCard(book, { current = false } = {}) {
       <div class="card-actions book-draft-actions">
         ${current
           ? `
-            <button class="secondary-btn" data-go-content-library="${book.id}">加入札記</button>
-            <button class="ghost-btn" data-open-book-draft="${book.id}">整理章節</button>
-            <button class="ghost-btn" data-open-selection-settings="${book.id}">編輯設定</button>
-            <button class="ghost-btn" data-open-export-settings="${book.id}">成書匯出設定</button>
+            <button class="secondary-btn" data-go-content-library="${book.id}" data-testid="book-go-content-library">加入札記</button>
+            <button class="ghost-btn" data-open-book-draft="${book.id}" data-testid="book-open-draft">整理章節</button>
+            <button class="ghost-btn" data-open-selection-settings="${book.id}" data-testid="book-open-selection-settings">編輯設定</button>
+            <button class="ghost-btn" data-open-export-settings="${book.id}" data-testid="book-open-export-settings">成書匯出設定</button>
           `
           : `
-            <button class="secondary-btn" data-select-book="${book.id}">開始編這本</button>
-            <button class="ghost-btn" data-open-book-draft="${book.id}">整理章節</button>
-            <button class="ghost-btn" data-go-content-library="${book.id}">加入札記</button>
-            <button class="ghost-btn" data-open-selection-settings="${book.id}">編輯設定</button>
-            <button class="ghost-btn book-draft-delete-btn" data-delete-book-draft="${book.id}">刪除</button>
+            <button class="secondary-btn" data-select-book="${book.id}" data-testid="book-select">開始編這本</button>
+            <button class="ghost-btn" data-open-book-draft="${book.id}" data-testid="book-open-draft">整理章節</button>
+            <button class="ghost-btn" data-go-content-library="${book.id}" data-testid="book-go-content-library">加入札記</button>
+            <button class="ghost-btn" data-open-selection-settings="${book.id}" data-testid="book-open-selection-settings">編輯設定</button>
+            <button class="ghost-btn book-draft-delete-btn" data-delete-book-draft="${book.id}" data-testid="book-delete">刪除</button>
           `}
       </div>
     </article>
@@ -9723,8 +9729,8 @@ function renderLibrary() {
     ].filter(Boolean);
     const deleteAction = isSystemBook
       ? ''
-      : `<button class="danger-btn" data-delete-library-book="${book.id}" data-library-source="${book.source}">刪除書籍</button>`;
-    return `<article class="library-book ${selected ? 'selected' : ''} ${book.source === 'imported_epub' ? 'imported-book' : ''}"><div class="library-cover">${coverUrl ? buildLibraryCoverImage(book, coverUrl, `${book.title}封面`) : fallbackCover}</div><div class="library-book-main"><div><div class="library-book-top"><h3>${escapeHtml(book.title)}</h3>${sourceBadge}</div><div class="card-meta">${metaItems.map(item => `<span>${item}</span>`).join('')}</div><p class="library-book-description">${escapeHtml(description)}</p></div><div class="library-progress"><span>${progressPercent}%</span><div><i style="width:${progressPercent}%"></i></div></div><div class="card-actions"><button class="primary-btn" data-open-library-book="${book.id}" data-library-source="${book.source}">開啟閱讀</button><button class="ghost-btn" data-download-library-epub="${book.id}" data-library-source="${book.source}">下載 EPUB</button>${deleteAction}</div></div></article>`;
+      : `<button class="danger-btn" data-delete-library-book="${book.id}" data-library-source="${book.source}" data-testid="library-delete-book">刪除書籍</button>`;
+    return `<article class="library-book ${selected ? 'selected' : ''} ${book.source === 'imported_epub' ? 'imported-book' : ''}" data-testid="library-book-card" data-library-book-id="${escapeHtml(String(book.id || ''))}"><div class="library-cover">${coverUrl ? buildLibraryCoverImage(book, coverUrl, `${book.title}封面`) : fallbackCover}</div><div class="library-book-main"><div><div class="library-book-top"><h3>${escapeHtml(book.title)}</h3>${sourceBadge}</div><div class="card-meta">${metaItems.map(item => `<span>${item}</span>`).join('')}</div><p class="library-book-description">${escapeHtml(description)}</p></div><div class="library-progress"><span>${progressPercent}%</span><div><i style="width:${progressPercent}%"></i></div></div><div class="card-actions"><button class="primary-btn" data-open-library-book="${book.id}" data-library-source="${book.source}" data-testid="library-open-reader">開啟閱讀</button><button class="ghost-btn" data-download-library-epub="${book.id}" data-library-source="${book.source}" data-testid="library-download-epub">下載 EPUB</button>${deleteAction}</div></div></article>`;
   }).join('');
   setElementHtmlIfChanged(list, nextHtml);
   hydrateLibraryCoverImages(list);
@@ -9957,7 +9963,7 @@ function ensureReaderViewShell() {
   view.dataset.readerShell = 'paged';
   view.innerHTML = `
     <div class="reader-app-shell">
-      <button id="reader-close-button" class="reader-close-button" type="button" data-reader-close aria-label="關閉閱讀器">關閉</button>
+      <button id="reader-close-button" class="reader-close-button" type="button" data-reader-close data-testid="reader-close" aria-label="關閉閱讀器">關閉</button>
       <div class="reader-hidden-controls" aria-hidden="true">
         <button id="reader-back-library" class="ghost-btn" type="button">返回書櫃</button>
         <div class="reader-book-heading">

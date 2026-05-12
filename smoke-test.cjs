@@ -3,6 +3,14 @@ const http = require('http');
 const path = require('path');
 const { spawn } = require('child_process');
 const { chromium } = require('playwright');
+const {
+  seedLocalUserState,
+  attachConsoleErrorCollector,
+  assertNoConsoleErrors,
+  assertNoHorizontalScroll,
+  openReader,
+  closeReader,
+} = require('./tests/helpers/devotion-test-helpers.cjs');
 
 const smokePort = Number(process.env.SMOKE_PORT || process.env.PORT || 4173);
 const baseUrl = process.env.SMOKE_BASE_URL || `http://127.0.0.1:${smokePort}/index.html`;
@@ -13,7 +21,6 @@ fs.mkdirSync(artifactsDir, { recursive: true });
 const seedUser = {
   id: 'local_user_smoke',
   email: 'smoke@example.com',
-  password: 'smoke123',
   created_at: '2026-04-24T07:02:00.000Z',
 };
 
@@ -310,25 +317,20 @@ async function run() {
   });
 
   const page = await context.newPage();
+  const consoleCollector = attachConsoleErrorCollector(page);
   const results = [];
 
   try {
     serverProcess = await ensureSmokeServer();
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
     await verifyWelcomeScreen(page, results);
-    await verifyAuthModal(page, '#open-register-btn', '建立帳戶', '建立帳戶', results);
-    await verifyAuthModal(page, '#open-login-btn', '登入', '登入', results);
+    await verifyAuthModal(page, '[data-testid="auth-open-register"]', '建立帳戶', '建立帳戶', results);
+    await verifyAuthModal(page, '[data-testid="auth-open-login"]', '登入', '登入', results);
 
-    await page.evaluate(({ user, notes, books, snapshots }) => {
-      localStorage.setItem('devotion-app-config', JSON.stringify({ mode: 'local', supabaseUrl: '', supabaseAnonKey: '' }));
-      localStorage.setItem('devotion-app-local-user', JSON.stringify({ id: user.id, email: user.email }));
-      localStorage.setItem('devotion-app-local-accounts', JSON.stringify([user]));
-      localStorage.setItem('devotion-app-notes', JSON.stringify(notes));
-      localStorage.setItem('devotion-app-books', JSON.stringify(books));
-      localStorage.setItem('devotion-app-snapshots', JSON.stringify(snapshots));
-    }, { user: seedUser, notes: seedNotes, books: seedBooks, snapshots: seedSnapshots });
+    await seedLocalUserState(page, { user: seedUser, notes: seedNotes, books: seedBooks, snapshots: seedSnapshots });
     await page.reload({ waitUntil: 'networkidle', timeout: 20000 });
     await expectVisible(page, '#view-dashboard.view.active', '首頁 dashboard 已顯示');
+    await assertNoHorizontalScroll(page, { label: 'smoke dashboard mobile' });
     await captureNamedScreenshots(page);
     await page.screenshot({ path: path.join(artifactsDir, 'homepage-mobile.png'), fullPage: true });
     results.push('首頁 dashboard 已顯示');
@@ -338,6 +340,7 @@ async function run() {
 
     await clickElement(page, '#quick-new-note');
     await expectVisible(page, '#view-notes.view.active', '已由首頁 CTA 進入札記頁');
+    await assertNoHorizontalScroll(page, { label: 'smoke notes mobile' });
     results.push('已由首頁 CTA 進入札記頁');
 
     await clickElement(page, '[data-view="dashboard"]');
@@ -345,6 +348,7 @@ async function run() {
 
     await clickElement(page, '#quick-new-book');
     await expectVisible(page, '#view-books.view.active', '已由首頁 CTA 進入書籍頁');
+    await assertNoHorizontalScroll(page, { label: 'smoke books mobile' });
     results.push('已切換到書籍頁');
 
     const exportBtnExists = await page.locator('#export-epub-btn').count();
@@ -385,18 +389,21 @@ async function run() {
     await expectVisible(page, '#view-books.view.active', '已從導覽切換到書籍頁');
     await clickElement(page, '[data-view="library"]');
     await expectVisible(page, '#view-library.view.active', '已從導覽切換到書櫃頁');
+    await assertNoHorizontalScroll(page, { label: 'smoke library mobile' });
     await page.screenshot({ path: path.join(artifactsDir, 'library-mobile.png'), fullPage: true });
 
     const libraryReadButton = await page.locator('[data-open-library-book]').count();
     if (libraryReadButton) {
-      await clickElement(page, '[data-open-library-book]');
-      await expectVisible(page, '#view-reader.view.active', '已進入閱讀模式');
+      await openReader(page, '[data-open-library-book]');
       results.push('已進入閱讀模式');
+      await closeReader(page);
+      results.push('閱讀器關閉按鈕已驗證');
     } else {
       results.push('目前沒有書櫃作品可直接閱讀，略過閱讀器檢查');
     }
 
     await clickElement(page, '[data-view="dashboard"]');
+    assertNoConsoleErrors(consoleCollector);
   } catch (error) {
     results.push(`測試失敗：${error.message}`);
     throw error;

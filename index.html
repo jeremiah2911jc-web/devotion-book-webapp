@@ -40,33 +40,33 @@
         </div>
 
         <div class="auth-gate-actions">
-          <button id="open-register-btn" class="auth-cta auth-cta-primary" type="button">開始寫我的第一篇靈修</button>
-          <button id="open-login-btn" class="auth-cta auth-cta-secondary" type="button">我已經有帳戶了</button>
+          <button id="open-register-btn" class="auth-cta auth-cta-primary" type="button" data-testid="auth-open-register">開始寫我的第一篇靈修</button>
+          <button id="open-login-btn" class="auth-cta auth-cta-secondary" type="button" data-testid="auth-open-login">我已經有帳戶了</button>
         </div>
 
-        <div id="auth-inline-panel" class="modal auth-input-modal hidden" aria-hidden="true" aria-live="polite">
-          <div id="auth-inline-backdrop" class="modal-backdrop"></div>
+        <div id="auth-inline-panel" class="modal auth-input-modal hidden" aria-hidden="true" aria-live="polite" data-testid="auth-inline-panel">
+          <div id="auth-inline-backdrop" class="modal-backdrop" data-testid="auth-inline-backdrop"></div>
           <div class="modal-card auth-input-modal-card">
             <div class="panel-header auth-modal-header">
-              <h3 id="auth-inline-title">建立帳戶</h3>
-              <button id="close-auth-inline-btn" class="ghost-btn small" type="button">關閉</button>
+              <h3 id="auth-inline-title" data-testid="auth-inline-title">建立帳戶</h3>
+              <button id="close-auth-inline-btn" class="ghost-btn small" type="button" data-testid="auth-inline-close">關閉</button>
             </div>
             <p id="auth-inline-intro" class="modal-intro">輸入 Email 與密碼後即可建立帳戶或登入。</p>
             <div class="form-stack">
               <label>Email
-                <input id="gate-auth-email" type="email" placeholder="name@example.com" />
+                <input id="gate-auth-email" type="email" placeholder="name@example.com" data-testid="auth-email-input" />
               </label>
               <label>Password
-                <input id="gate-auth-password" type="password" placeholder="至少 6 碼" />
+                <input id="gate-auth-password" type="password" placeholder="至少 6 碼" data-testid="auth-password-input" />
               </label>
               <label id="gate-auth-password-confirm-label" class="hidden">確認新密碼
-                <input id="gate-auth-password-confirm" type="password" placeholder="再次輸入新密碼" autocomplete="new-password" />
+                <input id="gate-auth-password-confirm" type="password" placeholder="再次輸入新密碼" autocomplete="new-password" data-testid="auth-password-confirm-input" />
               </label>
               <div class="row wrap gap-sm auth-modal-actions">
-                <button id="gate-submit-btn" class="primary-btn" type="button">建立帳戶</button>
+                <button id="gate-submit-btn" class="primary-btn" type="button" data-testid="auth-submit">建立帳戶</button>
               </div>
               <div class="row wrap gap-sm auth-modal-secondary-actions">
-                <button id="gate-reset-password-btn" class="ghost-btn subtle-action hidden" type="button">忘記密碼</button>
+                <button id="gate-reset-password-btn" class="ghost-btn subtle-action hidden" type="button" data-testid="auth-reset-password">忘記密碼</button>
               </div>
             </div>
           </div>
@@ -230,7 +230,7 @@
         </div>
       </header>
 
-      <section id="view-dashboard" class="view active">
+      <section id="view-dashboard" class="view active" data-testid="dashboard-view">
         <section class="dashboard-home">
           <section class="home-hero">
             <div class="hero-copy">
@@ -369,7 +369,7 @@
         </section>
       </section>
 
-      <section id="view-note-reader" class="view note-reader-view">
+      <section id="view-note-reader" class="view note-reader-view" data-testid="note-reader-view">
         <div class="note-reader-shell">
           <section class="panel note-reader-list-panel">
             <div class="panel-header note-reader-header">
@@ -383,9 +383,9 @@
               <div class="note-reader-search-row">
                 <label class="note-reader-search-field">
                   <span class="caption">搜尋札記</span>
-                  <input id="note-reader-search" class="search" type="search" placeholder="搜尋標題、經文、分類、標籤、摘要、內容" autocomplete="off" />
+                  <input id="note-reader-search" class="search" type="search" placeholder="搜尋標題、經文、分類、標籤、摘要、內容" autocomplete="off" data-testid="note-reader-search" />
                 </label>
-                <button id="note-reader-clear-search" class="ghost-btn small" type="button">清除搜尋</button>
+                <button id="note-reader-clear-search" class="ghost-btn small" type="button" data-testid="note-reader-clear-search">清除搜尋</button>
               </div>
               <div class="note-reader-filter-grid">
                 <label class="compact-control note-reader-filter-control">
@@ -410,33 +410,33 @@
                 <button id="note-reader-reset-filters" class="ghost-btn small" type="button">重設篩選</button>
               </div>
             </div>
-            <div id="note-reader-list" class="note-reader-list"></div>
+            <div id="note-reader-list" class="note-reader-list" data-testid="note-reader-list"></div>
           </section>
 
-          <section id="note-reader-detail" class="panel note-reader-detail-panel" aria-live="polite">
+          <section id="note-reader-detail" class="panel note-reader-detail-panel" aria-live="polite" data-testid="note-reader-detail">
             <div class="note-reader-detail-placeholder">請先從列表選擇一篇札記。</div>
           </section>
         </div>
       </section>
 
-      <section id="view-notes" class="view">
+      <section id="view-notes" class="view" data-testid="notes-view">
         <div class="grid two-col align-start">
           <section class="panel">
             <div class="panel-header">
               <h2>札記編輯</h2>
               <button id="new-note-btn" class="ghost-btn" type="button">清空重填</button>
             </div>
-            <form id="note-form" class="form-stack">
+            <form id="note-form" class="form-stack" data-testid="note-form">
               <input type="hidden" id="note-id" />
               <label>標題
-                <input id="note-title" placeholder="例：在恩典中重新學會感恩" />
+                <input id="note-title" placeholder="例：在恩典中重新學會感恩" data-testid="note-title" />
               </label>
               <div class="note-status-row">
                 <span id="note-status-text" class="note-status-text">狀態：正式札記</span>
               </div>
               <p class="caption note-draft-hint">草稿只會保存在草稿區，不會出現在札記閱讀與成書編排中。</p>
               <label>經文
-                <input id="note-scripture" placeholder="例：詩篇 103:1-11；約翰福音 3:16-18" />
+                <input id="note-scripture" placeholder="例：詩篇 103:1-11；約翰福音 3:16-18" data-testid="note-scripture" />
               </label>
               <p class="caption scripture-hint">可輸入多處經文，請用分號「；」或「;」分隔。輸入後會自動抓取和預覽經文。</p>
               <div class="row gap-sm wrap scripture-tools">
@@ -449,16 +449,16 @@
               <p id="scripture-fetch-status" class="caption hidden"></p>
               <div id="scripture-preview" class="scripture-preview hidden"></div>
               <label>分類
-                <input id="note-category" placeholder="例：詩篇靈修、主日筆記" />
+                <input id="note-category" placeholder="例：詩篇靈修、主日筆記" data-testid="note-category" />
               </label>
               <label>標籤（以逗號分隔）
-                <input id="note-tags" placeholder="例：恩典, 悔改, 盼望" />
+                <input id="note-tags" placeholder="例：恩典, 悔改, 盼望" data-testid="note-tags" />
               </label>
               <label><span class="field-label-row"><span>摘要</span><span class="desktop-voice-input-hint">語音輸入：Windows 鍵 + H；Mac 使用聽寫。</span></span>
-                <textarea id="note-summary" rows="3" placeholder="這篇內容的重點摘要"></textarea>
+                <textarea id="note-summary" rows="3" placeholder="這篇內容的重點摘要" data-testid="note-summary"></textarea>
               </label>
               <label class="checkbox-inline note-summary-toggle">
-                <input id="note-show-summary" type="checkbox" />
+                <input id="note-show-summary" type="checkbox" data-testid="note-show-summary" />
                 <span>閱讀與成書時顯示摘要</span>
               </label>
               <p class="caption note-summary-hint">短篇札記可關閉摘要，讓閱讀畫面更簡潔；摘要文字會保留在表單中。</p>
@@ -476,20 +476,20 @@
               </div>
               <p id="markdown-syntax-hint" class="caption markdown-syntax-hint hidden" aria-live="polite"></p>
               <label><span class="field-label-row"><span>內容</span><span class="desktop-voice-input-hint">語音輸入：Windows 鍵 + H；Mac 使用聽寫。</span></span>
-                <textarea id="note-content" rows="14" placeholder="輸入靈修札記全文"></textarea>
+                <textarea id="note-content" rows="14" placeholder="輸入靈修札記全文" data-testid="note-content"></textarea>
               </label>
               <label><span class="field-label-row"><span>今日禱告</span><span class="desktop-voice-input-hint">語音輸入：Windows 鍵 + H；Mac 使用聽寫。</span></span>
-                <textarea id="note-prayer" rows="5" placeholder="可以在這裡寫下這篇札記最後想向神禱告的內容。"></textarea>
+                <textarea id="note-prayer" rows="5" placeholder="可以在這裡寫下這篇札記最後想向神禱告的內容。" data-testid="note-prayer"></textarea>
               </label>
               <label class="checkbox-inline note-prayer-toggle">
-                <input id="note-show-prayer" type="checkbox" />
+                <input id="note-show-prayer" type="checkbox" data-testid="note-show-prayer" />
                 <span>閱讀與成書時顯示禱告</span>
               </label>
               <p class="caption note-prayer-hint">若這段禱告較私人，可以取消顯示，內容仍會保存在札記中。</p>
               <div class="row gap-sm wrap note-save-actions">
-                <button type="button" id="save-note-draft-btn" class="ghost-btn">儲存草稿</button>
-                <button type="button" id="publish-note-btn" class="primary-btn">儲存為正式札記</button>
-                <button type="button" id="note-preview-btn" class="ghost-btn">預覽文章</button>
+                <button type="button" id="save-note-draft-btn" class="ghost-btn" data-testid="note-save-draft">儲存草稿</button>
+                <button type="button" id="publish-note-btn" class="primary-btn" data-testid="note-publish">儲存為正式札記</button>
+                <button type="button" id="note-preview-btn" class="ghost-btn" data-testid="note-preview-open">預覽文章</button>
                 <button type="button" id="delete-note-btn" class="danger-btn hidden">刪除札記</button>
               </div>
             </form>
@@ -500,28 +500,28 @@
                   <p class="caption">尚未完成的札記可先放在這裡，之後再回來繼續編輯。</p>
                 </div>
               </div>
-              <div id="note-drafts-list" class="list-stack note-drafts-list empty-state">目前沒有草稿。</div>
+              <div id="note-drafts-list" class="list-stack note-drafts-list empty-state" data-testid="note-drafts-list">目前沒有草稿。</div>
             </section>
           </section>
 
           <section class="panel">
             <div class="panel-header">
               <h2>札記列表</h2>
-              <input id="note-search" class="search" placeholder="搜尋標題、經文、內容" />
+              <input id="note-search" class="search" placeholder="搜尋標題、經文、內容" data-testid="note-library-search" />
             </div>
-            <div id="notes-list" class="list-stack empty-state">還沒有札記。</div>
+            <div id="notes-list" class="list-stack empty-state" data-testid="note-library-list">還沒有札記。</div>
           </section>
         </div>
       </section>
 
-      <section id="view-books" class="view">
+      <section id="view-books" class="view" data-testid="books-view">
         <div class="grid layout-books align-start">
           <section class="panel">
             <div class="panel-header">
               <h2>書籍編排</h2>
               <button id="new-book-btn" class="ghost-btn" type="button">清空重填</button>
             </div>
-            <form id="book-form" class="form-stack">
+            <form id="book-form" class="form-stack" data-testid="book-form">
               <input type="hidden" id="book-id" />
               <label>書名
                 <input id="book-title" required placeholder="例：一顆仍然願意信靠的心" />
@@ -580,7 +580,7 @@
             <div class="panel-header">
               <h2>書籍列表</h2>
             </div>
-            <div id="books-list" class="list-stack empty-state">還沒有書籍專案。</div>
+            <div id="books-list" class="list-stack empty-state" data-testid="books-list">還沒有書籍專案。</div>
           </section>
 
           <section class="panel">
@@ -588,13 +588,13 @@
               <h2>章節編排與匯出</h2>
             </div>
             <div id="selected-book-empty" class="empty-state">請先選取一本書。</div>
-            <div id="selected-book-panel" class="hidden">
+            <div id="selected-book-panel" class="hidden" data-testid="selected-book-panel">
               <div id="book-cover-preview" class="cover-preview"></div>
               <div class="chapter-picker mt-md">
                 <label for="chapter-source-note">選擇一篇札記作為新章節</label>
-                <select id="chapter-source-note"></select>
-                <div id="selected-note-preview" class="selected-note-preview">請先選擇一篇札記</div>
-                <button id="add-chapter-btn" class="secondary-btn" type="button">加入這篇札記到書中</button>
+                <select id="chapter-source-note" data-testid="chapter-source-note"></select>
+                <div id="selected-note-preview" class="selected-note-preview" data-testid="selected-note-preview">請先選擇一篇札記</div>
+                <button id="add-chapter-btn" class="secondary-btn" type="button" data-testid="add-chapter">加入這篇札記到書中</button>
               </div>
               <section class="toc-preview mt-md">
                 <h3>目錄預覽</h3>
@@ -606,13 +606,13 @@
               <div id="chapters-list" class="list-stack mt-md empty-state">尚未加入任何章節。</div>
               <div class="row gap-sm wrap mt-lg">
                 <button id="create-snapshot-btn" class="secondary-btn" type="button">建立快照</button>
-                <button id="export-epub-btn" class="primary-btn" type="button">匯出 EPUB</button>
+                <button id="export-epub-btn" class="primary-btn" type="button" data-testid="export-epub">匯出 EPUB</button>
               </div>
-              <div id="export-success-actions" class="export-success-actions hidden">
+              <div id="export-success-actions" class="export-success-actions hidden" data-testid="export-success-actions">
                 <p id="export-success-message">EPUB 已完成，並已加入書櫃。</p>
                 <div class="row gap-sm wrap">
-                  <button id="read-exported-book-btn" class="primary-btn" type="button">立即閱讀</button>
-                  <button id="download-exported-book-btn" class="ghost-btn" type="button">下載 EPUB</button>
+                  <button id="read-exported-book-btn" class="primary-btn" type="button" data-testid="read-exported-book">立即閱讀</button>
+                  <button id="download-exported-book-btn" class="ghost-btn" type="button" data-testid="download-exported-book">下載 EPUB</button>
                   <button id="go-library-btn" class="secondary-btn" type="button">前往書櫃</button>
                 </div>
               </div>
@@ -621,7 +621,7 @@
         </div>
       </section>
 
-      <section id="view-library" class="view">
+      <section id="view-library" class="view" data-testid="library-view">
         <section class="panel library-panel">
           <div class="panel-header">
             <div class="library-panel-actions">
@@ -636,7 +636,7 @@
               </label>
             </div>
           </div>
-          <div id="library-list" class="library-list empty-state">
+          <div id="library-list" class="library-list empty-state" data-testid="library-list">
             <h3>書櫃裡還沒有書</h3>
             <p>先去出書整理模式建立第一本書。</p>
             <button id="library-empty-action" class="primary-btn" type="button">前往出書整理</button>
@@ -644,7 +644,7 @@
         </section>
       </section>
 
-      <section id="view-reader" class="view reader-view">
+      <section id="view-reader" class="view reader-view" data-testid="reader-view">
         <div class="reader-layout">
           <aside class="reader-sidebar">
             <button id="reader-back-library" class="ghost-btn" type="button">返回書櫃</button>
@@ -784,7 +784,7 @@
     </div>
   </div>
 
-  <div id="note-preview-modal" class="modal hidden" aria-hidden="true">
+  <div id="note-preview-modal" class="modal hidden" aria-hidden="true" data-testid="note-preview-modal">
     <div id="note-preview-backdrop" class="modal-backdrop"></div>
     <div class="modal-card note-preview-modal-card" role="dialog" aria-modal="true" aria-labelledby="note-preview-title">
       <div class="panel-header note-preview-modal-header">
@@ -792,9 +792,9 @@
           <h2 id="note-preview-title">文章預覽</h2>
           <p class="modal-intro">儲存前先確認標題、摘要與段落讀起來是否自然。</p>
         </div>
-        <button id="close-note-preview-btn" class="ghost-btn small" type="button">關閉</button>
+        <button id="close-note-preview-btn" class="ghost-btn small" type="button" data-testid="note-preview-close">關閉</button>
       </div>
-      <article id="note-preview" class="note-preview-article"></article>
+      <article id="note-preview" class="note-preview-article" data-testid="note-preview"></article>
     </div>
   </div>
 
