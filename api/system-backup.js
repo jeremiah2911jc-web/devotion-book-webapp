@@ -3,6 +3,7 @@ const ADMIN_EMAILS = ['allen680552@gmail.com'];
 
 const TABLE_QUERIES = {
   devotion_notes: 'select * from public.devotion_notes order by updated_at desc nulls last, created_at desc nulls last;',
+  devotion_prayers: 'select * from public.devotion_prayers order by updated_at desc nulls last, created_at desc nulls last;',
   book_projects: 'select * from public.book_projects order by updated_at desc nulls last, created_at desc nulls last;',
   library_books: 'select * from public.library_books order by updated_at desc nulls last, created_at desc nulls last;',
   library_book_chapters: 'select * from public.library_book_chapters order by book_id asc, chapter_order asc, created_at asc nulls last;',
@@ -13,6 +14,7 @@ const REQUIRED_ENV_KEYS = ['SUPABASE_ACCESS_TOKEN', 'SUPABASE_PROJECT_REF', 'SUP
 function emptyDbBackup() {
   return {
     devotion_notes: [],
+    devotion_prayers: [],
     book_projects: [],
     library_books: [],
     library_book_chapters: [],

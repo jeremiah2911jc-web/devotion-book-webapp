@@ -14,6 +14,9 @@ const STORAGE_KEYS = {
 const NOTE_STATUS_DRAFT = 'draft';
 const NOTE_STATUS_PUBLISHED = 'published';
 const NOTE_SUMMARY_SETTINGS_PREFIX = 'devotion-note-summary-settings:';
+const PRAYER_STATUS_ACTIVE = 'active';
+const PRAYER_STATUS_REVIEWED = 'reviewed';
+const PRAYER_STATUS_CLOSED = 'closed';
 
 const DEFAULT_TEST_USER = {
   id: 'local_user_test',
@@ -181,6 +184,73 @@ function seedBookshelfScenario(options = {}) {
   };
 }
 
+function createPrayerRecord({
+  id = 'prayer_test',
+  userId = DEFAULT_TEST_USER.id,
+  title = 'Local Prayer Test',
+  prayerRequest = 'Local prayer request content.',
+  status = PRAYER_STATUS_ACTIVE,
+  relatedNoteId = '',
+  reviewText = '',
+  graceReflection = '',
+  lastReviewedAt = '',
+  createdAt = nowIso(),
+  updatedAt = createdAt,
+} = {}) {
+  const normalizedStatus = [PRAYER_STATUS_ACTIVE, PRAYER_STATUS_REVIEWED, PRAYER_STATUS_CLOSED].includes(status)
+    ? status
+    : PRAYER_STATUS_ACTIVE;
+  return {
+    id,
+    user_id: userId,
+    title,
+    prayer_request: prayerRequest,
+    status: normalizedStatus,
+    related_note_id: relatedNoteId,
+    review_text: reviewText,
+    grace_reflection: graceReflection,
+    last_reviewed_at: lastReviewedAt,
+    created_at: createdAt,
+    updated_at: updatedAt,
+  };
+}
+
+function seedPrayerReviewScenario(options = {}) {
+  const user = { ...DEFAULT_TEST_USER, ...(options.user || {}) };
+  const publishedNote = options.note || createNote({
+    id: options.noteId || 'prayer_related_note_test',
+    userId: user.id,
+    title: options.noteTitle || 'Prayer Related Note',
+    status: NOTE_STATUS_PUBLISHED,
+  });
+  const draftNote = createNote({
+    id: options.draftNoteId || 'prayer_draft_note_test',
+    userId: user.id,
+    title: options.draftNoteTitle || '',
+    status: NOTE_STATUS_DRAFT,
+  });
+  const prayer = createPrayerRecord({
+    id: options.prayerId || 'prayer_record_test',
+    userId: user.id,
+    title: options.title || 'Local Prayer Record',
+    prayerRequest: options.prayerRequest || 'Local prayer request content.',
+    relatedNoteId: publishedNote.id,
+    createdAt: options.createdAt || '2026-05-12T04:00:00.000Z',
+    updatedAt: options.updatedAt || '2026-05-12T04:10:00.000Z',
+  });
+  return {
+    user,
+    notes: [publishedNote, draftNote, ...(options.notes || [])],
+    prayers: [prayer, ...(options.prayers || [])],
+    books: options.books || [],
+    snapshots: options.snapshots || [],
+    importedLibraryBooks: options.importedLibraryBooks || [],
+    publishedNote,
+    draftNote,
+    prayer,
+  };
+}
+
 async function seedLocalUserState(page, {
   user = DEFAULT_TEST_USER,
   notes = [],
@@ -303,6 +373,8 @@ module.exports = {
   seedNoteDraftScenario,
   seedPublishedNoteScenario,
   seedBookshelfScenario,
+  createPrayerRecord,
+  seedPrayerReviewScenario,
   attachConsoleErrorCollector,
   assertNoConsoleErrors,
   assertNoHorizontalScroll,

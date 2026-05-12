@@ -154,6 +154,15 @@ const DEFAULT_CONFIG = {
 };
 
 const BOOK_PROJECT_METADATA_SELECT = 'id,user_id,title,subtitle,author_name,description,template_code,language,toc_enabled,include_chapter_summary,created_at,updated_at';
+const PRAYER_SELECT = 'id,user_id,title,prayer_request,status,related_note_id,review_text,grace_reflection,last_reviewed_at,created_at,updated_at';
+const PRAYER_STATUS_ACTIVE = 'active';
+const PRAYER_STATUS_REVIEWED = 'reviewed';
+const PRAYER_STATUS_CLOSED = 'closed';
+const PRAYER_STATUS_LABELS = {
+  [PRAYER_STATUS_ACTIVE]: '持續禱告中',
+  [PRAYER_STATUS_REVIEWED]: '已回顧',
+  [PRAYER_STATUS_CLOSED]: '已結束',
+};
 
 const AUTO_BACKUP_SLOTS = ['08', '14', '20'];
 const AUTO_BACKUP_MAX_ITEMS = 3;
@@ -339,6 +348,27 @@ const els = {
   views: [...document.querySelectorAll('.view')],
   quickNewNote: document.getElementById('quick-new-note'),
   quickNewBook: document.getElementById('quick-new-book'),
+  prayerCreateButton: document.getElementById('prayer-create-button'),
+  prayerCloudNotice: document.getElementById('prayer-cloud-notice'),
+  prayerFormPanel: document.getElementById('prayer-form-panel'),
+  prayerForm: document.getElementById('prayer-form'),
+  prayerFormTitle: document.getElementById('prayer-form-title'),
+  prayerId: document.getElementById('prayer-id'),
+  prayerTitleInput: document.getElementById('prayer-title-input'),
+  prayerRequestInput: document.getElementById('prayer-request-input'),
+  prayerStatusSelect: document.getElementById('prayer-status-select'),
+  prayerRelatedNoteSelect: document.getElementById('prayer-related-note-select'),
+  prayerReviewInput: document.getElementById('prayer-review-input'),
+  prayerGraceReflectionInput: document.getElementById('prayer-grace-reflection-input'),
+  prayerFormFeedback: document.getElementById('prayer-form-feedback'),
+  prayerSaveButton: document.getElementById('prayer-save-button'),
+  prayerCancelButton: document.getElementById('prayer-cancel-button'),
+  prayerList: document.getElementById('prayer-list'),
+  prayerFilterButtons: [...document.querySelectorAll('[data-prayer-filter]')],
+  prayerStatActive: document.getElementById('prayer-stat-active'),
+  prayerStatReviewed: document.getElementById('prayer-stat-reviewed'),
+  prayerStatClosed: document.getElementById('prayer-stat-closed'),
+  prayerStatMonth: document.getElementById('prayer-stat-month'),
   summaryNotesCard: document.getElementById('summary-notes-card'),
   summaryBooksCard: document.getElementById('summary-books-card'),
   summaryLibraryCard: document.getElementById('summary-library-card'),
@@ -590,6 +620,7 @@ const state = {
   },
   storageMode: 'local',
   notes: [],
+  prayers: [],
   books: [],
   snapshots: [],
   selectedBookId: null,
@@ -608,6 +639,10 @@ const state = {
   contentLibraryDateFrom: '',
   contentLibraryDateTo: '',
   contentLibrarySelectedNoteIds: [],
+  prayerFilter: 'all',
+  prayerFormOpen: false,
+  editingPrayerId: null,
+  prayerSaving: false,
   scriptureCache: new Map(),
   scriptureFetchTimer: null,
   scriptureAbortController: null,
@@ -797,6 +832,82 @@ async function handleManualSync() {
 
 function getCurrentUserEmail() {
   return String(state.currentUser?.email || '').trim().toLowerCase();
+}
+
+function isPrayerCloudReady() {
+  return !!(state.supabase && state.currentUser && !state.passwordRecoveryActive);
+}
+
+function normalizePrayerStatus(status = '') {
+  return [PRAYER_STATUS_ACTIVE, PRAYER_STATUS_REVIEWED, PRAYER_STATUS_CLOSED].includes(status)
+    ? status
+    : PRAYER_STATUS_ACTIVE;
+}
+
+function getPrayerStatusLabel(status = '') {
+  return PRAYER_STATUS_LABELS[normalizePrayerStatus(status)] || PRAYER_STATUS_LABELS[PRAYER_STATUS_ACTIVE];
+}
+
+function normalizePrayerRecord(record = {}, fallbackUserId = getUserId()) {
+  const now = nowIso();
+  const status = normalizePrayerStatus(String(record.status || ''));
+  const reviewText = sanitizeDisplayText(record.review_text ?? record.reviewText ?? '');
+  const graceReflection = sanitizeDisplayText(record.grace_reflection ?? record.graceReflection ?? '');
+  const updatedAt = record.updated_at || record.updatedAt || record.created_at || now;
+  return {
+    id: String(record.id || ''),
+    user_id: String(record.user_id || record.userId || fallbackUserId || ''),
+    title: sanitizeDisplayText(record.title, '未命名代禱事項'),
+    prayer_request: sanitizeDisplayText(record.prayer_request ?? record.prayerRequest ?? ''),
+    status,
+    related_note_id: String(record.related_note_id || record.relatedNoteId || ''),
+    review_text: reviewText,
+    grace_reflection: graceReflection,
+    last_reviewed_at: record.last_reviewed_at || record.lastReviewedAt || '',
+    created_at: record.created_at || record.createdAt || now,
+    updated_at: updatedAt,
+  };
+}
+
+function buildPrayerPersistencePayload(record = {}, userId = getUserId()) {
+  const normalized = normalizePrayerRecord(record, userId);
+  const payload = {
+    user_id: userId,
+    title: normalized.title,
+    prayer_request: normalized.prayer_request,
+    status: normalized.status,
+    related_note_id: normalized.related_note_id || null,
+    review_text: normalized.review_text,
+    grace_reflection: normalized.grace_reflection,
+    last_reviewed_at: normalized.last_reviewed_at || null,
+    created_at: normalized.created_at,
+    updated_at: normalized.updated_at || nowIso(),
+  };
+  if (normalized.id) payload.id = normalized.id;
+  return payload;
+}
+
+function sortPrayerRecords(records = []) {
+  return [...records].sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
+}
+
+function getPrayerRelatedNote(prayer = {}) {
+  const noteId = String(prayer.related_note_id || '');
+  if (!noteId) return null;
+  return getPublishedNotes().find(note => String(note.id || '') === noteId) || null;
+}
+
+function getPrayerExcerpt(value = '', fallback = '尚未填寫內容') {
+  const text = sanitizeDisplayText(value, '').replace(/\s+/g, ' ').trim();
+  if (!text) return fallback;
+  return text.length > 90 ? `${text.slice(0, 90)}...` : text;
+}
+
+function isPrayerInCurrentMonth(prayer = {}, now = new Date()) {
+  const created = new Date(prayer.created_at || 0);
+  return Number.isFinite(created.getTime())
+    && created.getFullYear() === now.getFullYear()
+    && created.getMonth() === now.getMonth();
 }
 
 function isAdminUser() {
@@ -1660,21 +1771,22 @@ function ensureOperationManualUi() {
             <li><a href="#manual-flow">二、快速開始</a></li>
             <li><a href="#manual-dashboard">三、總覽 Dashboard</a></li>
             <li><a href="#manual-writing-note">四、寫札記</a></li>
-            <li><a href="#manual-note-reader">五、札記閱讀</a></li>
-            <li><a href="#manual-content-library">六、札記庫</a></li>
-            <li><a href="#manual-selection-workbench">七、選稿編排</a></li>
-            <li><a href="#manual-chapter-arrangement">八、整理章節</a></li>
-            <li><a href="#manual-export">九、成書匯出設定與 EPUB 匯出</a></li>
-            <li><a href="#manual-library">十、書櫃</a></li>
-            <li><a href="#manual-reader">十一、閱讀器</a></li>
-            <li><a href="#manual-today-devotion">十二、今日默想</a></li>
-            <li><a href="#manual-mobile">十三、手機 / 平板使用方式</a></li>
-            <li><a href="#manual-account-data">十四、帳號設定與資料</a></li>
-            <li><a href="#manual-support-receipt">十五、支持平台與收款證明</a></li>
-            <li><a href="#manual-faq">十六、常見問題</a></li>
-            <li><a href="#manual-feedback">十七、使用問題與意見回饋</a></li>
-            <li><a href="#manual-admin-backup">十八、管理者附錄</a></li>
-            <li><a href="#manual-closing-note">十九、給使用者的一點提醒</a></li>
+            <li><a href="#manual-prayer-review">五、禱告與回顧</a></li>
+            <li><a href="#manual-note-reader">六、札記閱讀</a></li>
+            <li><a href="#manual-content-library">七、札記庫</a></li>
+            <li><a href="#manual-selection-workbench">八、選稿編排</a></li>
+            <li><a href="#manual-chapter-arrangement">九、整理章節</a></li>
+            <li><a href="#manual-export">十、成書匯出設定與 EPUB 匯出</a></li>
+            <li><a href="#manual-library">十一、書櫃</a></li>
+            <li><a href="#manual-reader">十二、閱讀器</a></li>
+            <li><a href="#manual-today-devotion">十三、今日默想</a></li>
+            <li><a href="#manual-mobile">十四、手機 / 平板使用方式</a></li>
+            <li><a href="#manual-account-data">十五、帳號設定與資料</a></li>
+            <li><a href="#manual-support-receipt">十六、支持平台與收款證明</a></li>
+            <li><a href="#manual-faq">十七、常見問題</a></li>
+            <li><a href="#manual-feedback">十八、使用問題與意見回饋</a></li>
+            <li><a href="#manual-admin-backup">十九、管理者附錄</a></li>
+            <li><a href="#manual-closing-note">二十、給使用者的一點提醒</a></li>
           </ul>
         </section>
 
@@ -1722,7 +1834,7 @@ function ensureOperationManualUi() {
               <li>「書櫃」卡：進入「書櫃」，開啟已完成或已匯入的電子書。</li>
             </ul>
             <p>若今日默想有內容，可以從卡片上的「寫成札記」開始記錄今天的回應；平常則可使用側邊欄或手機底部導覽進入寫札記與選稿編排。</p>
-            <p>手機版主要使用底部導覽切換總覽、寫札記、札記庫、選稿編排、書櫃與操作手冊；桌機版則使用左側側欄切換，並在側欄底部帳號卡查看簡潔同步狀態與手動同步。</p>
+            <p>手機版主要使用底部導覽切換總覽、禱告、寫札記、札記庫、選稿編排、書櫃與操作手冊；桌機版則使用左側側欄切換，並在側欄底部帳號卡查看簡潔同步狀態與手動同步。</p>
           </section>
 
           <section id="manual-writing-note" class="manual-section">
@@ -1817,8 +1929,20 @@ function ensureOperationManualUi() {
             <p>完成後可以先點「預覽文章」，檢查小標題、重點色、經文區塊、今日禱告和段落間距，再儲存為正式札記。若從草稿區或札記庫點「編輯」，系統會回到寫札記並載入該篇內容；草稿按「儲存草稿」會保持草稿，按「完成並儲存」會成為正式札記。今日禱告會跟著草稿與正式札記保存，是否出現在閱讀與成書中由勾選狀態決定。</p>
           </section>
 
+          <section id="manual-prayer-review" class="manual-section">
+            <h2>五、禱告與回顧</h2>
+            <p>「禱告」是獨立於單篇札記之外的長期禱告紀錄。它適合用來記錄需要持續禱告的代禱事項，之後再補上後續回顧，並整理「回顧神的恩典與帶領」。</p>
+            <div class="manual-card-grid">
+              <div class="manual-card"><h3>代禱事項</h3><p>可以寫下代禱標題與代禱內容，讓需要持續記念的事不會散落在不同札記裡。</p></div>
+              <div class="manual-card"><h3>狀態追蹤</h3><p>每筆紀錄可標示為持續禱告中、已回顧或已結束，也可以用狀態篩選快速查看。</p></div>
+              <div class="manual-card"><h3>後續回顧</h3><p>事情有新的進展時，可以回來補上回顧文字，並記錄這段過程中的恩典、帶領與學習。</p></div>
+              <div class="manual-card"><h3>關聯札記</h3><p>若某筆禱告與一篇正式札記有關，可以選擇關聯該札記。草稿不會出現在關聯選項中。</p></div>
+            </div>
+            <p>「今日禱告」屬於單篇札記最後的回應禱告；「禱告與回顧」則適合長期追蹤代禱事項。禱告資料會跟著雲端帳號同步，手機與桌機登入同一個帳號後，手動同步或重新整理即可看到同一份資料。</p>
+          </section>
+
           <section id="manual-note-reader" class="manual-section">
-            <h2>五、札記閱讀</h2>
+            <h2>六、札記閱讀</h2>
             <p>「札記閱讀」是專門用來重讀與查找正式札記的閱讀頁，不是編輯器。草稿不會出現在這裡；若要繼續未完成的內容，請回到「寫札記」的「我的草稿」。</p>
             <p>札記閱讀支援這些方式找到內容：</p>
             <ul>
@@ -1836,7 +1960,7 @@ function ensureOperationManualUi() {
           </section>
 
           <section id="manual-content-library" class="manual-section">
-            <h2>六、札記庫</h2>
+            <h2>七、札記庫</h2>
             <p>「札記庫」保存可加入選稿編排的正式札記，也是管理、搜尋、編輯與挑選成書素材的地方。草稿不會出現在札記庫候選中；尚未完成的內容請先在「寫札記」的「我的草稿」繼續整理。</p>
             <p>你可以用以下方式找到文章：</p>
             <ul>
@@ -1858,7 +1982,7 @@ function ensureOperationManualUi() {
           </section>
 
           <section id="manual-selection-workbench" class="manual-section">
-            <h2>七、選稿編排</h2>
+            <h2>八、選稿編排</h2>
             <p>「選稿編排」用來管理成書前的內容安排。頁面分成三個區塊：目前正在編排、其他選稿編排、新增選稿編排。</p>
             <h3>目前正在編排</h3>
             <p>這是目前會接收札記庫文章的編排。卡片會顯示「正在編排」、已收錄幾篇札記、更新時間、日期範圍、分類、標籤與整理說明。</p>
@@ -1873,7 +1997,7 @@ function ensureOperationManualUi() {
           </section>
 
           <section id="manual-chapter-arrangement" class="manual-section">
-            <h2>八、整理章節</h2>
+            <h2>九、整理章節</h2>
             <p>點「整理章節」會開啟章節整理視窗。若整理的是目前正在編排，標題會顯示「目前選稿編排：{title}」。若整理的是其他編排，標題會顯示「整理章節：{title}」，視窗內也會提供「開始編這本」。</p>
             <p>章節整理中可以做這些事：</p>
             <ul>
@@ -1888,7 +2012,7 @@ function ensureOperationManualUi() {
           </section>
 
           <section id="manual-export" class="manual-section">
-            <h2>九、成書匯出設定與 EPUB 匯出</h2>
+            <h2>十、成書匯出設定與 EPUB 匯出</h2>
             <p>成書匯出從「選稿編排」進入。先在目前正在編排的卡片或章節整理視窗中點「成書匯出設定」。</p>
             <p>成書匯出設定可補齊：</p>
             <ul>
@@ -1904,7 +2028,7 @@ function ensureOperationManualUi() {
           </section>
 
           <section id="manual-library" class="manual-section">
-            <h2>十、書櫃</h2>
+            <h2>十一、書櫃</h2>
             <p>「書櫃」放的是已完成或已匯入的電子書。選稿編排是成書前的工作區，書櫃是成書後的閱讀與管理區。</p>
             <p>書櫃目前可看到預設聖經、系統匯出的書籍，以及外部匯入的 EPUB。書籍卡片會顯示封面、書名、來源、閱讀進度與操作按鈕。</p>
             <p>常用操作包含：</p>
@@ -1919,7 +2043,7 @@ function ensureOperationManualUi() {
           </section>
 
           <section id="manual-reader" class="manual-section">
-            <h2>十一、閱讀器</h2>
+            <h2>十二、閱讀器</h2>
             <p>從書櫃點「開啟閱讀」會進入 Reader。Reader 會顯示書名、章節內容、目前閱讀進度與頁碼。</p>
             <p>可以用以下方式操作：</p>
             <ul>
@@ -1935,44 +2059,44 @@ function ensureOperationManualUi() {
           </section>
 
           <section id="manual-today-devotion" class="manual-section">
-            <h2>十二、今日默想</h2>
+            <h2>十三、今日默想</h2>
             <p>「今日默想」會在總覽中顯示當日的靈修提醒或內容，幫助你從今天的經文與主題開始安靜思想。</p>
             <p>若今日默想內容已載入，卡片會顯示主題、經文或摘要。你可以點「寫成札記」，把今天的領受帶到寫札記頁，繼續補上自己的觀察、禱告與回應。</p>
             <p>若暫時看不到內容，可能是資料尚未載入或網路狀態不穩。可以稍候重新整理頁面，再回到總覽查看。</p>
           </section>
 
           <section id="manual-mobile" class="manual-section">
-            <h2>十三、手機 / 平板使用方式</h2>
-            <p>手機與平板主要使用底部導覽切換頁面，常見項目包含總覽、寫札記、札記庫、選稿編排、書櫃、操作手冊與管理。若項目較多，可以在底部導覽列左右滑動尋找。桌機版主要使用左側側欄。</p>
+            <h2>十四、手機 / 平板使用方式</h2>
+            <p>手機與平板主要使用底部導覽切換頁面，常見項目包含總覽、禱告、寫札記、札記庫、選稿編排、書櫃、操作手冊與管理。若項目較多，可以在底部導覽列左右滑動尋找。桌機版主要使用左側側欄。</p>
             <p>札記閱讀在手機上是單欄流程：先看列表，點一篇札記進入單篇閱讀，再用「返回札記閱讀列表」回到列表。桌機版則比較像左右分欄，左側選札記，右側閱讀內容。</p>
             <p>書櫃與 Reader 在手機上也可以正常閱讀。Reader 會把控制項收得比較精簡，讓閱讀內容不被底部導覽遮住。若沒有看到功能按鈕，可以先點一下閱讀畫面。</p>
             <p>在手機上編輯札記、整理章節或設定成書資料時，建議先確認儲存成功再離開頁面。若遇到畫面沒有更新，可先重新整理頁面，再回到原本功能確認。</p>
           </section>
 
           <section id="manual-account-data" class="manual-section">
-            <h2>十四、帳號設定與資料</h2>
+            <h2>十五、帳號設定與資料</h2>
             <p>登入後，畫面會顯示帳號資訊與同步狀態。桌機可從側邊欄帳號卡查看簡潔同步狀態、按「同步」，也可進入「帳號設定」或「登出」；手機可在總覽中的帳號區塊進入「帳號設定」，並在帳號設定裡查看同步狀態與手動同步。</p>
             <p>「帳號設定」可以查看目前帳號、上傳或移除頭像、修改密碼、上傳本機資料、下載雲端備份，也可以登出。若目前帳號有管理權限，帳號設定中也會顯示前往管理後台的入口。</p>
-            <p>若目前使用雲端登入，札記、選稿編排與書櫃資料會依同步狀態與網路狀況保存。若使用本機模式、離線，或某些外部匯入資料，資料可能只保存在目前裝置與瀏覽器中。</p>
+            <p>若目前使用雲端登入，札記、禱告、選稿編排與書櫃資料會依同步狀態與網路狀況保存。若使用本機模式、離線，或某些外部匯入資料，資料可能只保存在目前裝置與瀏覽器中。</p>
             <p>閱讀位置、外部 EPUB 與部分使用偏好可能依目前裝置保存。清除瀏覽器資料、更換裝置或更換瀏覽器前，建議先確認重要資料已有備份或下載檔案。</p>
           </section>
 
           <section id="manual-support-receipt" class="manual-section">
-            <h2>十五、支持平台與收款證明</h2>
+            <h2>十六、支持平台與收款證明</h2>
             <p>頁面下方有「支持平台／支持事工」入口。點開後可以查看支持資訊，也可以使用「申請收款證明」填寫申請表。</p>
             <p>收款證明申請表會請你填寫姓名或收據抬頭、Email、支持金額、轉帳日期、匯款帳號後五碼與備註。送出後，系統會通知平台管理端，再依你填寫的 Email 聯繫與處理。</p>
             <p>收款證明是支持款項收款紀錄，不作為稅務扣抵憑證。送出前請確認金額、日期與 Email 正確。</p>
           </section>
 
           <section id="manual-faq" class="manual-section">
-            <h2>十六、常見問題</h2>
+            <h2>十七、常見問題</h2>
             <div class="manual-faq-list">
               <div class="manual-faq-item"><h3>網站更新後需要重新安裝嗎？</h3><p>不需要。若系統更新，畫面會出現「系統已有新版本」提示，點「立即更新」即可套用新版。iPhone、Android、Mac、Windows 都適用。</p></div>
               <div class="manual-faq-item"><h3>找不到剛寫的札記怎麼辦？</h3><p>如果剛剛按的是「儲存草稿」，請回到「寫札記」的「我的草稿」查看。若已儲存為正式札記，請到「札記閱讀」或「札記庫」確認。若有使用搜尋或篩選，請點「重設篩選」或「清除篩選」。</p></div>
               <div class="manual-faq-item"><h3>草稿可以沒有標題嗎？</h3><p>可以。草稿可以先沒有主題，畫面會以「未命名草稿」顯示。完成後要儲存為正式札記時，建議先補上主題，方便日後閱讀與編排。</p></div>
               <div class="manual-faq-item"><h3>草稿會出現在札記閱讀、選稿或成書裡嗎？</h3><p>不會。草稿只會保存在「寫札記」的草稿區，不會進入札記閱讀，不會出現在選稿編排候選，也不會匯出到 EPUB。完成後儲存為正式札記，才會進入這些流程。</p></div>
               <div class="manual-faq-item"><h3>札記閱讀和札記庫有什麼差別？</h3><p>札記閱讀適合單純重讀、搜尋和查看單篇札記；札記庫適合管理札記、回到編輯器修改，或勾選文章加入目前正在編排。</p></div>
-              <div class="manual-faq-item"><h3>禱告或代禱事項要寫在哪裡？</h3><p>每篇札記可以在「今日禱告」欄位另外寫下最後的禱告回應。若是較完整的代禱紀錄，也可以在內容中整理，分類選「禱告」或「代禱」，再用標籤補充對象或主題。</p></div>
+              <div class="manual-faq-item"><h3>禱告或代禱事項要寫在哪裡？</h3><p>每篇札記可以在「今日禱告」欄位另外寫下最後的禱告回應。若是需要長期追蹤的代禱事項，請使用「禱告」功能，可設定狀態、補上後續回顧，並記錄「回顧神的恩典與帶領」。</p></div>
               <div class="manual-faq-item"><h3>今日禱告一定會出現在閱讀或成書裡嗎？</h3><p>不一定。只有勾選「閱讀與成書時顯示禱告」且今日禱告有內容時，札記閱讀與 EPUB 才會顯示。取消勾選時，禱告文字仍會保存在札記中，但不會出現在閱讀與成書裡。</p></div>
               <div class="manual-faq-item"><h3>可以用語音輸入寫札記嗎？</h3><p>可以。你可以使用手機或電腦內建的語音輸入法。手機可使用鍵盤上的麥克風；Windows 可按 Windows 鍵 + H；Mac 可使用系統聽寫。語音輸入後，建議再檢查文字內容，避免經文、人名或標點辨識錯誤。</p></div>
               <div class="manual-faq-item"><h3>如何申請支持款項收款證明？</h3><p>完成轉帳後，可在「支持平台／支持事工」中點選「申請收款證明」，填寫姓名或抬頭、Email、支持金額、轉帳日期與匯款帳號後五碼。系統會通知平台端處理，確認後會再依你填寫的 Email 聯繫。本證明為支持款項收款紀錄，不作為稅務扣抵憑證。</p></div>
@@ -1996,21 +2120,21 @@ function ensureOperationManualUi() {
           </section>
 
           <section id="manual-feedback" class="manual-section">
-            <h2>十七、使用問題與意見回饋</h2>
+            <h2>十八、使用問題與意見回饋</h2>
             <p>如果你在使用靈修札記成書系統時遇到問題，或有功能建議，歡迎來信：</p>
             <p class="manual-feedback-email"><button class="footer-email-copy" type="button" data-copy-support-email>${SUPPORT_EMAIL}</button></p>
             <p>來信時可以簡單附上使用裝置、遇到的頁面、問題描述。若方便，也可以附上截圖，方便我們判斷問題。</p>
           </section>
 
           <section id="manual-admin-backup" class="manual-section">
-            <h2>十八、管理者附錄</h2>
+            <h2>十九、管理者附錄</h2>
             <p>管理後台主要供授權管理者使用，一般使用者平常不需要進入，也不需要操作備份、還原或平台用量等管理功能。</p>
             <p>若帳號沒有管理權限，系統會回到一般頁面或顯示無權限提示。若你只是撰寫、閱讀或整理自己的札記，可以略過本節。</p>
             <p>備份、還原與平台用量檢查都屬於管理操作，請由管理者在確認目的與影響後再使用。</p>
           </section>
 
           <section id="manual-closing-note" class="manual-section manual-closing">
-            <h2>十九、給使用者的一點提醒</h2>
+            <h2>二十、給使用者的一點提醒</h2>
             <p>這套系統的目的，是幫助你把平常寫下的內容好好保存下來。</p>
             <p>不用一開始就想著要完成一本很完整的書。可以先從一篇札記開始，慢慢累積，慢慢整理。</p>
             <p>當那些日子裡的領受、禱告、眼淚、感恩與提醒被留下來，它們有一天可能就會成為一本值得回頭閱讀的書。</p>
@@ -2088,7 +2212,7 @@ function setupCloudRealtime() {
   if (!(state.supabase && state.currentUser)) return;
   const userId = state.currentUser.id;
   const channel = state.supabase.channel(`devotion-sync-${userId}`);
-  ['devotion_notes', 'book_projects', 'book_snapshots'].forEach((table) => {
+  ['devotion_notes', 'devotion_prayers', 'book_projects', 'book_snapshots'].forEach((table) => {
     channel.on('postgres_changes', {
       event: '*',
       schema: 'public',
@@ -2198,6 +2322,7 @@ function buildBackupPayload(exportedAtIso = nowIso()) {
     exportedAt: formatDate(exportedAtIso),
     user: state.currentUser?.email || '',
     notes: Array.isArray(state.notes) ? state.notes : [],
+    prayers: Array.isArray(state.prayers) ? state.prayers : [],
     drafts,
     library: Array.isArray(library) ? library : [],
   };
@@ -2281,6 +2406,7 @@ async function downloadSystemBackup() {
   }
   const dbBackup = payload?.dbBackup && typeof payload.dbBackup === 'object' ? payload.dbBackup : {
     devotion_notes: [],
+    devotion_prayers: [],
     book_projects: [],
     library_books: [],
     library_book_chapters: [],
@@ -2535,6 +2661,10 @@ function renderBackupImportPreview() {
         <strong class="admin-stat-value">${escapeHtml(String(data.notesCount || 0))}</strong>
       </article>
       <article class="admin-stat-card">
+        <span class="admin-stat-label">prayers</span>
+        <strong class="admin-stat-value">${escapeHtml(String(data.prayersCount || 0))}</strong>
+      </article>
+      <article class="admin-stat-card">
         <span class="admin-stat-label">drafts</span>
         <strong class="admin-stat-value">${escapeHtml(String(data.draftsCount || 0))}</strong>
       </article>
@@ -2549,6 +2679,7 @@ function renderBackupImportPreview() {
       <div class="panel compact">
         <h4>還原結果</h4>
         <p class="caption">新增 notes：${escapeHtml(String(preview.result.addedNotes || 0))} 筆｜跳過 notes：${escapeHtml(String(preview.result.skippedNotes || 0))} 筆</p>
+        <p class="caption">新增 prayers：${escapeHtml(String(preview.result.addedPrayers || 0))} 筆｜跳過 prayers：${escapeHtml(String(preview.result.skippedPrayers || 0))} 筆</p>
         <p class="caption">新增 drafts：${escapeHtml(String(preview.result.addedDrafts || 0))} 筆｜跳過 drafts：${escapeHtml(String(preview.result.skippedDrafts || 0))} 筆</p>
         <p class="caption">新增 library：${escapeHtml(String(preview.result.addedLibrary || 0))} 筆｜跳過 library：${escapeHtml(String(preview.result.skippedLibrary || 0))} 筆</p>
       </div>
@@ -2602,6 +2733,7 @@ function handleBackupImportSelection(event) {
           exportedAt: payload.exportedAt || '',
           user: payload.user || '',
           notesCount: Array.isArray(payload.notes) ? payload.notes.length : 0,
+          prayersCount: Array.isArray(payload.prayers) ? payload.prayers.length : 0,
           draftsCount: Array.isArray(payload.drafts) ? payload.drafts.length : 0,
           libraryCount: library.length,
           generatedCount,
@@ -2640,6 +2772,16 @@ async function getExistingNoteIdsForRestore() {
       .map(item => String(item.id || ''))
       .filter(Boolean),
   );
+}
+
+async function getExistingPrayerIdsForRestore() {
+  const userId = getUserId();
+  if (state.supabase) {
+    const { data, error } = await state.supabase.from('devotion_prayers').select('id').eq('user_id', userId);
+    if (error) throw error;
+    return new Set((data || []).map(item => String(item.id || '')).filter(Boolean));
+  }
+  return new Set((state.prayers || []).map(item => String(item.id || '')).filter(Boolean));
 }
 
 async function getExistingDraftIdsForRestore() {
@@ -2757,6 +2899,7 @@ async function restoreImportedLibraryBlobSnapshot(entries = []) {
 async function captureDangerRestoreSnapshot() {
   const snapshot = {
     notes: JSON.parse(JSON.stringify(state.notes || [])),
+    prayers: JSON.parse(JSON.stringify(state.prayers || [])),
     drafts: JSON.parse(JSON.stringify(state.books || [])),
     generatedLibrary: [],
     importedLibrary: JSON.parse(JSON.stringify(importedLibrary.books || [])),
@@ -2788,6 +2931,7 @@ async function clearDangerRestoreData(userId = '') {
   if (state.supabase) {
     await state.supabase.from('library_book_chapters').delete().eq('user_id', userId);
     await state.supabase.from('library_books').delete().eq('user_id', userId);
+    await state.supabase.from('devotion_prayers').delete().eq('user_id', userId);
     await state.supabase.from('devotion_notes').delete().eq('user_id', userId);
     await state.supabase.from('book_projects').delete().eq('user_id', userId);
   } else {
@@ -2808,6 +2952,14 @@ async function writeDangerRestoreNotes(notes = [], userId = '') {
   } else {
     const otherNotes = loadJson(STORAGE_KEYS.notes, []).filter(item => item.user_id !== userId);
     saveJson(STORAGE_KEYS.notes, [...payloadNotes, ...otherNotes]);
+  }
+}
+
+async function writeDangerRestorePrayers(prayers = [], userId = '') {
+  const payloadPrayers = (Array.isArray(prayers) ? prayers : []).map(prayer => buildPrayerPersistencePayload({ ...prayer, user_id: userId }, userId));
+  if (state.supabase && payloadPrayers.length) {
+    const { error } = await state.supabase.from('devotion_prayers').insert(payloadPrayers);
+    if (error) throw error;
   }
 }
 
@@ -2847,6 +2999,7 @@ async function writeDangerRestoreLibrary(library = [], userId = '') {
 async function rollbackDangerRestore(snapshot, userId = '') {
   await clearDangerRestoreData(userId);
   await writeDangerRestoreNotes(snapshot.notes || [], userId);
+  await writeDangerRestorePrayers(snapshot.prayers || [], userId);
   await writeDangerRestoreDrafts(snapshot.drafts || [], userId);
   await writeDangerRestoreLibrary([
     ...(snapshot.generatedLibrary || []),
@@ -2857,6 +3010,7 @@ async function rollbackDangerRestore(snapshot, userId = '') {
 
 async function requestDangerRestoreConfirmation(backup = {}) {
   const notesCount = Array.isArray(backup.notes) ? backup.notes.length : 0;
+  const prayersCount = Array.isArray(backup.prayers) ? backup.prayers.length : 0;
   const draftsCount = Array.isArray(backup.drafts) ? backup.drafts.length : 0;
   const libraryCount = Array.isArray(backup.library) ? backup.library.length : 0;
   const currentEmail = getCurrentUserEmail();
@@ -2866,7 +3020,7 @@ async function requestDangerRestoreConfirmation(backup = {}) {
     : '';
   return openConfirmDialog({
     title: '確定要執行覆蓋還原嗎？',
-    message: `這可能會覆蓋目前資料。請確認已經備份後再繼續。\n\n備份內容：札記 ${notesCount} 筆、選稿編排 ${draftsCount} 份、書櫃 ${libraryCount} 本。${mismatchWarning}`,
+    message: `這可能會覆蓋目前資料。請確認已經備份後再繼續。\n\n備份內容：札記 ${notesCount} 筆、禱告 ${prayersCount} 筆、選稿編排 ${draftsCount} 份、書櫃 ${libraryCount} 本。${mismatchWarning}`,
     confirmText: '確認還原',
     danger: true,
     requiredText: 'RESTORE',
@@ -2890,6 +3044,8 @@ async function restoreBackupMerge() {
   const result = {
     addedNotes: 0,
     skippedNotes: 0,
+    addedPrayers: 0,
+    skippedPrayers: 0,
     addedDrafts: 0,
     skippedDrafts: 0,
     addedLibrary: 0,
@@ -2897,6 +3053,7 @@ async function restoreBackupMerge() {
   };
 
   const backupNotes = Array.isArray(backup.notes) ? backup.notes : [];
+  const backupPrayers = Array.isArray(backup.prayers) ? backup.prayers : [];
   const backupDrafts = Array.isArray(backup.drafts) ? backup.drafts : [];
   const backupLibrary = Array.isArray(backup.library) ? backup.library : [];
 
@@ -2919,6 +3076,28 @@ async function restoreBackupMerge() {
     } else {
       const notes = loadJson(STORAGE_KEYS.notes, []);
       saveJson(STORAGE_KEYS.notes, [...newNotes, ...notes]);
+    }
+  }
+
+  const existingPrayerIds = await getExistingPrayerIdsForRestore();
+  const newPrayers = backupPrayers
+    .filter(prayer => {
+      const id = String(prayer?.id || '');
+      const exists = !id || existingPrayerIds.has(id);
+      if (exists) result.skippedPrayers += 1;
+      if (!exists) existingPrayerIds.add(id);
+      return !exists;
+    })
+    .map(prayer => buildPrayerPersistencePayload({ ...prayer, user_id: userId }, userId));
+  result.addedPrayers = newPrayers.length;
+
+  if (newPrayers.length) {
+    if (state.supabase) {
+      const { error } = await state.supabase.from('devotion_prayers').insert(newPrayers);
+      if (error) throw error;
+    } else {
+      result.skippedPrayers += newPrayers.length;
+      result.addedPrayers = 0;
     }
   }
 
@@ -3032,7 +3211,7 @@ async function restoreBackupMerge() {
     result,
   });
   refreshUi();
-  showToast(`新增 notes：${result.addedNotes}｜跳過 notes：${result.skippedNotes}｜新增 drafts：${result.addedDrafts}｜新增 library：${result.addedLibrary}`);
+  showToast(`新增 notes：${result.addedNotes}｜新增 prayers：${result.addedPrayers}｜新增 drafts：${result.addedDrafts}｜新增 library：${result.addedLibrary}`);
 }
 
 async function restoreBackupDanger() {
@@ -3061,6 +3240,8 @@ async function restoreBackupDanger() {
     await clearDangerRestoreData(userId);
     setRestoreStatusMessage('正在還原 notes…');
     await writeDangerRestoreNotes(backup.notes || [], userId);
+    setRestoreStatusMessage('正在還原 prayers…');
+    await writeDangerRestorePrayers(backup.prayers || [], userId);
     setRestoreStatusMessage('正在還原 drafts…');
     await writeDangerRestoreDrafts(backup.drafts || [], userId);
     setRestoreStatusMessage('正在還原 library…');
@@ -4384,6 +4565,26 @@ function bindEvents() {
   els.summaryLibraryCard?.addEventListener('click', () => setView('library'));
   els.quickNewNote?.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
   els.quickNewBook?.addEventListener('click', () => { setView('books'); clearBookForm(); });
+  els.prayerCreateButton?.addEventListener('click', () => openPrayerForm());
+  els.prayerCancelButton?.addEventListener('click', closePrayerForm);
+  els.prayerForm?.addEventListener('submit', event => savePrayer(event));
+  els.prayerFilterButtons.forEach(button => button.addEventListener('click', () => {
+    state.prayerFilter = String(button.dataset.prayerFilter || 'all');
+    renderPrayerWorkspace();
+  }));
+  els.prayerList?.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const openNoteButton = target?.closest('[data-prayer-open-note]');
+    if (openNoteButton) {
+      openNoteReaderNote(openNoteButton.dataset.prayerOpenNote || '', { scrollToDetail: true });
+      return;
+    }
+    const editButton = target?.closest('[data-edit-prayer], [data-review-prayer]');
+    if (!editButton) return;
+    const prayerId = editButton.dataset.editPrayer || editButton.dataset.reviewPrayer || '';
+    const prayer = state.prayers.find(item => String(item.id || '') === String(prayerId));
+    if (prayer) openPrayerForm(prayer);
+  });
   els.noteReaderWriteBtn?.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
   els.noteReaderSearch?.addEventListener('input', event => {
     state.noteReaderSearch = String(event.target.value || '');
@@ -4853,21 +5054,25 @@ async function loadAllData({ silent = false, syncReason = '', reason = '', minIn
       const userId = state.currentUser.id;
       setSyncState({ status: '同步中', detail: '正在從雲端讀取資料…' });
       if (!silent) refreshUi();
-      const [notesRes, booksRes, snapshotsRes] = await Promise.all([
+      const [notesRes, prayersRes, booksRes, snapshotsRes] = await Promise.all([
         state.supabase.from('devotion_notes').select('*').eq('user_id', userId).order('updated_at', { ascending: false }),
+        state.supabase.from('devotion_prayers').select(PRAYER_SELECT).eq('user_id', userId).order('updated_at', { ascending: false }),
         state.supabase.from('book_projects').select(BOOK_PROJECT_METADATA_SELECT).eq('user_id', userId).order('updated_at', { ascending: false }),
         state.supabase.from('book_snapshots').select('id,user_id,book_project_id,book_id:book_project_id,created_at').eq('user_id', userId).order('created_at', { ascending: false }),
       ]);
       if (notesRes.error) throw notesRes.error;
+      if (prayersRes.error) throw prayersRes.error;
       if (booksRes.error) throw booksRes.error;
       if (snapshotsRes.error) throw snapshotsRes.error;
       egressDebugLog('loadAllData:tables', {
         reason: loadReason,
         notes: { count: (notesRes.data || []).length, bytes: estimatePayloadBytes(notesRes.data || []) },
+        prayers: { count: (prayersRes.data || []).length, bytes: estimatePayloadBytes(prayersRes.data || []) },
         books: { count: (booksRes.data || []).length, bytes: estimatePayloadBytes(booksRes.data || []) },
         snapshots: { count: (snapshotsRes.data || []).length, bytes: estimatePayloadBytes(snapshotsRes.data || []) },
       });
       state.notes = (notesRes.data || []).map(normalizeNoteRecord);
+      state.prayers = sortPrayerRecords((prayersRes.data || []).map(item => normalizePrayerRecord(item, userId)));
       forgetBookProjectDetails();
       state.books = (booksRes.data || []).map(book => normalizeBookProjectRow(book, { detailLoaded: false }));
       state.snapshots = (snapshotsRes.data || []).map(s => ({ ...s, snapshot_json: parseMaybeJson(s.snapshot_json, null) }));
@@ -4877,6 +5082,7 @@ async function loadAllData({ silent = false, syncReason = '', reason = '', minIn
     } else {
       const userId = getUserId();
       state.notes = loadJson(STORAGE_KEYS.notes, []).filter(item => item.user_id === userId).map(normalizeNoteRecord);
+      state.prayers = [];
       state.books = loadJson(STORAGE_KEYS.books, []).filter(item => item.user_id === userId).map(book => ({
         ...book,
         language: resolveBookLanguage(book.language),
@@ -5294,6 +5500,7 @@ function sanitizeDisplayText(value, fallback = '') {
 function getPrimaryViewLabel(viewName = '') {
   return {
     dashboard: '總覽',
+    prayer: '禱告',
     notes: '寫札記',
     'content-library': '札記庫',
     books: '選稿編排',
@@ -5306,6 +5513,7 @@ function getPrimaryViewLabel(viewName = '') {
 function getPrimaryViewIconClass(viewName = '') {
   return {
     dashboard: 'icon-home',
+    prayer: 'icon-note',
     notes: 'icon-note',
     'content-library': 'icon-note',
     books: 'icon-book',
@@ -5318,6 +5526,7 @@ function getPrimaryViewIconClass(viewName = '') {
 function getMobileBottomNavItems() {
   const items = [
     { view: 'dashboard', label: '總覽' },
+    { view: 'prayer', label: '禱告', testid: 'nav-prayer' },
     { view: 'notes', label: '寫札記' },
     { view: 'content-library', label: '札記庫' },
     { view: 'books', label: '選稿編排' },
@@ -5339,6 +5548,7 @@ function renderMobileBottomNav() {
       ${item.id ? `id="${item.id}"` : ''}
       class="nav-link mobile-bottom-link ${item.view === currentView ? 'active' : ''}"
       data-view="${escapeHtml(item.view)}"
+      ${item.testid ? `data-testid="${escapeHtml(item.testid)}"` : ''}
       type="button"
     >
       <span class="nav-icon asset-icon asset-sprite-system ${escapeHtml(getPrimaryViewIconClass(item.view))}" aria-hidden="true"></span>
@@ -5838,6 +6048,7 @@ function refreshUi() {
   els.summaryBooksCount.textContent = state.books.length;
   const libraryCount = document.getElementById('library-count');
   if (libraryCount) libraryCount.textContent = String(getAllLibraryBooksForView().length);
+  renderPrayerWorkspace();
   renderRecentCards();
   renderDesktopBookshelfCard();
   renderTodayDevotionCard();
@@ -5851,6 +6062,218 @@ function refreshUi() {
   renderReaderSettings();
   syncNoteStatusUi();
   syncCurrentNoteDraftNotice();
+}
+
+function getVisiblePrayerRecords() {
+  const filter = String(state.prayerFilter || 'all');
+  const records = sortPrayerRecords(state.prayers || []);
+  if (filter === 'all') return records;
+  return records.filter(prayer => normalizePrayerStatus(prayer.status) === filter);
+}
+
+function setPrayerFormFeedback(message = '', isError = false) {
+  if (!els.prayerFormFeedback) return;
+  const text = String(message || '').trim();
+  els.prayerFormFeedback.textContent = text;
+  els.prayerFormFeedback.classList.toggle('hidden', !text);
+  els.prayerFormFeedback.classList.toggle('is-error', !!isError);
+}
+
+function renderPrayerRelatedNoteOptions(selectedId = els.prayerRelatedNoteSelect?.value || '') {
+  if (!els.prayerRelatedNoteSelect) return;
+  const publishedNotes = getPublishedNotes();
+  const selected = String(selectedId || '');
+  els.prayerRelatedNoteSelect.innerHTML = [
+    '<option value="">不關聯札記</option>',
+    ...publishedNotes.map(note => `
+      <option value="${escapeHtml(String(note.id || ''))}" ${String(note.id || '') === selected ? 'selected' : ''}>
+        ${escapeHtml(getNoteDisplayTitle(note))}
+      </option>
+    `),
+  ].join('');
+}
+
+function clearPrayerForm() {
+  if (els.prayerId) els.prayerId.value = '';
+  if (els.prayerTitleInput) els.prayerTitleInput.value = '';
+  if (els.prayerRequestInput) els.prayerRequestInput.value = '';
+  if (els.prayerStatusSelect) els.prayerStatusSelect.value = PRAYER_STATUS_ACTIVE;
+  if (els.prayerRelatedNoteSelect) els.prayerRelatedNoteSelect.value = '';
+  if (els.prayerReviewInput) els.prayerReviewInput.value = '';
+  if (els.prayerGraceReflectionInput) els.prayerGraceReflectionInput.value = '';
+  setPrayerFormFeedback('');
+}
+
+function openPrayerForm(prayer = null, { focus = true } = {}) {
+  if (!isPrayerCloudReady()) {
+    showToast('禱告紀錄需要登入雲端帳號後才能同步。');
+    return;
+  }
+  state.prayerFormOpen = true;
+  state.editingPrayerId = prayer?.id || null;
+  renderPrayerRelatedNoteOptions(prayer?.related_note_id || '');
+  els.prayerFormPanel?.classList.remove('hidden');
+  if (els.prayerFormTitle) els.prayerFormTitle.textContent = prayer?.id ? '編輯代禱事項' : '新增代禱事項';
+  if (els.prayerId) els.prayerId.value = prayer?.id || '';
+  if (els.prayerTitleInput) els.prayerTitleInput.value = prayer?.title || '';
+  if (els.prayerRequestInput) els.prayerRequestInput.value = prayer?.prayer_request || '';
+  if (els.prayerStatusSelect) els.prayerStatusSelect.value = normalizePrayerStatus(prayer?.status || PRAYER_STATUS_ACTIVE);
+  if (els.prayerRelatedNoteSelect) els.prayerRelatedNoteSelect.value = prayer?.related_note_id || '';
+  if (els.prayerReviewInput) els.prayerReviewInput.value = prayer?.review_text || '';
+  if (els.prayerGraceReflectionInput) els.prayerGraceReflectionInput.value = prayer?.grace_reflection || '';
+  setPrayerFormFeedback('');
+  els.prayerFormPanel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (focus) setTimeout(() => els.prayerTitleInput?.focus(), 80);
+}
+
+function closePrayerForm() {
+  state.prayerFormOpen = false;
+  state.editingPrayerId = null;
+  state.prayerSaving = false;
+  els.prayerFormPanel?.classList.add('hidden');
+  clearPrayerForm();
+}
+
+function getPrayerFormRelatedNoteId() {
+  const selectedId = String(els.prayerRelatedNoteSelect?.value || '');
+  if (!selectedId) return '';
+  return getPublishedNotes().some(note => String(note.id || '') === selectedId) ? selectedId : '';
+}
+
+async function savePrayer(event) {
+  event?.preventDefault?.();
+  if (state.prayerSaving) return;
+  if (!isPrayerCloudReady()) {
+    setPrayerFormFeedback('禱告紀錄需要登入雲端帳號後才能同步。', true);
+    return;
+  }
+  const title = sanitizeDisplayText(els.prayerTitleInput?.value || '');
+  const prayerRequest = sanitizeDisplayText(els.prayerRequestInput?.value || '');
+  if (!title) {
+    setPrayerFormFeedback('請先為這筆代禱事項加上一個標題。', true);
+    els.prayerTitleInput?.focus();
+    return;
+  }
+  if (!prayerRequest) {
+    setPrayerFormFeedback('請先寫下這筆代禱事項的內容，之後比較容易回顧。', true);
+    els.prayerRequestInput?.focus();
+    return;
+  }
+
+  const id = String(els.prayerId?.value || state.editingPrayerId || '');
+  const existing = id ? state.prayers.find(prayer => String(prayer.id || '') === id) : null;
+  const status = normalizePrayerStatus(els.prayerStatusSelect?.value || PRAYER_STATUS_ACTIVE);
+  const reviewText = sanitizeDisplayText(els.prayerReviewInput?.value || '');
+  const graceReflection = sanitizeDisplayText(els.prayerGraceReflectionInput?.value || '');
+  const now = nowIso();
+  const shouldMarkReviewed = [PRAYER_STATUS_REVIEWED, PRAYER_STATUS_CLOSED].includes(status)
+    && (reviewText || graceReflection)
+    && (
+      status !== normalizePrayerStatus(existing?.status || '')
+      || reviewText !== String(existing?.review_text || '')
+      || graceReflection !== String(existing?.grace_reflection || '')
+    );
+  const payload = buildPrayerPersistencePayload({
+    id,
+    user_id: getUserId(),
+    title,
+    prayer_request: prayerRequest,
+    status,
+    related_note_id: getPrayerFormRelatedNoteId(),
+    review_text: reviewText,
+    grace_reflection: graceReflection,
+    last_reviewed_at: shouldMarkReviewed ? now : (existing?.last_reviewed_at || ''),
+    created_at: existing?.created_at || now,
+    updated_at: now,
+  }, getUserId());
+
+  state.prayerSaving = true;
+  els.prayerSaveButton?.toggleAttribute('disabled', true);
+  setPrayerFormFeedback('正在儲存禱告紀錄…');
+  try {
+    const query = id
+      ? state.supabase.from('devotion_prayers').update(payload).eq('id', id).eq('user_id', getUserId()).select(PRAYER_SELECT).single()
+      : state.supabase.from('devotion_prayers').insert(payload).select(PRAYER_SELECT).single();
+    const { data, error } = await query;
+    if (error) throw error;
+    const saved = normalizePrayerRecord(data || payload, getUserId());
+    state.prayers = sortPrayerRecords([saved, ...state.prayers.filter(prayer => String(prayer.id || '') !== String(saved.id || ''))]);
+    markCloudSynced(id ? '禱告紀錄已更新並同步。' : '禱告紀錄已新增並同步。');
+    closePrayerForm();
+    renderPrayerWorkspace();
+    refreshAccountSyncUi({ isSignedIn: true });
+    showToast(id ? '代禱事項已更新。' : '代禱事項已儲存。');
+  } catch (error) {
+    setPrayerFormFeedback('禱告紀錄暫時無法儲存，請稍後再試。', true);
+    handleError(error);
+  } finally {
+    state.prayerSaving = false;
+    els.prayerSaveButton?.toggleAttribute('disabled', false);
+  }
+}
+
+function renderPrayerCard(prayer) {
+  const relatedNote = getPrayerRelatedNote(prayer);
+  const hasRelatedId = !!String(prayer.related_note_id || '');
+  const relatedHtml = hasRelatedId
+    ? (relatedNote
+      ? `<button class="text-link prayer-related-note" type="button" data-prayer-open-note="${escapeHtml(String(relatedNote.id || ''))}">關聯札記：${escapeHtml(getNoteDisplayTitle(relatedNote))}</button>`
+      : '<span class="prayer-related-note muted">關聯札記已不存在</span>')
+    : '';
+  return `
+    <article class="prayer-card" data-prayer-id="${escapeHtml(String(prayer.id || ''))}" data-testid="prayer-card">
+      <div class="prayer-card-header">
+        <div>
+          <h3>${escapeHtml(prayer.title || '未命名代禱事項')}</h3>
+          <div class="card-meta">
+            <span>建立：${formatDate(prayer.created_at)}</span>
+            <span>最近回顧：${prayer.last_reviewed_at ? formatDate(prayer.last_reviewed_at) : '尚未回顧'}</span>
+          </div>
+        </div>
+        <span class="prayer-status-badge prayer-status-${escapeHtml(normalizePrayerStatus(prayer.status))}">${escapeHtml(getPrayerStatusLabel(prayer.status))}</span>
+      </div>
+      <p>${escapeHtml(getPrayerExcerpt(prayer.prayer_request, '尚未填寫代禱事項'))}</p>
+      ${relatedHtml ? `<div class="prayer-card-related">${relatedHtml}</div>` : ''}
+      <div class="prayer-card-actions">
+        <button class="ghost-btn small" type="button" data-edit-prayer="${escapeHtml(String(prayer.id || ''))}" data-testid="prayer-edit-button">編輯</button>
+        <button class="secondary-btn small" type="button" data-review-prayer="${escapeHtml(String(prayer.id || ''))}" data-testid="prayer-review-button">回顧</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderPrayerWorkspace() {
+  if (!els.prayerList) return;
+  const cloudReady = isPrayerCloudReady();
+  const prayers = Array.isArray(state.prayers) ? state.prayers : [];
+  const activeCount = prayers.filter(prayer => normalizePrayerStatus(prayer.status) === PRAYER_STATUS_ACTIVE).length;
+  const reviewedCount = prayers.filter(prayer => normalizePrayerStatus(prayer.status) === PRAYER_STATUS_REVIEWED).length;
+  const closedCount = prayers.filter(prayer => normalizePrayerStatus(prayer.status) === PRAYER_STATUS_CLOSED).length;
+  const monthCount = prayers.filter(prayer => isPrayerInCurrentMonth(prayer)).length;
+  if (els.prayerStatActive) els.prayerStatActive.textContent = String(activeCount);
+  if (els.prayerStatReviewed) els.prayerStatReviewed.textContent = String(reviewedCount);
+  if (els.prayerStatClosed) els.prayerStatClosed.textContent = String(closedCount);
+  if (els.prayerStatMonth) els.prayerStatMonth.textContent = String(monthCount);
+  els.prayerCloudNotice?.classList.toggle('hidden', cloudReady);
+  els.prayerCreateButton?.toggleAttribute('disabled', !cloudReady);
+  els.prayerSaveButton?.toggleAttribute('disabled', !cloudReady || state.prayerSaving);
+  els.prayerFilterButtons.forEach(button => {
+    const isActive = String(button.dataset.prayerFilter || 'all') === String(state.prayerFilter || 'all');
+    button.classList.toggle('active', isActive);
+    button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+  });
+  renderPrayerRelatedNoteOptions();
+
+  const visiblePrayers = getVisiblePrayerRecords();
+  if (!visiblePrayers.length) {
+    els.prayerList.className = 'prayer-list list-stack empty-state';
+    els.prayerList.textContent = cloudReady
+      ? '目前還沒有禱告紀錄。可以先新增一筆代禱事項，持續記錄與回顧。'
+      : '禱告紀錄需要登入雲端帳號後才能同步。';
+    return;
+  }
+  els.prayerList.className = 'prayer-list list-stack';
+  els.prayerList.innerHTML = visiblePrayers.map(renderPrayerCard).join('');
 }
 
 function renderRecentCards() {
@@ -8728,12 +9151,14 @@ function setView(viewName) {
     viewName = 'dashboard';
   }
   if (viewName === 'snapshots') viewName = 'dashboard';
+  if (viewName !== 'prayer' && state.prayerFormOpen) closePrayerForm();
   if (viewName !== 'books') state.bookDraftModalOpen = false;
   if (viewName !== 'books' && state.bookDraftSettingsModalOpen) closeBookDraftSettingsModal();
   if (viewName !== 'books' && state.bookExportSettingsModalOpen) closeBookExportSettingsModal();
   const isReaderView = viewName === 'reader';
   const titleMap = {
     dashboard: ['總覽', ''],
+    prayer: ['禱告與回顧', '記錄代禱事項，回顧神的恩典與帶領。'],
     'note-reader': ['札記閱讀', '單純閱讀已寫下的札記，不進入編輯器。'],
     notes: ['寫札記', '專注寫下今天的領受、禱告與整理。'],
     'content-library': ['札記庫', '搜尋、篩選並挑選已寫下的札記，加入目前正在編排的書稿。'],

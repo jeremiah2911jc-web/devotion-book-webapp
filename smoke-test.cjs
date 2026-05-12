@@ -340,6 +340,21 @@ async function run() {
 
     const navTexts = await page.locator('.bottom-nav .nav-link span:last-child').allTextContents();
     results.push(`底部導覽文字：${navTexts.join(' / ')}`);
+    const dashboardIndex = navTexts.indexOf('總覽');
+    const prayerIndex = navTexts.indexOf('禱告');
+    const notesIndex = navTexts.indexOf('寫札記');
+    if (!(dashboardIndex >= 0 && prayerIndex === dashboardIndex + 1 && notesIndex === prayerIndex + 1)) {
+      throw new Error(`底部導覽順序錯誤：${navTexts.join(' / ')}`);
+    }
+
+    await clickElement(page, '[data-testid="nav-prayer"]');
+    await expectVisible(page, '[data-testid="view-prayer"].view.active', '已由底部導覽進入禱告頁');
+    await expectVisible(page, '#prayer-cloud-notice:not(.hidden)', '本機模式顯示禱告雲端同步提示');
+    await expectVisible(page, '[data-testid="prayer-create-button"]', '禱告新增按鈕已顯示');
+    const prayerCreateDisabled = await page.locator('[data-testid="prayer-create-button"]').isDisabled();
+    if (!prayerCreateDisabled) throw new Error('本機模式不應允許新增雲端禱告紀錄');
+    await assertNoHorizontalScroll(page, { label: 'smoke prayer mobile' });
+    results.push('禱告頁入口與本機模式提示正常');
 
     await clickElement(page, '.mobile-bottom-link[data-view="notes"]');
     await expectVisible(page, '#view-notes.view.active', '已由底部導覽進入札記頁');

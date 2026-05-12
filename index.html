@@ -110,6 +110,10 @@
           <span class="nav-icon asset-icon asset-sprite-system icon-home" aria-hidden="true"></span>
           <span>總覽</span>
         </button>
+        <button class="desktop-sidebar-link" data-view="prayer" type="button" data-testid="nav-prayer-desktop">
+          <span class="nav-icon asset-icon asset-sprite-system icon-note" aria-hidden="true"></span>
+          <span>禱告</span>
+        </button>
         <button class="desktop-sidebar-link" data-view="notes" type="button">
           <span class="nav-icon asset-icon asset-sprite-system icon-note" aria-hidden="true"></span>
           <span>札記</span>
@@ -340,6 +344,103 @@
           </section>
 
           <span id="summary-snapshots-count" class="hidden">0</span>
+        </section>
+      </section>
+
+      <section id="view-prayer" class="view prayer-view" data-testid="view-prayer">
+        <section class="prayer-workspace">
+          <header class="prayer-hero">
+            <div>
+              <span class="section-kicker">PRAYER</span>
+              <h1>禱告與回顧</h1>
+              <p>記錄代禱事項，回顧神的恩典與帶領。</p>
+            </div>
+            <button id="prayer-create-button" class="primary-btn" type="button" data-testid="prayer-create-button">新增代禱事項</button>
+          </header>
+
+          <section class="prayer-cloud-notice panel compact hidden" id="prayer-cloud-notice" aria-live="polite">
+            <p>禱告紀錄會跟著雲端帳號同步。請登入 Supabase 帳號後使用，手機與桌機才能看到同一份資料。</p>
+          </section>
+
+          <section class="prayer-stats-grid" aria-label="禱告統計">
+            <article class="summary-card prayer-stat-card">
+              <span>持續禱告中</span>
+              <strong id="prayer-stat-active">0</strong>
+            </article>
+            <article class="summary-card prayer-stat-card">
+              <span>已回顧</span>
+              <strong id="prayer-stat-reviewed">0</strong>
+            </article>
+            <article class="summary-card prayer-stat-card">
+              <span>已結束</span>
+              <strong id="prayer-stat-closed">0</strong>
+            </article>
+            <article class="summary-card prayer-stat-card">
+              <span>本月新增</span>
+              <strong id="prayer-stat-month">0</strong>
+            </article>
+          </section>
+
+          <section id="prayer-form-panel" class="panel prayer-form-panel hidden" data-testid="prayer-form-panel">
+            <div class="panel-header">
+              <div>
+                <h2 id="prayer-form-title">新增代禱事項</h2>
+                <p>把需要持續記念的事項留下來，之後再補上回顧。</p>
+              </div>
+            </div>
+            <form id="prayer-form" class="form-stack">
+              <input id="prayer-id" type="hidden" />
+              <label>代禱標題
+                <input id="prayer-title-input" type="text" placeholder="例：為家人的健康禱告" data-testid="prayer-title-input" />
+              </label>
+              <label>代禱事項
+                <textarea id="prayer-request-input" rows="4" placeholder="寫下想持續禱告與記念的內容。" data-testid="prayer-request-input"></textarea>
+              </label>
+              <div class="grid two prayer-form-grid">
+                <label>狀態
+                  <select id="prayer-status-select" data-testid="prayer-status-select">
+                    <option value="active">持續禱告中</option>
+                    <option value="reviewed">已回顧</option>
+                    <option value="closed">已結束</option>
+                  </select>
+                </label>
+                <label>關聯札記，可選
+                  <select id="prayer-related-note-select" data-testid="prayer-related-note-select">
+                    <option value="">不關聯札記</option>
+                  </select>
+                </label>
+              </div>
+              <label>後續回顧
+                <textarea id="prayer-review-input" rows="3" placeholder="之後回來補充事情的發展、提醒與整理。" data-testid="prayer-review-input"></textarea>
+              </label>
+              <label>回顧神的恩典與帶領
+                <textarea id="prayer-grace-reflection-input" rows="3" placeholder="回顧這段歷程中看見的恩典、帶領與學習。" data-testid="prayer-grace-reflection-input"></textarea>
+              </label>
+              <p id="prayer-form-feedback" class="caption form-feedback hidden" aria-live="polite"></p>
+              <div class="row gap-sm wrap">
+                <button id="prayer-save-button" class="secondary-btn" type="submit" data-testid="prayer-save-button">儲存代禱事項</button>
+                <button id="prayer-cancel-button" class="ghost-btn" type="button">取消</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="panel prayer-list-panel">
+            <div class="panel-header prayer-list-header">
+              <div>
+                <h2>代禱事項</h2>
+                <p>用狀態篩選正在禱告、已回顧或已結束的紀錄。</p>
+              </div>
+              <div class="prayer-filter-tabs" role="tablist" aria-label="禱告狀態篩選">
+                <button class="ghost-btn small active" type="button" data-prayer-filter="all" data-testid="prayer-filter-all">全部</button>
+                <button class="ghost-btn small" type="button" data-prayer-filter="active" data-testid="prayer-filter-active">持續禱告中</button>
+                <button class="ghost-btn small" type="button" data-prayer-filter="reviewed" data-testid="prayer-filter-reviewed">已回顧</button>
+                <button class="ghost-btn small" type="button" data-prayer-filter="closed" data-testid="prayer-filter-closed">已結束</button>
+              </div>
+            </div>
+            <div id="prayer-list" class="prayer-list list-stack empty-state" data-testid="prayer-list">
+              目前還沒有禱告紀錄。可以先新增一筆代禱事項，持續記錄與回顧。
+            </div>
+          </section>
         </section>
       </section>
 
@@ -673,6 +774,10 @@
           <span class="nav-icon asset-icon asset-sprite-system icon-home" aria-hidden="true"></span>
           <span>總覽</span>
         </button>
+        <button class="nav-link mobile-bottom-link" data-view="prayer" type="button" data-testid="nav-prayer">
+          <span class="nav-icon asset-icon asset-sprite-system icon-note" aria-hidden="true"></span>
+          <span>禱告</span>
+        </button>
         <button class="nav-link mobile-bottom-link" data-view="notes" type="button">
           <span class="nav-icon asset-icon asset-sprite-system icon-note" aria-hidden="true"></span>
           <span>札記</span>
@@ -849,6 +954,6 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./app.js?v=support-receipt-email-flow-20260430"></script>
+  <script type="module" src="./app.js?v=prayer-cloud-workspace-20260512"></script>
 </body>
 </html>
