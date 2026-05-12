@@ -11,7 +11,7 @@
   autoBackups: 'devotion-auto-backups',
 };
 
-const APP_VERSION = '2026.05.12-05';
+const APP_VERSION = '2026.05.12-06';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 
 const TEMPLATE_LABELS = {
@@ -879,7 +879,7 @@ function normalizePrayerRecord(record = {}, fallbackUserId = getUserId()) {
   return {
     id: String(record.id || ''),
     user_id: String(record.user_id || record.userId || fallbackUserId || ''),
-    title: sanitizeDisplayText(record.title, '未命名代禱事項'),
+    title: sanitizeDisplayText(record.title, '未命名禱告'),
     prayer_request: sanitizeDisplayText(record.prayer_request ?? record.prayerRequest ?? ''),
     status,
     related_note_id: String(record.related_note_id || record.relatedNoteId || ''),
@@ -1970,9 +1970,9 @@ function ensureOperationManualUi() {
 
           <section id="manual-prayer-review" class="manual-section">
             <h2>五、禱告與回顧</h2>
-            <p>「禱告」是獨立於單篇札記之外的長期禱告紀錄。它適合用來記錄需要持續禱告的代禱事項，之後再補上後續回顧，並整理「回顧神的恩典與帶領」。</p>
+            <p>「禱告」是獨立於單篇札記之外的長期禱告紀錄。它適合用來記錄個人的禱告，也可以記錄需要持續記念的代禱事項，之後再補上後續回顧，並整理「回顧神的恩典與帶領」。</p>
             <div class="manual-card-grid">
-              <div class="manual-card"><h3>代禱事項</h3><p>可以寫下代禱標題與代禱內容，讓需要持續記念的事不會散落在不同札記裡。</p></div>
+              <div class="manual-card"><h3>禱告內容</h3><p>可以寫下禱告標題與禱告內容，讓需要持續記念的事不會散落在不同札記裡。</p></div>
               <div class="manual-card"><h3>狀態追蹤</h3><p>每筆紀錄可標示為持續禱告中、回顧中或已蒙應允，也可以用狀態篩選快速查看。</p></div>
               <div class="manual-card"><h3>後續回顧</h3><p>事情有新的進展時，可以回來補上回顧文字，並記錄這段過程中的恩典、帶領與學習。</p></div>
               <div class="manual-card"><h3>關聯札記</h3><p>若某筆禱告與一篇正式札記有關，可以選擇關聯該札記。草稿不會出現在關聯選項中。</p></div>
@@ -1982,7 +1982,7 @@ function ensureOperationManualUi() {
               <li>回顧中：正在整理後續經歷與回顧。</li>
               <li>已蒙應允：已記錄這項禱告的回應與感恩。</li>
             </ul>
-            <p>「今日禱告」屬於單篇札記最後的回應禱告；「禱告與回顧」則適合長期追蹤代禱事項。禱告資料會跟著雲端帳號同步，手機與桌機登入同一個帳號後，手動同步或重新整理即可看到同一份資料。</p>
+            <p>「今日禱告」屬於單篇札記最後的回應禱告；「禱告與回顧」則適合長期追蹤禱告事項與代禱事項。禱告資料會跟著雲端帳號同步，手機與桌機登入同一個帳號後，手動同步或重新整理即可看到同一份資料。</p>
           </section>
 
           <section id="manual-note-reader" class="manual-section">
@@ -2140,7 +2140,7 @@ function ensureOperationManualUi() {
               <div class="manual-faq-item"><h3>草稿可以沒有標題嗎？</h3><p>可以。草稿可以先沒有主題，畫面會以「未命名草稿」顯示。完成後要儲存為正式札記時，建議先補上主題，方便日後閱讀與編排。</p></div>
               <div class="manual-faq-item"><h3>草稿會出現在札記閱讀、選稿或成書裡嗎？</h3><p>不會。草稿只會保存在「寫札記」的草稿區，不會進入札記閱讀，不會出現在選稿編排候選，也不會匯出到 EPUB。完成後儲存為正式札記，才會進入這些流程。</p></div>
               <div class="manual-faq-item"><h3>札記閱讀和札記庫有什麼差別？</h3><p>札記閱讀適合單純重讀、搜尋和查看單篇札記；札記庫適合管理札記、回到編輯器修改，或勾選文章加入目前正在編排。</p></div>
-              <div class="manual-faq-item"><h3>禱告或代禱事項要寫在哪裡？</h3><p>每篇札記可以在「今日禱告」欄位另外寫下最後的禱告回應。若是需要長期追蹤的代禱事項，請使用「禱告」功能，可設定狀態、補上後續回顧，並記錄「回顧神的恩典與帶領」。</p></div>
+              <div class="manual-faq-item"><h3>禱告或代禱事項要寫在哪裡？</h3><p>每篇札記可以在「今日禱告」欄位另外寫下最後的禱告回應。若是需要長期追蹤的禱告或代禱事項，請使用「禱告」功能，可設定狀態、補上後續回顧，並記錄「回顧神的恩典與帶領」。</p></div>
               <div class="manual-faq-item"><h3>今日禱告一定會出現在閱讀或成書裡嗎？</h3><p>不一定。只有勾選「閱讀與成書時顯示禱告」且今日禱告有內容時，札記閱讀與 EPUB 才會顯示。取消勾選時，禱告文字仍會保存在札記中，但不會出現在閱讀與成書裡。</p></div>
               <div class="manual-faq-item"><h3>可以用語音輸入寫札記嗎？</h3><p>可以。你可以使用手機或電腦內建的語音輸入法。手機可使用鍵盤上的麥克風；Windows 可按 Windows 鍵 + H；Mac 可使用系統聽寫。語音輸入後，建議再檢查文字內容，避免經文、人名或標點辨識錯誤。</p></div>
               <div class="manual-faq-item"><h3>如何申請支持款項收款證明？</h3><p>完成轉帳後，可在「支持平台／支持事工」中點選「申請收款證明」，填寫姓名或抬頭、Email、支持金額、轉帳日期與匯款帳號後五碼。系統會通知平台端處理，確認後會再依你填寫的 Email 聯繫。本證明為支持款項收款紀錄，不作為稅務扣抵憑證。</p></div>
@@ -6178,7 +6178,7 @@ function openPrayerForm(prayer = null, { focus = true } = {}) {
   state.editingPrayerId = prayer?.id || null;
   renderPrayerRelatedNoteOptions(prayer?.related_note_id || '');
   els.prayerFormPanel?.classList.remove('hidden');
-  if (els.prayerFormTitle) els.prayerFormTitle.textContent = prayer?.id ? '編輯代禱事項' : '新增代禱事項';
+  if (els.prayerFormTitle) els.prayerFormTitle.textContent = prayer?.id ? '編輯禱告' : '新增禱告';
   if (els.prayerId) els.prayerId.value = prayer?.id || '';
   if (els.prayerTitleInput) els.prayerTitleInput.value = prayer?.title || '';
   if (els.prayerRequestInput) els.prayerRequestInput.value = prayer?.prayer_request || '';
@@ -6215,12 +6215,12 @@ async function savePrayer(event) {
   const title = sanitizeDisplayText(els.prayerTitleInput?.value || '');
   const prayerRequest = sanitizeDisplayText(els.prayerRequestInput?.value || '');
   if (!title) {
-    setPrayerFormFeedback('請先為這筆代禱事項加上一個標題。', true);
+    setPrayerFormFeedback('請先為這筆禱告加上一個標題。', true);
     els.prayerTitleInput?.focus();
     return;
   }
   if (!prayerRequest) {
-    setPrayerFormFeedback('請先寫下這筆代禱事項的內容，之後比較容易回顧。', true);
+    setPrayerFormFeedback('請先寫下這筆禱告的內容，之後比較容易回顧。', true);
     els.prayerRequestInput?.focus();
     return;
   }
@@ -6267,7 +6267,7 @@ async function savePrayer(event) {
     closePrayerForm();
     renderPrayerWorkspace();
     refreshAccountSyncUi({ isSignedIn: true });
-    showToast(id ? '代禱事項已更新。' : '代禱事項已儲存。');
+    showToast(id ? '禱告已更新。' : '禱告已儲存。');
   } catch (error) {
     const friendlyError = getPrayerFriendlyError(error);
     if (friendlyError) {
@@ -6297,7 +6297,7 @@ function renderPrayerCard(prayer) {
     <article class="prayer-card" data-prayer-id="${escapeHtml(String(prayer.id || ''))}" data-testid="prayer-card">
       <div class="prayer-card-header">
         <div>
-          <h3>${escapeHtml(prayer.title || '未命名代禱事項')}</h3>
+          <h3>${escapeHtml(prayer.title || '未命名禱告')}</h3>
           <div class="card-meta">
             <span>建立：${formatDate(prayer.created_at)}</span>
             <span>最近回顧：${prayer.last_reviewed_at ? formatDate(prayer.last_reviewed_at) : '尚未回顧'}</span>
@@ -6305,7 +6305,7 @@ function renderPrayerCard(prayer) {
         </div>
         <span class="prayer-status-badge prayer-status-${escapeHtml(normalizePrayerStatus(prayer.status))}">${escapeHtml(getPrayerStatusLabel(prayer.status))}</span>
       </div>
-      <p>${escapeHtml(getPrayerExcerpt(prayer.prayer_request, '尚未填寫代禱事項'))}</p>
+      <p>${escapeHtml(getPrayerExcerpt(prayer.prayer_request, '尚未填寫禱告內容'))}</p>
       ${relatedHtml ? `<div class="prayer-card-related">${relatedHtml}</div>` : ''}
       <div class="prayer-card-actions">
         <button class="ghost-btn small" type="button" data-edit-prayer="${escapeHtml(String(prayer.id || ''))}" data-testid="prayer-edit-button">編輯</button>
@@ -6348,7 +6348,7 @@ function renderPrayerWorkspace() {
     els.prayerList.textContent = state.prayerSyncError
       ? '禱告資料庫權限尚未完成設定，完成 Supabase grant 後重新同步即可使用。'
       : cloudReady
-        ? '目前還沒有禱告紀錄。可以先新增一筆代禱事項，持續記錄與回顧。'
+        ? '目前還沒有禱告紀錄。可以先新增一筆禱告。'
         : '禱告紀錄需要登入雲端帳號後才能同步。';
     return;
   }
@@ -9238,7 +9238,7 @@ function setView(viewName) {
   const isReaderView = viewName === 'reader';
   const titleMap = {
     dashboard: ['總覽', ''],
-    prayer: ['禱告與回顧', '記錄代禱事項，回顧神的恩典與帶領。'],
+    prayer: ['禱告與回顧', '記錄禱告與回顧，整理神的恩典與帶領。'],
     'note-reader': ['札記閱讀', '單純閱讀已寫下的札記，不進入編輯器。'],
     notes: ['寫札記', '專注寫下今天的領受、禱告與整理。'],
     'content-library': ['札記庫', '搜尋、篩選並挑選已寫下的札記，加入目前正在編排的書稿。'],
