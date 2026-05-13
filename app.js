@@ -6763,7 +6763,7 @@ function renderPrayerWorkspace() {
   if (els.prayerStatReviewing) els.prayerStatReviewing.textContent = String(reviewingCount);
   if (els.prayerStatAnswered) els.prayerStatAnswered.textContent = String(answeredCount);
   const cloudNoticeText = state.prayerSyncError
-    || '禱告紀錄會跟著雲端帳號同步。請登入 Supabase 帳號後使用，手機與桌機才能看到同一份資料。';
+    || '禱告紀錄會跟著雲端帳號同步。請登入雲端帳號後使用，手機與桌機才能看到同一份資料。';
   const cloudNoticeParagraph = els.prayerCloudNotice?.querySelector('p');
   if (cloudNoticeParagraph) cloudNoticeParagraph.textContent = cloudNoticeText;
   els.prayerCloudNotice?.classList.toggle('hidden', cloudReady && !state.prayerSyncError);

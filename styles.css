@@ -684,11 +684,19 @@ input:focus, textarea:focus, select:focus {
 .prayer-action-bar,
 .prayer-hero {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
   gap: 18px;
   min-width: 0;
 }
+.prayer-page-title { min-width: 0; }
+.prayer-page-title h2 {
+  margin: 2px 0 4px;
+  color: #203f45;
+  font-size: 24px;
+  line-height: 1.25;
+}
+.prayer-page-title p { margin: 0; }
 .prayer-hero h1 { margin: 4px 0 6px; font-size: 40px; color: #203f45; }
 .prayer-hero p { margin: 0; color: var(--muted); line-height: 1.7; }
 .prayer-stats-grid {
