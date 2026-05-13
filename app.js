@@ -15,6 +15,14 @@
 const APP_VERSION = '2026.05.13-01';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
+const SCRIPTURE_FETCH_TIMEOUT_MS = 12000;
+const SCRIPTURE_FETCH_MESSAGES = Object.freeze({
+  invalidReference: '請確認經文格式，例如：哥林多前書2:1 或 哥林多前書2:1-5。',
+  network: '經文暫時無法載入，可能是網路訊號不穩或連線中斷。請確認網路後再按一次「抓取經文」。',
+  notFound: '找不到這段經文，請確認書卷名稱、章節與節數是否正確。',
+  source: '經文資料暫時無法取得，請稍後再試。',
+  unknown: '經文暫時無法載入，請稍後再試。若持續發生，請回報當時輸入的經文範圍。',
+});
 
 const TEMPLATE_LABELS = {
   devotion: '靈修札記版',
@@ -7552,6 +7560,42 @@ function normalizeScriptureText(text = '') {
   return String(text || '').replace(/\s+/g, ' ').trim();
 }
 
+function createScriptureFetchError(type, reference = '', cause = null) {
+  const error = new Error(SCRIPTURE_FETCH_MESSAGES[type] || SCRIPTURE_FETCH_MESSAGES.unknown);
+  error.name = 'ScriptureFetchError';
+  error.type = type;
+  error.reference = reference;
+  error.cause = cause;
+  return error;
+}
+
+function isLikelyScriptureReference(reference = '') {
+  const normalized = String(reference || '').trim().replace(/\s+/g, '');
+  if (!normalized) return false;
+  if (!/[^\d:：,\-–—~～]/.test(normalized)) return false;
+  return /\d+\s*[:：]\s*\d+/.test(reference);
+}
+
+function getScriptureFetchMessage(error) {
+  if (error?.name === 'AbortError') return '';
+  if (error?.name === 'ScriptureFetchError') {
+    return SCRIPTURE_FETCH_MESSAGES[error.type] || SCRIPTURE_FETCH_MESSAGES.unknown;
+  }
+  if (!navigator.onLine) return SCRIPTURE_FETCH_MESSAGES.network;
+  if (error instanceof TypeError || /failed to fetch|load failed|network|fetch/i.test(String(error?.message || ''))) {
+    return SCRIPTURE_FETCH_MESSAGES.network;
+  }
+  return SCRIPTURE_FETCH_MESSAGES.unknown;
+}
+
+function isScriptureExpectedError(error) {
+  if (!error) return true;
+  return error.name === 'ScriptureFetchError'
+    || error.name === 'AbortError'
+    || error instanceof TypeError
+    || /failed to fetch|load failed|network|fetch/i.test(String(error?.message || ''));
+}
+
 function formatFetchedVerses(verses = []) {
   if (!Array.isArray(verses) || !verses.length) return '';
   return verses.map((verse, index) => {
@@ -7569,11 +7613,35 @@ function formatFetchedVerses(verses = []) {
 
 async function fetchScriptureReference(reference, signal) {
   if (state.scriptureCache.has(reference)) return state.scriptureCache.get(reference);
+  if (!isLikelyScriptureReference(reference)) {
+    throw createScriptureFetchError('invalidReference', reference);
+  }
   const url = `https://bible-api.com/${encodeURIComponent(reference)}?translation=cuv`;
-  const response = await fetch(url, { signal });
-  const data = await response.json();
+  const timeoutController = new AbortController();
+  const timeoutId = setTimeout(() => timeoutController.abort(), SCRIPTURE_FETCH_TIMEOUT_MS);
+  const abortHandler = () => timeoutController.abort();
+  signal?.addEventListener('abort', abortHandler, { once: true });
+  let response;
+  try {
+    response = await fetch(url, { signal: timeoutController.signal });
+  } catch (error) {
+    if (error?.name === 'AbortError' && signal?.aborted) throw error;
+    throw createScriptureFetchError('network', reference, error);
+  } finally {
+    clearTimeout(timeoutId);
+    signal?.removeEventListener('abort', abortHandler);
+  }
+  let data;
+  try {
+    data = await response.json();
+  } catch (error) {
+    throw createScriptureFetchError('source', reference, error);
+  }
   if (!response.ok || data.error) {
-    throw new Error(`找不到經文：${reference}`);
+    throw createScriptureFetchError(response.status === 404 || data.error ? 'notFound' : 'source', reference);
+  }
+  if (!data.verses?.length && !normalizeScriptureText(data.text)) {
+    throw createScriptureFetchError('notFound', reference);
   }
   const result = {
     query: data.reference || reference,
@@ -7587,6 +7655,12 @@ async function fetchAndRenderScriptures({ force = false, syncToContent = false }
   const references = normalizeScriptureReferences(els.noteScripture.value);
   if (!references.length) {
     resetScripturePreview();
+    return;
+  }
+  const invalidReference = references.find(reference => !isLikelyScriptureReference(reference));
+  if (invalidReference) {
+    resetScripturePreview();
+    setScriptureStatus(SCRIPTURE_FETCH_MESSAGES.invalidReference, true);
     return;
   }
   if (!force && els.scripturePreview.dataset.lastRefs === references.join('|')) return;
@@ -7615,8 +7689,8 @@ async function fetchAndRenderScriptures({ force = false, syncToContent = false }
   } catch (error) {
     if (error.name === 'AbortError') return;
     resetScripturePreview();
-    setScriptureStatus(error.message || '抓取經文失敗。', true);
-    throw error;
+    setScriptureStatus(getScriptureFetchMessage(error), true);
+    if (!isScriptureExpectedError(error)) throw error;
   } finally {
     if (state.scriptureAbortController === controller) state.scriptureAbortController = null;
   }
@@ -9776,6 +9850,9 @@ async function exportSelectedBookEpub() {
       libraryBookId: libraryBook?.id || '',
       message: exportMessage,
     };
+    state.bookDraftModalOpen = true;
+    state.bookDraftModalBookId = book.id;
+    refreshUi();
     renderExportSuccessActions(state.latestExportedBook);
     showToast(exportMessage);
   } finally {

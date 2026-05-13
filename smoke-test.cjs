@@ -387,6 +387,14 @@ async function run() {
     await clickElement(page, '.mobile-bottom-link[data-view="notes"]');
     await expectVisible(page, '#view-notes.view.active', '已由底部導覽進入札記頁');
     await assertNoHorizontalScroll(page, { label: 'smoke notes mobile' });
+    await page.fill('#note-scripture', '哥林多前書');
+    await clickElement(page, '#fetch-scripture-btn');
+    await expectVisible(page, '#scripture-fetch-status.error-text', '經文格式錯誤提示已顯示');
+    const invalidScriptureMessage = await page.locator('#scripture-fetch-status').textContent();
+    if (!invalidScriptureMessage || !invalidScriptureMessage.includes('請確認經文格式')) {
+      throw new Error(`經文格式錯誤提示不正確：${invalidScriptureMessage}`);
+    }
+    await page.fill('#note-scripture', '');
     results.push('已由底部導覽進入札記頁');
 
     await clickElement(page, '.mobile-bottom-link[data-view="dashboard"]');
