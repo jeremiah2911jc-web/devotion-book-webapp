@@ -3753,6 +3753,7 @@ function ensureConfirmDialogUi() {
 function openConfirmDialog({
   title = '確定要刪除嗎？',
   message = '這個動作無法復原。',
+  kickerText = '二次確認',
   confirmText = '確認刪除',
   cancelText = '取消',
   danger = true,
@@ -3760,6 +3761,8 @@ function openConfirmDialog({
   requiredTextLabel = '',
 } = {}) {
   const dialog = ensureConfirmDialogUi();
+  const kicker = dialog.modal.querySelector('.confirm-dialog-kicker');
+  if (kicker) kicker.textContent = kickerText;
   dialog.title.textContent = title;
   dialog.message.textContent = message;
   dialog.confirmBtn.textContent = confirmText;
@@ -10985,9 +10988,10 @@ async function downloadImportedLibraryBookEpub(bookId) {
 async function confirmCloudEpubDownload(book) {
   const bookId = book?.id || '';
   const confirmed = await openConfirmDialog({
-    title: '從雲端下載 EPUB？',
-    message: '此書需要從雲端下載 EPUB 檔案，可能增加流量。是否繼續？',
-    confirmText: '繼續下載',
+    kickerText: '下載確認',
+    title: '下載 EPUB？',
+    message: '系統會下載這本書的 EPUB 檔案，完成後可以在你的裝置上閱讀或保存。',
+    confirmText: '下載 EPUB',
     danger: false,
   });
   if (!confirmed) egressGuardWarn('cloudEpubDownload:cancelled', { bookId });
