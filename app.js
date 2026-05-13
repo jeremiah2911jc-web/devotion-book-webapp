@@ -7637,8 +7637,11 @@ async function fetchScriptureReference(reference, signal) {
   } catch (error) {
     throw createScriptureFetchError('source', reference, error);
   }
-  if (!response.ok || data.error) {
-    throw createScriptureFetchError(response.status === 404 || data.error ? 'notFound' : 'source', reference);
+  if (!response.ok) {
+    throw createScriptureFetchError(response.status === 404 ? 'notFound' : 'source', reference);
+  }
+  if (data.error) {
+    throw createScriptureFetchError('notFound', reference);
   }
   if (!data.verses?.length && !normalizeScriptureText(data.text)) {
     throw createScriptureFetchError('notFound', reference);
