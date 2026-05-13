@@ -9,6 +9,7 @@ const STORAGE_KEYS = {
   snapshots: 'devotion-app-snapshots',
   importedLibraryBooks: 'devotion-app-imported-library-books',
   currentNoteDraft: 'devotion-current-note-draft',
+  installPromptPrefs: 'devotion-app-install-prompt-prefs',
 };
 
 const NOTE_STATUS_DRAFT = 'draft';

@@ -9,10 +9,12 @@
   deviceId: 'devotion-app-device-id',
   autoBackupMeta: 'devotion-auto-backup-meta',
   autoBackups: 'devotion-auto-backups',
+  installPromptPrefs: 'devotion-app-install-prompt-prefs',
 };
 
-const APP_VERSION = '2026.05.12-07';
+const APP_VERSION = '2026.05.13-01';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
+const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
 
 const TEMPLATE_LABELS = {
   devotion: '靈修札記版',
@@ -218,6 +220,7 @@ function showAppUpdatePrompt(remote = {}) {
   ensureAppUpdatePromptUi();
   const remoteVersion = String(remote.version || '').trim();
   if (!remoteVersion || state.appVersion.dismissedVersion === remoteVersion) return;
+  hideInstallAppPrompt();
   state.appVersion.remote = remote;
   state.appVersion.updateAvailable = true;
   if (els.appUpdateVersionText) {
@@ -231,6 +234,7 @@ function hideAppUpdatePrompt({ dismiss = false } = {}) {
     state.appVersion.dismissedVersion = String(state.appVersion.remote.version);
   }
   els.appUpdatePrompt?.classList.add('hidden');
+  scheduleInstallPromptCheck(900);
 }
 
 function reloadForAppUpdate() {
@@ -276,6 +280,7 @@ async function checkAppVersion({ force = false } = {}) {
       } else {
         state.appVersion.updateAvailable = false;
         hideAppUpdatePrompt();
+        scheduleInstallPromptCheck(900);
       }
       return remote;
     } catch {
@@ -297,6 +302,238 @@ function bindAppVersionEvents() {
     if (document.visibilityState === 'visible') checkAppVersion().catch(() => {});
   });
   window.addEventListener('focus', () => checkAppVersion().catch(() => {}));
+}
+
+function getInstallPromptPrefs() {
+  const raw = loadJson(STORAGE_KEYS.installPromptPrefs, {});
+  return {
+    seenCount: Math.max(0, Number(raw?.seenCount || 0)),
+    dismissedPermanently: !!raw?.dismissedPermanently,
+    installed: !!raw?.installed,
+  };
+}
+
+function saveInstallPromptPrefs(nextPrefs = {}) {
+  const current = getInstallPromptPrefs();
+  saveJson(STORAGE_KEYS.installPromptPrefs, {
+    ...current,
+    ...nextPrefs,
+    seenCount: Math.max(0, Number(nextPrefs.seenCount ?? current.seenCount ?? 0)),
+  });
+}
+
+function isRunningInstalledApp() {
+  const standaloneMedia = window.matchMedia?.('(display-mode: standalone)')?.matches;
+  const overlayMedia = window.matchMedia?.('(display-mode: window-controls-overlay)')?.matches;
+  return !!(navigator.standalone || standaloneMedia || overlayMedia);
+}
+
+function getInstallPlatformInfo() {
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/i.test(ua);
+  const isWindows = /Windows/i.test(ua);
+  const isMac = /Macintosh|Mac OS X/i.test(ua) && !isIOS;
+  const isSafari = /^((?!chrome|android|crios|fxios|edgios).)*safari/i.test(ua);
+  if (isIOS) {
+    return {
+      key: 'ios',
+      canUsePrompt: false,
+      primaryText: '查看教學',
+      guide: 'iPhone / iPad 請用 Safari 開啟網站，點分享按鈕，再選擇「加入主畫面」。',
+    };
+  }
+  if (isAndroid) {
+    return {
+      key: 'android',
+      canUsePrompt: !!state.installPrompt.deferredPrompt,
+      primaryText: state.installPrompt.deferredPrompt ? '安裝 App' : '查看教學',
+      guide: 'Android 可用 Chrome 開啟網站，點「安裝應用程式」或「加入主畫面」。',
+    };
+  }
+  if (isWindows) {
+    return {
+      key: 'windows',
+      canUsePrompt: !!state.installPrompt.deferredPrompt,
+      primaryText: state.installPrompt.deferredPrompt ? '安裝 App' : '查看教學',
+      guide: 'Windows 可用 Chrome 或 Edge 的網址列安裝圖示，或從瀏覽器選單選擇安裝此網站為應用程式。',
+    };
+  }
+  if (isMac) {
+    return {
+      key: isSafari ? 'mac-safari' : 'mac',
+      canUsePrompt: !!state.installPrompt.deferredPrompt,
+      primaryText: state.installPrompt.deferredPrompt ? '安裝 App' : '查看教學',
+      guide: isSafari
+        ? 'Mac Safari 可將網站加入 Dock；Chrome 則可從網址列或選單安裝成應用程式。'
+        : 'Mac Chrome 可從網址列或選單安裝成應用程式；Safari 可將網站加入 Dock。',
+    };
+  }
+  return {
+    key: 'generic',
+    canUsePrompt: !!state.installPrompt.deferredPrompt,
+    primaryText: state.installPrompt.deferredPrompt ? '安裝 App' : '查看教學',
+    guide: '可從瀏覽器選單尋找「安裝應用程式」或「加入主畫面」，之後就能像 App 一樣開啟。',
+  };
+}
+
+function ensureInstallAppPromptUi() {
+  if (document.getElementById('install-app-prompt')) return;
+  const prompt = document.createElement('aside');
+  prompt.id = 'install-app-prompt';
+  prompt.className = 'install-app-prompt hidden';
+  prompt.dataset.testid = 'install-app-prompt';
+  prompt.setAttribute('role', 'status');
+  prompt.setAttribute('aria-live', 'polite');
+  prompt.innerHTML = `
+    <div class="install-app-icon" aria-hidden="true">
+      <img src="/assets/icons/icon-192.png" alt="" decoding="async" />
+    </div>
+    <div class="install-app-copy">
+      <strong>把靈修札記安裝成 App</strong>
+      <p>你可以把靈修札記加入手機主畫面或電腦桌面，之後就能像 App 一樣直接開啟。</p>
+      <p id="install-app-platform-guide" class="install-app-platform-guide"></p>
+    </div>
+    <div class="install-app-actions">
+      <button id="install-app-button" class="primary-btn" type="button" data-testid="install-app-button">安裝 App</button>
+      <button id="install-guide-button" class="ghost-btn" type="button" data-testid="install-guide-button">查看教學</button>
+      <button id="install-later-button" class="ghost-btn" type="button" data-testid="install-later-button">稍後</button>
+      <button id="install-never-button" class="ghost-btn subtle-action" type="button" data-testid="install-never-button">不再提醒</button>
+    </div>
+  `;
+  document.body.appendChild(prompt);
+  els.installAppPrompt = prompt;
+  els.installAppButton = document.getElementById('install-app-button');
+  els.installGuideButton = document.getElementById('install-guide-button');
+  els.installLaterButton = document.getElementById('install-later-button');
+  els.installNeverButton = document.getElementById('install-never-button');
+  els.installAppPlatformGuide = document.getElementById('install-app-platform-guide');
+}
+
+function updateInstallAppPromptUi() {
+  ensureInstallAppPromptUi();
+  const platform = getInstallPlatformInfo();
+  if (els.installAppButton) els.installAppButton.textContent = platform.primaryText;
+  if (els.installGuideButton) {
+    const primaryIsGuide = platform.primaryText === '查看教學';
+    els.installGuideButton.classList.toggle('hidden', primaryIsGuide);
+  }
+  if (els.installAppPlatformGuide) els.installAppPlatformGuide.textContent = platform.guide;
+}
+
+function hideInstallAppPrompt() {
+  state.installPrompt.visible = false;
+  els.installAppPrompt?.classList.add('hidden');
+}
+
+function isInstallPromptBlockedByUi() {
+  const authOpen = !!els.authInlinePanel && !els.authInlinePanel.classList.contains('hidden');
+  const accountOpen = !!els.accountSettingsModal && !els.accountSettingsModal.classList.contains('hidden');
+  const notePreviewOpen = !!els.notePreviewModal && !els.notePreviewModal.classList.contains('hidden');
+  const supportOpen = !!els.supportModal && !els.supportModal.classList.contains('hidden');
+  const updateOpen = !!els.appUpdatePrompt && !els.appUpdatePrompt.classList.contains('hidden');
+  const currentView = document.body.dataset.currentView || '';
+  return authOpen || accountOpen || notePreviewOpen || supportOpen || updateOpen || currentView === 'reader';
+}
+
+function shouldAutoShowInstallPrompt() {
+  if (!state.currentUser || state.passwordRecoveryActive) return false;
+  if (isRunningInstalledApp()) return false;
+  const prefs = getInstallPromptPrefs();
+  if (prefs.installed || prefs.dismissedPermanently) return false;
+  if (prefs.seenCount >= INSTALL_PROMPT_MAX_AUTO_SHOWS) return false;
+  if (state.installPrompt.visible || state.installPrompt.autoShownThisSession) return false;
+  if (isInstallPromptBlockedByUi()) return false;
+  return true;
+}
+
+function maybeShowInstallAppPrompt({ auto = true } = {}) {
+  if (auto && !shouldAutoShowInstallPrompt()) return false;
+  if (!auto && isRunningInstalledApp()) {
+    showToast('目前看起來已經是 App 開啟模式。');
+    return false;
+  }
+  ensureInstallAppPromptUi();
+  updateInstallAppPromptUi();
+  if (auto) {
+    const prefs = getInstallPromptPrefs();
+    saveInstallPromptPrefs({ seenCount: Math.min(INSTALL_PROMPT_MAX_AUTO_SHOWS, prefs.seenCount + 1) });
+    state.installPrompt.autoShownThisSession = true;
+  }
+  state.installPrompt.visible = true;
+  els.installAppPrompt?.classList.remove('hidden');
+  return true;
+}
+
+function scheduleInstallPromptCheck(delayMs = 1200) {
+  clearTimeout(state.installPrompt.timer);
+  state.installPrompt.timer = setTimeout(() => {
+    maybeShowInstallAppPrompt({ auto: true });
+  }, delayMs);
+}
+
+function openInstallGuide() {
+  hideInstallAppPrompt();
+  closeAccountSettingsModal();
+  setView('manual');
+  setTimeout(() => {
+    const section = document.getElementById('manual-install-app-section');
+    section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 80);
+}
+
+async function handleInstallAppClick() {
+  if (!state.installPrompt.deferredPrompt) {
+    openInstallGuide();
+    return;
+  }
+  const promptEvent = state.installPrompt.deferredPrompt;
+  state.installPrompt.deferredPrompt = null;
+  els.installAppButton?.toggleAttribute('disabled', true);
+  try {
+    await promptEvent.prompt();
+    const choice = await promptEvent.userChoice;
+    if (choice?.outcome === 'accepted') {
+      saveInstallPromptPrefs({ installed: true, dismissedPermanently: true });
+      hideInstallAppPrompt();
+      showToast('已開始安裝 App。');
+    } else {
+      hideInstallAppPrompt();
+      showToast('稍後仍可從帳號設定查看安裝教學。');
+    }
+  } catch (error) {
+    openInstallGuide();
+  } finally {
+    els.installAppButton?.toggleAttribute('disabled', false);
+    updateInstallAppPromptUi();
+  }
+}
+
+function bindInstallPromptEvents() {
+  ensureInstallAppPromptUi();
+  if (state.installPrompt.eventsBound) return;
+  state.installPrompt.eventsBound = true;
+  window.addEventListener('beforeinstallprompt', (event) => {
+    event.preventDefault();
+    state.installPrompt.deferredPrompt = event;
+    updateInstallAppPromptUi();
+    scheduleInstallPromptCheck(500);
+  });
+  window.addEventListener('appinstalled', () => {
+    state.installPrompt.deferredPrompt = null;
+    saveInstallPromptPrefs({ installed: true, dismissedPermanently: true });
+    hideInstallAppPrompt();
+  });
+  els.installAppButton?.addEventListener('click', () => handleInstallAppClick().catch(handleError));
+  els.installGuideButton?.addEventListener('click', openInstallGuide);
+  els.installLaterButton?.addEventListener('click', () => {
+    hideInstallAppPrompt();
+    state.installPrompt.autoShownThisSession = true;
+  });
+  els.installNeverButton?.addEventListener('click', () => {
+    saveInstallPromptPrefs({ dismissedPermanently: true });
+    hideInstallAppPrompt();
+  });
 }
 
 function buildMergedConfig(raw = null) {
@@ -534,6 +771,7 @@ const els = {
   accountUpdatePasswordBtn: document.getElementById('account-update-password-btn'),
   accountCancelPasswordBtn: document.getElementById('account-cancel-password-btn'),
   accountPasswordMessage: document.getElementById('account-password-message'),
+  accountInstallGuideLink: document.getElementById('account-install-guide-link'),
   accountCloudActions: document.getElementById('account-cloud-actions'),
   accountCloudHint: document.getElementById('account-cloud-hint'),
   goSnapshotsBtn: document.getElementById('go-snapshots-btn'),
@@ -551,6 +789,12 @@ const els = {
   bookSaveFeedback: document.getElementById('book-save-feedback'),
   importEpubBtn: document.getElementById('import-epub-btn'),
   importEpubInput: document.getElementById('import-epub-input'),
+  installAppPrompt: null,
+  installAppButton: null,
+  installGuideButton: null,
+  installLaterButton: null,
+  installNeverButton: null,
+  installAppPlatformGuide: null,
 };
 
 function removeRetiredInterfaceElements() {
@@ -725,6 +969,13 @@ const state = {
     acceptedVersion: '',
     updateAvailable: false,
     eventsBound: false,
+  },
+  installPrompt: {
+    deferredPrompt: null,
+    visible: false,
+    eventsBound: false,
+    autoShownThisSession: false,
+    timer: null,
   },
   epubDownloadPromises: new Map(),
   backupImportPreview: {
@@ -1830,12 +2081,13 @@ function ensureOperationManualUi() {
             <li><a href="#manual-reader">十二、閱讀器</a></li>
             <li><a href="#manual-today-devotion">十三、今日默想</a></li>
             <li><a href="#manual-mobile">十四、手機 / 平板使用方式</a></li>
-            <li><a href="#manual-account-data">十五、帳號設定與資料</a></li>
-            <li><a href="#manual-support-receipt">十六、支持平台與收款證明</a></li>
-            <li><a href="#manual-faq">十七、常見問題</a></li>
-            <li><a href="#manual-feedback">十八、使用問題與意見回饋</a></li>
-            <li><a href="#manual-admin-backup">十九、管理者附錄</a></li>
-            <li><a href="#manual-closing-note">二十、給使用者的一點提醒</a></li>
+            <li><a href="#manual-install-app-section">十五、把靈修札記安裝成 App</a></li>
+            <li><a href="#manual-account-data">十六、帳號設定與資料</a></li>
+            <li><a href="#manual-support-receipt">十七、支持平台與收款證明</a></li>
+            <li><a href="#manual-faq">十八、常見問題</a></li>
+            <li><a href="#manual-feedback">十九、使用問題與意見回饋</a></li>
+            <li><a href="#manual-admin-backup">二十、管理者附錄</a></li>
+            <li><a href="#manual-closing-note">二十一、給使用者的一點提醒</a></li>
           </ul>
         </section>
 
@@ -2128,25 +2380,69 @@ function ensureOperationManualUi() {
             <p>在手機上編輯札記、整理章節或設定成書資料時，建議先確認儲存成功再離開頁面。若遇到畫面沒有更新，可先重新整理頁面，再回到原本功能確認。</p>
           </section>
 
+          <section id="manual-install-app-section" class="manual-section" data-testid="manual-install-app-section">
+            <h2>十五、把靈修札記安裝成 App</h2>
+            <p>靈修札記成書系統可以像 App 一樣放在手機主畫面或電腦桌面。這只是建立一個方便開啟的入口，不會改變你的帳號，也不會刪除或搬移資料。</p>
+            <div class="manual-install-grid">
+              <article class="manual-install-card">
+                <h3>iPhone / iPad</h3>
+                <ol>
+                  <li>請用 Safari 開啟網站。</li>
+                  <li>點畫面下方或上方的分享按鈕。</li>
+                  <li>選擇「加入主畫面」。</li>
+                  <li>之後可從主畫面直接開啟。</li>
+                </ol>
+              </article>
+              <article class="manual-install-card">
+                <h3>Android</h3>
+                <ol>
+                  <li>用 Chrome 開啟網站。</li>
+                  <li>點「安裝應用程式」或「加入主畫面」。</li>
+                  <li>完成後可像 App 一樣開啟。</li>
+                </ol>
+              </article>
+              <article class="manual-install-card">
+                <h3>Windows</h3>
+                <ol>
+                  <li>用 Chrome 或 Edge 開啟網站。</li>
+                  <li>點網址列右側的安裝圖示。</li>
+                  <li>或從瀏覽器選單選擇「安裝此網站為應用程式」。</li>
+                  <li>之後可從桌面或開始選單開啟。</li>
+                </ol>
+              </article>
+              <article class="manual-install-card">
+                <h3>Mac</h3>
+                <ol>
+                  <li>Safari 可將網站加入 Dock。</li>
+                  <li>Chrome 可從網址列或選單安裝成應用程式。</li>
+                  <li>之後可從 Dock、Launchpad 或應用程式列表開啟。</li>
+                </ol>
+              </article>
+            </div>
+            <p class="manual-install-note">如果網站圖示已更新，但桌面或主畫面仍顯示舊圖，通常是瀏覽器或系統快取。這不代表資料不見，也不代表帳號壞掉。可以先關閉後重新開啟；若仍是舊圖示，可移除舊捷徑後重新加入主畫面或重新安裝 PWA。重新安裝不會刪除帳號資料，雲端資料仍會跟帳號同步。</p>
+          </section>
+
           <section id="manual-account-data" class="manual-section">
-            <h2>十五、帳號設定與資料</h2>
+            <h2>十六、帳號設定與資料</h2>
             <p>登入後，畫面會顯示帳號資訊與同步狀態。桌機可從側邊欄帳號卡查看簡潔同步狀態、按「同步」，也可進入「帳號設定」或「登出」；手機可在總覽中的帳號區塊進入「帳號設定」，並在帳號設定裡查看同步狀態與手動同步。</p>
-            <p>「帳號設定」可以查看目前帳號、上傳或移除頭像、修改密碼、上傳本機資料、下載雲端備份，也可以登出。若目前帳號有管理權限，帳號設定中也會顯示前往管理後台的入口。</p>
+            <p>「帳號設定」可以查看目前帳號、查看安裝成 App / 加入主畫面教學、上傳或移除頭像、修改密碼、上傳本機資料、下載雲端備份，也可以登出。若目前帳號有管理權限，帳號設定中也會顯示前往管理後台的入口。</p>
             <p>若目前使用雲端登入，札記、禱告、選稿編排與書櫃資料會依同步狀態與網路狀況保存。若使用本機模式、離線，或某些外部匯入資料，資料可能只保存在目前裝置與瀏覽器中。</p>
             <p>閱讀位置、外部 EPUB 與部分使用偏好可能依目前裝置保存。清除瀏覽器資料、更換裝置或更換瀏覽器前，建議先確認重要資料已有備份或下載檔案。</p>
           </section>
 
           <section id="manual-support-receipt" class="manual-section">
-            <h2>十六、支持平台與收款證明</h2>
+            <h2>十七、支持平台與收款證明</h2>
             <p>頁面下方有「支持平台／支持事工」入口。點開後可以查看支持資訊，也可以使用「申請收款證明」填寫申請表。</p>
             <p>收款證明申請表會請你填寫姓名或收據抬頭、Email、支持金額、轉帳日期、匯款帳號後五碼與備註。送出後，系統會通知平台管理端，再依你填寫的 Email 聯繫與處理。</p>
             <p>收款證明是支持款項收款紀錄，不作為稅務扣抵憑證。送出前請確認金額、日期與 Email 正確。</p>
           </section>
 
           <section id="manual-faq" class="manual-section">
-            <h2>十七、常見問題</h2>
+            <h2>十八、常見問題</h2>
             <div class="manual-faq-list">
               <div class="manual-faq-item"><h3>網站更新後需要重新安裝嗎？</h3><p>不需要。若系統更新，畫面會出現「系統已有新版本」提示，點「立即更新」即可套用新版。iPhone、Android、Mac、Windows 都適用。</p></div>
+              <div class="manual-faq-item"><h3>安裝成 App 後，資料會另外存一份嗎？</h3><p>不會。安裝只是多一個開啟入口，資料仍跟著你的帳號與目前同步狀態保存。重新安裝 PWA 或重新加入主畫面，不會刪除雲端帳號資料。</p></div>
+              <div class="manual-faq-item"><h3>桌面或主畫面圖示沒有更新怎麼辦？</h3><p>通常是系統或瀏覽器快取。可以先關閉後重新開啟；若仍顯示舊圖示，可移除舊捷徑後重新加入主畫面，或重新安裝 PWA。</p></div>
               <div class="manual-faq-item"><h3>找不到剛寫的札記怎麼辦？</h3><p>如果剛剛按的是「儲存草稿」，請回到「寫札記」的「我的草稿」查看。若已儲存為正式札記，請到「札記閱讀」或「札記庫」確認。若有使用搜尋或篩選，請點「重設篩選」或「清除篩選」。</p></div>
               <div class="manual-faq-item"><h3>草稿可以沒有標題嗎？</h3><p>可以。草稿可以先沒有主題，畫面會以「未命名草稿」顯示。完成後要儲存為正式札記時，建議先補上主題，方便日後閱讀與編排。</p></div>
               <div class="manual-faq-item"><h3>草稿會出現在札記閱讀、選稿或成書裡嗎？</h3><p>不會。草稿只會保存在「寫札記」的草稿區，不會進入札記閱讀，不會出現在選稿編排候選，也不會匯出到 EPUB。完成後儲存為正式札記，才會進入這些流程。</p></div>
@@ -2175,21 +2471,21 @@ function ensureOperationManualUi() {
           </section>
 
           <section id="manual-feedback" class="manual-section">
-            <h2>十八、使用問題與意見回饋</h2>
+            <h2>十九、使用問題與意見回饋</h2>
             <p>如果你在使用靈修札記成書系統時遇到問題，或有功能建議，歡迎來信：</p>
             <p class="manual-feedback-email"><button class="footer-email-copy" type="button" data-copy-support-email>${SUPPORT_EMAIL}</button></p>
             <p>來信時可以簡單附上使用裝置、遇到的頁面、問題描述。若方便，也可以附上截圖，方便我們判斷問題。</p>
           </section>
 
           <section id="manual-admin-backup" class="manual-section">
-            <h2>十九、管理者附錄</h2>
+            <h2>二十、管理者附錄</h2>
             <p>管理後台主要供授權管理者使用，一般使用者平常不需要進入，也不需要操作備份、還原或平台用量等管理功能。</p>
             <p>若帳號沒有管理權限，系統會回到一般頁面或顯示無權限提示。若你只是撰寫、閱讀或整理自己的札記，可以略過本節。</p>
             <p>備份、還原與平台用量檢查都屬於管理操作，請由管理者在確認目的與影響後再使用。</p>
           </section>
 
           <section id="manual-closing-note" class="manual-section manual-closing">
-            <h2>二十、給使用者的一點提醒</h2>
+            <h2>二十一、給使用者的一點提醒</h2>
             <p>這套系統的目的，是幫助你把平常寫下的內容好好保存下來。</p>
             <p>不用一開始就想著要完成一本很完整的書。可以先從一篇札記開始，慢慢累積，慢慢整理。</p>
             <p>當那些日子裡的領受、禱告、眼淚、感恩與提醒被留下來，它們有一天可能就會成為一本值得回頭閱讀的書。</p>
@@ -4439,6 +4735,7 @@ function openAccountSettingsModal() {
     showToast('請先登入後再進入帳號設定。');
     return;
   }
+  hideInstallAppPrompt();
   syncAccountSettingsModal();
   setAccountPasswordFormExpanded(false);
   document.body.classList.add('account-settings-open');
@@ -4512,11 +4809,13 @@ async function bootstrap() {
   ensureOperationManualUi();
   ensureBookDraftWorkspaceUi();
   ensureAppUpdatePromptUi();
+  ensureInstallAppPromptUi();
   document.body.dataset.currentView = document.querySelector('.view.active')?.id?.replace('view-', '') || 'dashboard';
   syncConfigInputs();
   initSupabase();
   bindEvents();
   bindAppVersionEvents();
+  bindInstallPromptEvents();
   if (state.supabase) {
     const recoveryUrlState = getPasswordRecoveryUrlState();
     const authRedirectResult = await handleSupabaseAuthRedirect();
@@ -4599,6 +4898,7 @@ function bindEvents() {
   els.openAccountSettingsButtons.forEach(button => button.addEventListener('click', openAccountSettingsModal));
   els.accountSettingsBackdrop?.addEventListener('click', closeAccountSettingsModal);
   els.closeAccountSettingsBtn?.addEventListener('click', closeAccountSettingsModal);
+  els.accountInstallGuideLink?.addEventListener('click', openInstallGuide);
   els.accountPasswordToggleBtn?.addEventListener('click', () => setAccountPasswordFormExpanded(true));
   els.accountCancelPasswordBtn?.addEventListener('click', () => setAccountPasswordFormExpanded(false));
   els.accountUpdatePasswordBtn?.addEventListener('click', () => handleAccountPasswordUpdate().catch(handleError));
@@ -6165,6 +6465,11 @@ function refreshUi() {
   renderReaderSettings();
   syncNoteStatusUi();
   syncCurrentNoteDraftNotice();
+  if (isSignedIn) {
+    scheduleInstallPromptCheck();
+  } else {
+    hideInstallAppPrompt();
+  }
 }
 
 function getVisiblePrayerRecords() {

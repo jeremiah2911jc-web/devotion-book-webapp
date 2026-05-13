@@ -4,6 +4,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { chromium } = require('playwright');
 const {
+  STORAGE_KEYS,
   seedLocalUserState,
   attachConsoleErrorCollector,
   assertNoConsoleErrors,
@@ -330,6 +331,16 @@ async function run() {
     await seedLocalUserState(page, { user: seedUser, notes: seedNotes, books: seedBooks, snapshots: seedSnapshots });
     await page.reload({ waitUntil: 'networkidle', timeout: 20000 });
     await expectVisible(page, '#view-dashboard.view.active', '首頁 dashboard 已顯示');
+    await expectVisible(page, '[data-testid="install-app-prompt"]', '安裝 App 提示已顯示');
+    const installGuideText = await page.locator('#install-app-platform-guide').textContent();
+    if (!installGuideText || !installGuideText.includes('Safari') || !installGuideText.includes('加入主畫面')) {
+      throw new Error(`iOS 安裝提示教學文字錯誤：${installGuideText}`);
+    }
+    await clickElement(page, '[data-testid="install-later-button"]');
+    await page.waitForFunction(() => document.querySelector('[data-testid="install-app-prompt"]')?.classList.contains('hidden'), { timeout: 10000 });
+    const installPromptSeenCount = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) || '{}').seenCount || 0, STORAGE_KEYS.installPromptPrefs);
+    if (installPromptSeenCount !== 1) throw new Error(`安裝提示次數未正確累計：${installPromptSeenCount}`);
+    results.push('安裝 App 提示、iOS 加入主畫面教學與稍後次數累計正常');
     await assertNoHorizontalScroll(page, { label: 'smoke dashboard mobile' });
     await captureNamedScreenshots(page);
     await page.screenshot({ path: path.join(artifactsDir, 'homepage-mobile.png'), fullPage: true });
@@ -390,6 +401,7 @@ async function run() {
     await expectVisible(page, '#account-settings-modal:not(.hidden)', '帳號設定已開啟');
     await expectVisible(page, '[data-testid="account-settings-sync-status"]', '帳號設定同步狀態已顯示');
     await expectVisible(page, '[data-testid="account-settings-sync-button"]', '帳號設定同步按鈕已顯示');
+    await expectVisible(page, '[data-testid="account-install-guide-link"]', '帳號設定安裝教學入口已顯示');
     const syncDisabledObserved = await page.evaluate(() => new Promise((resolve) => {
       const button = document.querySelector('[data-testid="account-settings-sync-button"]');
       if (!button) return resolve(false);
@@ -407,7 +419,11 @@ async function run() {
     if (!syncDisabledObserved) throw new Error('帳號設定同步按鈕未觀察到 disabled 狀態');
     await expectVisible(page, '#toast:not(.hidden)', '同步提示已出現');
     results.push('帳號設定同步按鈕可用，且同步中會停用');
-    await clickElement(page, '#close-account-settings-btn');
+    await clickElement(page, '[data-testid="account-install-guide-link"]');
+    await expectVisible(page, '#view-manual.view.active', '帳號設定安裝教學入口可進入操作手冊');
+    await expectVisible(page, '[data-testid="manual-install-app-section"]', '操作手冊安裝 App 章節已顯示');
+    results.push('帳號設定安裝教學入口與操作手冊章節正常');
+    await clickElement(page, '[data-view="dashboard"]');
 
     const accountUiExists = await Promise.all([
       page.locator('#account-settings-modal').count(),
