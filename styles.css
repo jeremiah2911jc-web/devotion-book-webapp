@@ -8328,11 +8328,11 @@ body[data-current-view="reader"] .app-update-prompt {
   bottom: calc(92px + env(safe-area-inset-bottom));
   z-index: 9998;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 14px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 12px 14px;
   width: auto;
-  max-width: min(640px, calc(100vw - 32px));
+  max-width: min(420px, calc(100vw - 32px));
   margin: 0 auto;
   padding: 14px;
   border: 1px solid rgba(191, 211, 208, 0.88);
@@ -8367,6 +8367,7 @@ body[data-current-view="reader"] .install-app-prompt {
 
 .install-app-copy {
   min-width: 0;
+  max-width: 100%;
 }
 
 .install-app-copy strong {
@@ -8381,6 +8382,9 @@ body[data-current-view="reader"] .install-app-prompt {
   color: #536866;
   font-size: 0.9rem;
   line-height: 1.5;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word;
 }
 
 .install-app-platform-guide {
@@ -8388,9 +8392,10 @@ body[data-current-view="reader"] .install-app-prompt {
 }
 
 .install-app-actions {
+  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 8px;
 }
 
@@ -8405,14 +8410,13 @@ body[data-current-view="reader"] .install-app-prompt {
     left: auto;
     right: 24px;
     bottom: 24px;
-    width: min(440px, calc(100vw - 48px));
+    width: min(420px, calc(100vw - 48px));
     max-width: none;
   }
 }
 
 @media (max-width: 720px) {
   .install-app-prompt {
-    grid-template-columns: auto minmax(0, 1fr);
     bottom: calc(88px + env(safe-area-inset-bottom));
     padding: 13px;
   }
@@ -8424,7 +8428,6 @@ body[data-current-view="reader"] .install-app-prompt {
   }
 
   .install-app-actions {
-    grid-column: 1 / -1;
     justify-content: stretch;
   }
 

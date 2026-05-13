@@ -336,6 +336,23 @@ async function run() {
     if (!installGuideText || !installGuideText.includes('Safari') || !installGuideText.includes('加入主畫面')) {
       throw new Error(`iOS 安裝提示教學文字錯誤：${installGuideText}`);
     }
+    const installPromptLayout = await page.evaluate(() => {
+      const prompt = document.querySelector('[data-testid="install-app-prompt"]');
+      const copy = document.querySelector('.install-app-copy');
+      const actions = document.querySelector('.install-app-actions');
+      return {
+        promptWidth: Math.round(prompt?.getBoundingClientRect().width || 0),
+        copyWidth: Math.round(copy?.getBoundingClientRect().width || 0),
+        actionsTop: Math.round(actions?.getBoundingClientRect().top || 0),
+        copyBottom: Math.round(copy?.getBoundingClientRect().bottom || 0),
+      };
+    });
+    if (installPromptLayout.copyWidth < 220) {
+      throw new Error(`安裝提示文字欄位過窄：${JSON.stringify(installPromptLayout)}`);
+    }
+    if (installPromptLayout.actionsTop < installPromptLayout.copyBottom - 1) {
+      throw new Error(`安裝提示按鈕壓縮文字區：${JSON.stringify(installPromptLayout)}`);
+    }
     await clickElement(page, '[data-testid="install-later-button"]');
     await page.waitForFunction(() => document.querySelector('[data-testid="install-app-prompt"]')?.classList.contains('hidden'), { timeout: 10000 });
     const installPromptSeenCount = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) || '{}').seenCount || 0, STORAGE_KEYS.installPromptPrefs);
