@@ -12,7 +12,7 @@
   installPromptPrefs: 'devotion-app-install-prompt-prefs',
 };
 
-const APP_VERSION = '2026.05.13-01';
+const APP_VERSION = '2026.05.13-02';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
 const SCRIPTURE_FETCH_TIMEOUT_MS = 12000;
