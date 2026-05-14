@@ -89,7 +89,7 @@
             <button id="gate-save-config-btn" class="secondary-btn" type="button">儲存設定</button>
             <button id="gate-clear-config-btn" class="ghost-btn" type="button">清除設定</button>
           </div>
-          <p class="caption">若已完成 Supabase 專案與 Auth 設定，儲存後就會啟用正式註冊與登入。</p>
+          <p class="caption">若已完成雲端登入設定，儲存後就會啟用正式註冊與登入。</p>
         </section>
       </div>
     </div>
@@ -161,7 +161,7 @@
             <button id="save-config-btn" class="secondary-btn" type="button">儲存設定</button>
             <button id="clear-config-btn" class="ghost-btn" type="button">清除設定</button>
           </div>
-          <p class="caption">若已完成 Supabase 專案與 Auth 設定，儲存後就會啟用正式註冊與登入。</p>
+          <p class="caption">若已完成雲端登入設定，儲存後就會啟用正式註冊與登入。</p>
         </div>
       </section>
 
@@ -184,7 +184,7 @@
           <div class="row wrap gap-sm">
             <button id="reset-password-btn" class="ghost-btn subtle-action" type="button">忘記密碼</button>
           </div>
-          <p class="caption">如要改用 Supabase Auth，請使用信箱與密碼登入。</p>
+          <p class="caption">請使用信箱與密碼登入。</p>
         </div>
         <div id="auth-user" class="hidden">
           <p id="current-user-text" class="caption">尚未登入</p>
@@ -359,7 +359,7 @@
           </header>
 
           <section class="prayer-cloud-notice panel compact hidden" id="prayer-cloud-notice" aria-live="polite">
-            <p>禱告紀錄會跟著雲端帳號同步。請登入雲端帳號後使用，手機與桌機才能看到同一份資料。</p>
+            <p>請先登入雲端帳號同步禱告紀錄。</p>
           </section>
 
           <section class="prayer-stats-grid" aria-label="禱告統計">
@@ -385,7 +385,7 @@
             <div class="panel-header">
               <div>
                 <h2 id="prayer-form-title">新增禱告</h2>
-                <p>把需要持續記念的事項留下來，之後再補上回顧。</p>
+                <p>記下禱告，也保留後續回顧。</p>
               </div>
             </div>
             <form id="prayer-form" class="form-stack">
@@ -411,7 +411,7 @@
                 </label>
               </div>
               <label>後續回顧
-                <textarea id="prayer-review-input" rows="3" placeholder="之後回來補充事情的發展、提醒與整理。" data-testid="prayer-review-input"></textarea>
+                <textarea id="prayer-review-input" rows="3" placeholder="補充後續發展與回顧。" data-testid="prayer-review-input"></textarea>
               </label>
               <label>回顧神的恩典與帶領
                 <textarea id="prayer-grace-reflection-input" rows="3" placeholder="回顧這段歷程中看見的恩典、帶領與學習。" data-testid="prayer-grace-reflection-input"></textarea>
@@ -523,11 +523,11 @@
               <div class="note-status-row">
                 <span id="note-status-text" class="note-status-text">狀態：正式札記</span>
               </div>
-              <p class="caption note-draft-hint">草稿只會保存在草稿區，不會出現在札記閱讀與成書編排中。</p>
+              <p class="caption note-draft-hint">草稿不會出現在閱讀與成書中。</p>
               <label>經文
                 <input id="note-scripture" placeholder="例：詩篇 103:1-11；約翰福音 3:16-18" data-testid="note-scripture" />
               </label>
-              <p class="caption scripture-hint">可輸入多處經文，請用分號「；」或「;」分隔。輸入後會自動抓取和預覽經文。</p>
+              <p class="caption scripture-hint">多處經文請用分號分隔。</p>
               <div class="row gap-sm wrap scripture-tools">
                 <button type="button" id="fetch-scripture-btn" class="ghost-btn small">抓取經文</button>
                 <label class="checkbox-inline">
@@ -550,7 +550,7 @@
                 <input id="note-show-summary" type="checkbox" data-testid="note-show-summary" />
                 <span>閱讀與成書時顯示摘要</span>
               </label>
-              <p class="caption note-summary-hint">短篇札記可關閉摘要，讓閱讀畫面更簡潔；摘要文字會保留在表單中。</p>
+              <p class="caption note-summary-hint">關閉後不顯示，文字仍會保留。</p>
               <div class="markdown-toolbar" role="toolbar" aria-label="札記 Markdown 工具列">
                 <button type="button" id="markdown-heading-btn" class="ghost-btn small markdown-toolbar-btn">小標題</button>
                 <button type="button" id="markdown-bold-btn" class="ghost-btn small markdown-toolbar-btn">粗體</button>
@@ -568,13 +568,13 @@
                 <textarea id="note-content" rows="14" placeholder="輸入靈修札記全文" data-testid="note-content"></textarea>
               </label>
               <label><span class="field-label-row"><span>今日禱告</span><span class="desktop-voice-input-hint">語音輸入：Windows 鍵 + H；Mac 使用聽寫。</span></span>
-                <textarea id="note-prayer" rows="5" placeholder="可以在這裡寫下這篇札記最後想向神禱告的內容。" data-testid="note-prayer"></textarea>
+                <textarea id="note-prayer" rows="5" placeholder="寫下這篇札記最後想向神禱告的內容。" data-testid="note-prayer"></textarea>
               </label>
               <label class="checkbox-inline note-prayer-toggle">
                 <input id="note-show-prayer" type="checkbox" data-testid="note-show-prayer" />
                 <span>閱讀與成書時顯示禱告</span>
               </label>
-              <p class="caption note-prayer-hint">若這段禱告較私人，可以取消顯示，內容仍會保存在札記中。</p>
+              <p class="caption note-prayer-hint">關閉後不顯示，內容仍會保留。</p>
               <div class="row gap-sm wrap note-save-actions">
                 <button type="button" id="save-note-draft-btn" class="ghost-btn" data-testid="note-save-draft">儲存草稿</button>
                 <button type="button" id="publish-note-btn" class="primary-btn" data-testid="note-publish">儲存為正式札記</button>
@@ -586,7 +586,7 @@
               <div class="panel-header">
                 <div>
                   <h3 id="note-drafts-title">我的草稿</h3>
-                  <p class="caption">尚未完成的札記可先放在這裡，之後再回來繼續編輯。</p>
+                  <p class="caption">尚未完成的札記會保存在這裡。</p>
                 </div>
               </div>
               <div id="note-drafts-list" class="list-stack note-drafts-list empty-state" data-testid="note-drafts-list">目前沒有草稿。</div>
@@ -882,7 +882,7 @@
             <button id="push-local-to-cloud-btn" class="ghost-btn" type="button">上傳本機資料</button>
             <button id="download-backup-btn" class="ghost-btn" type="button">下載雲端備份</button>
           </div>
-          <p id="account-cloud-hint" class="caption">登入雲端帳號後，可把本機資料上傳或下載雲端備份。</p>
+          <p id="account-cloud-hint" class="caption">登入雲端帳號後，可上傳本機資料或下載雲端備份。</p>
         </div>
         <div class="account-settings-section account-settings-signout-section">
           <span class="account-settings-label">登出</span>
@@ -901,7 +901,6 @@
       <div class="panel-header note-preview-modal-header">
         <div>
           <h2 id="note-preview-title">文章預覽</h2>
-          <p class="modal-intro">儲存前先確認標題、摘要與段落讀起來是否自然。</p>
         </div>
         <button id="close-note-preview-btn" class="ghost-btn small" type="button" data-testid="note-preview-close">關閉</button>
       </div>
@@ -932,7 +931,7 @@
             <strong>82110000769095</strong>
           </button>
         </div>
-        <p class="support-receipt-note">完成轉帳後，請填寫收款證明申請。系統會將申請資料寄送給管理者，確認入帳後再寄出支持款項收款證明。</p>
+        <p class="support-receipt-note">完成轉帳後，可申請支持款項收款證明。</p>
         <div class="support-modal-actions">
           <button id="open-support-receipt-form-btn" class="secondary-btn" type="button">申請收款證明</button>
           <button class="ghost-btn" type="button" data-copy-support-payment="82110000769095" data-copy-label="轉帳帳號">複製帳號</button>
@@ -940,7 +939,7 @@
       </section>
       <section id="support-receipt-section" class="support-modal-section hidden">
         <h3>申請支持款項收款證明</h3>
-        <p class="modal-intro">請填寫轉帳資訊。系統會將申請資料寄送給管理者，確認入帳後再依您填寫的 Email 處理支持款項收款證明。</p>
+        <p class="modal-intro">請填寫轉帳資訊，平台確認後會依 Email 聯繫。</p>
         <form id="support-receipt-form" class="support-receipt-form" novalidate>
           <div class="support-receipt-grid">
             <label>姓名或收據抬頭

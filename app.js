@@ -18,10 +18,10 @@ const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
 const SCRIPTURE_FETCH_TIMEOUT_MS = 12000;
 const SCRIPTURE_FETCH_MESSAGES = Object.freeze({
   invalidReference: '請確認經文格式，例如：哥林多前書2:1 或 哥林多前書2:1-5。',
-  network: '經文暫時無法載入，可能是網路訊號不穩或連線中斷。請確認網路後再按一次「抓取經文」。',
-  notFound: '找不到這段經文，請確認書卷名稱、章節與節數是否正確。',
+  network: '經文暫時無法載入，請確認網路後再試。',
+  notFound: '找不到這段經文。',
   source: '經文資料暫時無法取得，請稍後再試。',
-  unknown: '經文暫時無法載入，請稍後再試。若持續發生，請回報當時輸入的經文範圍。',
+  unknown: '經文暫時無法載入，請稍後再試。',
 });
 
 const TEMPLATE_LABELS = {
@@ -1210,10 +1210,10 @@ function isPrayerStatusConstraintError(error) {
 
 function getPrayerFriendlyError(error) {
   if (isPrayerPermissionError(error)) {
-    return '禱告資料庫權限尚未完成設定，請先完成 Supabase grant 後再試。';
+    return '禱告功能暫時無法使用，請稍後再試。';
   }
   if (isPrayerStatusConstraintError(error)) {
-    return '禱告狀態資料庫設定尚未更新，請先完成狀態 migration 後再試。';
+    return '禱告狀態暫時無法更新，請稍後再試。';
   }
   return '';
 }
@@ -2094,7 +2094,7 @@ function ensureOperationManualUi() {
             <li><a href="#manual-support-receipt">十七、支持平台與收款證明</a></li>
             <li><a href="#manual-faq">十八、常見問題</a></li>
             <li><a href="#manual-feedback">十九、使用問題與意見回饋</a></li>
-            <li><a href="#manual-closing-note">二十、給使用者的一點提醒</a></li>
+            <li><a href="#manual-closing-note">二十、補充說明</a></li>
           </ul>
         </section>
 
@@ -2189,7 +2189,7 @@ function ensureOperationManualUi() {
               <p>在手機上，點進「摘要」、「內容」或「今日禱告」欄位後，可以使用鍵盤上的麥克風按鈕，直接用中文或英文說出想記錄的內容。</p>
               <p>在 Windows 電腦上，可以先點進輸入欄位，再按 Windows 鍵 + H，開啟系統語音輸入。</p>
               <p>在 Mac 上，可以使用系統內建的聽寫功能。</p>
-              <p>語音輸入完成後，建議再檢查一次文字，特別是人名、經文、標點與專有名詞。尚未整理完可以先按「儲存草稿」；確認無誤後，再儲存為正式札記。</p>
+              <p>語音輸入後，可再留意人名、經文、標點與專有名詞。尚未整理完可先儲存草稿，完成後再儲存為正式札記。</p>
             </section>
 
             <section id="manual-toolbar-guide" class="manual-subsection">
@@ -2236,7 +2236,7 @@ function ensureOperationManualUi() {
               <p><strong>簡單記法：</strong>如果要做段落標題，就讓小標題單獨一行。如果要標記一句重要提醒，就另起一行使用重點色。</p>
             </section>
 
-            <p>完成後可以先點「預覽文章」，檢查小標題、重點色、經文區塊、今日禱告和段落間距，再儲存為正式札記。若從草稿區或札記庫點「編輯」，系統會回到寫札記並載入該篇內容；草稿按「儲存草稿」會保持草稿，按「完成並儲存」會成為正式札記。今日禱告會跟著草稿與正式札記保存，是否出現在閱讀與成書中由勾選狀態決定。</p>
+            <p>可用「預覽文章」查看小標題、重點色、經文區塊、今日禱告和段落間距。草稿按「儲存草稿」會保持草稿，按「完成並儲存」會成為正式札記。今日禱告會跟著草稿與正式札記保存，是否出現在閱讀與成書中由勾選狀態決定。</p>
           </section>
 
           <section id="manual-prayer-review" class="manual-section">
@@ -2311,7 +2311,7 @@ function ensureOperationManualUi() {
             <p>若建立選稿編排後，想修改編排代稱、整理說明、日期範圍、分類或標籤，可以在選稿編排卡片上點「編輯設定」。「編輯設定」只修改這份選稿編排的基本資料，不會直接改動已收錄的札記內容，也不會改變章節排序。若要調整章節順序或章節標題，請使用「整理章節」。</p>
             <p>選稿編排只接收正式札記。草稿不會出現在可加入候選，也不會被加入章節。摘要是否出現在閱讀與成書中，會依照每篇札記的「閱讀與成書時顯示摘要」設定處理；今日禱告只有在有內容且勾選「閱讀與成書時顯示禱告」時才會輸出。</p>
             <h3>新增選稿編排</h3>
-            <p>這裡可以建立新的編排，只需要先填「編排代稱」與「整理說明」。若目前沒有正在編排，新建立的編排會直接成為目前正在編排。若已經有目前編排，新編排會先放在其他選稿編排中。</p>
+            <p>新的編排只需要先填「編排代稱」與「整理說明」。若目前沒有正在編排，新建立的編排會直接成為目前正在編排。若已經有目前編排，新編排會先放在其他選稿編排中。</p>
           </section>
 
           <section id="manual-chapter-arrangement" class="manual-section">
@@ -2325,7 +2325,7 @@ function ensureOperationManualUi() {
               <li>勾選或取消「列入目錄」。</li>
               <li>點「儲存編排」保存章節調整。</li>
             </ul>
-            <p>整理時建議先排出讀者容易理解的順序，再微調章節標題。手機版視窗可上下滑動，儲存前請確認調整已完成。</p>
+            <p>整理章節時，可調整閱讀順序與章節標題。手機版視窗可上下滑動。</p>
             <p>第一版不提供把已儲存的正式札記改回草稿，以避免已加入章節後狀態變得複雜。</p>
           </section>
 
@@ -2341,7 +2341,7 @@ function ensureOperationManualUi() {
               <li>封面圖片。</li>
               <li>前言與後記。</li>
             </ul>
-            <p>若只想先保存設定，可以點「儲存設定」。若要直接產生電子書，請點「儲存並匯出 EPUB」。匯出只會使用已加入編排的正式札記，草稿不會進入 EPUB。若書稿勾選「成書時顯示章節摘要」，且單篇札記也勾選「閱讀與成書時顯示摘要」，EPUB 會在章節開頭顯示摘要；今日禱告則只有在有內容且勾選顯示時才會跟著該篇章節匯出。匯出完成後，系統會把書加入書櫃，並在畫面提供「立即閱讀」、「下載 EPUB」與「前往書櫃」。</p>
+            <p>若只想先保存設定，可以點「儲存設定」。若要直接產生電子書，請點「儲存並匯出 EPUB」。匯出只會使用已加入編排的正式札記，草稿不會進入 EPUB。若書稿勾選「成書時顯示章節摘要」，且單篇札記也勾選「閱讀與成書時顯示摘要」，EPUB 會在章節開頭顯示摘要；今日禱告則只有在有內容且勾選顯示時才會跟著該篇章節匯出。匯出完成後，書籍會加入書櫃，並提供「立即閱讀」、「下載 EPUB」與「前往書櫃」。</p>
             <p>下載後的 EPUB 可用 iOS「書籍」、Android「Google Play 圖書」或其他 EPUB 閱讀器開啟。</p>
           </section>
 
@@ -2354,7 +2354,7 @@ function ensureOperationManualUi() {
               <li>開啟閱讀：進入內建 Reader 閱讀。</li>
               <li>下載 EPUB：下載可另外保存的 EPUB 檔案。</li>
               <li>匯入 EPUB：選擇安全、正常的 EPUB 檔加入書櫃。</li>
-              <li>刪除書籍：移除不需要的書籍。刪除前請先確認是否需要保留或下載。</li>
+              <li>刪除書籍：移除不需要的書籍。</li>
               <li>排序：依最近閱讀、最近建立或書名檢視。</li>
             </ul>
             <p>外部匯入 EPUB 通常保存在目前裝置與瀏覽器中。重要檔案建議另外保留原始 EPUB。</p>
@@ -2388,7 +2388,7 @@ function ensureOperationManualUi() {
             <p>手機與平板主要使用底部導覽切換頁面，常見項目包含總覽、禱告、寫札記、札記庫、選稿編排、書櫃與操作手冊。若項目較多，可以在底部導覽列左右滑動尋找。桌機版主要使用左側側欄。</p>
             <p>札記閱讀在手機上是單欄流程：先看列表，點一篇札記進入單篇閱讀，再用「返回札記閱讀列表」回到列表。桌機版則比較像左右分欄，左側選札記，右側閱讀內容。</p>
             <p>書櫃與 Reader 在手機上也可以正常閱讀。Reader 會把控制項收得比較精簡，讓閱讀內容不被底部導覽遮住。若沒有看到功能按鈕，可以先點一下閱讀畫面。</p>
-            <p>在手機上編輯札記、整理章節或設定成書資料時，建議先確認儲存成功再離開頁面。若遇到畫面沒有更新，可先重新整理頁面，再回到原本功能確認。</p>
+            <p>在手機上編輯札記、整理章節或設定成書資料時，儲存成功後再離開頁面較穩妥。若畫面沒有更新，可重新整理後再查看。</p>
           </section>
 
           <section id="manual-install-app-section" class="manual-section" data-testid="manual-install-app-section">
@@ -2439,13 +2439,13 @@ function ensureOperationManualUi() {
             <p>登入後，畫面會顯示帳號資訊與同步狀態。桌機可從側邊欄帳號卡查看簡潔同步狀態、按「同步」，也可進入「帳號設定」或「登出」；手機可在總覽中的帳號區塊進入「帳號設定」，並在帳號設定裡查看同步狀態與手動同步。</p>
             <p>「帳號設定」可以查看目前帳號、查看安裝成 App / 加入主畫面教學、上傳或移除頭像、修改密碼、上傳本機資料、下載雲端備份，也可以登出。手動同步執行中時，同步按鈕會暫時不可重複點擊，完成後會更新同步狀態。</p>
             <p>若目前使用雲端登入，札記、禱告、選稿編排與書櫃資料會依同步狀態與網路狀況保存。若尚未登入雲端帳號，禱告同步、雲端備份與跨裝置同步會受到限制；本機模式、離線，或某些外部匯入資料，可能只保存在目前裝置與瀏覽器中。</p>
-            <p>閱讀位置、外部 EPUB 與部分使用偏好可能依目前裝置保存。清除瀏覽器資料、更換裝置或更換瀏覽器前，建議先確認重要資料已有備份或下載檔案。</p>
+            <p>閱讀位置、外部 EPUB 與部分使用偏好會依目前裝置保存。重要資料可保留備份或下載檔案。</p>
           </section>
 
           <section id="manual-support-receipt" class="manual-section">
             <h2>十七、支持平台與收款證明</h2>
             <p>頁面下方有「支持平台／支持事工」入口。點開後可以查看支持資訊，也可以使用「申請收款證明」填寫申請表。</p>
-            <p>收款證明申請表會請你填寫姓名或收據抬頭、Email、支持金額、轉帳日期、匯款帳號後五碼與備註。送出後，系統會通知平台聯絡窗口，再依你填寫的 Email 聯繫與處理。</p>
+            <p>收款證明申請表會請你填寫姓名或收據抬頭、Email、支持金額、轉帳日期、匯款帳號後五碼與備註。送出後，平台會依你填寫的 Email 聯繫與處理。</p>
             <p>收款證明是支持款項收款紀錄，不作為稅務扣抵憑證。送出前請確認金額、日期與 Email 正確。</p>
           </section>
 
@@ -2456,27 +2456,27 @@ function ensureOperationManualUi() {
               <div class="manual-faq-item"><h3>安裝成 App 後，資料會另外存一份嗎？</h3><p>不會。安裝只是多一個開啟入口，資料仍跟著你的帳號與目前同步狀態保存。重新安裝 PWA 或重新加入主畫面，不會刪除雲端帳號資料。</p></div>
               <div class="manual-faq-item"><h3>桌面或主畫面圖示沒有更新怎麼辦？</h3><p>通常是系統或瀏覽器快取。可以先關閉後重新開啟；若仍顯示舊圖示，可移除舊捷徑後重新加入主畫面，或重新安裝 PWA。</p></div>
               <div class="manual-faq-item"><h3>找不到剛寫的札記怎麼辦？</h3><p>如果剛剛按的是「儲存草稿」，請回到「寫札記」的「我的草稿」查看。若已儲存為正式札記，請到「札記閱讀」或「札記庫」確認。若有使用搜尋或篩選，請點「重設篩選」或「清除篩選」。</p></div>
-              <div class="manual-faq-item"><h3>草稿可以沒有標題嗎？</h3><p>可以。草稿可以先沒有主題，畫面會以「未命名草稿」顯示。完成後要儲存為正式札記時，建議先補上主題，方便日後閱讀與編排。</p></div>
+              <div class="manual-faq-item"><h3>草稿可以沒有標題嗎？</h3><p>可以。草稿可以先沒有主題，畫面會以「未命名草稿」顯示。儲存為正式札記時再補上主題即可。</p></div>
               <div class="manual-faq-item"><h3>草稿會出現在札記閱讀、選稿或成書裡嗎？</h3><p>不會。草稿只會保存在「寫札記」的草稿區，不會進入札記閱讀，不會出現在選稿編排候選，也不會匯出到 EPUB。完成後儲存為正式札記，才會進入這些流程。</p></div>
               <div class="manual-faq-item"><h3>札記閱讀和札記庫有什麼差別？</h3><p>札記閱讀適合單純重讀、搜尋和查看單篇札記；札記庫適合管理札記、回到編輯器修改，或勾選文章加入目前正在編排。</p></div>
-              <div class="manual-faq-item"><h3>抓取經文失敗怎麼辦？</h3><p>可能是經文格式不完整、書卷名稱或章節不存在、網路訊號不穩，或經文資料暫時無法取得。畫面會以中文提示說明原因；請先確認格式，例如：哥林多前書2:1 或 哥林多前書2:1-5，再確認網路後重新按「抓取經文」。</p></div>
+              <div class="manual-faq-item"><h3>抓取經文失敗怎麼辦？</h3><p>常見原因包含經文格式不完整、書卷名稱或章節不存在、網路不穩，或經文資料暫時無法取得。可確認格式，例如：哥林多前書2:1 或 哥林多前書2:1-5，再重新按「抓取經文」。</p></div>
               <div class="manual-faq-item"><h3>禱告或長期記念的事要寫在哪裡？</h3><p>每篇札記可以在「今日禱告」欄位另外寫下最後的禱告回應。若是需要長期追蹤的禱告、關心的人或持續記念的事，請使用「禱告」功能，可設定狀態、補上後續回顧，並記錄「回顧神的恩典與帶領」。</p></div>
               <div class="manual-faq-item"><h3>今日禱告一定會出現在閱讀或成書裡嗎？</h3><p>不一定。只有勾選「閱讀與成書時顯示禱告」且今日禱告有內容時，札記閱讀與 EPUB 才會顯示。取消勾選時，禱告文字仍會保存在札記中，但不會出現在閱讀與成書裡。</p></div>
               <div class="manual-faq-item"><h3>沒有登入雲端帳號可以使用嗎？</h3><p>可以先使用部分本機功能，但禱告同步、雲端備份與跨裝置同步會受到限制。若要讓手機與桌機看到同一份資料，請登入同一個雲端帳號後再手動同步或重新整理。</p></div>
-              <div class="manual-faq-item"><h3>可以用語音輸入寫札記嗎？</h3><p>可以。你可以使用手機或電腦內建的語音輸入法。手機可使用鍵盤上的麥克風；Windows 可按 Windows 鍵 + H；Mac 可使用系統聽寫。語音輸入後，建議再檢查文字內容，避免經文、人名或標點辨識錯誤。</p></div>
-              <div class="manual-faq-item"><h3>如何申請支持款項收款證明？</h3><p>完成轉帳後，可在「支持平台／支持事工」中點選「申請收款證明」，填寫姓名或抬頭、Email、支持金額、轉帳日期與匯款帳號後五碼。系統會通知平台聯絡窗口處理，確認後會再依你填寫的 Email 聯繫。本證明為支持款項收款紀錄，不作為稅務扣抵憑證。</p></div>
+              <div class="manual-faq-item"><h3>可以用語音輸入寫札記嗎？</h3><p>可以。你可以使用手機或電腦內建的語音輸入法。手機可使用鍵盤上的麥克風；Windows 可按 Windows 鍵 + H；Mac 可使用系統聽寫。語音輸入後，可再留意經文、人名與標點。</p></div>
+              <div class="manual-faq-item"><h3>如何申請支持款項收款證明？</h3><p>完成轉帳後，可在「支持平台／支持事工」中點選「申請收款證明」，填寫姓名或抬頭、Email、支持金額、轉帳日期與匯款帳號後五碼。平台確認後會依你填寫的 Email 聯繫。本證明為支持款項收款紀錄，不作為稅務扣抵憑證。</p></div>
               <div class="manual-faq-item"><h3>為什麼編輯區會出現 ##、{red}、{/red} 這些符號？</h3><p>這些是格式標記，用來讓系統在預覽與成書時轉成小標題或重點色。寫作時會先看到標記，點「預覽文章」後可以確認實際效果。</p></div>
               <div class="manual-faq-item"><h3>為什麼 {red}##重點{/red} 沒有正常變成小標題？</h3><p>小標題的 <code>##</code> 需要放在一行最前面，不能被顏色標記包住。如果想使用小標題，請寫成「## 重點整理」。如果想標記紅字，請另起一行寫「{red}這一句是重點。{/red}」。</p></div>
-              <div class="manual-faq-item"><h3>小標題和重點色可以一起用嗎？</h3><p>建議分開使用。小標題用來整理文章結構，重點色用來強調正文短句。比較好的方式是讓小標題獨立一行，重點句另起一行。</p></div>
-              <div class="manual-faq-item"><h3>為什麼預覽排版和我想像的不一樣？</h3><p>請先檢查是否有過多空白行、過長段落，或把小標題與重點色混在同一行。可以用「預覽文章」調整後再儲存。</p></div>
+              <div class="manual-faq-item"><h3>小標題和重點色可以一起用嗎？</h3><p>可以分開使用。小標題整理文章結構，重點色強調正文短句。</p></div>
+              <div class="manual-faq-item"><h3>為什麼預覽排版和我想像的不一樣？</h3><p>常見原因是空白行較多、段落較長，或小標題與重點色放在同一行。可用「預覽文章」查看效果。</p></div>
               <div class="manual-faq-item"><h3>經文很長時要怎麼放？</h3><p>可以使用經文區塊，但長經文建議分段，讓手機閱讀更舒服。</p></div>
               <div class="manual-faq-item"><h3>什麼時候用引用，什麼時候用經文區塊？</h3><p>引用適合短句或摘錄。經文區塊適合放完整經文段落。</p></div>
               <div class="manual-faq-item"><h3>為什麼加入按鈕不能按？</h3><p>可能尚未選擇目前正在編排，或目前已選 0 篇。請先到「選稿編排」建立或選擇一份編排，再回到札記庫勾選札記。</p></div>
               <div class="manual-faq-item"><h3>文章加入到哪一份編排？</h3><p>札記庫會加入目前正在編排的那一份選稿編排。狀態列會顯示「目前正在編排：{title}」。</p></div>
               <div class="manual-faq-item"><h3>如何切換目前正在編排？</h3><p>到「選稿編排」的「其他選稿編排」區塊，點想整理的卡片上的「開始編這本」。切換後該卡片會移到「目前正在編排」。</p></div>
               <div class="manual-faq-item"><h3>建立選稿編排後，可以修改標題或整理說明嗎？</h3><p>可以。到「選稿編排」頁，在該卡片點「編輯設定」，即可修改編排代稱、整理說明、日期範圍、分類與標籤。儲存後，卡片會立即更新。</p></div>
-              <div class="manual-faq-item"><h3>刪除資料前會再確認嗎？</h3><p>會。刪除札記、選稿編排、書櫃書籍、移除頭像或執行較危險的還原操作前，系統會先顯示確認提示。確認前請先看清楚刪除對象，避免誤刪。</p></div>
-              <div class="manual-faq-item"><h3>如果還沒儲存就關掉頁面，內容會不見嗎？</h3><p>系統會盡量暫存目前正在編輯的札記草稿。若瀏覽器重新整理、意外關閉或儲存失敗，回到「寫札記」頁時，會提示是否恢復尚未儲存的草稿。仍建議長篇內容寫到一段落就先儲存一次。</p></div>
+              <div class="manual-faq-item"><h3>刪除資料前會再確認嗎？</h3><p>會。刪除札記、選稿編排、書櫃書籍、移除頭像或執行較危險的還原操作前，會先顯示確認提示。</p></div>
+              <div class="manual-faq-item"><h3>如果還沒儲存就關掉頁面，內容會不見嗎？</h3><p>正在編輯的札記草稿會盡量暫存。若瀏覽器重新整理、意外關閉或儲存失敗，回到「寫札記」頁時，會提示是否恢復尚未儲存的草稿。</p></div>
               <div class="manual-faq-item"><h3>書櫃跟選稿編排有什麼差別？</h3><p>選稿編排用來整理成書前的章節與設定。書櫃用來閱讀、下載與管理已完成或已匯入的電子書。</p></div>
               <div class="manual-faq-item"><h3>為什麼手機底部選單可以左右滑動？</h3><p>手機螢幕較窄，底部導覽包含多個功能。可以左右滑動底部導覽列，找到書櫃或操作手冊等項目。桌機版則使用左側側欄。</p></div>
               <div class="manual-faq-item"><h3>EPUB 下載後怎麼打開？</h3><p>iPhone / iPad 可用「書籍」App。Android 可用「Google Play 圖書」或其他支援 EPUB 的閱讀器。桌機可用支援 EPUB 的閱讀軟體或瀏覽器擴充功能。</p></div>
@@ -2492,7 +2492,7 @@ function ensureOperationManualUi() {
           </section>
 
           <section id="manual-closing-note" class="manual-section manual-closing">
-            <h2>二十、給使用者的一點提醒</h2>
+            <h2>二十、補充說明</h2>
             <p>這套系統的目的，是幫助你把平常寫下的內容好好保存下來。</p>
             <p>不用一開始就想著要完成一本很完整的書。可以先從一篇札記開始，慢慢累積，慢慢整理。</p>
             <p>當那些日子裡的領受、禱告、眼淚、感恩與提醒被留下來，它們有一天可能就會成為一本值得回頭閱讀的書。</p>
@@ -2617,7 +2617,7 @@ function isIncomingNewer(localItem, remoteItem, timeField = 'updated_at') {
 }
 async function uploadLocalDataToCloud() {
   requireUser();
-  if (!state.supabase) throw new Error('請先完成 Supabase 設定並登入同一個雲端帳號。');
+  if (!state.supabase) throw new Error('請先登入雲端帳號。');
   const localPack = collectMatchingLocalDataForCloudUser();
   if (!localPack.localUserId) throw new Error('這台裝置找不到同 Email 的本機資料可上傳。');
 
@@ -3719,7 +3719,7 @@ function ensureConfirmDialogUi() {
       <div class="modal-card confirm-dialog-card" role="dialog" aria-modal="true" aria-labelledby="confirm-dialog-title">
         <div class="confirm-dialog-header">
           <div>
-            <p class="confirm-dialog-kicker">二次確認</p>
+            <p class="confirm-dialog-kicker">確認</p>
             <h2 id="confirm-dialog-title">確定要刪除嗎？</h2>
           </div>
           <button class="ghost-btn small" type="button" data-confirm-cancel aria-label="關閉確認視窗">關閉</button>
@@ -3753,7 +3753,7 @@ function ensureConfirmDialogUi() {
 function openConfirmDialog({
   title = '確定要刪除嗎？',
   message = '這個動作無法復原。',
-  kickerText = '二次確認',
+  kickerText = '確認',
   confirmText = '確認刪除',
   cancelText = '取消',
   danger = true,
@@ -5488,7 +5488,7 @@ async function loadAllData({ silent = false, syncReason = '', reason = '', minIn
       }));
       state.bookProjectDetailIds = new Set(state.books.map(book => book.id));
       state.snapshots = loadJson(STORAGE_KEYS.snapshots, []).filter(item => item.user_id === userId);
-      clearCloudLibrary('書櫃同步需要登入 Supabase 帳號。');
+      clearCloudLibrary('請先登入雲端帳號。');
       setSyncState({
         status: state.supabase ? '尚未登入' : '本機模式',
         detail: state.supabase ? '已設定雲端，但目前還沒有登入帳號。' : '目前資料只保存在這台裝置。',
@@ -6430,8 +6430,8 @@ function refreshUi() {
   els.authGate?.setAttribute('aria-hidden', isSignedIn ? 'true' : 'false');
   if (els.authInlineHint) {
     els.authInlineHint.textContent = state.supabase
-      ? '\u76ee\u524d\u4f7f\u7528 Supabase Auth\uff0c\u8acb\u4f7f\u7528\u4fe1\u7bb1\u8207\u5bc6\u78bc\u767b\u5165\uff0c\u6216\u6539\u7528 Magic Link\u3002'
-      : '\u76ee\u524d\u70ba\u672c\u6a5f\u6a21\u5f0f\uff0c\u4e0d\u9700\u8a2d\u5b9a Supabase \uff0c\u53ef\u76f4\u63a5\u5efa\u7acb\u6216\u767b\u5165\u672c\u6a5f\u5e33\u6236\u3002';
+      ? '請使用信箱與密碼登入，或改用 Magic Link。'
+      : '目前為本機模式，可直接建立或登入本機帳戶。';
   }
   if (els.authInlineResetHint) {
     els.authInlineResetHint.classList.toggle('hidden', state.authInlineMode !== 'login');
@@ -6445,8 +6445,8 @@ function refreshUi() {
   els.downloadBackupBtn?.toggleAttribute('disabled', !cloudActionsAvailable);
   if (els.accountCloudHint) {
     els.accountCloudHint.textContent = cloudActionsAvailable
-      ? '登入雲端帳號後，可把本機資料上傳或下載雲端備份。'
-      : '本機模式下會保留這兩個入口；若要使用雲端同步與備份，請先設定並登入 Supabase。';
+      ? '登入雲端帳號後，可上傳本機資料或下載雲端備份。'
+      : '請先登入雲端帳號使用同步與備份。';
   }
   if (els.syncStatusText) els.syncStatusText.textContent = state.syncStatus || '未啟用';
   if (els.syncLastTime) els.syncLastTime.textContent = state.lastSyncAt ? formatDate(state.lastSyncAt) : '尚未同步';
@@ -6763,7 +6763,7 @@ function renderPrayerWorkspace() {
   if (els.prayerStatReviewing) els.prayerStatReviewing.textContent = String(reviewingCount);
   if (els.prayerStatAnswered) els.prayerStatAnswered.textContent = String(answeredCount);
   const cloudNoticeText = state.prayerSyncError
-    || '禱告紀錄會跟著雲端帳號同步。請登入雲端帳號後使用，手機與桌機才能看到同一份資料。';
+    || '請先登入雲端帳號同步禱告紀錄。';
   const cloudNoticeParagraph = els.prayerCloudNotice?.querySelector('p');
   if (cloudNoticeParagraph) cloudNoticeParagraph.textContent = cloudNoticeText;
   els.prayerCloudNotice?.classList.toggle('hidden', cloudReady && !state.prayerSyncError);
@@ -6783,7 +6783,7 @@ function renderPrayerWorkspace() {
   if (!visiblePrayers.length) {
     els.prayerList.className = 'prayer-list list-stack empty-state';
     els.prayerList.textContent = state.prayerSyncError
-      ? '禱告資料庫權限尚未完成設定，完成 Supabase grant 後重新同步即可使用。'
+      ? '禱告功能暫時無法使用，請稍後再試。'
       : cloudReady
         ? '目前還沒有禱告紀錄。可以先新增一筆禱告。'
         : '禱告紀錄需要登入雲端帳號後才能同步。';
@@ -8416,7 +8416,7 @@ function getMarkdownSyntaxHintMessage(text = '') {
     const match = trimmed.match(/^\{(red|blue|gold|purple)\}##(?!#)\s*.+\{\/\1\}$/);
     if (!match) continue;
     const colorName = match[1];
-    return `語法提醒：若要讓小標題變色，請使用 \`## {${colorName}}標題{/${colorName}}\`\uFF0C不要使用 \`{${colorName}}## 標題{/${colorName}}\`。`;
+    return `小標題色彩格式：\`## {${colorName}}標題{/${colorName}}\`。`;
   }
   return '';
 }
@@ -8857,7 +8857,7 @@ function ensureCurrentNoteDraftNotice() {
   notice.innerHTML = `
     <div class="current-note-draft-copy">
       <strong>偵測到尚未儲存的札記草稿，是否恢復？</strong>
-      <p>恢復後會回填上次尚未儲存的標題、經文、分類、標籤、摘要、今日禱告與內容。</p>
+      <p>恢復上次未儲存的內容。</p>
     </div>
     <div class="current-note-draft-actions">
       <button type="button" class="primary-btn small" data-restore-current-note-draft>恢復草稿</button>
@@ -9011,7 +9011,7 @@ async function saveNote({ status = NOTE_STATUS_PUBLISHED } = {}) {
     created_at: els.noteId.value ? (existingNote?.created_at || nowIso()) : nowIso(),
   };
   if (finalStatus === NOTE_STATUS_PUBLISHED && !payload.title) {
-    throw new Error('請先為這篇札記加上一個主題，方便日後閱讀與編排。');
+    throw new Error('請先輸入札記標題。');
   }
   if (finalStatus === NOTE_STATUS_PUBLISHED && !payload.content) throw new Error('請填入札記內容。');
   persistCurrentNoteDraft({ immediate: true });
@@ -9053,7 +9053,7 @@ async function deleteNote() {
   if (!noteId) return;
   const confirmed = await openConfirmDialog({
     title: '確定要刪除這篇札記嗎？',
-    message: '刪除後將無法復原。若這篇札記已加入選稿編排，也可能影響後續整理。',
+    message: '刪除後將無法復原。',
     confirmText: '確認刪除',
     danger: true,
   });
@@ -9076,7 +9076,7 @@ function renderBookDraftCard(book, { current = false } = {}) {
   const isEmptyDraft = detailLoaded && chapterCount === 0;
   const chapterLabel = detailLoaded ? `已收錄 ${chapterCount} 篇札記` : '章節開啟後載入';
   const description = getBookDraftDescription(book).slice(0, 180)
-    || (isEmptyDraft ? '尚未收錄札記，請先前往札記庫加入文章。' : '尚未填寫整理說明');
+    || (isEmptyDraft ? '尚未收錄札記。' : '尚未填寫整理說明');
   const statusLabel = current ? '正在編排' : '待成書設定';
   const statusTone = current ? 'is-current' : getBookDraftStatusTone(book);
   return `
@@ -9128,7 +9128,7 @@ function renderCurrentBookDraftCard() {
     container.className = 'empty-state book-draft-current-empty';
     container.innerHTML = `
       <strong>尚未選擇目前正在編排的書稿</strong>
-      <p>請先建立新的選稿編排，或從下方既有書稿中選擇一個開始編輯。</p>
+      <p>建立或選擇一份選稿編排即可開始。</p>
     `;
     return;
   }
@@ -9808,7 +9808,7 @@ function handleError(error) {
 }
 
 const NOTE_SAVE_VALIDATION_MESSAGES = new Set([
-  '請先為這篇札記加上一個主題，方便日後閱讀與編排。',
+  '請先輸入札記標題。',
   '請填入札記內容。',
 ]);
 
@@ -10495,14 +10495,14 @@ function getLibraryCoverUrl(book) {
 function buildLibrarySetupError(error) {
   const message = error?.message || String(error || '');
   if (/library_books|library_book_chapters|does not exist|schema cache/i.test(message)) {
-    return '書櫃資料表尚未建立，請先執行 schema.sql 裡的 library_books 與 library_book_chapters 建置 SQL。';
+    return '書櫃暫時無法同步，請稍後再試。';
   }
-  return `書櫃資料讀取失敗：${message}`;
+  return '書櫃資料讀取失敗，請稍後再試。';
 }
 
 function requireCloudLibrary() {
   requireUser();
-  if (!state.supabase) throw new Error('書櫃同步需要 Supabase 連線設定。');
+  if (!state.supabase) throw new Error('請先登入雲端帳號。');
   if (!state.currentUser) throw new Error('請先登入後再使用雲端書櫃。');
 }
 
@@ -10681,12 +10681,12 @@ async function uploadStorageFile(storagePath, file, contentType) {
 function buildStorageError(error, prefix) {
   const message = error?.message || String(error || '');
   if (/bucket/i.test(message) && /not found|does not exist/i.test(message)) {
-    return `${prefix}：找不到 private Storage bucket「${cloudLibrary.bucket}」，請先依 schema.sql 指引建立。`;
+    return `${prefix}：書櫃檔案暫時無法存取，請稍後再試。`;
   }
   if (/row-level security|permission|policy|unauthorized|403/i.test(message)) {
-    return `${prefix}：Storage 權限不足，請確認 bucket 是 private 並已建立對應 RLS policy。`;
+    return `${prefix}：書櫃檔案暫時無法存取，請稍後再試。`;
   }
-  return `${prefix}：${message}`;
+  return `${prefix}，請稍後再試。`;
 }
 
 function dataUrlToUpload(dataUrl) {
@@ -10990,7 +10990,7 @@ async function confirmCloudEpubDownload(book) {
   const confirmed = await openConfirmDialog({
     kickerText: '下載確認',
     title: '下載 EPUB？',
-    message: '系統會下載這本書的 EPUB 檔案，完成後可以在你的裝置上閱讀或保存。',
+    message: '完成後可以在裝置上閱讀或保存。',
     confirmText: '下載 EPUB',
     danger: false,
   });
@@ -11796,7 +11796,7 @@ function renderReaderSearchPanel() {
   return `
     <label class="reader-panel-muted" for="reader-search-field">輸入關鍵字</label>
     <input id="reader-search-field" class="reader-search-field" type="search" placeholder="搜尋本書內容" autocomplete="off" value="${escapeHtml(query)}" />
-    <p class="reader-panel-muted">輸入關鍵字搜尋本書內容。第一階段會前往命中的章節，不會精準定位到節號。</p>
+    <p class="reader-panel-muted">搜尋會前往命中的章節。</p>
     <p id="reader-search-status" class="reader-search-status" role="status">${escapeHtml(getReaderSearchStatusText())}</p>
     <div id="reader-search-results" class="reader-search-results" aria-label="搜尋結果">
       ${renderReaderSearchResultItems()}
@@ -11845,8 +11845,8 @@ function renderReaderBookmarksPanel() {
         <span>目前章節與頁碼</span>
         <strong>${escapeHtml(getReaderCurrentChapterTitle())}｜${escapeHtml(getReaderCurrentPageLabel())}</strong>
       </div>
-      <p class="reader-panel-muted">系統會自動記住你最後閱讀的位置；不需要按加入書籤。下次使用同一台裝置與同一個瀏覽器開啟這本書時，會回到這裡。</p>
-      <p class="reader-panel-muted">目前閱讀位置只保存在這台裝置與這個瀏覽器，尚未同步到帳號。</p>
+      <p class="reader-panel-muted">會記住最後閱讀位置，下次可接續閱讀。</p>
+      <p class="reader-panel-muted">目前保存在這台裝置與瀏覽器。</p>
     </section>
     <section class="reader-panel-section" aria-labelledby="reader-manual-bookmarks-title">
       <h4 id="reader-manual-bookmarks-title" class="reader-panel-section-title">手動書籤</h4>
@@ -11856,7 +11856,7 @@ function renderReaderBookmarksPanel() {
           ${currentBookmark ? '移除目前位置書籤' : '加入目前位置書籤'}
         </button>
       </div>
-      <p class="reader-panel-muted">手動書籤目前只保存在這台裝置與這個瀏覽器，尚未同步到帳號。</p>
+      <p class="reader-panel-muted">手動書籤目前保存在這台裝置與瀏覽器。</p>
       <div class="reader-bookmark-list" aria-label="手動書籤列表">
         ${bookmarkItems || '<p class="reader-panel-muted">這本書目前沒有手動書籤。</p>'}
       </div>
