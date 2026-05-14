@@ -5475,7 +5475,9 @@ body:not(.auth-locked) .main {
     bottom: 0;
     width: 232px;
     height: 100vh;
-    padding: 24px 14px 196px;
+    height: 100dvh;
+    max-height: 100dvh;
+    padding: 24px 14px 14px;
     gap: 16px;
     border-right: 1px solid rgba(191, 211, 208, 0.55);
     border-bottom: none;
@@ -5561,7 +5563,26 @@ body:not(.auth-locked) .main {
 
   .desktop-sidebar-nav {
     display: grid;
+    flex: 1 1 auto;
+    align-content: start;
+    min-height: 0;
     gap: 7px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 2px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(90, 166, 166, 0.36) transparent;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .desktop-sidebar-nav::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .desktop-sidebar-nav::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(90, 166, 166, 0.34);
   }
 
   .desktop-sidebar-link {
@@ -5610,11 +5631,10 @@ body:not(.auth-locked) .main {
   }
 
   .desktop-sidebar-footer {
-    position: absolute;
-    left: 14px;
-    right: 14px;
-    bottom: 14px;
-    margin-top: 0;
+    position: static;
+    flex: 0 0 auto;
+    min-height: 0;
+    margin-top: auto;
     display: grid;
     gap: 10px;
   }
@@ -5692,6 +5712,57 @@ body:not(.auth-locked) .main {
     line-height: 1.5;
     color: #496468;
     font-size: 13px;
+  }
+
+  @media (max-height: 860px) {
+    body:not(.auth-locked) .sidebar {
+      padding: 18px 12px 12px;
+      gap: 12px;
+    }
+
+    body:not(.auth-locked) .sidebar::before {
+      height: 126px;
+      border-radius: 20px;
+    }
+
+    .desktop-sidebar-nav {
+      gap: 6px;
+    }
+
+    .desktop-sidebar-link {
+      grid-template-columns: 20px minmax(0, 1fr);
+      gap: 10px;
+      padding: 9px 11px;
+      border-radius: 13px;
+    }
+
+    .desktop-sidebar-account-card.panel.compact {
+      padding: 11px;
+    }
+
+    .desktop-sidebar-account-header {
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .desktop-sidebar-account-header .account-avatar {
+      width: 48px;
+      height: 48px;
+      font-size: 17px;
+    }
+
+    .desktop-sidebar-account-copy {
+      gap: 4px;
+    }
+
+    .desktop-sidebar-sync {
+      margin-top: 7px;
+    }
+
+    .desktop-sidebar-account-actions {
+      gap: 6px;
+      margin-top: 9px;
+    }
   }
 
   body:not(.auth-locked) .main {
