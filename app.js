@@ -1907,27 +1907,27 @@ function ensureContentLibraryUi() {
     section.dataset.testid = 'content-library-view';
     section.innerHTML = `
         <section class="panel">
-        <div class="row gap-sm wrap">
+        <div class="row gap-sm wrap content-library-filter-row">
           <input id="content-library-search" class="search" placeholder="搜尋標題、摘要、內容、經文" data-testid="content-library-search" />
-          <label class="compact-control">
+          <label class="compact-control content-library-filter-control content-library-date-from-control">
             <span class="caption">日期起</span>
             <input id="content-library-date-from" type="date" />
           </label>
-          <label class="compact-control">
+          <label class="compact-control content-library-filter-control content-library-date-to-control">
             <span class="caption">日期迄</span>
             <input id="content-library-date-to" type="date" />
           </label>
-          <label class="compact-control">
+          <label class="compact-control content-library-filter-control content-library-category-control">
             <span class="caption">分類</span>
             <select id="content-library-category"></select>
           </label>
-          <label class="compact-control">
+          <label class="compact-control content-library-filter-control content-library-tag-control">
             <span class="caption">標籤</span>
             <select id="content-library-tag"></select>
           </label>
-          <button id="content-library-clear-filters" class="ghost-btn" type="button" data-testid="content-library-clear-filters">清除篩選</button>
+          <button id="content-library-clear-filters" class="ghost-btn content-library-clear-filter-btn" type="button" data-testid="content-library-clear-filters">清除篩選</button>
         </div>
-        <div class="row gap-sm wrap mt-md">
+        <div class="row gap-sm wrap mt-md content-library-selection-row">
           <strong id="content-library-selection-count">已選 0 篇</strong>
           <span id="content-library-book-hint" class="caption">請先到選稿編排建立或選擇一份書稿。</span>
           <button id="content-library-add-selected" class="secondary-btn" type="button" data-testid="content-library-add-selected">請先選擇編排</button>
