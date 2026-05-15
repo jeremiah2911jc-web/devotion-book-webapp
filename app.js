@@ -12,9 +12,12 @@
   installPromptPrefs: 'devotion-app-install-prompt-prefs',
 };
 
-const APP_VERSION = '2026.05.13-02';
+const APP_VERSION = '2026.05.16-01';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
+const DEFAULT_BIBLE_ASSET_VERSION = '2026.05.13-reflow-3c43edc7';
+const DEFAULT_BIBLE_ASSET_VERSION_KEY = 'devotion-default-bible-asset-version';
+const DEFAULT_BIBLE_EPUB_PATH = `/assets/default-books/bible.epub?v=${DEFAULT_BIBLE_ASSET_VERSION}`;
 const SCRIPTURE_FETCH_TIMEOUT_MS = 12000;
 const SCRIPTURE_FETCH_MESSAGES = Object.freeze({
   invalidReference: '請確認經文格式，例如：哥林多前書2:1 或 哥林多前書2:1-5。',
@@ -10196,14 +10199,14 @@ const systemLibrary = {
     author: '和合本',
     description: '系統預設聖經電子書，可作為靈修閱讀參考。',
     cover_image_path: '/assets/default-books/bible-cover.png',
-    epub_file_path: '/assets/default-books/bible.epub',
-    version: 'system',
+    epub_file_path: DEFAULT_BIBLE_EPUB_PATH,
+    version: DEFAULT_BIBLE_ASSET_VERSION,
     total_chapters: 0,
     current_chapter: 0,
     reading_progress: 0,
     last_read_at: null,
     created_at: '1970-01-01T00:00:00.000Z',
-    updated_at: '1970-01-01T00:00:00.000Z',
+    updated_at: '2026-05-13T00:00:00.000Z',
     source_project_id: null,
     source_compilation_id: null,
     is_archived: false,
@@ -10268,6 +10271,43 @@ function isSystemLibraryBook(book) {
   return String(book?.source || '') === 'system'
     || String(book?.system_book_key || '') === 'bible'
     || String(book?.id || '') === systemLibrary.bible.id;
+}
+
+function getStoredDefaultBibleAssetVersion() {
+  try {
+    return localStorage.getItem(DEFAULT_BIBLE_ASSET_VERSION_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+function markDefaultBibleAssetVersionCurrent() {
+  try {
+    localStorage.setItem(DEFAULT_BIBLE_ASSET_VERSION_KEY, DEFAULT_BIBLE_ASSET_VERSION);
+  } catch {
+    // Storage can be unavailable in restricted browser modes; the versioned URL still prevents stale HTTP cache.
+  }
+}
+
+function isDefaultBibleAssetCacheCurrent() {
+  return getStoredDefaultBibleAssetVersion() === DEFAULT_BIBLE_ASSET_VERSION;
+}
+
+function clearDefaultBibleRuntimeReaderCache() {
+  if (!isSystemLibraryBook(cloudLibrary.readerBook)) return;
+  cloudLibrary.readerChapters = [];
+  resetReaderPaginationCache();
+}
+
+async function prepareDefaultBibleAssetRefreshIfNeeded(book) {
+  if (!isSystemLibraryBook(book) || isDefaultBibleAssetCacheCurrent()) return false;
+  try {
+    await deleteCachedEpub(systemLibrary.bible.id);
+  } catch (error) {
+    console.warn('預設聖經 EPUB 快取清除失敗，將直接重新下載。', error);
+  }
+  clearDefaultBibleRuntimeReaderCache();
+  return true;
 }
 
 function buildSystemLibraryBook() {
@@ -10899,11 +10939,19 @@ async function fetchPublicAssetBlob(assetPath, errorPrefix = '下載檔案失敗
 }
 
 async function loadSystemLibraryEpub(book) {
-  const cached = await getCachedEpub(book.id);
-  if (cached) return cached;
+  const needsAssetRefresh = await prepareDefaultBibleAssetRefreshIfNeeded(book);
+  if (!needsAssetRefresh) {
+    const cached = await getCachedEpub(book.id);
+    if (cached) return cached;
+  }
   if (!book.epub_file_path) throw new Error('這本系統書籍沒有 EPUB 路徑。');
   const blob = await fetchPublicAssetBlob(book.epub_file_path, '下載 EPUB 失敗');
-  await cacheEpubBlob(book.id, blob);
+  try {
+    await cacheEpubBlob(book.id, blob);
+    if (isSystemLibraryBook(book)) markDefaultBibleAssetVersionCurrent();
+  } catch (error) {
+    console.warn('預設聖經 EPUB 快取寫入失敗，仍會使用剛下載的檔案。', error);
+  }
   return blob;
 }
 
