@@ -377,7 +377,7 @@ input:focus, textarea:focus, select:focus {
   border-radius: 24px 24px 10px 10px;
   background:
     linear-gradient(90deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.9) 34%, rgba(255,255,255,0.58) 52%, rgba(255,255,255,0.12) 72%),
-    url("./assets/ui/note-writing-hero-desk.jpg") center right / cover no-repeat,
+    url("./assets/ui/note-writing-hero-desk.png") center right / cover no-repeat,
     linear-gradient(115deg, rgba(255,255,255,0.96) 0%, rgba(254,251,245,0.94) 48%, rgba(239,232,220,0.88) 100%);
   box-shadow: 0 18px 42px rgba(63, 76, 68, 0.08);
 }
@@ -395,13 +395,6 @@ input:focus, textarea:focus, select:focus {
 .note-hero-clear-btn {
   position: relative;
   z-index: 1;
-}
-.note-writing-kicker {
-  display: inline-flex;
-  margin-bottom: 6px;
-  color: #5f817b;
-  font-size: 13px;
-  font-weight: 700;
 }
 .note-writing-hero h2 {
   margin: 0 0 6px;
