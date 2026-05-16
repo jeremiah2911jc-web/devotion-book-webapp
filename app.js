@@ -2152,7 +2152,7 @@ function ensureOperationManualUi() {
 
           <section id="manual-writing-note" class="manual-section">
             <h2>四、寫札記</h2>
-            <p>「寫札記」是整套系統的起點。你可以從側邊欄或手機底部導覽進入。還沒寫完時可先按「儲存草稿」，草稿可以沒有主題，今日禱告也會一起保存，之後可從「我的草稿」回來繼續編輯。完成後按「儲存為正式札記」或「完成並儲存」，這篇內容才會進入札記閱讀、札記庫與成書流程。</p>
+            <p>「寫札記」是整套系統的起點。你可以從側邊欄或手機底部導覽進入。還沒寫完時可先按「儲存草稿」，草稿可以沒有主題，今日禱告也會一起保存，之後可從「我的草稿」回來繼續編輯。完成後按「儲存為正式札記」，這篇內容才會進入札記閱讀、札記庫與成書流程。</p>
 
             <div class="manual-card-grid manual-card-grid-three">
               <div class="manual-card">
@@ -2192,7 +2192,7 @@ function ensureOperationManualUi() {
               <p>在手機上，點進「摘要」、「內容」或「今日禱告」欄位後，可以使用鍵盤上的麥克風按鈕，直接用中文或英文說出想記錄的內容。</p>
               <p>在 Windows 電腦上，可以先點進輸入欄位，再按 Windows 鍵 + H，開啟系統語音輸入。</p>
               <p>在 Mac 上，可以使用系統內建的聽寫功能。</p>
-              <p>語音輸入後，可再留意人名、經文、標點與專有名詞。尚未整理完可先儲存草稿，完成後再儲存為正式札記。</p>
+              <p>尚未整理完可先儲存草稿，完成後再儲存為正式札記。</p>
             </section>
 
             <section id="manual-toolbar-guide" class="manual-subsection">
@@ -2239,7 +2239,7 @@ function ensureOperationManualUi() {
               <p><strong>簡單記法：</strong>如果要做段落標題，就讓小標題單獨一行。如果要標記一句重要提醒，就另起一行使用重點色。</p>
             </section>
 
-            <p>可用「預覽文章」查看小標題、重點色、經文區塊、今日禱告和段落間距。草稿按「儲存草稿」會保持草稿，按「完成並儲存」會成為正式札記。今日禱告會跟著草稿與正式札記保存，是否出現在閱讀與成書中由勾選狀態決定。</p>
+              <p>可用「預覽文章」查看小標題、重點色、經文區塊、今日禱告和段落間距。草稿按「儲存草稿」會保持草稿，按「儲存為正式札記」會成為正式札記。今日禱告會跟著草稿與正式札記保存，是否出現在閱讀與成書中由勾選狀態決定。</p>
           </section>
 
           <section id="manual-prayer-review" class="manual-section">
@@ -5041,7 +5041,10 @@ function bindEvents() {
   els.deleteBookBtn.addEventListener('click', () => deleteBook().catch(handleError));
   els.noteSearch.addEventListener('input', () => { state.noteSearch = els.noteSearch.value.trim().toLowerCase(); renderNotes(); });
   els.noteScripture.addEventListener('input', handleScriptureInput);
-  els.fetchScriptureBtn.addEventListener('click', () => fetchAndRenderScriptures({ force: true, syncToContent: true }).catch(handleError));
+  els.fetchScriptureBtn.addEventListener('click', () => {
+    clearTimeout(state.scriptureFetchTimer);
+    fetchAndRenderScriptures({ force: true, syncToContent: true }).catch(handleError);
+  });
   els.scriptureAppendToContent.addEventListener('change', () => {
     renderNotePreview();
   });
@@ -5984,8 +5987,7 @@ function ensureWritingWorkspaceUi() {
   editorPanel?.classList.add('note-writing-form-panel');
   listPanel?.classList.add('note-writing-list-panel', 'hidden');
   const editorHeader = editorPanel?.querySelector('.panel-header');
-  editorHeader?.classList.add('panel-header-actions-only');
-  editorHeader?.querySelector('h2')?.remove();
+  editorHeader?.classList.add('note-writing-card-header');
 }
 
 function getBookDraftSettingsElements() {
@@ -8980,7 +8982,7 @@ function clearNoteForm({ clearDraft = false } = {}) {
 function syncNoteStatusUi() {
   const status = normalizeNoteStatus(state.currentNoteStatus);
   if (els.noteStatusText) {
-    els.noteStatusText.textContent = status === NOTE_STATUS_DRAFT ? '狀態：草稿' : '狀態：正式札記';
+    els.noteStatusText.textContent = status === NOTE_STATUS_DRAFT ? '草稿' : '正式札記';
     els.noteStatusText.classList.toggle('is-draft', status === NOTE_STATUS_DRAFT);
     els.noteStatusText.classList.toggle('is-published', status === NOTE_STATUS_PUBLISHED);
   }
@@ -8988,7 +8990,7 @@ function syncNoteStatusUi() {
     els.saveNoteDraftBtn.classList.toggle('hidden', status === NOTE_STATUS_PUBLISHED && !!els.noteId?.value);
   }
   if (els.publishNoteBtn) {
-    els.publishNoteBtn.textContent = status === NOTE_STATUS_DRAFT ? '完成並儲存' : '儲存為正式札記';
+    els.publishNoteBtn.textContent = '儲存為正式札記';
   }
 }
 
@@ -9752,7 +9754,7 @@ function setView(viewName) {
     dashboard: ['總覽', ''],
     prayer: ['禱告與回顧', '記錄禱告與回顧，整理神的恩典與帶領。'],
     'note-reader': ['札記閱讀', '單純閱讀已寫下的札記，不進入編輯器。'],
-    notes: ['寫札記', '專注寫下今天的領受、禱告與整理。'],
+    notes: ['寫札記', '記下今天與主同行的片段。'],
     'content-library': ['札記庫', '搜尋、篩選並挑選已寫下的札記，加入目前正在編排的書稿。'],
     books: ['選稿編排', '管理成書前的選稿編排，整理章節順序並進行成書設定。'],
     'admin-dashboard': ['管理後台', '第一階段白名單入口，僅授權管理者可使用。'],

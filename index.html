@@ -509,88 +509,127 @@
       </section>
 
       <section id="view-notes" class="view" data-testid="notes-view">
-        <div class="grid two-col align-start">
+        <div class="grid two-col align-start note-writing-shell">
           <section class="panel">
-            <div class="panel-header">
-              <h2>札記編輯</h2>
-              <button id="new-note-btn" class="ghost-btn" type="button">清空重填</button>
+            <div class="panel-header note-writing-card-header">
+              <div>
+                <h2>今日札記</h2>
+                <p class="muted">記下今天與主同行的片段。</p>
+              </div>
             </div>
-            <form id="note-form" class="form-stack" data-testid="note-form">
+            <form id="note-form" class="note-writing-form" data-testid="note-form">
               <input type="hidden" id="note-id" />
-              <label>標題
-                <input id="note-title" placeholder="例：在恩典中重新學會感恩" data-testid="note-title" />
-              </label>
-              <div class="note-status-row">
-                <span id="note-status-text" class="note-status-text">狀態：正式札記</span>
-              </div>
-              <p class="caption note-draft-hint">草稿不會出現在閱讀與成書中。</p>
-              <label>經文
-                <input id="note-scripture" placeholder="例：詩篇 103:1-11；約翰福音 3:16-18" data-testid="note-scripture" />
-              </label>
-              <p class="caption scripture-hint">多處經文請用分號分隔。</p>
-              <div class="row gap-sm wrap scripture-tools">
-                <button type="button" id="fetch-scripture-btn" class="ghost-btn small">抓取經文</button>
-                <label class="checkbox-inline">
-                  <input id="scripture-append-to-content" type="checkbox" checked />
-                  <span>抓取後同步放入札記全文</span>
-                </label>
-              </div>
-              <p id="scripture-fetch-status" class="caption hidden"></p>
-              <div id="scripture-preview" class="scripture-preview hidden"></div>
-              <label>分類
-                <input id="note-category" placeholder="例：詩篇靈修、主日筆記" data-testid="note-category" />
-              </label>
-              <label>標籤（以逗號分隔）
-                <input id="note-tags" placeholder="例：恩典, 悔改, 盼望" data-testid="note-tags" />
-              </label>
-              <label><span class="field-label-row"><span>摘要</span><span class="desktop-voice-input-hint">語音輸入：Windows 鍵 + H；Mac 使用聽寫。</span></span>
-                <textarea id="note-summary" rows="3" placeholder="這篇內容的重點摘要" data-testid="note-summary"></textarea>
-              </label>
-              <label class="checkbox-inline note-summary-toggle">
-                <input id="note-show-summary" type="checkbox" data-testid="note-show-summary" />
-                <span>閱讀與成書時顯示摘要</span>
-              </label>
-              <p class="caption note-summary-hint">關閉後不顯示，文字仍會保留。</p>
-              <div class="markdown-toolbar" role="toolbar" aria-label="札記 Markdown 工具列">
-                <button type="button" id="markdown-heading-btn" class="ghost-btn small markdown-toolbar-btn">小標題</button>
-                <button type="button" id="markdown-bold-btn" class="ghost-btn small markdown-toolbar-btn">粗體</button>
-                <button type="button" id="markdown-quote-btn" class="ghost-btn small markdown-toolbar-btn">引用</button>
-                <button type="button" id="markdown-scripture-btn" class="ghost-btn small markdown-toolbar-btn">經文</button>
-                <button type="button" id="markdown-list-btn" class="ghost-btn small markdown-toolbar-btn">清單</button>
-                <button type="button" id="markdown-divider-btn" class="ghost-btn small markdown-toolbar-btn">分隔線</button>
-                <button type="button" id="markdown-red-btn" class="ghost-btn small markdown-toolbar-btn">紅字</button>
-                <button type="button" id="markdown-blue-btn" class="ghost-btn small markdown-toolbar-btn">藍字</button>
-                <button type="button" id="markdown-gold-btn" class="ghost-btn small markdown-toolbar-btn">金字</button>
-                <button type="button" id="markdown-purple-btn" class="ghost-btn small markdown-toolbar-btn">紫字</button>
-              </div>
-              <p id="markdown-syntax-hint" class="caption markdown-syntax-hint hidden" aria-live="polite"></p>
-              <label><span class="field-label-row"><span>內容</span><span class="desktop-voice-input-hint">語音輸入：Windows 鍵 + H；Mac 使用聽寫。</span></span>
-                <textarea id="note-content" rows="14" placeholder="輸入靈修札記全文" data-testid="note-content"></textarea>
-              </label>
-              <label><span class="field-label-row"><span>今日禱告</span><span class="desktop-voice-input-hint">語音輸入：Windows 鍵 + H；Mac 使用聽寫。</span></span>
-                <textarea id="note-prayer" rows="5" placeholder="寫下這篇札記最後想向神禱告的內容。" data-testid="note-prayer"></textarea>
-              </label>
-              <label class="checkbox-inline note-prayer-toggle">
-                <input id="note-show-prayer" type="checkbox" data-testid="note-show-prayer" />
-                <span>閱讀與成書時顯示禱告</span>
-              </label>
-              <p class="caption note-prayer-hint">關閉後不顯示，內容仍會保留。</p>
-              <div class="row gap-sm wrap note-save-actions">
-                <button type="button" id="save-note-draft-btn" class="ghost-btn" data-testid="note-save-draft">儲存草稿</button>
-                <button type="button" id="publish-note-btn" class="primary-btn" data-testid="note-publish">儲存為正式札記</button>
-                <button type="button" id="note-preview-btn" class="ghost-btn" data-testid="note-preview-open">預覽文章</button>
-                <button type="button" id="delete-note-btn" class="danger-btn hidden">刪除札記</button>
-              </div>
-            </form>
-            <section class="note-drafts-panel" aria-labelledby="note-drafts-title">
-              <div class="panel-header">
-                <div>
-                  <h3 id="note-drafts-title">我的草稿</h3>
-                  <p class="caption">尚未完成的札記會保存在這裡。</p>
+
+              <section class="note-main-writing" aria-labelledby="note-content-section-title">
+                <section class="note-section note-scripture-section" aria-labelledby="note-scripture-section-title">
+                  <div class="note-section-heading">
+                    <h3 id="note-scripture-section-title">經文</h3>
+                  </div>
+                  <label class="note-title-field">標題
+                    <input id="note-title" placeholder="例：在恩典中重新學會感恩" data-testid="note-title" />
+                  </label>
+                  <div class="note-scripture-control-row">
+                    <label>經文
+                      <input id="note-scripture" placeholder="例：詩篇 103:1-11" data-testid="note-scripture" />
+                    </label>
+                    <button type="button" id="fetch-scripture-btn" class="ghost-btn">抓取經文</button>
+                  </div>
+                  <label class="checkbox-inline note-scripture-toggle">
+                    <input id="scripture-append-to-content" type="checkbox" checked />
+                    <span>抓取後同步放入札記全文</span>
+                  </label>
+                  <p id="scripture-fetch-status" class="caption hidden"></p>
+                  <div id="scripture-preview" class="scripture-preview hidden"></div>
+                </section>
+
+                <section class="note-section note-content-section" aria-labelledby="note-content-section-title">
+                  <div class="note-section-heading">
+                    <h3 id="note-content-section-title">我的札記</h3>
+                  </div>
+                  <div class="markdown-toolbar" role="toolbar" aria-label="札記 Markdown 工具列">
+                    <button type="button" id="markdown-heading-btn" class="ghost-btn small markdown-toolbar-btn">小標題</button>
+                    <button type="button" id="markdown-bold-btn" class="ghost-btn small markdown-toolbar-btn">粗體</button>
+                    <button type="button" id="markdown-quote-btn" class="ghost-btn small markdown-toolbar-btn">引用</button>
+                    <button type="button" id="markdown-scripture-btn" class="ghost-btn small markdown-toolbar-btn">經文</button>
+                    <button type="button" id="markdown-list-btn" class="ghost-btn small markdown-toolbar-btn">清單</button>
+                    <button type="button" id="markdown-divider-btn" class="ghost-btn small markdown-toolbar-btn">分隔線</button>
+                    <button type="button" id="markdown-red-btn" class="ghost-btn small markdown-toolbar-btn">紅字</button>
+                    <button type="button" id="markdown-blue-btn" class="ghost-btn small markdown-toolbar-btn">藍字</button>
+                    <button type="button" id="markdown-gold-btn" class="ghost-btn small markdown-toolbar-btn">金字</button>
+                    <button type="button" id="markdown-purple-btn" class="ghost-btn small markdown-toolbar-btn">紫字</button>
+                  </div>
+                  <p id="markdown-syntax-hint" class="caption markdown-syntax-hint hidden" aria-live="polite"></p>
+                  <label class="note-content-field">
+                    <span class="visually-hidden">內容</span>
+                    <textarea id="note-content" rows="20" placeholder="在這裡寫下今天的札記..." data-testid="note-content"></textarea>
+                  </label>
+                </section>
+              </section>
+
+              <section class="note-section note-side-card note-prayer-section" aria-labelledby="note-prayer-section-title">
+                <div class="note-section-heading">
+                  <h3 id="note-prayer-section-title">今日禱告</h3>
                 </div>
-              </div>
-              <div id="note-drafts-list" class="list-stack note-drafts-list empty-state" data-testid="note-drafts-list">目前沒有草稿。</div>
-            </section>
+                <label class="note-prayer-field">
+                  <span class="visually-hidden">今日禱告</span>
+                  <textarea id="note-prayer" rows="5" placeholder="寫下今天想向神禱告的內容。" data-testid="note-prayer"></textarea>
+                </label>
+                <label class="checkbox-inline note-prayer-toggle">
+                  <input id="note-show-prayer" type="checkbox" data-testid="note-show-prayer" />
+                  <span>閱讀與成書時顯示禱告</span>
+                </label>
+              </section>
+
+              <section class="note-section note-organize-section" aria-labelledby="note-organize-section-title">
+                <div class="note-section-heading">
+                  <h3 id="note-organize-section-title">整理資訊</h3>
+                </div>
+                <div class="note-organize-grid">
+                  <label>分類
+                    <input id="note-category" placeholder="例：詩篇靈修、主日筆記" data-testid="note-category" />
+                  </label>
+                  <label>標籤（以逗號分隔）
+                    <input id="note-tags" placeholder="例：恩典, 悔改, 盼望" data-testid="note-tags" />
+                  </label>
+                  <label class="note-summary-field">摘要
+                    <textarea id="note-summary" rows="3" placeholder="這篇內容的重點摘要" data-testid="note-summary"></textarea>
+                  </label>
+                </div>
+                <label class="checkbox-inline note-summary-toggle">
+                  <input id="note-show-summary" type="checkbox" data-testid="note-show-summary" />
+                  <span>閱讀與成書時顯示摘要</span>
+                </label>
+              </section>
+
+              <section class="note-side-card note-actions-card" aria-labelledby="note-actions-title">
+                <div class="note-section-heading">
+                  <h3 id="note-actions-title">工具</h3>
+                </div>
+                <div class="note-save-actions">
+                  <button id="new-note-btn" class="ghost-btn" type="button">清空重填</button>
+                  <button type="button" id="save-note-draft-btn" class="ghost-btn" data-testid="note-save-draft">儲存草稿</button>
+                  <button type="button" id="publish-note-btn" class="primary-btn" data-testid="note-publish">儲存為正式札記</button>
+                  <button type="button" id="note-preview-btn" class="ghost-btn" data-testid="note-preview-open">預覽文章</button>
+                  <button type="button" id="delete-note-btn" class="danger-btn hidden">刪除札記</button>
+                </div>
+              </section>
+
+              <section class="note-side-card note-writing-reminder" aria-labelledby="note-reminder-title">
+                <div class="note-section-heading">
+                  <h3 id="note-reminder-title">寫作小提醒</h3>
+                </div>
+                <p>從一句感謝開始。</p>
+              </section>
+
+              <section class="note-side-card note-drafts-panel" aria-labelledby="note-drafts-title">
+                <div class="panel-header">
+                  <div>
+                    <h3 id="note-drafts-title">我的草稿</h3>
+                  </div>
+                </div>
+                <div id="note-drafts-list" class="list-stack note-drafts-list empty-state" data-testid="note-drafts-list">目前沒有草稿。</div>
+              </section>
+            </form>
           </section>
 
           <section class="panel">

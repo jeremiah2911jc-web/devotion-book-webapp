@@ -316,38 +316,151 @@ input:focus, textarea:focus, select:focus {
 .card h3 { margin: 0 0 8px; font-size: 17px; }
 .card-meta { color: var(--muted); font-size: 13px; display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
 .card-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
-.note-writing-workspace .grid.two-col {
-  grid-template-columns: minmax(0, min(1132px, 100%));
+.note-writing-workspace .note-writing-shell {
+  grid-template-columns: minmax(0, min(1360px, 100%));
   justify-content: center;
   width: 100%;
   max-width: 100%;
   margin-inline: auto;
 }
 .note-writing-form-panel {
-  width: min(1132px, 100%);
+  width: min(1360px, 100%);
   max-width: 100%;
   margin-inline: auto;
+  padding: clamp(18px, 2.4vw, 28px);
 }
-.note-status-row {
+.note-writing-card-header {
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.note-writing-card-header h2 {
+  margin: 0 0 6px;
+  font-size: clamp(22px, 2.2vw, 30px);
+  line-height: 1.2;
+  color: #183f45;
+}
+.note-writing-card-header p {
+  margin: 0;
+  line-height: 1.65;
+}
+.note-writing-form {
+  display: grid;
+  grid-template-areas:
+    "main"
+    "prayer"
+    "organize"
+    "actions"
+    "reminder"
+    "drafts";
+  gap: 18px;
+  align-items: start;
+}
+.note-main-writing {
+  grid-area: main;
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.note-prayer-section { grid-area: prayer; }
+.note-organize-section { grid-area: organize; }
+.note-actions-card { grid-area: actions; }
+.note-writing-reminder { grid-area: reminder; }
+.note-drafts-panel { grid-area: drafts; }
+@media (min-width: 1360px) {
+  .note-writing-form {
+    grid-template-columns: minmax(0, 1fr) minmax(286px, 340px);
+    grid-template-areas:
+      "main prayer"
+      "main actions"
+      "main reminder"
+      "organize drafts";
+    column-gap: 26px;
+    row-gap: 18px;
+  }
+}
+.note-section {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.note-main-writing .note-section + .note-section {
+  padding-top: 18px;
+  border-top: 1px solid rgba(191,211,208,0.62);
+}
+.note-side-card,
+.note-organize-section {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid rgba(191,211,208,0.72);
+  border-radius: 18px;
+  background: rgba(255,255,255,0.76);
+  box-shadow: 0 14px 32px rgba(39, 73, 77, 0.07);
+}
+.note-side-card {
+  display: grid;
+  gap: 12px;
+}
+.note-section-heading {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-  margin: -2px 0 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
 }
-.note-status-text {
-  display: inline-flex;
-  align-items: center;
+.note-section-heading h3 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.35;
+  color: #244e54;
+}
+.note-title-field {
+  max-width: 100%;
+}
+.note-scripture-control-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+.note-scripture-control-row .ghost-btn {
+  min-height: 46px;
+  white-space: nowrap;
+}
+.note-scripture-toggle {
   width: fit-content;
-  padding: 6px 10px;
-  border: 1px solid rgba(191,211,208,0.82);
-  border-radius: 999px;
-  background: rgba(255,255,255,0.78);
-  color: #45676a;
-  font-size: 13px;
-  font-weight: 700;
 }
-.note-status-text.is-draft,
+.note-content-section {
+  gap: 10px;
+}
+.note-content-field {
+  gap: 0;
+}
+#note-content {
+  min-height: 520px;
+  padding: 22px 24px;
+  border-radius: 20px;
+  border-color: rgba(213, 196, 164, 0.62);
+  background:
+    linear-gradient(180deg, rgba(255, 254, 249, 0.98), rgba(255, 251, 244, 0.96));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.84), 0 18px 40px rgba(69, 88, 72, 0.08);
+  font-size: 17px;
+  line-height: 1.8;
+}
+#note-prayer {
+  min-height: 128px;
+  line-height: 1.75;
+}
+.note-organize-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.note-summary-field {
+  grid-column: 1 / -1;
+}
+.note-summary-field textarea {
+  min-height: 98px;
+}
 .note-status-badge.is-draft {
   border-color: rgba(186, 142, 65, 0.36);
   background: rgba(255, 247, 226, 0.95);
@@ -358,18 +471,21 @@ input:focus, textarea:focus, select:focus {
   background: rgba(238,248,247,0.95);
   color: #3c7f82;
 }
-.note-draft-hint {
-  margin: -6px 0 0;
+.note-save-actions {
+  display: grid;
+  gap: 10px;
 }
 .note-save-actions > button {
   min-height: 42px;
+  width: 100%;
 }
 .note-drafts-panel {
-  display: grid;
-  gap: 12px;
-  margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(191,211,208,0.72);
+  max-height: 430px;
+}
+.note-drafts-panel .note-drafts-list {
+  max-height: 330px;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 .note-drafts-panel .panel-header {
   margin-bottom: 0;
@@ -380,6 +496,15 @@ input:focus, textarea:focus, select:focus {
 }
 .note-draft-card {
   overflow-wrap: anywhere;
+}
+.note-writing-reminder {
+  background:
+    linear-gradient(135deg, rgba(250, 248, 232, 0.92), rgba(255,255,255,0.78));
+}
+.note-writing-reminder p {
+  margin: 0;
+  color: #536b5d;
+  line-height: 1.65;
 }
 .current-note-draft-notice {
   display: flex;
@@ -417,6 +542,49 @@ input:focus, textarea:focus, select:focus {
   justify-content: flex-end;
 }
 @media (max-width: 720px) {
+  .note-writing-form-panel {
+    padding: 16px;
+  }
+  .note-writing-card-header {
+    display: grid;
+    gap: 12px;
+  }
+  .note-writing-card-header .ghost-btn {
+    width: 100%;
+  }
+  .note-writing-form {
+    gap: 18px;
+  }
+  .note-side-card,
+  .note-organize-section {
+    padding: 14px;
+  }
+  .note-scripture-control-row,
+  .note-organize-grid {
+    grid-template-columns: 1fr;
+  }
+  .note-scripture-control-row .ghost-btn,
+  .note-scripture-toggle {
+    width: 100%;
+  }
+  .scripture-preview {
+    max-height: 170px;
+  }
+  #note-content {
+    min-height: 320px;
+    padding: 16px;
+    font-size: 16px;
+  }
+  #note-prayer {
+    min-height: 132px;
+  }
+  .markdown-toolbar {
+    gap: 7px;
+  }
+  .markdown-toolbar-btn {
+    min-height: 34px;
+    padding: 6px 10px;
+  }
   .note-save-actions {
     align-items: stretch;
   }
@@ -1782,22 +1950,22 @@ body.account-settings-open {
   color: #2f6f74;
 }
 
-.scripture-hint { margin-top: -4px; }
-.scripture-tools { margin-top: -2px; }
 .checkbox-inline { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
 .checkbox-inline input { width: auto; }
 .scripture-preview {
-  display: grid; gap: 10px; padding: 12px; border: 1px solid rgba(191,211,208,0.82);
-  border-radius: 16px; background: rgba(255,255,255,0.72);
-}
-.note-summary-hint,
-.note-prayer-hint {
-  margin: -4px 0 2px;
+  display: grid;
+  gap: 10px;
+  max-height: 210px;
+  overflow-y: auto;
+  padding: 14px 16px;
+  border: 1px solid rgba(191,211,208,0.82);
+  border-radius: 16px;
+  background: rgba(248, 253, 252, 0.78);
 }
 .note-summary-toggle,
 .note-prayer-toggle {
   align-self: flex-start;
-  margin: -2px 0 0;
+  margin: 0;
   padding: 9px 12px;
   border: 1px solid rgba(191,211,208,0.78);
   border-radius: 12px;
@@ -1808,13 +1976,14 @@ body.account-settings-open {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: 2px 0 4px;
+  margin: 0;
 }
 .markdown-toolbar-btn {
   flex: 0 0 auto;
   min-height: 36px;
   padding: 7px 12px;
   white-space: nowrap;
+  box-shadow: none;
 }
 .markdown-syntax-hint {
   margin: 2px 0 4px;
