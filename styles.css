@@ -470,21 +470,40 @@ input:focus, textarea:focus, select:focus {
 }
 .note-scripture-status-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 4px 12px;
+  gap: 8px;
   min-height: 24px;
   color: var(--muted);
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  scrollbar-width: thin;
+}
+.note-scripture-status-row > * {
+  flex: 0 0 auto;
 }
 .note-scripture-toggle {
-  width: fit-content;
+  width: auto;
+  max-width: none;
   font-size: 12px;
+  white-space: nowrap;
 }
 #scripture-fetch-status {
   margin: 0;
   color: var(--muted);
   font-size: 12px;
   line-height: 1.35;
+  white-space: nowrap;
+}
+.note-scripture-helper {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: nowrap;
 }
 .note-content-section {
   gap: 10px;
@@ -651,8 +670,14 @@ input:focus, textarea:focus, select:focus {
   .note-scripture-status-row {
     width: 100%;
   }
-  .note-scripture-toggle {
-    max-width: 100%;
+  .note-scripture-status-row {
+    gap: 6px;
+    padding-bottom: 2px;
+  }
+  .note-scripture-toggle,
+  #scripture-fetch-status,
+  .note-scripture-helper {
+    font-size: 11px;
   }
   .scripture-preview {
     max-height: 170px;
