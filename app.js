@@ -7692,7 +7692,7 @@ async function fetchAndRenderScriptures({ force = false, syncToContent = false }
         <div class="scripture-text">${escapeHtml(item.text)}</div>
       </article>
     `).join('');
-    setScriptureStatus(`已帶出 ${fetched.length} 處經文。`);
+    setScriptureStatus(`已帶出 ${fetched.length} 處`);
     if (syncToContent && els.scriptureAppendToContent.checked) {
       applyScriptureBlockToNoteContent(fetched);
     }

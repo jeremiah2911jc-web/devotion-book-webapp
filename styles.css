@@ -432,6 +432,12 @@ input:focus, textarea:focus, select:focus {
 .note-title-field {
   max-width: 100%;
 }
+.note-scripture-section .note-section-heading {
+  display: none;
+}
+.note-helper-short {
+  display: none;
+}
 @media (min-width: 840px) {
   .note-scripture-section {
     grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
@@ -440,9 +446,6 @@ input:focus, textarea:focus, select:focus {
       ". status-row"
       "preview preview";
     align-items: end;
-  }
-  .note-scripture-section .note-section-heading {
-    display: none;
   }
   .note-title-field {
     grid-area: title;
@@ -703,12 +706,13 @@ input:focus, textarea:focus, select:focus {
     width: 100%;
   }
   .note-scripture-status-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 2px 8px;
-    min-height: 0;
-    overflow: visible;
-    white-space: normal;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    min-height: 22px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
   }
   .note-scripture-toggle,
   #scripture-fetch-status,
@@ -716,15 +720,14 @@ input:focus, textarea:focus, select:focus {
     font-size: 11px;
   }
   .note-scripture-toggle {
-    grid-column: 1;
+    gap: 4px;
     min-width: 0;
   }
-  #scripture-fetch-status {
-    grid-column: 2;
-    justify-self: end;
+  .note-helper-full {
+    display: none;
   }
-  .note-scripture-helper {
-    grid-column: 1 / -1;
+  .note-helper-short {
+    display: inline;
   }
   .scripture-preview {
     max-height: 170px;
@@ -739,12 +742,19 @@ input:focus, textarea:focus, select:focus {
     height: 116px;
     min-height: 0;
   }
-  .markdown-toolbar {
-    gap: 7px;
+  #view-notes .markdown-toolbar {
+    flex-wrap: nowrap;
+    gap: 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 3px;
+    scrollbar-width: thin;
   }
-  .markdown-toolbar-btn {
-    min-height: 34px;
-    padding: 6px 10px;
+  #view-notes .markdown-toolbar-btn {
+    min-height: 28px;
+    padding: 4px 8px;
+    border-radius: 10px;
+    font-size: 12px;
   }
   .note-save-actions {
     align-items: stretch;
