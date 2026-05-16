@@ -403,6 +403,10 @@ input:focus, textarea:focus, select:focus {
   display: grid;
   gap: 7px;
 }
+.note-actions-card {
+  gap: 6px;
+  padding: 9px;
+}
 .note-section-heading {
   display: flex;
   align-items: baseline;
@@ -433,8 +437,7 @@ input:focus, textarea:focus, select:focus {
     grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
     grid-template-areas:
       "title scripture"
-      "toggle toggle"
-      "status status"
+      "status-row status-row"
       "preview preview";
     align-items: end;
   }
@@ -447,11 +450,8 @@ input:focus, textarea:focus, select:focus {
   .note-scripture-control-row {
     grid-area: scripture;
   }
-  .note-scripture-toggle {
-    grid-area: toggle;
-  }
-  #scripture-fetch-status {
-    grid-area: status;
+  .note-scripture-status-row {
+    grid-area: status-row;
   }
   #scripture-preview {
     grid-area: preview;
@@ -468,8 +468,23 @@ input:focus, textarea:focus, select:focus {
   padding: 8px 14px;
   white-space: nowrap;
 }
+.note-scripture-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  min-height: 24px;
+  color: var(--muted);
+}
 .note-scripture-toggle {
   width: fit-content;
+  font-size: 12px;
+}
+#scripture-fetch-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
 }
 .note-content-section {
   gap: 10px;
@@ -519,17 +534,18 @@ input:focus, textarea:focus, select:focus {
 .note-save-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 6px;
 }
 .note-save-actions > button {
-  min-height: 34px;
+  min-height: 30px;
   width: 100%;
-  padding: 7px 9px;
-  border-radius: 12px;
-  font-size: 13px;
+  padding: 5px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.25;
 }
 .note-actions-card #publish-note-btn {
-  grid-column: 1 / -1;
+  min-height: 30px;
 }
 .note-drafts-panel {
   max-height: 260px;
@@ -632,8 +648,11 @@ input:focus, textarea:focus, select:focus {
     grid-template-columns: 1fr;
   }
   .note-scripture-control-row .ghost-btn,
-  .note-scripture-toggle {
+  .note-scripture-status-row {
     width: 100%;
+  }
+  .note-scripture-toggle {
+    max-width: 100%;
   }
   .scripture-preview {
     max-height: 170px;
@@ -661,6 +680,8 @@ input:focus, textarea:focus, select:focus {
   .note-save-actions > button {
     flex: 1 1 150px;
     min-width: 0;
+    min-height: 34px;
+    font-size: 13px;
   }
   .current-note-draft-notice {
     align-items: stretch;
