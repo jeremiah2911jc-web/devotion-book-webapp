@@ -434,10 +434,10 @@ input:focus, textarea:focus, select:focus {
 }
 @media (min-width: 840px) {
   .note-scripture-section {
-    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
     grid-template-areas:
       "title scripture"
-      "status-row status-row"
+      ". status-row"
       "preview preview";
     align-items: end;
   }
@@ -472,7 +472,7 @@ input:focus, textarea:focus, select:focus {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-height: 24px;
   color: var(--muted);
   min-width: 0;
@@ -488,20 +488,20 @@ input:focus, textarea:focus, select:focus {
 .note-scripture-toggle {
   width: auto;
   max-width: none;
-  font-size: 12px;
+  font-size: 11px;
   white-space: nowrap;
 }
 #scripture-fetch-status {
   margin: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.35;
   white-space: nowrap;
 }
 .note-scripture-helper {
   margin: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.35;
   white-space: nowrap;
 }
@@ -648,6 +648,27 @@ input:focus, textarea:focus, select:focus {
   gap: 8px;
   justify-content: flex-end;
 }
+@media (min-width: 840px) and (max-width: 1199px) {
+  .note-scripture-status-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 8px;
+    min-height: 0;
+    overflow: visible;
+    white-space: normal;
+  }
+  .note-scripture-toggle {
+    grid-column: 1;
+    min-width: 0;
+  }
+  #scripture-fetch-status {
+    grid-column: 2;
+    justify-self: end;
+  }
+  .note-scripture-helper {
+    grid-column: 1 / -1;
+  }
+}
 @media (max-width: 720px) {
   .note-writing-form-panel {
     padding: 16px;
@@ -666,18 +687,44 @@ input:focus, textarea:focus, select:focus {
   .note-organize-grid {
     grid-template-columns: 1fr;
   }
-  .note-scripture-control-row .ghost-btn,
+  .note-scripture-control-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+  .note-scripture-control-row .ghost-btn {
+    justify-self: start;
+    width: auto;
+    min-height: 38px;
+    padding: 6px 11px;
+    border-radius: 11px;
+    font-size: 13px;
+  }
   .note-scripture-status-row {
     width: 100%;
   }
   .note-scripture-status-row {
-    gap: 6px;
-    padding-bottom: 2px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 8px;
+    min-height: 0;
+    overflow: visible;
+    white-space: normal;
   }
   .note-scripture-toggle,
   #scripture-fetch-status,
   .note-scripture-helper {
     font-size: 11px;
+  }
+  .note-scripture-toggle {
+    grid-column: 1;
+    min-width: 0;
+  }
+  #scripture-fetch-status {
+    grid-column: 2;
+    justify-self: end;
+  }
+  .note-scripture-helper {
+    grid-column: 1 / -1;
   }
   .scripture-preview {
     max-height: 170px;
