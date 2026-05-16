@@ -4995,6 +4995,7 @@ function bindEvents() {
   els.todayDevotionNoteBtn?.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
   els.viewAllNotesBtn?.addEventListener('click', () => setView('notes'));
   els.newNoteBtn.addEventListener('click', clearNoteForm);
+  document.querySelectorAll('[data-note-reset-shortcut]').forEach(button => button.addEventListener('click', clearNoteForm));
   els.newBookBtn.addEventListener('click', clearBookForm);
   els.markdownHeadingBtn?.addEventListener('click', () => applyMarkdownHeading());
   els.markdownBoldBtn?.addEventListener('click', () => applyMarkdownBold());

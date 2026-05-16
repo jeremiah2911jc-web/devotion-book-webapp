@@ -514,6 +514,20 @@
             <form id="note-form" class="note-writing-form" data-testid="note-form">
               <input type="hidden" id="note-id" />
 
+              <section class="note-writing-hero" aria-labelledby="note-writing-hero-title">
+                <div class="note-writing-hero-copy">
+                  <span class="note-writing-kicker">每日書寫</span>
+                  <h2 id="note-writing-hero-title">寫札記</h2>
+                  <p>記下今天與主同行的片段。</p>
+                  <div class="note-writing-hero-verse">
+                    <span>你的話是我腳前的燈，是我路上的光。</span>
+                    <small>詩篇 119:105</small>
+                  </div>
+                </div>
+                <div class="note-writing-hero-art-placeholder" aria-hidden="true"></div>
+                <button type="button" class="ghost-btn small note-hero-clear-btn" data-note-reset-shortcut>清空重填</button>
+              </section>
+
               <section class="note-main-writing" aria-labelledby="note-content-section-title">
                 <section class="note-section note-scripture-section" aria-labelledby="note-scripture-section-title">
                   <div class="note-section-heading">
@@ -619,10 +633,13 @@
               </section>
 
               <section class="note-side-card note-writing-reminder" aria-labelledby="note-reminder-title">
-                <div class="note-section-heading">
-                  <h3 id="note-reminder-title">寫作小提醒</h3>
+                <div class="note-reminder-copy">
+                  <div class="note-section-heading">
+                    <h3 id="note-reminder-title">寫作小提醒</h3>
+                  </div>
+                  <p>從一句感謝開始。</p>
                 </div>
-                <p>從一句感謝開始。</p>
+                <div class="note-reminder-art-placeholder" aria-hidden="true"></div>
               </section>
 
               <section class="note-side-card note-drafts-panel" aria-labelledby="note-drafts-title">

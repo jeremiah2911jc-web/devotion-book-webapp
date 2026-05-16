@@ -316,6 +316,11 @@ input:focus, textarea:focus, select:focus {
 .card h3 { margin: 0 0 8px; font-size: 17px; }
 .card-meta { color: var(--muted); font-size: 13px; display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
 .card-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+@media (min-width: 840px) {
+  body[data-current-view="notes"] .topbar {
+    display: none;
+  }
+}
 .note-writing-workspace .note-writing-shell {
   grid-template-columns: minmax(0, min(1360px, 100%));
   justify-content: center;
@@ -350,18 +355,107 @@ input:focus, textarea:focus, select:focus {
 .note-writing-form {
   display: grid;
   grid-template-areas:
+    "hero"
     "main"
     "prayer"
     "actions"
-    "organize"
-    "drafts";
+    "reminder"
+    "drafts"
+    "organize";
   gap: 14px;
   align-items: start;
+}
+.note-writing-hero {
+  grid-area: hero;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 38%);
+  align-items: center;
+  min-height: 160px;
+  padding: 22px 30px;
+  overflow: hidden;
+  border: 1px solid rgba(222, 217, 204, 0.72);
+  border-radius: 24px 24px 10px 10px;
+  background:
+    radial-gradient(circle at 76% 34%, rgba(226, 214, 192, 0.54), transparent 34%),
+    linear-gradient(115deg, rgba(255,255,255,0.96) 0%, rgba(254,251,245,0.94) 48%, rgba(239,232,220,0.88) 100%);
+  box-shadow: 0 18px 42px rgba(63, 76, 68, 0.08);
+}
+.note-writing-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(105deg, transparent 0 48%, rgba(255,255,255,0.28) 48% 52%, transparent 52%),
+    linear-gradient(18deg, transparent 0 58%, rgba(175, 151, 116, 0.08) 58% 59%, transparent 59%);
+  pointer-events: none;
+}
+.note-writing-hero-copy,
+.note-writing-hero-art-placeholder,
+.note-hero-clear-btn {
+  position: relative;
+  z-index: 1;
+}
+.note-writing-kicker {
+  display: inline-flex;
+  margin-bottom: 6px;
+  color: #5f817b;
+  font-size: 13px;
+  font-weight: 700;
+}
+.note-writing-hero h2 {
+  margin: 0 0 6px;
+  color: #183f45;
+  font-size: clamp(30px, 3.1vw, 44px);
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+.note-writing-hero p {
+  margin: 0;
+  color: #5f6f6c;
+  font-size: 16px;
+  line-height: 1.55;
+}
+.note-writing-hero-verse {
+  display: inline-grid;
+  gap: 2px;
+  margin-top: 14px;
+  padding-left: 20px;
+  border-left: 3px solid rgba(101, 169, 164, 0.34);
+  color: #436562;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.note-writing-hero-verse small {
+  color: #788986;
+  font-size: 12px;
+}
+.note-writing-hero-art-placeholder {
+  justify-self: end;
+  width: min(100%, 390px);
+  aspect-ratio: 3 / 1;
+  border-radius: 26px;
+  opacity: 0.92;
+  background:
+    radial-gradient(ellipse at 78% 68%, rgba(106, 121, 97, 0.18) 0 10%, transparent 11%),
+    radial-gradient(ellipse at 66% 64%, rgba(151, 123, 88, 0.18) 0 12%, transparent 13%),
+    linear-gradient(180deg, rgba(255,255,255,0.2) 58%, rgba(139, 112, 76, 0.12) 59% 64%, transparent 65%),
+    radial-gradient(ellipse at 44% 60%, rgba(214, 204, 186, 0.5) 0 22%, transparent 23%),
+    radial-gradient(ellipse at 38% 56%, rgba(255,255,255,0.72) 0 32%, transparent 33%);
+  box-shadow: inset 0 -18px 34px rgba(152, 125, 91, 0.08);
+}
+.note-hero-clear-btn {
+  position: absolute;
+  top: 20px;
+  right: 26px;
+  min-height: 34px;
+  padding: 7px 13px;
+  border-radius: 999px;
 }
 .note-main-writing {
   grid-area: main;
   display: grid;
-  gap: 12px;
+  gap: 14px;
   min-width: 0;
 }
 .note-prayer-section { grid-area: prayer; }
@@ -371,13 +465,15 @@ input:focus, textarea:focus, select:focus {
 .note-drafts-panel { grid-area: drafts; }
 @media (min-width: 1160px) {
   .note-writing-form {
-    grid-template-columns: minmax(0, 1fr) minmax(260px, 300px);
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 340px);
     grid-template-areas:
+      "hero hero"
       "main prayer"
       "main actions"
+      "main reminder"
       "main drafts"
       "main organize";
-    column-gap: 18px;
+    column-gap: 22px;
     row-gap: 12px;
   }
 }
@@ -385,10 +481,6 @@ input:focus, textarea:focus, select:focus {
   display: grid;
   gap: 8px;
   min-width: 0;
-}
-.note-main-writing .note-section + .note-section {
-  padding-top: 10px;
-  border-top: 1px solid rgba(191,211,208,0.62);
 }
 .note-side-card,
 .note-organize-section {
@@ -402,6 +494,13 @@ input:focus, textarea:focus, select:focus {
 .note-side-card {
   display: grid;
   gap: 7px;
+}
+.note-scripture-section {
+  padding: 14px 15px;
+  border: 1px solid rgba(213, 224, 221, 0.8);
+  border-radius: 20px;
+  background: rgba(255,255,255,0.74);
+  box-shadow: 0 14px 30px rgba(39, 73, 77, 0.055);
 }
 .note-actions-card {
   gap: 6px;
@@ -533,13 +632,14 @@ input:focus, textarea:focus, select:focus {
   gap: 0;
 }
 #note-content {
-  height: clamp(500px, 58vh, 560px);
+  height: clamp(500px, 58vh, 620px);
   min-height: 0;
-  padding: 18px 20px;
-  border-radius: 18px;
+  padding: 24px 26px;
+  border-radius: 22px;
   border-color: rgba(213, 196, 164, 0.62);
   background:
-    linear-gradient(180deg, rgba(255, 254, 249, 0.98), rgba(255, 251, 244, 0.96));
+    radial-gradient(circle at 4% 92%, rgba(145, 164, 121, 0.12) 0 3%, transparent 4%),
+    linear-gradient(180deg, rgba(255, 254, 249, 0.99), rgba(255, 251, 244, 0.97));
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.84), 0 18px 40px rgba(69, 88, 72, 0.08);
   font-size: 16px;
   line-height: 1.72;
@@ -588,10 +688,10 @@ input:focus, textarea:focus, select:focus {
   min-height: 30px;
 }
 .note-drafts-panel {
-  max-height: 260px;
+  max-height: 224px;
 }
 .note-drafts-panel .note-drafts-list {
-  max-height: 198px;
+  max-height: 162px;
   overflow-y: auto;
   padding-right: 2px;
 }
@@ -633,6 +733,26 @@ input:focus, textarea:focus, select:focus {
   margin: 0;
   color: #536b5d;
   line-height: 1.65;
+}
+.note-reminder-copy {
+  min-width: 0;
+}
+.note-reminder-art-placeholder {
+  width: 54px;
+  aspect-ratio: 1;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 58% 44%, rgba(250, 218, 152, 0.56) 0 13%, transparent 14%),
+    radial-gradient(circle at 50% 66%, rgba(137, 114, 88, 0.18) 0 23%, transparent 24%),
+    linear-gradient(180deg, rgba(255,255,255,0.62), rgba(237,230,215,0.58));
+}
+@media (min-width: 1160px) {
+  .note-writing-reminder {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    min-height: 72px;
+  }
 }
 .current-note-draft-notice {
   display: flex;
@@ -677,7 +797,17 @@ input:focus, textarea:focus, select:focus {
     display: none;
   }
   .note-writing-form {
+    grid-template-areas:
+      "main"
+      "prayer"
+      "actions"
+      "drafts"
+      "organize";
     gap: 14px;
+  }
+  .note-writing-hero,
+  .note-writing-reminder {
+    display: none;
   }
   .note-side-card,
   .note-organize-section {
@@ -3340,6 +3470,15 @@ body:not(.auth-locked) .main {
   padding: 18px;
   box-shadow: var(--shadow);
   backdrop-filter: blur(10px);
+}
+
+body:not(.auth-locked) .note-writing-form-panel {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .card,
@@ -6191,6 +6330,11 @@ body:not(.auth-locked) .topbar-actions {
 
 body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
   display: none;
+}
+@media (min-width: 840px) {
+  body:not(.auth-locked)[data-current-view="notes"] .topbar {
+    display: none;
+  }
 }
 
   #view-title {
