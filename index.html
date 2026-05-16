@@ -523,23 +523,26 @@
                     <input id="note-title" placeholder="例：在恩典中重新學會感恩" data-testid="note-title" />
                   </label>
                   <div class="note-scripture-control-row">
-                    <label>經文
+                    <div class="note-scripture-field">
+                      <span class="note-scripture-label-row">
+                        <label for="note-scripture" class="note-scripture-label-text">經文</label>
+                        <span class="note-scripture-status-row">
+                          <label class="checkbox-inline note-scripture-toggle">
+                            <input id="scripture-append-to-content" type="checkbox" checked />
+                            <span class="note-helper-full">抓取後同步放入札記全文</span>
+                            <span class="note-helper-short" aria-hidden="true">同步全文</span>
+                          </label>
+                          <span class="caption note-scripture-helper">
+                            <span class="note-helper-full">多處經文用分號分隔</span>
+                            <span class="note-helper-short" aria-hidden="true">多處用分號</span>
+                          </span>
+                        </span>
+                      </span>
                       <input id="note-scripture" placeholder="例：詩篇 103:1-11" data-testid="note-scripture" />
-                    </label>
+                    </div>
                     <button type="button" id="fetch-scripture-btn" class="ghost-btn">抓取經文</button>
                   </div>
-                  <div class="note-scripture-status-row">
-                    <label class="checkbox-inline note-scripture-toggle">
-                      <input id="scripture-append-to-content" type="checkbox" checked />
-                      <span class="note-helper-full">抓取後同步放入札記全文</span>
-                      <span class="note-helper-short" aria-hidden="true">同步放入全文</span>
-                    </label>
-                    <p id="scripture-fetch-status" class="caption hidden"></p>
-                    <span class="caption note-scripture-helper">
-                      <span class="note-helper-full">多處經文用分號分隔</span>
-                      <span class="note-helper-short" aria-hidden="true">多處用分號</span>
-                    </span>
-                  </div>
+                  <p id="scripture-fetch-status" class="caption hidden"></p>
                   <div id="scripture-preview" class="scripture-preview hidden"></div>
                 </section>
 

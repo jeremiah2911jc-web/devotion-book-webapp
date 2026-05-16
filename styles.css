@@ -441,23 +441,21 @@ input:focus, textarea:focus, select:focus {
 @media (min-width: 840px) {
   .note-scripture-section {
     grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
-    grid-template-areas:
-      "title scripture"
-      ". status-row"
-      "preview preview";
     align-items: end;
   }
   .note-title-field {
-    grid-area: title;
+    grid-column: 1;
+    grid-row: 1;
   }
   .note-scripture-control-row {
-    grid-area: scripture;
+    grid-column: 2;
+    grid-row: 1;
   }
-  .note-scripture-status-row {
-    grid-area: status-row;
+  #scripture-fetch-status {
+    grid-column: 1 / -1;
   }
   #scripture-preview {
-    grid-area: preview;
+    grid-column: 1 / -1;
   }
 }
 .note-scripture-control-row {
@@ -471,12 +469,32 @@ input:focus, textarea:focus, select:focus {
   padding: 8px 14px;
   white-space: nowrap;
 }
+.note-scripture-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.note-scripture-label-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.note-scripture-label-text {
+  flex: 0 0 auto;
+  color: #244e54;
+  font-size: 13px;
+  line-height: 1.35;
+}
 .note-scripture-status-row {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
   gap: 6px;
-  min-height: 24px;
+  min-height: 0;
   color: var(--muted);
   min-width: 0;
   max-width: 100%;
@@ -495,7 +513,7 @@ input:focus, textarea:focus, select:focus {
   white-space: nowrap;
 }
 #scripture-fetch-status {
-  margin: 0;
+  margin: -2px 0 0;
   color: var(--muted);
   font-size: 11px;
   line-height: 1.35;
@@ -651,27 +669,6 @@ input:focus, textarea:focus, select:focus {
   gap: 8px;
   justify-content: flex-end;
 }
-@media (min-width: 840px) and (max-width: 1199px) {
-  .note-scripture-status-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 2px 8px;
-    min-height: 0;
-    overflow: visible;
-    white-space: normal;
-  }
-  .note-scripture-toggle {
-    grid-column: 1;
-    min-width: 0;
-  }
-  #scripture-fetch-status {
-    grid-column: 2;
-    justify-self: end;
-  }
-  .note-scripture-helper {
-    grid-column: 1 / -1;
-  }
-}
 @media (max-width: 720px) {
   .note-writing-form-panel {
     padding: 16px;
@@ -702,25 +699,36 @@ input:focus, textarea:focus, select:focus {
     border-radius: 11px;
     font-size: 13px;
   }
-  .note-scripture-status-row {
-    width: 100%;
+  .note-scripture-label-row {
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+  .note-scripture-label-row::-webkit-scrollbar {
+    display: none;
   }
   .note-scripture-status-row {
     display: flex;
     flex-wrap: nowrap;
-    gap: 6px;
-    min-height: 22px;
+    gap: 5px;
+    width: auto;
+    min-height: 0;
     overflow-x: auto;
     overflow-y: hidden;
     white-space: nowrap;
+    scrollbar-width: none;
+  }
+  .note-scripture-status-row::-webkit-scrollbar {
+    display: none;
   }
   .note-scripture-toggle,
   #scripture-fetch-status,
   .note-scripture-helper {
-    font-size: 11px;
+    font-size: 10.5px;
   }
   .note-scripture-toggle {
-    gap: 4px;
+    gap: 3px;
     min-width: 0;
   }
   .note-helper-full {
