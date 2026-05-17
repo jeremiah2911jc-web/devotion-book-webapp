@@ -2137,7 +2137,7 @@ function ensureOperationManualUi() {
               <li>回到「選稿編排」，點「整理章節」，依流程提示完成章節排序與儲存。</li>
               <li>查看出版狀態：若提示尚未儲存、缺少內容或建議補齊，先依下一步整理。</li>
               <li>點選「書籍資料」整理書名、作者、簡介與封面；確認後再點「匯出 EPUB」。</li>
-              <li>點「儲存並匯出 EPUB」。完成後可以「立即閱讀」、「下載 EPUB」或「前往書櫃」。</li>
+              <li>點「儲存並匯出 EPUB」。完成後系統會把書加入書櫃，並帶你前往書櫃查看。</li>
             </ol>
             <p>只有正式札記會進入札記閱讀、札記庫、選稿編排與 EPUB。草稿會留在「寫札記」的「我的草稿」，方便之後回來補完。</p>
             <p>「目前正在編排」是整個成書流程的工作狀態。札記庫的加入按鈕會把勾選文章加入這一份選稿編排。</p>
@@ -2346,7 +2346,7 @@ function ensureOperationManualUi() {
             </ul>
             <p>「成書匯出設定」是最後確認視窗，不取代前面的書籍整理流程。它會顯示簡短出版狀態，讓你在匯出前確認是否可以輸出，以及主要卡點是什麼。完整整理建議留在章節整理工作區。</p>
             <p>匯出的 EPUB 會先有書名頁；若有書籍簡介，會接著產生「書前說明」；札記章節順序仍完全以成書中心的編排為準；若有結語，會放在書末。沒有書籍簡介或結語時，系統不會產生空白頁。</p>
-            <p>若只想先保存書名、作者、封面、書前補充與結語，可以點「儲存成書設定」。若要直接產生電子書，請點「儲存並匯出 EPUB」。匯出只會使用已加入編排的正式札記，草稿不會進入 EPUB。若書稿勾選「成書時顯示章節摘要」，且單篇札記也勾選「閱讀與成書時顯示摘要」，EPUB 會在章節開頭顯示摘要；今日禱告則只有在有內容且勾選顯示時才會跟著該篇章節匯出。匯出完成後，書籍會加入書櫃，並提供「立即閱讀」、「下載 EPUB」與「前往書櫃」。</p>
+            <p>若只想先保存書名、作者、封面、書前補充與結語，可以點「儲存成書設定」。若要直接產生電子書，請點「儲存並匯出 EPUB」。匯出只會使用已加入編排的正式札記，草稿不會進入 EPUB。若書稿勾選「成書時顯示章節摘要」，且單篇札記也勾選「閱讀與成書時顯示摘要」，EPUB 會在章節開頭顯示摘要；今日禱告則只有在有內容且勾選顯示時才會跟著該篇章節匯出。匯出完成後，系統會將書加入書櫃並帶你前往書櫃查看，可在書櫃中立即閱讀或下載 EPUB。</p>
             <p>下載 EPUB 時，畫面會確認「下載 EPUB？」並說明系統會下載這本書的 EPUB 檔案，完成後可以在你的裝置上閱讀或保存。</p>
             <p>下載後的 EPUB 可用 iOS「書籍」、Android「Google Play 圖書」或其他 EPUB 閱讀器開啟。</p>
           </section>
@@ -6399,7 +6399,7 @@ async function saveBookExportSettings({ closeAfterSave = false, silent = false, 
 }
 
 async function saveBookExportSettingsAndExport() {
-  await saveBookExportSettings({ closeAfterSave: true, silent: true, actionMode: 'exporting' });
+  await saveBookExportSettings({ closeAfterSave: false, silent: true, actionMode: 'exporting' });
   await exportSelectedBookEpub();
 }
 
@@ -10656,15 +10656,38 @@ async function exportSelectedBookEpub() {
       libraryBookId: libraryBook?.id || '',
       message: exportMessage,
     };
-    state.bookDraftModalOpen = true;
-    state.bookDraftModalBookId = book.id;
-    refreshUi();
-    renderExportSuccessActions(state.latestExportedBook);
+    if (libraryBook?.id) {
+      goToExportedLibraryBook(libraryBook.id);
+    } else {
+      closeBookExportSettingsModal();
+      state.bookDraftModalOpen = true;
+      state.bookDraftModalBookId = book.id;
+      refreshUi();
+      renderExportSuccessActions(state.latestExportedBook);
+    }
     showToast(exportMessage);
   } finally {
     state.isExporting = false;
     syncExportButtonState();
   }
+}
+
+function goToExportedLibraryBook(libraryBookId = '') {
+  if (!libraryBookId) return;
+  closeBookExportSettingsModal();
+  state.bookDraftModalOpen = false;
+  state.bookDraftModalBookId = null;
+  cloudLibrary.selectedBookId = libraryBookId;
+  setView('library');
+  refreshUi();
+  refreshLibraryCoverUrls().catch(console.warn);
+  requestAnimationFrame(() => {
+    const card = [...document.querySelectorAll('[data-library-book-id]')]
+      .find(element => element.dataset.libraryBookId === String(libraryBookId));
+    if (!card) return;
+    card.classList.add('selected');
+    card.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+  });
 }
 
 function slugifyFilename(value = '') {
@@ -12774,7 +12797,7 @@ function renderReaderBookmarksPanel() {
   `;
 }
 
-function renderReaderSettings() {
+function renderReaderSettings(options = {}) {
   const content = document.getElementById('reader-content');
   if (!content) return;
   const settings = { fontSize: 18, lineHeight: 1.8, theme: 'light', ...cloudLibrary.readerSettings };
@@ -12789,14 +12812,15 @@ function renderReaderSettings() {
   document.getElementById('view-reader')?.classList.toggle('reader-dark', settings.theme === 'dark');
   if (cloudLibrary.readerBook) {
     const hasExistingPagination = cloudLibrary.readerChapterPageCounts.some(count => Number(count) > 0);
-    paginateCurrentReaderChapter(false, { allChapters: true, preserveProgress: hasExistingPagination, force: true });
+    const preserveProgress = options.preserveProgress ?? hasExistingPagination;
+    paginateCurrentReaderChapter(false, { allChapters: true, preserveProgress, force: true });
   }
 }
 
 function updateReaderSetting(key, value) {
   cloudLibrary.readerSettings = { fontSize: 18, lineHeight: 1.8, theme: 'light', ...cloudLibrary.readerSettings, [key]: value };
   saveJson(cloudLibrary.readerSettingsKey, cloudLibrary.readerSettings);
-  renderReaderSettings();
+  renderReaderSettings({ preserveProgress: false });
   saveCurrentReaderProgressLocal();
   renderReaderPanels();
   showReaderControls();
@@ -13640,6 +13664,35 @@ function getLibrarySourceAction(element) {
   return element?.dataset.librarySource || 'generated';
 }
 
+const READER_CONTROL_TARGET_SELECTOR = [
+  'button',
+  'input',
+  'select',
+  'textarea',
+  'label',
+  'a',
+  '[role="button"]',
+  '[contenteditable="true"]',
+  '[data-reader-control]',
+  '[data-reader-toggle-panel]',
+  '[data-reader-open-panel]',
+  '[data-reader-close-panel]',
+  '[data-reader-setting]',
+  '[data-reader-setting-option]',
+  '.reader-panel-root',
+  '.reader-panel',
+  '.reader-action-menu',
+  '.reader-footer',
+  '.reader-close-button',
+  '.reader-hidden-controls',
+  '.reader-action-button',
+].join(',');
+
+function isReaderControlEvent(event) {
+  const target = event?.target;
+  return target instanceof Element && !!target.closest(READER_CONTROL_TARGET_SELECTOR);
+}
+
 async function openLibraryBookBySource(bookId, source = 'generated') {
   if (source === 'system') return openSystemLibraryBook(bookId);
   if (source === 'imported_epub') return openImportedLibraryBook(bookId);
@@ -13766,6 +13819,7 @@ document.addEventListener('click', event => {
   }
   if (document.getElementById('view-reader')?.classList.contains('active')) {
     if (event.target.closest('.reader-toolbar')) showReaderControls();
+    if (isReaderControlEvent(event)) return;
     if (event.target.closest('.reader-stage') && !event.target.closest('[data-reader-prev-page], [data-reader-next-page]')) toggleReaderControls();
   }
 });
@@ -13774,7 +13828,12 @@ document.addEventListener('change', event => {
   if (event.target.id === 'library-sort') renderLibrary();
   if (event.target.id === 'reader-chapter-nav') openReaderChapter(Number(event.target.value) || 0, { pageIndex: 0 }).catch(handleError);
   if (event.target.id === 'reader-theme') updateReaderSetting('theme', event.target.value);
-  if (event.target.dataset.readerSetting === 'theme') updateReaderSetting('theme', event.target.value);
+  if (event.target.dataset.readerSetting === 'theme') {
+    event.stopPropagation();
+    updateReaderSetting('theme', event.target.value);
+    showReaderControls();
+    return;
+  }
   if (event.target.closest('#view-reader')) showReaderControls();
 });
 
@@ -13790,8 +13849,18 @@ document.addEventListener('input', event => {
   }
   if (event.target.id === 'reader-font-size') updateReaderSetting('fontSize', Number(event.target.value));
   if (event.target.id === 'reader-line-height') updateReaderSetting('lineHeight', Number(event.target.value));
-  if (event.target.dataset.readerSetting === 'fontSize') updateReaderSetting('fontSize', Number(event.target.value));
-  if (event.target.dataset.readerSetting === 'lineHeight') updateReaderSetting('lineHeight', Number(event.target.value));
+  if (event.target.dataset.readerSetting === 'fontSize') {
+    event.stopPropagation();
+    updateReaderSetting('fontSize', Number(event.target.value));
+    showReaderControls();
+    return;
+  }
+  if (event.target.dataset.readerSetting === 'lineHeight') {
+    event.stopPropagation();
+    updateReaderSetting('lineHeight', Number(event.target.value));
+    showReaderControls();
+    return;
+  }
   if (event.target.closest('#view-reader')) showReaderControls();
 });
 
@@ -13828,8 +13897,11 @@ document.addEventListener('keydown', event => {
 
 let readerTouchStartX = 0;
 let readerTouchStartY = 0;
+let readerTouchStartedOnControl = false;
 document.addEventListener('touchstart', event => {
   if (!document.getElementById('view-reader')?.classList.contains('active')) return;
+  readerTouchStartedOnControl = isReaderControlEvent(event);
+  if (readerTouchStartedOnControl) return;
   const touch = event.touches[0];
   readerTouchStartX = touch.clientX;
   readerTouchStartY = touch.clientY;
@@ -13837,9 +13909,14 @@ document.addEventListener('touchstart', event => {
 
 document.addEventListener('touchend', event => {
   if (!document.getElementById('view-reader')?.classList.contains('active')) return;
+  if (readerTouchStartedOnControl || isReaderControlEvent(event)) {
+    readerTouchStartedOnControl = false;
+    return;
+  }
   const touch = event.changedTouches[0];
   const dx = touch.clientX - readerTouchStartX;
   const dy = touch.clientY - readerTouchStartY;
+  readerTouchStartedOnControl = false;
   if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.4) {
     turnReaderPage(dx < 0 ? 1 : -1).catch(handleError);
   }
