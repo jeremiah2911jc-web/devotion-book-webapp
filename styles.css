@@ -391,8 +391,7 @@ input:focus, textarea:focus, select:focus {
   pointer-events: none;
 }
 .note-writing-hero-copy,
-.note-writing-hero-art-placeholder,
-.note-hero-clear-btn {
+.note-writing-hero-art-placeholder {
   position: relative;
   z-index: 1;
 }
@@ -428,14 +427,6 @@ input:focus, textarea:focus, select:focus {
   width: min(100%, 540px);
   min-height: 126px;
   border-radius: 26px;
-}
-.note-hero-clear-btn {
-  position: absolute;
-  top: 20px;
-  right: 26px;
-  min-height: 34px;
-  padding: 7px 13px;
-  border-radius: 999px;
 }
 .note-main-writing {
   grid-area: main;
@@ -799,8 +790,7 @@ input:focus, textarea:focus, select:focus {
     line-height: 1.5;
   }
   .note-writing-hero-verse,
-  .note-writing-hero-art-placeholder,
-  .note-hero-clear-btn {
+  .note-writing-hero-art-placeholder {
     display: none;
   }
   .note-side-card,
@@ -6134,41 +6124,43 @@ body:not(.auth-locked) .main {
     color: #325157;
     border-radius: 15px;
     padding: 10px 13px;
-    text-align: center;
-    display: flex;
-    justify-content: center;
+    text-align: left;
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
     align-items: center;
-    gap: 10px;
+    column-gap: 10px;
+    justify-items: start;
     line-height: 1.2;
     transition: 0.2s ease;
   }
 
   .desktop-sidebar-link .nav-icon {
-    flex: 0 0 24px;
     width: 24px;
     height: 24px;
     display: inline-grid;
     place-items: center;
     align-self: center;
+    justify-self: center;
     background-position: center;
     background-size: contain;
   }
 
   .desktop-sidebar-link .desktop-sidebar-dot {
-    flex: 0 0 12px;
     width: 12px;
     height: 12px;
     align-self: center;
+    justify-self: center;
     margin-left: 0;
   }
 
   .desktop-sidebar-link > span:last-child {
     display: inline-flex;
     align-items: center;
-    flex: 0 1 auto;
+    justify-self: start;
     min-width: 0;
     min-height: 24px;
     line-height: 1.2;
+    text-align: left;
   }
 
   .desktop-sidebar-link:hover {
@@ -6301,14 +6293,12 @@ body:not(.auth-locked) .main {
     }
 
     .desktop-sidebar-link {
-      gap: 8px;
       min-height: 44px;
       padding: 9px 11px;
       border-radius: 13px;
     }
 
     .desktop-sidebar-link .nav-icon {
-      flex-basis: 22px;
       width: 22px;
       height: 22px;
     }
