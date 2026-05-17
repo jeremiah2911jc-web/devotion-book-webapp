@@ -618,16 +618,17 @@ input:focus, textarea:focus, select:focus {
 .note-content-field::after {
   content: "";
   position: absolute;
-  left: 16px;
-  bottom: 14px;
-  width: min(22%, 180px);
+  left: -12px;
+  bottom: -14px;
+  width: min(42%, 320px);
   aspect-ratio: 1;
   background: url("./assets/ui/note-paper-leaf-corner.png") left bottom / contain no-repeat;
-  opacity: 0.075;
+  opacity: 0.17;
   mix-blend-mode: multiply;
-  filter: saturate(0.72);
+  filter: saturate(0.82);
   pointer-events: none;
-  z-index: 1;
+  transform: translate(-4%, 5%);
+  z-index: 2;
 }
 #note-content {
   position: relative;
@@ -846,8 +847,10 @@ input:focus, textarea:focus, select:focus {
     font-size: 16px;
   }
   .note-content-field::after {
-    width: 136px;
-    opacity: 0.045;
+    left: -10px;
+    bottom: -10px;
+    width: 178px;
+    opacity: 0.11;
   }
   #note-prayer {
     height: 116px;
@@ -6105,12 +6108,22 @@ body:not(.auth-locked) .main {
     color: #325157;
     border-radius: 15px;
     padding: 11px 13px;
-    text-align: left;
-    display: grid;
-    grid-template-columns: 22px minmax(0, 1fr);
+    text-align: center;
+    display: flex;
+    justify-content: center;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     transition: 0.2s ease;
+  }
+
+  .desktop-sidebar-link .nav-icon,
+  .desktop-sidebar-link .desktop-sidebar-dot {
+    flex: 0 0 auto;
+  }
+
+  .desktop-sidebar-link > span:last-child {
+    flex: 0 1 auto;
+    min-width: 0;
   }
 
   .desktop-sidebar-link:hover {
@@ -6243,8 +6256,7 @@ body:not(.auth-locked) .main {
     }
 
     .desktop-sidebar-link {
-      grid-template-columns: 20px minmax(0, 1fr);
-      gap: 10px;
+      gap: 8px;
       padding: 9px 11px;
       border-radius: 13px;
     }
