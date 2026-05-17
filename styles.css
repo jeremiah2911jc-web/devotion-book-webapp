@@ -618,16 +618,16 @@ input:focus, textarea:focus, select:focus {
 .note-content-field::after {
   content: "";
   position: absolute;
-  left: -12px;
-  bottom: -14px;
-  width: min(42%, 320px);
+  left: 0;
+  bottom: 0;
+  width: min(54%, 420px);
   aspect-ratio: 1;
   background: url("./assets/ui/note-paper-leaf-corner.png") left bottom / contain no-repeat;
-  opacity: 0.17;
+  opacity: 0.28;
   mix-blend-mode: multiply;
   filter: saturate(0.82);
   pointer-events: none;
-  transform: translate(-4%, 5%);
+  transform: translate(-6%, 7%);
   z-index: 2;
 }
 #note-content {
@@ -847,10 +847,10 @@ input:focus, textarea:focus, select:focus {
     font-size: 16px;
   }
   .note-content-field::after {
-    left: -10px;
-    bottom: -10px;
-    width: 178px;
-    opacity: 0.11;
+    left: -8px;
+    bottom: -8px;
+    width: 210px;
+    opacity: 0.16;
   }
   #note-prayer {
     height: 116px;
