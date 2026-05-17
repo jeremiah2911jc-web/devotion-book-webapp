@@ -10037,7 +10037,7 @@ function handleChapterDragPointerDown(event) {
 function updateChapterDragTarget(event) {
   const dragState = state.bookChapterDrag;
   if (!dragState?.active) return;
-  const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('[data-chapter-item]');
+  const target = getChapterDragPointerTarget(event.clientX, event.clientY);
   clearChapterDragTargets();
   if (!target || target.dataset.chapterItem === dragState.chapterId) {
     dragState.targetId = '';
@@ -10048,6 +10048,34 @@ function updateChapterDragTarget(event) {
   target.classList.add(placement === 'after' ? 'is-drop-after' : 'is-drop-before');
   dragState.targetId = target.dataset.chapterItem || '';
   dragState.placement = placement;
+}
+
+function getChapterDragPointerTarget(clientX, clientY) {
+  const directTarget = document.elementFromPoint(clientX, clientY)?.closest('[data-chapter-item]');
+  if (directTarget) return directTarget;
+  const items = [...document.querySelectorAll('#chapters-list [data-chapter-item]')]
+    .filter(item => item.offsetParent !== null);
+  if (!items.length) return null;
+  const listRect = els.chaptersList?.getBoundingClientRect();
+  if (listRect && clientY <= listRect.top) return items[0];
+  if (listRect && clientY >= listRect.bottom) return items[items.length - 1];
+  let nearest = null;
+  let nearestDistance = Infinity;
+  items.forEach(item => {
+    const rect = item.getBoundingClientRect();
+    if (clientY >= rect.top && clientY <= rect.bottom) {
+      nearest = item;
+      nearestDistance = 0;
+      return;
+    }
+    const centerY = rect.top + (rect.height / 2);
+    const distance = Math.abs(clientY - centerY);
+    if (distance < nearestDistance) {
+      nearest = item;
+      nearestDistance = distance;
+    }
+  });
+  return nearest;
 }
 
 function getChapterDragScrollContainers() {
