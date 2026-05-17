@@ -2326,7 +2326,7 @@ function ensureOperationManualUi() {
               <li>點「儲存編排」保存章節調整。</li>
             </ul>
             <p>整理章節時，可調整閱讀順序與章節標題。手機版視窗可上下滑動。</p>
-            <p>章節上方的工具列會集中放置「儲存編排」、「前往札記庫加入文章」與「成書匯出設定」。整理書稿時，不需要在視窗上下來回尋找主要操作。</p>
+            <p>章節上方的工具列會集中放置「儲存編排」、「加入札記」與「成書匯出設定」。整理書稿時，不需要在視窗上下來回尋找主要操作。</p>
             <p>視窗中的出版檢查會用「已就緒」、「建議補齊」或「需要處理」提示目前書稿狀態。必要項目影響能否順利輸出；建議項目用來幫助你補強閱讀品質。</p>
             <p>第一版不提供把已儲存的正式札記改回草稿，以避免已加入章節後狀態變得複雜。</p>
           </section>
@@ -7402,14 +7402,18 @@ function ensureBookDraftWorkspaceUi() {
   els.exportEpubBtn?.classList.add('hidden');
   els.exportSuccessActions?.classList.add('hidden');
 
-  if (!document.getElementById('go-content-library-btn') && els.createSnapshotBtn?.parentElement) {
-    const goLibraryBtn = document.createElement('button');
+  let goLibraryBtn = document.getElementById('go-content-library-btn');
+  if (!goLibraryBtn) {
+    goLibraryBtn = document.createElement('button');
     goLibraryBtn.id = 'go-content-library-btn';
     goLibraryBtn.type = 'button';
     goLibraryBtn.className = 'secondary-btn';
-    goLibraryBtn.textContent = '前往札記庫加入文章';
+    goLibraryBtn.textContent = '加入札記';
+    goLibraryBtn.setAttribute('aria-label', '前往札記庫加入文章');
     goLibraryBtn.addEventListener('click', () => goToContentLibraryForBookDraft(getActiveBookDraftId()).catch(handleError));
+  }
 
+  if (!document.getElementById('focus-draft-chapters-btn') && els.createSnapshotBtn?.parentElement) {
     const focusChaptersBtn = document.createElement('button');
     focusChaptersBtn.id = 'focus-draft-chapters-btn';
     focusChaptersBtn.type = 'button';
@@ -7418,7 +7422,6 @@ function ensureBookDraftWorkspaceUi() {
     focusChaptersBtn.addEventListener('click', () => focusSelectedDraftPanel().catch(handleError));
 
     els.createSnapshotBtn.parentElement.prepend(focusChaptersBtn);
-    els.createSnapshotBtn.parentElement.prepend(goLibraryBtn);
   }
 
   const actionRow = els.exportEpubBtn?.parentElement;
@@ -7480,7 +7483,6 @@ function ensureBookDraftWorkspaceUi() {
       readinessPanel.dataset.testid = 'publishing-readiness-slot';
     }
     leftCol.appendChild(readinessPanel);
-    const goLibraryBtn = document.getElementById('go-content-library-btn');
     if (goLibraryBtn) toolbarActions.appendChild(goLibraryBtn);
 
     let mobileReadinessPanel = document.getElementById('publishing-readiness-mobile-panel');
