@@ -748,6 +748,7 @@ const els = {
   openRegisterBtn: document.getElementById('open-register-btn'),
   openLoginBtn: document.getElementById('open-login-btn'),
   authInlinePanel: document.getElementById('auth-inline-panel'),
+  authInlineForm: document.getElementById('auth-inline-form'),
   authInlineTitle: document.getElementById('auth-inline-title'),
   closeAuthInlineBtn: document.getElementById('close-auth-inline-btn'),
   authInlineBackdrop: document.getElementById('auth-inline-backdrop'),
@@ -930,6 +931,7 @@ const state = {
   scriptureLastAppliedBlock: '',
   scriptureAppliedBlocks: [],
   authInlineMode: 'register',
+  authInlineSubmitting: false,
   passwordRecoveryActive: false,
   deviceId: getOrCreateDeviceId(),
   realtimeChannel: null,
@@ -2091,7 +2093,7 @@ function ensureOperationManualUi() {
             <li><a href="#manual-content-library">七、札記庫</a></li>
             <li><a href="#manual-selection-workbench">八、選稿編排</a></li>
             <li><a href="#manual-chapter-arrangement">九、整理章節</a></li>
-            <li><a href="#manual-export">十、成書匯出設定與 EPUB 匯出</a></li>
+            <li><a href="#manual-export">十、匯出 EPUB</a></li>
             <li><a href="#manual-library">十一、書櫃</a></li>
             <li><a href="#manual-reader">十二、閱讀器</a></li>
             <li><a href="#manual-today-devotion">十三、今日默想</a></li>
@@ -2134,7 +2136,7 @@ function ensureOperationManualUi() {
               <li>到「札記庫」勾選正式札記，加入目前正在編排的書稿。</li>
               <li>回到「選稿編排」，點「整理章節」，依流程提示完成章節排序與儲存。</li>
               <li>查看出版狀態：若提示尚未儲存、缺少內容或建議補齊，先依下一步整理。</li>
-              <li>點選「成書匯出設定」，補齊書名、作者、封面、前言等成書資料。</li>
+              <li>點選「書籍資料」整理書名、作者、簡介與封面；確認後再點「匯出 EPUB」。</li>
               <li>點「儲存並匯出 EPUB」。完成後可以「立即閱讀」、「下載 EPUB」或「前往書櫃」。</li>
             </ol>
             <p>只有正式札記會進入札記閱讀、札記庫、選稿編排與 EPUB。草稿會留在「寫札記」的「我的草稿」，方便之後回來補完。</p>
@@ -2305,13 +2307,13 @@ function ensureOperationManualUi() {
             <p>這是目前會接收札記庫文章的編排。卡片會顯示「正在編排」、已收錄幾篇札記、更新時間、日期範圍、分類、標籤與整理說明。</p>
             <p>目前正在編排的卡片代表札記庫接下來會加入哪一份書稿。若還沒有書稿，先建立一份選稿編排；若已有書稿，可點「整理章節」進入主要工作區。</p>
             <h3>其他選稿編排</h3>
-            <p>這裡顯示目前沒有被選為工作狀態的編排。每張卡片可點「開始編這本」切換成目前正在編排，也可點「整理章節」、「加入札記」、「編輯設定」或「刪除」。</p>
+            <p>這裡顯示目前沒有被選為工作狀態的編排。每張卡片可點「開始編這本」切換成目前正在編排，也可點「整理章節」、「加入札記」、「書籍資料」或「刪除」。</p>
             <p>點選「開始編這本」後，該卡片會移到「目前正在編排」，原本的目前編排會回到其他選稿編排。畫面會立即更新並顯示切換提示。</p>
-            <p>若建立選稿編排後，想修改編排代稱、整理說明、日期範圍、分類或標籤，可以在選稿編排卡片上點「編輯設定」。「編輯設定」只修改這份選稿編排的基本資料，不會直接改動已收錄的札記內容，也不會改變章節排序。若要調整章節順序或章節標題，請使用「整理章節」。</p>
+            <p>若建立選稿編排後，想修改書名、副標、作者、書籍簡介、日期範圍、分類、標籤、封面或模板，可以在選稿編排卡片上點「書籍資料」。「書籍資料」整理的是這本書本身的基本資料，不會直接改動已收錄的札記內容，也不會改變章節排序。若要調整章節順序或章節標題，請使用「整理章節」。</p>
             <p>選稿編排只接收正式札記。草稿不會出現在可加入候選，也不會被加入章節。摘要是否出現在閱讀與成書中，會依照每篇札記的「閱讀與成書時顯示摘要」設定處理；今日禱告只有在有內容且勾選「閱讀與成書時顯示禱告」時才會輸出。</p>
             <p>「整理章節」會在工作區上方顯示目前進度與下一步。例如尚未加入札記、章節順序尚未儲存、可以匯出或建議補齊。出版狀態不是錯誤清單，而是幫你判斷下一步要整理什麼。</p>
             <h3>新增選稿編排</h3>
-            <p>新的編排只需要先填「編排代稱」與「整理說明」。若目前沒有正在編排，新建立的編排會直接成為目前正在編排。若已經有目前編排，新編排會先放在其他選稿編排中。</p>
+            <p>新的編排只需要先填「書名」與「書籍簡介」。若目前沒有正在編排，新建立的編排會直接成為目前正在編排。若已經有目前編排，新編排會先放在其他選稿編排中。</p>
           </section>
 
           <section id="manual-chapter-arrangement" class="manual-section">
@@ -2323,26 +2325,25 @@ function ensureOperationManualUi() {
               <li>拖曳章節卡片上的「排序」把手調整閱讀順序；章節很多時，拖到列表上緣或下緣會協助捲動。若使用手機或不方便拖曳，也可用小型上移、下移輔助操作。</li>
               <li>必要時可修改章節標題，或取消「列入目錄」。</li>
               <li>調整後若畫面提示「章節順序已調整，尚未儲存」，請點「儲存編排」保存章節調整。</li>
-              <li>確認出版狀態的下一步，再進入「成書匯出設定」。</li>
+              <li>確認出版狀態的下一步，再點「匯出 EPUB」做最後確認。</li>
             </ol>
-            <p>章節上方的工具列會集中放置「儲存編排」、「加入札記」與「成書匯出設定」。整理書稿時，不需要在視窗上下來回尋找主要操作。</p>
+            <p>章節上方的工具列會集中放置「儲存編排」、「加入札記」與「匯出 EPUB」。整理書稿時，不需要在視窗上下來回尋找主要操作。</p>
             <p>出版狀態會用「已就緒」、「建議補齊」或「需要處理」提示目前書稿狀態，並指出能否匯出、卡在哪裡，以及哪幾篇札記建議補經文、摘要或今日禱告。</p>
             <p>第一版不提供把已儲存的正式札記改回草稿，以避免已加入章節後狀態變得複雜。</p>
           </section>
 
           <section id="manual-export" class="manual-section">
-            <h2>十、成書匯出設定與 EPUB 匯出</h2>
-            <p>成書匯出從「選稿編排」進入。先在章節整理視窗確認流程提示與出版狀態；若章節順序尚未儲存，請先點「儲存編排」。狀態清楚後，再點「成書匯出設定」。</p>
-            <p>成書匯出設定可補齊：</p>
+            <h2>十、匯出 EPUB</h2>
+            <p>成書匯出從「選稿編排」進入。先在章節整理視窗確認流程提示與出版狀態；若章節順序尚未儲存，請先點「儲存編排」。狀態清楚後，再點「匯出 EPUB」做最後確認。</p>
+            <p>「書籍資料」用來整理這本書的基本資料，包含：</p>
             <ul>
               <li>書名與副標。</li>
               <li>作者。</li>
               <li>模板。</li>
               <li>書籍簡介。</li>
               <li>封面圖片。</li>
-              <li>前言與後記。</li>
             </ul>
-            <p>成書匯出設定上方只顯示簡短出版狀態，讓你在最後確認時知道是否可以匯出，以及主要卡點是什麼。完整整理建議留在章節整理工作區。</p>
+            <p>「成書匯出設定」是最後確認視窗，不取代前面的書籍整理流程。它會顯示簡短出版狀態，讓你在匯出前確認是否可以輸出，以及主要卡點是什麼。完整整理建議留在章節整理工作區。</p>
             <p>若只想先保存書名、作者、封面、前言與後記，可以點「儲存成書設定」。若要直接產生電子書，請點「儲存並匯出 EPUB」。匯出只會使用已加入編排的正式札記，草稿不會進入 EPUB。若書稿勾選「成書時顯示章節摘要」，且單篇札記也勾選「閱讀與成書時顯示摘要」，EPUB 會在章節開頭顯示摘要；今日禱告則只有在有內容且勾選顯示時才會跟著該篇章節匯出。匯出完成後，書籍會加入書櫃，並提供「立即閱讀」、「下載 EPUB」與「前往書櫃」。</p>
             <p>下載 EPUB 時，畫面會確認「下載 EPUB？」並說明系統會下載這本書的 EPUB 檔案，完成後可以在你的裝置上閱讀或保存。</p>
             <p>下載後的 EPUB 可用 iOS「書籍」、Android「Google Play 圖書」或其他 EPUB 閱讀器開啟。</p>
@@ -2392,7 +2393,7 @@ function ensureOperationManualUi() {
             <p>手機與平板主要使用底部導覽切換頁面，常見項目包含總覽、禱告、寫札記、札記庫、選稿編排、書櫃與操作手冊。若項目較多，可以在底部導覽列左右滑動尋找。桌機版主要使用左側側欄。</p>
             <p>札記閱讀在手機上是單欄流程：先看列表，點一篇札記進入單篇閱讀，再用「返回札記閱讀列表」回到列表。桌機版則比較像左右分欄，左側選札記，右側閱讀內容。</p>
             <p>書櫃與 Reader 在手機上也可以正常閱讀。Reader 會把控制項收得比較精簡，讓閱讀內容不被底部導覽遮住。若沒有看到功能按鈕，可以先點一下閱讀畫面。</p>
-            <p>在手機上編輯札記、整理章節或設定成書資料時，儲存成功後再離開頁面較穩妥。若畫面沒有更新，可重新整理後再查看。</p>
+            <p>在手機上編輯札記、整理章節或書籍資料時，儲存成功後再離開頁面較穩妥。若畫面沒有更新，可重新整理後再查看。</p>
           </section>
 
           <section id="manual-install-app-section" class="manual-section" data-testid="manual-install-app-section">
@@ -2478,7 +2479,7 @@ function ensureOperationManualUi() {
               <div class="manual-faq-item"><h3>為什麼加入按鈕不能按？</h3><p>可能尚未選擇目前正在編排，或目前已選 0 篇。請先到「選稿編排」建立或選擇一份編排，再回到札記庫勾選札記。</p></div>
               <div class="manual-faq-item"><h3>文章加入到哪一份編排？</h3><p>札記庫會加入目前正在編排的那一份選稿編排。狀態列會顯示「目前正在編排：{title}」。</p></div>
               <div class="manual-faq-item"><h3>如何切換目前正在編排？</h3><p>到「選稿編排」的「其他選稿編排」區塊，點想整理的卡片上的「開始編這本」。切換後該卡片會移到「目前正在編排」。</p></div>
-              <div class="manual-faq-item"><h3>建立選稿編排後，可以修改標題或整理說明嗎？</h3><p>可以。到「選稿編排」頁，在該卡片點「編輯設定」，即可修改編排代稱、整理說明、日期範圍、分類與標籤。儲存後，卡片會立即更新。</p></div>
+              <div class="manual-faq-item"><h3>建立選稿編排後，可以修改書籍資料嗎？</h3><p>可以。到「選稿編排」頁，在該卡片點「書籍資料」，即可修改書名、副標、作者、書籍簡介、日期範圍、分類、標籤、封面與模板。儲存後，卡片會立即更新。</p></div>
               <div class="manual-faq-item"><h3>刪除資料前會再確認嗎？</h3><p>會。刪除札記、選稿編排、書櫃書籍、移除頭像或執行較危險的還原操作前，會先顯示確認提示。</p></div>
               <div class="manual-faq-item"><h3>如果還沒儲存就關掉頁面，內容會不見嗎？</h3><p>正在編輯的札記草稿會盡量暫存。若瀏覽器重新整理、意外關閉或儲存失敗，回到「寫札記」頁時，會提示是否恢復尚未儲存的草稿。</p></div>
               <div class="manual-faq-item"><h3>書櫃跟選稿編排有什麼差別？</h3><p>選稿編排用來整理成書前的章節與設定。書櫃用來閱讀、下載與管理已完成或已匯入的電子書。</p></div>
@@ -4113,6 +4114,37 @@ function getAuthCredentials() {
   return { email, password };
 }
 
+function getAuthInlineSubmitLabel() {
+  if (state.authInlineMode === 'password-recovery') return '更新密碼';
+  return state.authInlineMode === 'register' ? '建立帳戶' : '登入';
+}
+
+function syncAuthInlineSubmitButton(isSubmitting = state.authInlineSubmitting) {
+  if (!els.gateSubmitBtn) return;
+  const isRegister = state.authInlineMode === 'register';
+  const isPasswordRecovery = state.authInlineMode === 'password-recovery';
+  els.gateSubmitBtn.disabled = !!isSubmitting;
+  els.gateSubmitBtn.textContent = isSubmitting ? '處理中...' : getAuthInlineSubmitLabel();
+  els.gateSubmitBtn.classList.toggle('secondary-btn', !isRegister && !isPasswordRecovery);
+  els.gateSubmitBtn.classList.toggle('primary-btn', isRegister || isPasswordRecovery);
+}
+
+async function submitAuthInlineForm(event = null) {
+  event?.preventDefault();
+  if (state.authInlineSubmitting) return;
+  const action = state.authInlineMode === 'password-recovery'
+    ? handleUpdateRecoveryPassword
+    : (state.authInlineMode === 'register' ? handleRegister : handleLogin);
+  state.authInlineSubmitting = true;
+  syncAuthInlineSubmitButton(true);
+  try {
+    await action();
+  } finally {
+    state.authInlineSubmitting = false;
+    syncAuthInlineSubmitButton(false);
+  }
+}
+
 async function completeLocalAuth(user, successMessage) {
   setLocalUser(user);
   state.currentUser = user;
@@ -4133,6 +4165,7 @@ function settleMobileViewport() {
 }
 function openAuthInline(mode = 'register') {
   state.authInlineMode = mode;
+  state.authInlineSubmitting = false;
   const isRegister = mode === 'register';
   const isPasswordRecovery = mode === 'password-recovery';
   els.authInlinePanel?.classList.remove('hidden');
@@ -4147,11 +4180,7 @@ function openAuthInline(mode = 'register') {
       : (isRegister ? '輸入 Email 與密碼後即可建立帳戶。' : '輸入 Email 與密碼後即可登入。');
   }
   syncPasswordRecoveryForm(isPasswordRecovery);
-  if (els.gateSubmitBtn) {
-    els.gateSubmitBtn.textContent = isPasswordRecovery ? '更新密碼' : (isRegister ? '建立帳戶' : '登入');
-    els.gateSubmitBtn.classList.toggle('secondary-btn', !isRegister && !isPasswordRecovery);
-    els.gateSubmitBtn.classList.toggle('primary-btn', isRegister || isPasswordRecovery);
-  }
+  syncAuthInlineSubmitButton(false);
   if (els.gateResetPasswordBtn) {
     els.gateResetPasswordBtn.classList.toggle('hidden', isPasswordRecovery);
     els.gateResetPasswordBtn.textContent = '忘記密碼';
@@ -4164,6 +4193,8 @@ function openAuthInline(mode = 'register') {
 }
 function closeAuthInline() {
   if (state.passwordRecoveryActive) return;
+  state.authInlineSubmitting = false;
+  syncAuthInlineSubmitButton(false);
   els.authInlinePanel?.classList.add('hidden');
   els.authInlinePanel?.setAttribute('aria-hidden', 'true');
 }
@@ -4893,12 +4924,11 @@ function bindEvents() {
   els.openLoginBtn?.addEventListener('click', () => openAuthInline('login'));
   els.closeAuthInlineBtn?.addEventListener('click', closeAuthInline);
   els.authInlineBackdrop?.addEventListener('click', closeAuthInline);
-  els.gateSubmitBtn?.addEventListener('click', () => {
-    const action = state.authInlineMode === 'password-recovery'
-      ? handleUpdateRecoveryPassword
-      : (state.authInlineMode === 'register' ? handleRegister : handleLogin);
-    action().catch(handleError);
-  });
+  if (els.authInlineForm) {
+    els.authInlineForm.addEventListener('submit', event => submitAuthInlineForm(event).catch(handleError));
+  } else {
+    els.gateSubmitBtn?.addEventListener('click', () => submitAuthInlineForm().catch(handleError));
+  }
   els.gateResetPasswordBtn?.addEventListener('click', () => handleResetPassword().catch(handleError));
   els.resetPasswordBtn?.addEventListener('click', () => handleResetPassword().catch(handleError));
   els.gateResendVerificationBtn?.addEventListener('click', () => handleResendVerificationEmail().catch(handleError));
@@ -5999,17 +6029,46 @@ function getBookDraftSettingsElements() {
     backdrop: document.getElementById('book-draft-settings-backdrop'),
     body: document.getElementById('book-draft-settings-body'),
     title: document.getElementById('book-draft-settings-title'),
+    intro: document.getElementById('book-draft-settings-intro'),
     closeBtn: document.getElementById('close-book-draft-settings-btn'),
     cancelBtn: document.getElementById('cancel-book-draft-settings-btn'),
     form: document.getElementById('book-draft-settings-form'),
     draftTitle: document.getElementById('book-draft-settings-draft-title'),
+    subtitle: document.getElementById('book-draft-settings-subtitle'),
+    author: document.getElementById('book-draft-settings-author'),
     description: document.getElementById('book-draft-settings-description'),
+    template: document.getElementById('book-draft-settings-template'),
+    cover: document.getElementById('book-draft-settings-cover'),
+    coverPreview: document.getElementById('book-draft-settings-cover-preview'),
     startDate: document.getElementById('book-draft-settings-start-date'),
     endDate: document.getElementById('book-draft-settings-end-date'),
     category: document.getElementById('book-draft-settings-category'),
     tags: document.getElementById('book-draft-settings-tags'),
     saveBtn: document.getElementById('save-book-draft-settings-btn'),
   };
+}
+
+function renderBookDraftSettingsCoverPreview(coverDataUrl = '', fallbackTitle = '目前封面') {
+  const { coverPreview } = getBookDraftSettingsElements();
+  if (!coverPreview) return;
+  if (coverDataUrl) {
+    coverPreview.innerHTML = `
+      <img src="${escapeHtml(coverDataUrl)}" alt="${escapeHtml(fallbackTitle)}封面預覽" />
+      <div class="book-export-settings-cover-copy">
+        <strong>目前封面</strong>
+        <span>重新選擇圖片後，會更新這本書的封面資料。</span>
+      </div>
+    `;
+    coverPreview.classList.remove('is-empty');
+    return;
+  }
+  coverPreview.innerHTML = `
+    <div class="book-export-settings-cover-copy">
+      <strong>尚未設定封面</strong>
+      <span>可先不放封面，也可以在這裡補上適合這本書的圖片。</span>
+    </div>
+  `;
+  coverPreview.classList.add('is-empty');
 }
 
 function closeBookDraftSettingsModal() {
@@ -6019,7 +6078,10 @@ function closeBookDraftSettingsModal() {
   modal?.classList.add('hidden');
   modal?.setAttribute('aria-hidden', 'true');
   document.body.classList.remove('book-draft-settings-open');
-  if (form) form.dataset.bookId = '';
+  if (form) {
+    form.dataset.bookId = '';
+    form.dataset.coverDataUrl = '';
+  }
   if (body) body.scrollTop = 0;
 }
 
@@ -6028,17 +6090,26 @@ function populateBookDraftSettingsModal(book) {
   if (!book || !modalEls.form) return;
   const settings = getBookDraftSettings(book);
   modalEls.form.dataset.bookId = book.id;
-  modalEls.title.textContent = `編輯選稿設定：${getBookDraftLabel(book)}`;
+  modalEls.form.dataset.coverDataUrl = book.cover_data_url || '';
+  modalEls.title.textContent = `編輯書籍資料：${getBookDraftLabel(book)}`;
+  if (modalEls.intro) {
+    modalEls.intro.textContent = '整理這本書的書名、作者、簡介與封面，匯出 EPUB 時會使用這些資料。';
+  }
   modalEls.draftTitle.value = book.title || '';
+  modalEls.subtitle.value = book.subtitle || '';
+  modalEls.author.value = book.author_name || '';
   modalEls.description.value = getBookDraftDescription(book);
+  modalEls.template.value = book.template_code || 'devotion';
+  modalEls.cover.value = '';
   modalEls.startDate.value = settings.startDate || '';
   modalEls.endDate.value = settings.endDate || '';
   modalEls.category.value = settings.category || '';
   modalEls.tags.value = (settings.tags || []).join(', ');
+  renderBookDraftSettingsCoverPreview(book.cover_data_url || '', getBookDraftLabel(book));
 }
 
-function openBookDraftSettingsModal(bookId = '') {
-  const book = state.books.find(item => item.id === bookId);
+async function openBookDraftSettingsModal(bookId = '') {
+  const book = await loadBookProjectDetail(bookId) || state.books.find(item => item.id === bookId);
   if (!book) throw new Error('找不到要編輯的選稿編排。');
   ensureBookDraftSettingsUi();
   state.bookDraftSettingsModalOpen = true;
@@ -6055,16 +6126,18 @@ function syncBookDraftSettingsActionState(isSaving = false) {
   const { saveBtn } = getBookDraftSettingsElements();
   if (!saveBtn) return;
   saveBtn.disabled = isSaving;
-  saveBtn.textContent = isSaving ? '儲存中...' : '儲存設定';
+  saveBtn.textContent = isSaving ? '儲存中...' : '儲存書籍資料';
 }
 
 async function saveBookDraftSettings() {
   const modalEls = getBookDraftSettingsElements();
   const bookId = modalEls.form?.dataset.bookId || '';
-  const book = state.books.find(item => item.id === bookId);
-  if (!book) throw new Error('找不到要更新的選稿編排。');
+  const book = await loadBookProjectDetail(bookId) || state.books.find(item => item.id === bookId);
+  if (!book) throw new Error('找不到要更新的書籍資料。');
+  const existingCover = modalEls.form?.dataset.coverDataUrl || book.cover_data_url || '';
+  const coverDataUrl = modalEls.cover?.files?.[0] ? await fileToDataUrl(modalEls.cover.files[0]) : existingCover;
   const nextTitle = modalEls.draftTitle.value.trim();
-  if (!nextTitle) throw new Error('請先輸入編排代稱。');
+  if (!nextTitle) throw new Error('請先輸入書名。');
   const settings = normalizeBookDraftSettings({
     startDate: modalEls.startDate.value,
     endDate: modalEls.endDate.value,
@@ -6075,12 +6148,16 @@ async function saveBookDraftSettings() {
   try {
     await persistBookChanges(bookId, {
       title: nextTitle,
+      subtitle: modalEls.subtitle.value.trim(),
+      author_name: modalEls.author.value.trim(),
       description: buildBookDraftDescription(modalEls.description.value.trim(), settings),
+      template_code: modalEls.template.value,
+      cover_data_url: coverDataUrl,
     });
     if (state.bookDraftModalBookId === bookId) state.bookDraftModalBookId = bookId;
     closeBookDraftSettingsModal();
     refreshUi();
-    showToast('選稿編排設定已更新');
+    showToast('書籍資料已更新');
   } finally {
     syncBookDraftSettingsActionState(false);
   }
@@ -6097,20 +6174,39 @@ function ensureBookDraftSettingsUi() {
     <div class="modal-card book-draft-settings-card" role="dialog" aria-modal="true" aria-labelledby="book-draft-settings-title">
       <div class="panel-header book-draft-settings-header">
         <div>
-          <h2 id="book-draft-settings-title">編輯選稿設定</h2>
-          <p class="modal-intro">這裡只更新這份選稿編排的基本資料；章節順序請到「整理章節」調整。</p>
+          <h2 id="book-draft-settings-title">編輯書籍資料</h2>
+          <p id="book-draft-settings-intro" class="modal-intro">整理這本書的書名、作者、簡介與封面，匯出 EPUB 時會使用這些資料。</p>
         </div>
         <button id="close-book-draft-settings-btn" class="ghost-btn small" type="button">關閉</button>
       </div>
       <form id="book-draft-settings-form" class="book-draft-settings-form">
         <div id="book-draft-settings-body" class="book-draft-settings-scroll">
           <div class="book-draft-settings-grid">
-            <label class="book-draft-settings-span-2">編排代稱
-              <input id="book-draft-settings-draft-title" required placeholder="例：5月份靈修進度" />
+            <label>書名
+              <input id="book-draft-settings-draft-title" required placeholder="例：五月靈修選集" />
             </label>
-            <label class="book-draft-settings-span-2">整理說明
-              <textarea id="book-draft-settings-description" rows="4" placeholder="簡短記下這份編排的方向或收錄範圍"></textarea>
+            <label>副標
+              <input id="book-draft-settings-subtitle" placeholder="例：安靜同行的三十天" />
             </label>
+            <label>作者
+              <input id="book-draft-settings-author" placeholder="例：Jeremiah" />
+            </label>
+            <label>模板
+              <select id="book-draft-settings-template">
+                <option value="devotion">靈修札記版</option>
+                <option value="sermon">講章整理版</option>
+                <option value="testimony">見證合集版</option>
+              </select>
+            </label>
+            <label class="book-draft-settings-span-2">書籍簡介
+              <textarea id="book-draft-settings-description" rows="4" placeholder="介紹這本書的主題、收錄範圍與閱讀方向"></textarea>
+            </label>
+            <div class="book-draft-settings-span-2 book-export-settings-cover-block">
+              <div id="book-draft-settings-cover-preview" class="book-export-settings-cover-preview is-empty"></div>
+              <label>封面圖片
+                <input id="book-draft-settings-cover" type="file" accept="image/*" />
+              </label>
+            </div>
             <label>日期起
               <input id="book-draft-settings-start-date" type="date" />
             </label>
@@ -6125,9 +6221,9 @@ function ensureBookDraftSettingsUi() {
             </label>
           </div>
         </div>
-        <div class="book-draft-settings-actions" role="group" aria-label="編輯選稿設定操作">
+        <div class="book-draft-settings-actions" role="group" aria-label="編輯書籍資料操作">
           <button id="cancel-book-draft-settings-btn" class="ghost-btn" type="button">取消</button>
-          <button id="save-book-draft-settings-btn" class="secondary-btn" type="submit">儲存設定</button>
+          <button id="save-book-draft-settings-btn" class="secondary-btn" type="submit">儲存書籍資料</button>
         </div>
       </form>
     </div>
@@ -6140,6 +6236,16 @@ function ensureBookDraftSettingsUi() {
   modalEls.form?.addEventListener('submit', event => {
     event.preventDefault();
     saveBookDraftSettings().catch(handleError);
+  });
+  modalEls.cover?.addEventListener('change', async event => {
+    const file = event.target.files?.[0];
+    const fallbackTitle = modalEls.draftTitle?.value?.trim() || '目前封面';
+    if (!file) {
+      renderBookDraftSettingsCoverPreview(modalEls.form?.dataset.coverDataUrl || '', fallbackTitle);
+      return;
+    }
+    const dataUrl = await fileToDataUrl(file);
+    renderBookDraftSettingsCoverPreview(dataUrl, fallbackTitle);
   });
 }
 
@@ -6207,7 +6313,7 @@ function populateBookExportSettingsModal(book) {
   modalEls.form.dataset.bookId = book.id;
   modalEls.form.dataset.coverDataUrl = book.cover_data_url || '';
   modalEls.title.textContent = '成書匯出設定';
-  modalEls.intro.textContent = `確認「${getBookDraftLabel(book)}」的正式成書資料。這裡儲存書名、作者與前後記；章節順序請先在編排區儲存。`;
+  modalEls.intro.textContent = `最後確認「${getBookDraftLabel(book)}」的書籍資料與輸出狀態；章節順序請先在編排區儲存。`;
   modalEls.bookTitle.value = book.title || '';
   modalEls.subtitle.value = book.subtitle || '';
   modalEls.author.value = book.author_name || '';
@@ -6302,7 +6408,7 @@ function ensureBookExportSettingsUi() {
       <div class="panel-header book-export-settings-header">
         <div>
           <h2 id="book-export-settings-title">成書匯出設定</h2>
-          <p id="book-export-settings-intro" class="modal-intro">確認目前編排的正式成書資料；章節順序請先在編排區儲存。</p>
+          <p id="book-export-settings-intro" class="modal-intro">最後確認目前書稿的書籍資料與輸出狀態；章節順序請先在編排區儲存。</p>
         </div>
         <button id="close-book-export-settings-btn" class="ghost-btn small" type="button" data-testid="book-export-settings-close">關閉</button>
       </div>
@@ -7291,11 +7397,11 @@ function getBookDraftWorkflowState(book) {
   const hasUnsavedArrangement = hasBookArrangementDraft(book.id);
   let currentKey = 'export';
   let currentLabel = '可以匯出';
-  let nextAction = '確認成書資料後匯出 EPUB。';
+  let nextAction = '確認書籍資料後匯出 EPUB。';
   if (!hasBookInfo) {
     currentKey = 'book-info';
     currentLabel = '書籍資料未完成';
-    nextAction = '先填寫編排代稱，建立這份書稿。';
+    nextAction = '先填寫書名，建立這份書稿。';
   } else if (!hasChapters) {
     currentKey = 'add-notes';
     currentLabel = '等待加入札記';
@@ -7313,7 +7419,7 @@ function getBookDraftWorkflowState(book) {
     const firstSuggestion = recommendationIssues[0];
     currentKey = 'check';
     currentLabel = '建議補齊';
-    nextAction = `${buildPublishingAffectedText(firstSuggestion, { maxTitles: 2 })}也可以先進入成書匯出設定。`;
+    nextAction = `${buildPublishingAffectedText(firstSuggestion, { maxTitles: 2 })}也可以先匯出 EPUB。`;
   }
   const currentIndex = BOOK_DRAFT_WORKFLOW_STEPS.findIndex(step => step.key === currentKey);
   const steps = BOOK_DRAFT_WORKFLOW_STEPS.map((step, index) => ({
@@ -7579,13 +7685,13 @@ function ensureBookDraftWorkspaceUi() {
   els.newBookBtn?.classList.add('hidden');
   const titleLabel = els.bookTitle?.closest('label');
   if (titleLabel) {
-    titleLabel.childNodes[0].textContent = '編排代稱';
-    els.bookTitle.placeholder = '例：5 月份靈修選稿';
+    titleLabel.childNodes[0].textContent = '書名';
+    els.bookTitle.placeholder = '例：五月靈修選集';
   }
   const descriptionLabel = els.bookDescription?.closest('label');
   if (descriptionLabel) {
-    descriptionLabel.childNodes[0].textContent = '整理說明';
-    els.bookDescription.placeholder = '記下這份編排目前想整理的方向';
+    descriptionLabel.childNodes[0].textContent = '書籍簡介';
+    els.bookDescription.placeholder = '記下這本書的主題、收錄範圍與閱讀方向';
   }
   els.bookSubtitle?.closest('label')?.classList.add('hidden');
   els.bookAuthor?.closest('label')?.classList.add('hidden');
@@ -7723,9 +7829,9 @@ function ensureBookDraftWorkspaceUi() {
       exportSettingsBtn.type = 'button';
       exportSettingsBtn.className = 'ghost-btn';
       exportSettingsBtn.dataset.testid = 'book-export-settings-open';
-      exportSettingsBtn.textContent = '成書匯出設定';
       exportSettingsBtn.addEventListener('click', () => openBookExportSettingsModal(getActiveBookDraftId()).catch(handleError));
     }
+    exportSettingsBtn.textContent = '匯出 EPUB';
     toolbarActions.appendChild(exportSettingsBtn);
     let modalStartBtn = document.getElementById('modal-start-current-book-btn');
     if (!modalStartBtn) {
@@ -9553,7 +9659,7 @@ function renderBookDraftCard(book, { current = false } = {}) {
   const chapterLabel = detailLoaded ? `已收錄 ${chapterCount} 篇札記` : '章節開啟後載入';
   const description = getBookDraftDescription(book).slice(0, 180)
     || (isEmptyDraft ? '尚未收錄札記。' : '尚未填寫整理說明');
-  const statusLabel = current ? '正在編排' : '待成書設定';
+  const statusLabel = current ? '正在編排' : '待整理';
   const statusTone = current ? 'is-current' : getBookDraftStatusTone(book);
   return `
     <article class="card book-draft-card ${current ? 'is-current-draft selected' : ''}" data-book-draft-card="${book.id}" data-testid="book-draft-card">
@@ -9570,16 +9676,16 @@ function renderBookDraftCard(book, { current = false } = {}) {
       <div class="card-actions book-draft-actions">
         ${current
           ? `
-            <button class="secondary-btn" data-go-content-library="${book.id}" data-testid="book-go-content-library">加入札記</button>
-            <button class="ghost-btn" data-open-book-draft="${book.id}" data-testid="book-open-draft">整理章節</button>
-            <button class="ghost-btn" data-open-selection-settings="${book.id}" data-testid="book-open-selection-settings">編輯設定</button>
-            <button class="ghost-btn" data-open-export-settings="${book.id}" data-testid="book-open-export-settings">成書匯出設定</button>
+            <button class="secondary-btn" data-open-book-draft="${book.id}" data-testid="book-open-draft">繼續編排</button>
+            <button class="ghost-btn" data-go-content-library="${book.id}" data-testid="book-go-content-library">加入札記</button>
+            <button class="ghost-btn" data-open-selection-settings="${book.id}" data-testid="book-open-selection-settings">書籍資料</button>
+            <button class="ghost-btn" data-open-export-settings="${book.id}" data-testid="book-open-export-settings">匯出 EPUB</button>
           `
           : `
             <button class="secondary-btn" data-select-book="${book.id}" data-testid="book-select">開始編這本</button>
             <button class="ghost-btn" data-open-book-draft="${book.id}" data-testid="book-open-draft">整理章節</button>
             <button class="ghost-btn" data-go-content-library="${book.id}" data-testid="book-go-content-library">加入札記</button>
-            <button class="ghost-btn" data-open-selection-settings="${book.id}" data-testid="book-open-selection-settings">編輯設定</button>
+            <button class="ghost-btn" data-open-selection-settings="${book.id}" data-testid="book-open-selection-settings">書籍資料</button>
             <button class="ghost-btn book-draft-delete-btn" data-delete-book-draft="${book.id}" data-testid="book-delete">刪除</button>
           `}
       </div>
@@ -9591,7 +9697,7 @@ function bindBookDraftCardActions(scope) {
   scope.querySelectorAll('[data-select-book]').forEach(btn => btn.addEventListener('click', () => setCurrentBookDraft(btn.dataset.selectBook)));
   scope.querySelectorAll('[data-go-content-library]').forEach(btn => btn.addEventListener('click', () => goToContentLibraryForBookDraft(btn.dataset.goContentLibrary).catch(handleError)));
   scope.querySelectorAll('[data-open-book-draft]').forEach(btn => btn.addEventListener('click', () => focusSelectedDraftPanel(btn.dataset.openBookDraft).catch(handleError)));
-  scope.querySelectorAll('[data-open-selection-settings]').forEach(btn => btn.addEventListener('click', () => openBookDraftSettingsModal(btn.dataset.openSelectionSettings)));
+  scope.querySelectorAll('[data-open-selection-settings]').forEach(btn => btn.addEventListener('click', () => openBookDraftSettingsModal(btn.dataset.openSelectionSettings).catch(handleError)));
   scope.querySelectorAll('[data-open-export-settings]').forEach(btn => btn.addEventListener('click', () => openBookExportSettingsModal(btn.dataset.openExportSettings).catch(handleError)));
   scope.querySelectorAll('[data-delete-book-draft]').forEach(btn => btn.addEventListener('click', () => deleteBook(btn.dataset.deleteBookDraft).catch(handleError)));
 }
@@ -9690,7 +9796,7 @@ async function saveBook() {
     updated_at: nowIso(),
     created_at: existing?.created_at || nowIso(),
   };
-  if (!payload.title) throw new Error('請先輸入編排代稱。');
+  if (!payload.title) throw new Error('請先輸入書名。');
   if (state.supabase) {
     const dbPayload = { ...payload, chapters: JSON.stringify(payload.chapters) };
     const { error } = await state.supabase.from('book_projects').upsert(dbPayload);
@@ -9705,8 +9811,8 @@ async function saveBook() {
   state.selectedBookId = isNewDraft && previousSelectedBookId ? previousSelectedBookId : payload.id;
   if (els.bookSaveFeedback) {
     els.bookSaveFeedback.textContent = isNewDraft
-      ? (previousSelectedBookId ? `已建立選稿編排：${payload.title}` : `已建立並開始編排：${payload.title}`)
-      : '編排已儲存';
+      ? (previousSelectedBookId ? `已建立書稿：${payload.title}` : `已建立並開始編排：${payload.title}`)
+      : '書籍資料已儲存';
     els.bookSaveFeedback.classList.remove('hidden');
   }
   await loadAllData({ silent: true, syncReason: state.supabase ? '編排儲存後同步' : '' });

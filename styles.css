@@ -2125,6 +2125,7 @@ body.confirm-dialog-open {
   gap: 14px 16px;
 }
 .book-draft-settings-grid input,
+.book-draft-settings-grid select,
 .book-draft-settings-grid textarea {
   min-width: 0;
 }
