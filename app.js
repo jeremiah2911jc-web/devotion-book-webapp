@@ -179,10 +179,48 @@ const PRAYER_STATUS_LABELS = {
 
 const AUTO_BACKUP_SLOTS = ['08', '14', '20'];
 const AUTO_BACKUP_MAX_ITEMS = 3;
+const PRODUCTION_HOSTNAMES = new Set(['www.devotionbook.com.tw', 'devotionbook.com.tw']);
 
 function isLocalDevelopmentHost() {
   if (typeof window === 'undefined') return false;
   return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+}
+
+function getCurrentHostname() {
+  if (typeof window === 'undefined') return '';
+  return String(window.location.hostname || '').trim().toLowerCase();
+}
+
+function isProductionHostname(hostname = getCurrentHostname()) {
+  return PRODUCTION_HOSTNAMES.has(String(hostname || '').trim().toLowerCase());
+}
+
+function shouldShowEnvironmentWarningBanner() {
+  const hostname = getCurrentHostname();
+  return !!hostname && !isProductionHostname(hostname);
+}
+
+function ensureEnvironmentWarningBanner() {
+  if (typeof document === 'undefined') return;
+  let banner = document.getElementById('environment-warning-banner');
+  if (!banner) {
+    banner = document.createElement('aside');
+    banner.id = 'environment-warning-banner';
+    banner.className = 'environment-warning-banner';
+    banner.setAttribute('role', 'status');
+    banner.setAttribute('aria-live', 'polite');
+    banner.innerHTML = `
+      <div class="environment-warning-inner">
+        <strong>測試版本</strong>
+        <span class="environment-warning-copy environment-warning-copy-desktop">這是測試環境。若使用正式帳號登入，新增、修改、匯出或刪除的資料可能會同步到正式帳號。請避免用正式資料做測試。</span>
+        <span class="environment-warning-copy environment-warning-copy-mobile">使用正式帳號時，新增、匯出或刪除可能同步到正式資料。</span>
+      </div>
+    `;
+    document.body.insertBefore(banner, document.body.firstChild);
+  }
+  const shouldShow = shouldShowEnvironmentWarningBanner();
+  banner.hidden = !shouldShow;
+  document.body.classList.toggle('environment-warning-visible', shouldShow);
 }
 
 function initVercelWebAnalytics() {
@@ -4848,6 +4886,7 @@ async function clearConnectionSettings() {
 }
 
 async function bootstrap() {
+  ensureEnvironmentWarningBanner();
   initVercelWebAnalytics();
   removeRetiredInterfaceElements();
   ensureAuthVerificationResendUi();
