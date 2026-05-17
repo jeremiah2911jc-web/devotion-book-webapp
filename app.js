@@ -2308,6 +2308,7 @@ function ensureOperationManualUi() {
             <p>點選「開始編這本」後，該卡片會移到「目前正在編排」，原本的目前編排會回到其他選稿編排。畫面會立即更新並顯示切換提示。</p>
             <p>若建立選稿編排後，想修改編排代稱、整理說明、日期範圍、分類或標籤，可以在選稿編排卡片上點「編輯設定」。「編輯設定」只修改這份選稿編排的基本資料，不會直接改動已收錄的札記內容，也不會改變章節排序。若要調整章節順序或章節標題，請使用「整理章節」。</p>
             <p>選稿編排只接收正式札記。草稿不會出現在可加入候選，也不會被加入章節。摘要是否出現在閱讀與成書中，會依照每篇札記的「閱讀與成書時顯示摘要」設定處理；今日禱告只有在有內容且勾選「閱讀與成書時顯示禱告」時才會輸出。</p>
+            <p>「整理章節」與「成書匯出設定」會顯示出版檢查，協助你在輸出前確認書名、正式札記與內容狀態。它不是錯誤清單，而是輸出前的安靜提醒。</p>
             <h3>新增選稿編排</h3>
             <p>新的編排只需要先填「編排代稱」與「整理說明」。若目前沒有正在編排，新建立的編排會直接成為目前正在編排。若已經有目前編排，新編排會先放在其他選稿編排中。</p>
           </section>
@@ -2324,6 +2325,7 @@ function ensureOperationManualUi() {
               <li>點「儲存編排」保存章節調整。</li>
             </ul>
             <p>整理章節時，可調整閱讀順序與章節標題。手機版視窗可上下滑動。</p>
+            <p>視窗中的出版檢查會用「已就緒」、「建議補齊」或「需要處理」提示目前書稿狀態。必要項目影響能否順利輸出；建議項目用來幫助你補強閱讀品質。</p>
             <p>第一版不提供把已儲存的正式札記改回草稿，以避免已加入章節後狀態變得複雜。</p>
           </section>
 
@@ -2339,6 +2341,7 @@ function ensureOperationManualUi() {
               <li>封面圖片。</li>
               <li>前言與後記。</li>
             </ul>
+            <p>成書匯出設定上方也會同步顯示出版檢查。當你修改書名或調整已收錄札記時，狀態會跟著更新，幫助你在匯出前知道目前是否具備基本成書條件。</p>
             <p>若只想先保存設定，可以點「儲存設定」。若要直接產生電子書，請點「儲存並匯出 EPUB」。匯出只會使用已加入編排的正式札記，草稿不會進入 EPUB。若書稿勾選「成書時顯示章節摘要」，且單篇札記也勾選「閱讀與成書時顯示摘要」，EPUB 會在章節開頭顯示摘要；今日禱告則只有在有內容且勾選顯示時才會跟著該篇章節匯出。匯出完成後，書籍會加入書櫃，並提供「立即閱讀」、「下載 EPUB」與「前往書櫃」。</p>
             <p>下載 EPUB 時，畫面會確認「下載 EPUB？」並說明系統會下載這本書的 EPUB 檔案，完成後可以在你的裝置上閱讀或保存。</p>
             <p>下載後的 EPUB 可用 iOS「書籍」、Android「Google Play 圖書」或其他 EPUB 閱讀器開啟。</p>
@@ -6158,6 +6161,7 @@ function getBookExportSettingsElements() {
     coverPreview: document.getElementById('book-export-settings-cover-preview'),
     preface: document.getElementById('book-export-settings-preface'),
     afterword: document.getElementById('book-export-settings-afterword'),
+    readinessPanel: document.getElementById('book-export-readiness-panel'),
     saveBtn: document.getElementById('save-book-export-settings-btn'),
     saveAndExportBtn: document.getElementById('save-and-export-book-btn'),
   };
@@ -6212,6 +6216,7 @@ function populateBookExportSettingsModal(book) {
   modalEls.afterword.value = book.afterword || '';
   modalEls.cover.value = '';
   renderBookExportCoverPreview(book.cover_data_url || '', getBookDraftLabel(book));
+  renderBookExportReadinessPanel(book);
 }
 
 async function openBookExportSettingsModal(bookId = '') {
@@ -6302,6 +6307,7 @@ function ensureBookExportSettingsUi() {
       </div>
       <form id="book-export-settings-form" class="book-export-settings-form">
         <div id="book-export-settings-body" class="book-export-settings-scroll">
+          <section id="book-export-readiness-panel" class="publishing-readiness-slot" data-testid="book-export-readiness-panel"></section>
           <div class="book-export-settings-grid">
             <label>書名
               <input id="book-export-settings-book-title" required placeholder="例：五月靈修選集" />
@@ -6356,6 +6362,11 @@ function ensureBookExportSettingsUi() {
     saveBookExportSettings().catch(handleError);
   });
   modalEls.saveAndExportBtn?.addEventListener('click', () => saveBookExportSettingsAndExport().catch(handleError));
+  [
+    modalEls.bookTitle,
+    modalEls.subtitle,
+    modalEls.author,
+  ].forEach(input => input?.addEventListener('input', () => renderBookExportReadinessPanel()));
   modalEls.cover?.addEventListener('change', async event => {
     const file = event.target.files?.[0];
     const fallbackTitle = modalEls.bookTitle?.value?.trim() || '目前封面';
@@ -7008,6 +7019,251 @@ function getBookDraftStatusTone(book) {
   return 'is-ready';
 }
 
+const PUBLISHING_LONG_TITLE_LIMIT = 42;
+
+function publishingCheckItem(label, passed, okText, issueText) {
+  return {
+    label,
+    passed: !!passed,
+    text: passed ? okText : issueText,
+  };
+}
+
+function countScriptureReferences(notes = []) {
+  return notes.reduce((sum, note) => sum + normalizeScriptureReferences(note.scripture_reference || '').length, 0);
+}
+
+function getPublishingReadinessExportDetail({
+  hasTitle,
+  selectedNoteCount,
+  emptyContentCount,
+  missingSourceCount,
+  hasUnsavedArrangement,
+}) {
+  if (!hasTitle) return '請先填寫書名，再進入成書匯出。';
+  if (!selectedNoteCount) return '請先從札記庫加入至少一篇正式札記。';
+  if (hasUnsavedArrangement) return '章節編排尚未儲存，匯出前請先儲存編排。';
+  if (missingSourceCount) return `${missingSourceCount} 個章節找不到可輸出的正式札記，請移除或重新加入。`;
+  if (emptyContentCount) return `${emptyContentCount} 篇札記目前沒有內容，匯出前請先補上。`;
+  return '目前具備基本 EPUB 匯出條件。';
+}
+
+function buildPublishingReadinessCheck(book, options = {}) {
+  if (!book) return null;
+  const displayBook = { ...book, ...(options.bookOverrides || {}) };
+  const chapters = Array.isArray(options.chapters)
+    ? normalizeBookChapters(options.chapters)
+    : getBookDisplayChapters(book);
+  const chapterEntries = chapters.map(chapter => {
+    const sourceNoteId = getChapterSourceNoteId(chapter);
+    const note = sourceNoteId ? getNoteById(sourceNoteId) : null;
+    return {
+      chapter,
+      note,
+      isPublished: !!(note && isPublishedNote(note)),
+    };
+  });
+  const selectedNotes = chapterEntries.filter(entry => entry.isPublished).map(entry => entry.note);
+  const selectedNoteCount = selectedNotes.length;
+  const missingSourceCount = chapterEntries.filter(entry => !entry.isPublished).length;
+  const emptyContentCount = selectedNotes.filter(note => !stripScriptureMarkers(note.content || '').trim()).length;
+  const missingScriptureCount = selectedNotes.filter(note => !normalizeScriptureReferences(note.scripture_reference || '').length).length;
+  const missingSummaryCount = selectedNotes.filter(note => !getNoteVisibleSummary(note)).length;
+  const missingPrayerCount = selectedNotes.filter(note => !resolveNotePrayerText(note)).length;
+  const longTitleCount = chapterEntries.filter(({ chapter, note }) => {
+    const title = String(chapter.chapter_title || note?.title || '').trim();
+    return title.length > PUBLISHING_LONG_TITLE_LIMIT;
+  }).length;
+  const categories = new Set(selectedNotes.map(note => String(note.category || '').trim()).filter(Boolean));
+  const tags = new Set(selectedNotes.flatMap(note => getNoteTagList(note)));
+  const prayerCount = selectedNotes.filter(note => !!resolveNotePrayerText(note)).length;
+  const scriptureCount = countScriptureReferences(selectedNotes);
+  const hasTitle = !!String(displayBook.title || '').trim();
+  const hasUnsavedArrangement = hasBookArrangementDraft(book.id);
+  const canExport = hasTitle
+    && selectedNoteCount > 0
+    && emptyContentCount === 0
+    && missingSourceCount === 0
+    && !hasUnsavedArrangement;
+
+  const required = [
+    publishingCheckItem(
+      '書名',
+      hasTitle,
+      '已填寫書名。',
+      '請先填寫書名，讓匯出的電子書有清楚名稱。',
+    ),
+    publishingCheckItem(
+      '正式札記',
+      selectedNoteCount > 0,
+      `已收錄 ${selectedNoteCount} 篇正式札記。`,
+      '請先從札記庫加入至少一篇正式札記。',
+    ),
+    publishingCheckItem(
+      '札記內容',
+      emptyContentCount === 0 && missingSourceCount === 0,
+      '收錄的札記都有可輸出的內容。',
+      missingSourceCount
+        ? `${missingSourceCount} 個章節找不到可輸出的正式札記。`
+        : `${emptyContentCount} 篇札記目前沒有內容。`,
+    ),
+    publishingCheckItem(
+      'EPUB 匯出',
+      canExport,
+      '目前具備基本 EPUB 匯出條件。',
+      getPublishingReadinessExportDetail({
+        hasTitle,
+        selectedNoteCount,
+        emptyContentCount,
+        missingSourceCount,
+        hasUnsavedArrangement,
+      }),
+    ),
+  ];
+  const recommendations = [
+    publishingCheckItem(
+      '經文',
+      missingScriptureCount === 0,
+      '收錄札記都有經文線索。',
+      `${missingScriptureCount} 篇札記尚未填寫經文，可視需要補上。`,
+    ),
+    publishingCheckItem(
+      '摘要',
+      missingSummaryCount === 0,
+      '收錄札記都有摘要文字。',
+      `${missingSummaryCount} 篇札記尚未填寫摘要，補上後閱讀節奏會更清楚。`,
+    ),
+    publishingCheckItem(
+      '今日禱告',
+      missingPrayerCount === 0,
+      '收錄札記都有今日禱告。',
+      `${missingPrayerCount} 篇札記尚未填寫今日禱告，可視內容性質補上。`,
+    ),
+    publishingCheckItem(
+      '標題長度',
+      longTitleCount === 0,
+      '章節標題長度適合閱讀。',
+      `${longTitleCount} 個章節標題偏長，建議匯出前再精簡。`,
+    ),
+    publishingCheckItem(
+      '主題線索',
+      categories.size + tags.size > 0,
+      '已有分類或標籤，可作為之後整理主題的線索。',
+      '目前沒有分類或標籤線索，之後整理主題時會比較不容易。',
+    ),
+  ];
+  const requiredIssueCount = required.filter(item => !item.passed).length;
+  const suggestionIssueCount = recommendations.filter(item => !item.passed).length;
+  const status = requiredIssueCount ? 'needs' : suggestionIssueCount ? 'suggest' : 'ready';
+  const statusCopy = {
+    ready: {
+      label: '已就緒',
+      summary: '必要項目都已完成，可以進入成書匯出。',
+    },
+    suggest: {
+      label: '建議補齊',
+      summary: `目前可以匯出，另有 ${suggestionIssueCount} 項內容可再補強。`,
+    },
+    needs: {
+      label: '需要處理',
+      summary: `匯出前有 ${requiredIssueCount} 項必要內容需要先處理。`,
+    },
+  }[status];
+  return {
+    status,
+    statusLabel: statusCopy.label,
+    summary: statusCopy.summary,
+    required,
+    recommendations,
+    metrics: [
+      { label: '札記', value: `${selectedNoteCount} 篇` },
+      { label: '經文', value: `${scriptureCount} 處` },
+      { label: '主題', value: `${tags.size} 個` },
+      { label: '禱告', value: `${prayerCount} 則` },
+      { label: '章節', value: `${chapters.length} 章` },
+    ],
+  };
+}
+
+function renderPublishingReadinessItems(items = []) {
+  return `
+    <ul class="publishing-readiness-items">
+      ${items.map(item => `
+        <li class="${item.passed ? 'is-passed' : 'is-open'}">
+          <span class="publishing-readiness-dot" aria-hidden="true"></span>
+          <span>
+            <strong>${escapeHtml(item.label)}</strong>
+            <small>${escapeHtml(item.text)}</small>
+          </span>
+        </li>
+      `).join('')}
+    </ul>
+  `;
+}
+
+function renderPublishingReadinessHtml(book, options = {}) {
+  const check = buildPublishingReadinessCheck(book, options);
+  if (!check) return '<p class="caption">請先選取一份編排，再查看出版檢查。</p>';
+  const detailsOpen = check.status === 'needs' ? ' open' : '';
+  return `
+    <article class="publishing-readiness publishing-readiness-${check.status}" data-testid="publishing-readiness-panel">
+      <header class="publishing-readiness-header">
+        <div>
+          <p class="publishing-readiness-kicker">出版檢查</p>
+          <h3>${escapeHtml(check.statusLabel)}</h3>
+          <p>${escapeHtml(check.summary)}</p>
+        </div>
+        <span class="publishing-readiness-status">${escapeHtml(check.statusLabel)}</span>
+      </header>
+      <div class="publishing-readiness-metrics" aria-label="出版檢查資訊">
+        ${check.metrics.map(metric => `
+          <span><strong>${escapeHtml(metric.value)}</strong><small>${escapeHtml(metric.label)}</small></span>
+        `).join('')}
+      </div>
+      <details class="publishing-readiness-details"${detailsOpen}>
+        <summary>查看提醒</summary>
+        <section>
+          <h4>必要</h4>
+          ${renderPublishingReadinessItems(check.required)}
+        </section>
+        <section>
+          <h4>建議</h4>
+          ${renderPublishingReadinessItems(check.recommendations)}
+        </section>
+      </details>
+    </article>
+  `;
+}
+
+function renderPublishingReadinessPanel(book, options = {}) {
+  const target = document.getElementById(options.targetId || 'publishing-readiness-panel');
+  if (!target) return null;
+  target.innerHTML = renderPublishingReadinessHtml(book, options);
+  target.classList.toggle('hidden', !book);
+  return buildPublishingReadinessCheck(book, options);
+}
+
+function getBookExportReadinessOverrides() {
+  const modalEls = getBookExportSettingsElements();
+  return {
+    title: modalEls.bookTitle?.value?.trim() || '',
+    subtitle: modalEls.subtitle?.value?.trim() || '',
+    author_name: modalEls.author?.value?.trim() || '',
+  };
+}
+
+function renderBookExportReadinessPanel(book = null) {
+  const modalEls = getBookExportSettingsElements();
+  const target = modalEls.readinessPanel;
+  if (!target) return null;
+  const bookId = modalEls.form?.dataset.bookId || '';
+  const sourceBook = book || state.books.find(item => item.id === bookId) || getSelectedBook();
+  return renderPublishingReadinessPanel(sourceBook, {
+    targetId: 'book-export-readiness-panel',
+    bookOverrides: getBookExportReadinessOverrides(),
+  });
+}
+
 async function openBookDraftModal(bookId = '', { focusChapters = false } = {}) {
   state.bookDraftModalBookId = bookId || state.selectedBookId || null;
   state.bookDraftModalOpen = true;
@@ -7212,9 +7468,25 @@ function ensureBookDraftWorkspaceUi() {
 
     leftCol.prepend(els.bookCoverPreview);
     leftCol.appendChild(tocPreviewPanel);
+    let readinessPanel = document.getElementById('publishing-readiness-panel');
+    if (!readinessPanel) {
+      readinessPanel = document.createElement('section');
+      readinessPanel.id = 'publishing-readiness-panel';
+      readinessPanel.className = 'publishing-readiness-slot';
+      readinessPanel.dataset.testid = 'publishing-readiness-slot';
+    }
+    leftCol.appendChild(readinessPanel);
     const goLibraryBtn = document.getElementById('go-content-library-btn');
     if (goLibraryBtn) leftActions.appendChild(goLibraryBtn);
 
+    let mobileReadinessPanel = document.getElementById('publishing-readiness-mobile-panel');
+    if (!mobileReadinessPanel) {
+      mobileReadinessPanel = document.createElement('section');
+      mobileReadinessPanel.id = 'publishing-readiness-mobile-panel';
+      mobileReadinessPanel.className = 'publishing-readiness-slot publishing-readiness-mobile-slot';
+      mobileReadinessPanel.dataset.testid = 'publishing-readiness-mobile-slot';
+    }
+    rightBody.appendChild(mobileReadinessPanel);
     rightBody.appendChild(chapterHeading);
     rightBody.appendChild(els.chaptersList);
     const arrangementStatus = document.getElementById('book-arrangement-status');
@@ -9457,6 +9729,8 @@ function renderSelectedBookPanel() {
   `;
   renderSelectedNotePreview();
   renderTocPreview(book);
+  renderPublishingReadinessPanel(book);
+  renderPublishingReadinessPanel(book, { targetId: 'publishing-readiness-mobile-panel' });
   renderChaptersList(book);
   renderExportSuccessActions(state.latestExportedBook?.sourceBookId === book.id ? state.latestExportedBook : null);
 }

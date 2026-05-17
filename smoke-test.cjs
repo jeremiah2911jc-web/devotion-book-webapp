@@ -405,6 +405,20 @@ async function run() {
     await assertNoHorizontalScroll(page, { label: 'smoke books mobile' });
     results.push('已切換到書籍頁');
 
+    const openDraftCount = await page.locator('[data-testid="book-open-draft"]').count();
+    if (openDraftCount) {
+      await clickElement(page, '[data-testid="book-open-draft"]');
+      const readinessSelector = '#publishing-readiness-panel [data-testid="publishing-readiness-panel"], #publishing-readiness-mobile-panel [data-testid="publishing-readiness-panel"]';
+      await expectVisible(page, readinessSelector, '出版檢查區已顯示');
+      const readinessText = await page.locator(readinessSelector).first().textContent();
+      if (!readinessText || !readinessText.includes('出版檢查')) {
+        throw new Error(`出版檢查文案未顯示：${readinessText}`);
+      }
+      await assertNoHorizontalScroll(page, { label: 'smoke publishing readiness mobile' });
+      await clickElement(page, '#close-book-draft-modal-btn');
+      results.push('出版檢查區在整理章節視窗顯示正常');
+    }
+
     const exportBtnExists = await page.locator('#export-epub-btn').count();
     if (exportBtnExists) results.push('書籍頁可見 EPUB 匯出按鈕');
 
