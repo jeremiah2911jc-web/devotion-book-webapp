@@ -2130,11 +2130,11 @@ function ensureOperationManualUi() {
             <ol>
               <li>進入「寫札記」，可以先儲存草稿，完成後再儲存為正式札記。正式札記需要主題，草稿可以先沒有主題並顯示為「未命名草稿」。</li>
               <li>想單純閱讀時，進入「札記閱讀」搜尋、篩選或重讀單篇札記。</li>
-              <li>想整理成書時，進入「札記庫」，用搜尋、日期、分類、標籤找到適合整理的文章。</li>
-              <li>進入「選稿編排」，建立新的選稿編排，或從既有編排點選「開始編這本」。</li>
-              <li>回到「札記庫」，勾選文章後加入目前正在編排的選稿編排。</li>
-              <li>回到「選稿編排」，點選「整理章節」，調整順序、標題與是否列入目錄。</li>
-              <li>點選「成書匯出設定」，補齊書名、作者、封面、前言等資訊。</li>
+              <li>想整理成書時，先進入「選稿編排」建立或選擇一份正在編排的書稿。</li>
+              <li>到「札記庫」勾選正式札記，加入目前正在編排的書稿。</li>
+              <li>回到「選稿編排」，點「整理章節」，依流程提示完成章節排序與儲存。</li>
+              <li>查看出版狀態：若提示尚未儲存、缺少內容或建議補齊，先依下一步整理。</li>
+              <li>點選「成書匯出設定」，補齊書名、作者、封面、前言等成書資料。</li>
               <li>點「儲存並匯出 EPUB」。完成後可以「立即閱讀」、「下載 EPUB」或「前往書櫃」。</li>
             </ol>
             <p>只有正式札記會進入札記閱讀、札記庫、選稿編排與 EPUB。草稿會留在「寫札記」的「我的草稿」，方便之後回來補完。</p>
@@ -2300,16 +2300,16 @@ function ensureOperationManualUi() {
 
           <section id="manual-selection-workbench" class="manual-section">
             <h2>八、選稿編排</h2>
-            <p>「選稿編排」用來管理成書前的內容安排。頁面分成三個區塊：目前正在編排、其他選稿編排、新增選稿編排。</p>
+            <p>「選稿編排」用來把正式札記整理成一本書。建議照著畫面流程走：填寫書籍資料、加入札記、拖曳排序、儲存編排、查看出版狀態，最後匯出 EPUB。</p>
             <h3>目前正在編排</h3>
             <p>這是目前會接收札記庫文章的編排。卡片會顯示「正在編排」、已收錄幾篇札記、更新時間、日期範圍、分類、標籤與整理說明。</p>
-            <p>目前正在編排的卡片提供「加入札記」、「整理章節」、「編輯設定」、「成書匯出設定」。這張卡片不會顯示「開始編這本」。</p>
+            <p>目前正在編排的卡片代表札記庫接下來會加入哪一份書稿。若還沒有書稿，先建立一份選稿編排；若已有書稿，可點「整理章節」進入主要工作區。</p>
             <h3>其他選稿編排</h3>
             <p>這裡顯示目前沒有被選為工作狀態的編排。每張卡片可點「開始編這本」切換成目前正在編排，也可點「整理章節」、「加入札記」、「編輯設定」或「刪除」。</p>
             <p>點選「開始編這本」後，該卡片會移到「目前正在編排」，原本的目前編排會回到其他選稿編排。畫面會立即更新並顯示切換提示。</p>
             <p>若建立選稿編排後，想修改編排代稱、整理說明、日期範圍、分類或標籤，可以在選稿編排卡片上點「編輯設定」。「編輯設定」只修改這份選稿編排的基本資料，不會直接改動已收錄的札記內容，也不會改變章節排序。若要調整章節順序或章節標題，請使用「整理章節」。</p>
             <p>選稿編排只接收正式札記。草稿不會出現在可加入候選，也不會被加入章節。摘要是否出現在閱讀與成書中，會依照每篇札記的「閱讀與成書時顯示摘要」設定處理；今日禱告只有在有內容且勾選「閱讀與成書時顯示禱告」時才會輸出。</p>
-            <p>「整理章節」與「成書匯出設定」會顯示出版檢查，協助你在輸出前確認書名、正式札記與內容狀態。它不是錯誤清單，而是輸出前的安靜提醒。</p>
+            <p>「整理章節」會在工作區上方顯示目前進度與下一步。例如尚未加入札記、章節順序尚未儲存、可以匯出或建議補齊。出版狀態不是錯誤清單，而是幫你判斷下一步要整理什麼。</p>
             <h3>新增選稿編排</h3>
             <p>新的編排只需要先填「編排代稱」與「整理說明」。若目前沒有正在編排，新建立的編排會直接成為目前正在編排。若已經有目前編排，新編排會先放在其他選稿編排中。</p>
           </section>
@@ -2317,23 +2317,22 @@ function ensureOperationManualUi() {
           <section id="manual-chapter-arrangement" class="manual-section">
             <h2>九、整理章節</h2>
             <p>點「整理章節」會開啟章節整理視窗。若整理的是目前正在編排，標題會顯示「目前選稿編排：{title}」。若整理的是其他編排，標題會顯示「整理章節：{title}」，視窗內也會提供「開始編這本」。</p>
-            <p>章節整理中可以做這些事：</p>
-            <ul>
-              <li>修改章節標題。</li>
+            <p>章節整理視窗會用一條小型流程提示提醒目前進度與下一步。通常流程是：書籍資料 → 加入札記 → 編排順序 → 出版檢查 → 匯出 EPUB。</p>
+            <ol>
+              <li>確認這份編排已經收錄想放進書裡的正式札記。</li>
               <li>拖曳章節卡片上的「排序」把手調整閱讀順序；章節很多時，拖到列表上緣或下緣會協助捲動。若使用手機或不方便拖曳，也可用小型上移、下移輔助操作。</li>
-              <li>使用「移除」把不適合的章節拿掉。</li>
-              <li>勾選或取消「列入目錄」。</li>
-              <li>點「儲存編排」保存章節調整。</li>
-            </ul>
-            <p>整理章節時，可調整閱讀順序與章節標題。手機版視窗可上下滑動。</p>
+              <li>必要時可修改章節標題，或取消「列入目錄」。</li>
+              <li>調整後若畫面提示「章節順序已調整，尚未儲存」，請點「儲存編排」保存章節調整。</li>
+              <li>確認出版狀態的下一步，再進入「成書匯出設定」。</li>
+            </ol>
             <p>章節上方的工具列會集中放置「儲存編排」、「加入札記」與「成書匯出設定」。整理書稿時，不需要在視窗上下來回尋找主要操作。</p>
-            <p>視窗中的出版檢查會用「已就緒」、「建議補齊」或「需要處理」提示目前書稿狀態，並指出能否匯出、卡在哪裡，以及哪幾篇札記建議補經文、摘要或今日禱告。</p>
+            <p>出版狀態會用「已就緒」、「建議補齊」或「需要處理」提示目前書稿狀態，並指出能否匯出、卡在哪裡，以及哪幾篇札記建議補經文、摘要或今日禱告。</p>
             <p>第一版不提供把已儲存的正式札記改回草稿，以避免已加入章節後狀態變得複雜。</p>
           </section>
 
           <section id="manual-export" class="manual-section">
             <h2>十、成書匯出設定與 EPUB 匯出</h2>
-            <p>成書匯出從「選稿編排」進入。先在目前正在編排的卡片或章節整理視窗中點「成書匯出設定」。</p>
+            <p>成書匯出從「選稿編排」進入。先在章節整理視窗確認流程提示與出版狀態；若章節順序尚未儲存，請先點「儲存編排」。狀態清楚後，再點「成書匯出設定」。</p>
             <p>成書匯出設定可補齊：</p>
             <ul>
               <li>書名與副標。</li>
@@ -2343,8 +2342,8 @@ function ensureOperationManualUi() {
               <li>封面圖片。</li>
               <li>前言與後記。</li>
             </ul>
-            <p>成書匯出設定上方也會同步顯示出版檢查。當你修改書名或調整已收錄札記時，狀態會跟著更新，幫助你在匯出前知道目前是否具備基本成書條件。</p>
-            <p>若只想先保存設定，可以點「儲存設定」。若要直接產生電子書，請點「儲存並匯出 EPUB」。匯出只會使用已加入編排的正式札記，草稿不會進入 EPUB。若書稿勾選「成書時顯示章節摘要」，且單篇札記也勾選「閱讀與成書時顯示摘要」，EPUB 會在章節開頭顯示摘要；今日禱告則只有在有內容且勾選顯示時才會跟著該篇章節匯出。匯出完成後，書籍會加入書櫃，並提供「立即閱讀」、「下載 EPUB」與「前往書櫃」。</p>
+            <p>成書匯出設定上方只顯示簡短出版狀態，讓你在最後確認時知道是否可以匯出，以及主要卡點是什麼。完整整理建議留在章節整理工作區。</p>
+            <p>若只想先保存書名、作者、封面、前言與後記，可以點「儲存成書設定」。若要直接產生電子書，請點「儲存並匯出 EPUB」。匯出只會使用已加入編排的正式札記，草稿不會進入 EPUB。若書稿勾選「成書時顯示章節摘要」，且單篇札記也勾選「閱讀與成書時顯示摘要」，EPUB 會在章節開頭顯示摘要；今日禱告則只有在有內容且勾選顯示時才會跟著該篇章節匯出。匯出完成後，書籍會加入書櫃，並提供「立即閱讀」、「下載 EPUB」與「前往書櫃」。</p>
             <p>下載 EPUB 時，畫面會確認「下載 EPUB？」並說明系統會下載這本書的 EPUB 檔案，完成後可以在你的裝置上閱讀或保存。</p>
             <p>下載後的 EPUB 可用 iOS「書籍」、Android「Google Play 圖書」或其他 EPUB 閱讀器開啟。</p>
           </section>
@@ -6208,7 +6207,7 @@ function populateBookExportSettingsModal(book) {
   modalEls.form.dataset.bookId = book.id;
   modalEls.form.dataset.coverDataUrl = book.cover_data_url || '';
   modalEls.title.textContent = '成書匯出設定';
-  modalEls.intro.textContent = `設定「${getBookDraftLabel(book)}」的正式成書資訊，儲存後不會立即匯出 EPUB。`;
+  modalEls.intro.textContent = `確認「${getBookDraftLabel(book)}」的正式成書資料。這裡儲存書名、作者與前後記；章節順序請先在編排區儲存。`;
   modalEls.bookTitle.value = book.title || '';
   modalEls.subtitle.value = book.subtitle || '';
   modalEls.author.value = book.author_name || '';
@@ -6242,7 +6241,7 @@ function syncBookExportSettingsActionState(mode = 'idle') {
   const isBusy = mode !== 'idle';
   if (modalEls.saveBtn) {
     modalEls.saveBtn.disabled = isBusy;
-    modalEls.saveBtn.textContent = mode === 'saving' ? '儲存中...' : '儲存設定';
+    modalEls.saveBtn.textContent = mode === 'saving' ? '儲存中...' : '儲存成書設定';
   }
   if (modalEls.saveAndExportBtn) {
     modalEls.saveAndExportBtn.disabled = isBusy;
@@ -6303,7 +6302,7 @@ function ensureBookExportSettingsUi() {
       <div class="panel-header book-export-settings-header">
         <div>
           <h2 id="book-export-settings-title">成書匯出設定</h2>
-          <p id="book-export-settings-intro" class="modal-intro">設定目前編排的正式成書資訊，儲存後不會立即匯出 EPUB。</p>
+          <p id="book-export-settings-intro" class="modal-intro">確認目前編排的正式成書資料；章節順序請先在編排區儲存。</p>
         </div>
         <button id="close-book-export-settings-btn" class="ghost-btn small" type="button" data-testid="book-export-settings-close">關閉</button>
       </div>
@@ -6347,7 +6346,7 @@ function ensureBookExportSettingsUi() {
         <div class="book-export-settings-actions" role="group" aria-label="成書匯出設定操作">
           <button id="dismiss-book-export-settings-btn" class="ghost-btn" type="button">取消 / 關閉</button>
           <div class="book-export-settings-actions-primary">
-            <button id="save-book-export-settings-btn" class="secondary-btn" type="submit" data-testid="book-export-settings-save">儲存設定</button>
+            <button id="save-book-export-settings-btn" class="secondary-btn" type="submit" data-testid="book-export-settings-save">儲存成書設定</button>
             <button id="save-and-export-book-btn" class="primary-btn" type="button">儲存並匯出 EPUB</button>
           </div>
         </div>
@@ -7273,6 +7272,88 @@ function getPublishingReadinessCompactIssueCopy(item) {
   };
 }
 
+const BOOK_DRAFT_WORKFLOW_STEPS = [
+  { key: 'book-info', label: '書籍資料' },
+  { key: 'add-notes', label: '加入札記' },
+  { key: 'arrange', label: '編排順序' },
+  { key: 'check', label: '出版檢查' },
+  { key: 'export', label: '匯出 EPUB' },
+];
+
+function getBookDraftWorkflowState(book) {
+  if (!book) return null;
+  const check = buildPublishingReadinessCheck(book) || {};
+  const requiredIssues = (check.required || []).filter(item => !item.passed);
+  const recommendationIssues = (check.recommendations || []).filter(item => !item.passed);
+  const chapters = getBookDisplayChapters(book);
+  const hasBookInfo = !!String(book.title || '').trim();
+  const hasChapters = chapters.length > 0;
+  const hasUnsavedArrangement = hasBookArrangementDraft(book.id);
+  let currentKey = 'export';
+  let currentLabel = '可以匯出';
+  let nextAction = '確認成書資料後匯出 EPUB。';
+  if (!hasBookInfo) {
+    currentKey = 'book-info';
+    currentLabel = '書籍資料未完成';
+    nextAction = '先填寫編排代稱，建立這份書稿。';
+  } else if (!hasChapters) {
+    currentKey = 'add-notes';
+    currentLabel = '等待加入札記';
+    nextAction = '從札記庫加入正式札記，開始形成書稿。';
+  } else if (hasUnsavedArrangement) {
+    currentKey = 'arrange';
+    currentLabel = '編排尚未儲存';
+    nextAction = '章節順序已調整，請先儲存目前編排。';
+  } else if (requiredIssues.length) {
+    const firstIssue = getPublishingReadinessCompactIssueCopy(requiredIssues[0]);
+    currentKey = 'check';
+    currentLabel = '需要處理';
+    nextAction = firstIssue.body || firstIssue.title || '請先處理出版狀態中的必要項目。';
+  } else if (recommendationIssues.length) {
+    const firstSuggestion = recommendationIssues[0];
+    currentKey = 'check';
+    currentLabel = '建議補齊';
+    nextAction = `${buildPublishingAffectedText(firstSuggestion, { maxTitles: 2 })}也可以先進入成書匯出設定。`;
+  }
+  const currentIndex = BOOK_DRAFT_WORKFLOW_STEPS.findIndex(step => step.key === currentKey);
+  const steps = BOOK_DRAFT_WORKFLOW_STEPS.map((step, index) => ({
+    ...step,
+    state: index < currentIndex ? 'done' : index === currentIndex ? 'current' : 'pending',
+  }));
+  return {
+    steps,
+    currentLabel,
+    nextAction,
+    status: check.status || 'needs',
+    canExport: !!check.canExport,
+  };
+}
+
+function renderBookDraftWorkflowGuide(book) {
+  const target = document.getElementById('book-draft-workflow-guide');
+  if (!target) return null;
+  const workflow = getBookDraftWorkflowState(book);
+  target.classList.toggle('hidden', !workflow);
+  if (!workflow) {
+    target.innerHTML = '';
+    return null;
+  }
+  target.innerHTML = `
+    <div class="book-draft-flow-copy">
+      <span>目前進度：${escapeHtml(workflow.currentLabel)}</span>
+      <strong>下一步：${escapeHtml(workflow.nextAction)}</strong>
+    </div>
+    <ol class="book-draft-flow-steps" aria-label="成書流程">
+      ${workflow.steps.map(step => `
+        <li class="book-draft-flow-step is-${step.state}">
+          <span>${escapeHtml(step.label)}</span>
+        </li>
+      `).join('')}
+    </ol>
+  `;
+  return workflow;
+}
+
 function renderPublishingReadinessHtml(book, options = {}) {
   const check = buildPublishingReadinessCheck(book, options);
   if (!check) return '<p class="caption">請先選取一份編排，再查看出版檢查。</p>';
@@ -7599,6 +7680,14 @@ function ensureBookDraftWorkspaceUi() {
       toolbarActions.className = 'book-draft-toolbar-actions';
       rightFooter.appendChild(toolbarActions);
     }
+    let workflowGuide = document.getElementById('book-draft-workflow-guide');
+    if (!workflowGuide) {
+      workflowGuide = document.createElement('section');
+      workflowGuide.id = 'book-draft-workflow-guide';
+      workflowGuide.className = 'book-draft-flow-guide';
+      workflowGuide.dataset.testid = 'book-draft-flow-guide';
+    }
+    rightFooter.prepend(workflowGuide);
     rightCol.appendChild(rightFooter);
     rightCol.appendChild(rightBody);
 
@@ -9783,7 +9872,7 @@ function ensureBookArrangementControls() {
   }
   saveBtn.disabled = !state.bookArrangementDirty || state.bookArrangementSaving;
   saveBtn.textContent = state.bookArrangementSaving ? '儲存中...' : '儲存編排';
-  statusText.textContent = state.bookArrangementSaving ? '正在儲存章節編排...' : '章節編排尚未儲存';
+  statusText.textContent = state.bookArrangementSaving ? '正在儲存章節編排...' : '章節順序已調整，尚未儲存。';
   statusText.classList.toggle('hidden', !(state.bookArrangementDirty || state.bookArrangementSaving));
   const toolbar = document.getElementById('book-draft-modal-right-footer');
   const toolbarActions = document.getElementById('book-draft-toolbar-actions');
@@ -9840,6 +9929,7 @@ function renderSelectedBookPanel() {
   renderTocPreview(book);
   renderPublishingReadinessPanel(book);
   renderPublishingReadinessPanel(book, { targetId: 'publishing-readiness-mobile-panel' });
+  renderBookDraftWorkflowGuide(book);
   renderChaptersList(book);
   renderExportSuccessActions(state.latestExportedBook?.sourceBookId === book.id ? state.latestExportedBook : null);
 }

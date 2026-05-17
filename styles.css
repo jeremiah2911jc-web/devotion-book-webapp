@@ -1027,6 +1027,7 @@ input:focus, textarea:focus, select:focus {
 }
 .book-draft-modal-right-footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
@@ -1043,6 +1044,63 @@ input:focus, textarea:focus, select:focus {
   justify-content: flex-end;
   gap: 7px;
   margin-left: auto;
+}
+.book-draft-flow-guide {
+  flex: 1 1 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 2px 0 1px;
+}
+.book-draft-flow-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.book-draft-flow-copy span {
+  color: #5d7776;
+  font-size: 12px;
+  font-weight: 800;
+}
+.book-draft-flow-copy strong {
+  color: #2f565b;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+.book-draft-flow-steps {
+  display: flex;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+.book-draft-flow-step {
+  display: inline-flex;
+  align-items: center;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #849496;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.book-draft-flow-step + .book-draft-flow-step::before {
+  content: "›";
+  margin: 0 5px 0 0;
+  color: #b0bfc0;
+  font-weight: 900;
+}
+.book-draft-flow-step.is-done {
+  color: #6d8586;
+}
+.book-draft-flow-step.is-current {
+  color: #2e6568;
 }
 .book-draft-modal-right-footer .secondary-btn,
 .book-draft-modal-right-footer .ghost-btn {
@@ -8049,6 +8107,19 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
     padding: 8px 0 10px;
     align-items: flex-start;
     background: rgba(255,255,255,0.98);
+  }
+
+  .book-draft-modal-shell.is-open .book-draft-flow-guide {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .book-draft-modal-shell.is-open .book-draft-flow-copy strong {
+    font-size: 12px;
+  }
+
+  .book-draft-modal-shell.is-open .book-draft-flow-steps {
+    display: none;
   }
 
   .book-draft-modal-shell.is-open .book-draft-modal-right-footer .secondary-btn,
