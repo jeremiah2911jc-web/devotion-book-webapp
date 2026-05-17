@@ -2326,6 +2326,7 @@ function ensureOperationManualUi() {
               <li>點「儲存編排」保存章節調整。</li>
             </ul>
             <p>整理章節時，可調整閱讀順序與章節標題。手機版視窗可上下滑動。</p>
+            <p>章節上方的工具列會集中放置「儲存編排」、「前往札記庫加入文章」與「成書匯出設定」。整理書稿時，不需要在視窗上下來回尋找主要操作。</p>
             <p>視窗中的出版檢查會用「已就緒」、「建議補齊」或「需要處理」提示目前書稿狀態。必要項目影響能否順利輸出；建議項目用來幫助你補強閱讀品質。</p>
             <p>第一版不提供把已儲存的正式札記改回草稿，以避免已加入章節後狀態變得複雜。</p>
           </section>
@@ -7401,20 +7402,20 @@ function ensureBookDraftWorkspaceUi() {
   els.exportEpubBtn?.classList.add('hidden');
   els.exportSuccessActions?.classList.add('hidden');
 
-    if (!document.getElementById('go-content-library-btn') && els.createSnapshotBtn?.parentElement) {
-      const goLibraryBtn = document.createElement('button');
-      goLibraryBtn.id = 'go-content-library-btn';
-      goLibraryBtn.type = 'button';
-      goLibraryBtn.className = 'secondary-btn';
-      goLibraryBtn.textContent = '前往札記庫加入文章';
-      goLibraryBtn.addEventListener('click', () => goToContentLibraryForBookDraft(state.selectedBookId).catch(handleError));
+  if (!document.getElementById('go-content-library-btn') && els.createSnapshotBtn?.parentElement) {
+    const goLibraryBtn = document.createElement('button');
+    goLibraryBtn.id = 'go-content-library-btn';
+    goLibraryBtn.type = 'button';
+    goLibraryBtn.className = 'secondary-btn';
+    goLibraryBtn.textContent = '前往札記庫加入文章';
+    goLibraryBtn.addEventListener('click', () => goToContentLibraryForBookDraft(getActiveBookDraftId()).catch(handleError));
 
-      const focusChaptersBtn = document.createElement('button');
-      focusChaptersBtn.id = 'focus-draft-chapters-btn';
-      focusChaptersBtn.type = 'button';
-      focusChaptersBtn.className = 'ghost-btn';
-      focusChaptersBtn.textContent = '整理章節';
-      focusChaptersBtn.addEventListener('click', () => focusSelectedDraftPanel().catch(handleError));
+    const focusChaptersBtn = document.createElement('button');
+    focusChaptersBtn.id = 'focus-draft-chapters-btn';
+    focusChaptersBtn.type = 'button';
+    focusChaptersBtn.className = 'ghost-btn';
+    focusChaptersBtn.textContent = '整理章節';
+    focusChaptersBtn.addEventListener('click', () => focusSelectedDraftPanel().catch(handleError));
 
     els.createSnapshotBtn.parentElement.prepend(focusChaptersBtn);
     els.createSnapshotBtn.parentElement.prepend(goLibraryBtn);
@@ -7445,13 +7446,6 @@ function ensureBookDraftWorkspaceUi() {
       rightCol.className = 'book-draft-modal-right';
       els.selectedBookPanel.appendChild(rightCol);
     }
-    let mobileActions = document.getElementById('book-draft-modal-mobile-actions');
-    if (!mobileActions) {
-      mobileActions = document.createElement('div');
-      mobileActions.id = 'book-draft-modal-mobile-actions';
-      mobileActions.className = 'book-draft-modal-mobile-actions';
-      rightCol.appendChild(mobileActions);
-    }
     let rightBody = document.getElementById('book-draft-modal-right-body');
     if (!rightBody) {
       rightBody = document.createElement('div');
@@ -7463,9 +7457,18 @@ function ensureBookDraftWorkspaceUi() {
     if (!rightFooter) {
       rightFooter = document.createElement('div');
       rightFooter.id = 'book-draft-modal-right-footer';
-      rightFooter.className = 'book-draft-modal-right-footer';
-      rightCol.appendChild(rightFooter);
+      rightFooter.className = 'book-draft-modal-right-footer book-draft-workspace-toolbar';
     }
+    rightFooter.classList.add('book-draft-workspace-toolbar');
+    let toolbarActions = document.getElementById('book-draft-toolbar-actions');
+    if (!toolbarActions) {
+      toolbarActions = document.createElement('div');
+      toolbarActions.id = 'book-draft-toolbar-actions';
+      toolbarActions.className = 'book-draft-toolbar-actions';
+      rightFooter.appendChild(toolbarActions);
+    }
+    rightCol.appendChild(rightFooter);
+    rightCol.appendChild(rightBody);
 
     leftCol.prepend(els.bookCoverPreview);
     leftCol.appendChild(tocPreviewPanel);
@@ -7478,7 +7481,7 @@ function ensureBookDraftWorkspaceUi() {
     }
     leftCol.appendChild(readinessPanel);
     const goLibraryBtn = document.getElementById('go-content-library-btn');
-    if (goLibraryBtn) leftActions.appendChild(goLibraryBtn);
+    if (goLibraryBtn) toolbarActions.appendChild(goLibraryBtn);
 
     let mobileReadinessPanel = document.getElementById('publishing-readiness-mobile-panel');
     if (!mobileReadinessPanel) {
@@ -7487,11 +7490,11 @@ function ensureBookDraftWorkspaceUi() {
       mobileReadinessPanel.className = 'publishing-readiness-slot publishing-readiness-mobile-slot';
       mobileReadinessPanel.dataset.testid = 'publishing-readiness-mobile-slot';
     }
-    rightBody.appendChild(mobileReadinessPanel);
     rightBody.appendChild(chapterHeading);
     rightBody.appendChild(els.chaptersList);
+    rightBody.appendChild(mobileReadinessPanel);
     const arrangementStatus = document.getElementById('book-arrangement-status');
-    if (arrangementStatus) rightFooter.appendChild(arrangementStatus);
+    if (arrangementStatus) rightFooter.insertBefore(arrangementStatus, toolbarActions);
     let exportSettingsBtn = document.getElementById('open-book-export-settings-btn');
     if (!exportSettingsBtn) {
       exportSettingsBtn = document.createElement('button');
@@ -7502,17 +7505,7 @@ function ensureBookDraftWorkspaceUi() {
       exportSettingsBtn.textContent = '成書匯出設定';
       exportSettingsBtn.addEventListener('click', () => openBookExportSettingsModal(getActiveBookDraftId()).catch(handleError));
     }
-    rightFooter.prepend(exportSettingsBtn);
-    let mobileExportSettingsBtn = document.getElementById('open-book-export-settings-mobile-btn');
-    if (!mobileExportSettingsBtn) {
-      mobileExportSettingsBtn = document.createElement('button');
-      mobileExportSettingsBtn.id = 'open-book-export-settings-mobile-btn';
-      mobileExportSettingsBtn.type = 'button';
-      mobileExportSettingsBtn.className = 'ghost-btn';
-      mobileExportSettingsBtn.dataset.testid = 'book-export-settings-open-mobile';
-      mobileExportSettingsBtn.textContent = '成書匯出設定';
-      mobileExportSettingsBtn.addEventListener('click', () => openBookExportSettingsModal(getActiveBookDraftId()).catch(handleError));
-    }
+    toolbarActions.appendChild(exportSettingsBtn);
     let modalStartBtn = document.getElementById('modal-start-current-book-btn');
     if (!modalStartBtn) {
       modalStartBtn = document.createElement('button');
@@ -7522,30 +7515,13 @@ function ensureBookDraftWorkspaceUi() {
       modalStartBtn.textContent = '開始編這本';
       modalStartBtn.addEventListener('click', () => setCurrentBookDraft(getActiveBookDraftId()));
     }
-    rightFooter.prepend(modalStartBtn);
-    let mobileStartBtn = document.getElementById('modal-start-current-book-mobile-btn');
-    if (!mobileStartBtn) {
-      mobileStartBtn = document.createElement('button');
-      mobileStartBtn.id = 'modal-start-current-book-mobile-btn';
-      mobileStartBtn.type = 'button';
-      mobileStartBtn.className = 'secondary-btn';
-      mobileStartBtn.textContent = '開始編這本';
-      mobileStartBtn.addEventListener('click', () => setCurrentBookDraft(getActiveBookDraftId()));
-    }
+    toolbarActions.appendChild(modalStartBtn);
     const saveBtn = document.getElementById('save-book-arrangement-btn');
-    if (saveBtn) rightFooter.prepend(saveBtn);
-    let mobileSaveBtn = document.getElementById('save-book-arrangement-mobile-btn');
-    if (!mobileSaveBtn) {
-      mobileSaveBtn = document.createElement('button');
-      mobileSaveBtn.id = 'save-book-arrangement-mobile-btn';
-      mobileSaveBtn.type = 'button';
-      mobileSaveBtn.className = 'secondary-btn';
-      mobileSaveBtn.textContent = '儲存編排';
-      mobileSaveBtn.addEventListener('click', () => saveBookArrangement().catch(handleError));
-    }
-    mobileActions.appendChild(mobileSaveBtn);
-    mobileActions.appendChild(mobileExportSettingsBtn);
-    mobileActions.appendChild(mobileStartBtn);
+    if (saveBtn) toolbarActions.prepend(saveBtn);
+    document.getElementById('book-draft-modal-mobile-actions')?.remove();
+    document.getElementById('save-book-arrangement-mobile-btn')?.remove();
+    document.getElementById('open-book-export-settings-mobile-btn')?.remove();
+    document.getElementById('modal-start-current-book-mobile-btn')?.remove();
     const focusBtn = document.getElementById('focus-draft-chapters-btn');
     if (focusBtn) focusBtn.classList.add('hidden');
     actionRow.classList.add('hidden');
@@ -9675,13 +9651,14 @@ function ensureBookArrangementControls() {
   }
   saveBtn.disabled = !state.bookArrangementDirty || state.bookArrangementSaving;
   saveBtn.textContent = state.bookArrangementSaving ? '儲存中...' : '儲存編排';
-  const mobileSaveBtn = document.getElementById('save-book-arrangement-mobile-btn');
-  if (mobileSaveBtn) {
-    mobileSaveBtn.disabled = saveBtn.disabled;
-    mobileSaveBtn.textContent = saveBtn.textContent;
-  }
   statusText.textContent = state.bookArrangementSaving ? '正在儲存章節編排...' : '章節編排尚未儲存';
   statusText.classList.toggle('hidden', !(state.bookArrangementDirty || state.bookArrangementSaving));
+  const toolbar = document.getElementById('book-draft-modal-right-footer');
+  const toolbarActions = document.getElementById('book-draft-toolbar-actions');
+  if (toolbar && toolbarActions) {
+    toolbar.insertBefore(statusText, toolbarActions);
+    toolbarActions.prepend(saveBtn);
+  }
 }
 
 function renderSelectedBookPanel() {
@@ -9705,7 +9682,6 @@ function renderSelectedBookPanel() {
     document.createTextNode(isCurrentDraft ? `目前選稿編排：${getBookDraftLabel(book)}` : `整理章節：${getBookDraftLabel(book)}`),
   );
   document.getElementById('modal-start-current-book-btn')?.classList.toggle('hidden', isCurrentDraft);
-  document.getElementById('modal-start-current-book-mobile-btn')?.classList.toggle('hidden', isCurrentDraft);
   ensureBookArrangementControls();
   if (els.addChapterBtn) els.addChapterBtn.disabled = state.bookArrangementDirty || state.bookArrangementSaving;
   updateChapterSourceOptions();
@@ -9721,7 +9697,7 @@ function renderSelectedBookPanel() {
     <div class="cover-overlay">
       <div class="caption">${isCurrentDraft ? '目前正在編排' : '選稿編排'}</div>
       ${isCurrentDraft ? '<span class="badge book-draft-status-badge is-current">正在編排</span>' : ''}
-      <h2>${escapeHtml(getBookDraftLabel(book))}</h2>
+      <h2>書稿狀態</h2>
       <div>${escapeHtml(getBookDraftDescription(book) || '尚未填寫整理說明')}</div>
       <div class="caption">已收錄 ${chapterCount} 篇｜${escapeHtml(draftStatus)}｜更新於 ${escapeHtml(formatDate(book.updated_at || book.created_at))}</div>
       <div class="caption">${escapeHtml(getBookDraftScopeSummary(book))}</div>

@@ -1009,8 +1009,8 @@ input:focus, textarea:focus, select:focus {
 }
 .book-draft-modal-right {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  gap: 14px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
   min-height: 0;
   height: 100%;
   overflow: hidden;
@@ -1025,21 +1025,39 @@ input:focus, textarea:focus, select:focus {
   padding-right: 4px;
 }
 .book-draft-modal-right-footer {
-  display: grid;
-  gap: 8px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(191,211,208,0.7);
-  background: rgba(255,255,255,0.96);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 0 10px;
+  border-bottom: 1px solid rgba(191,211,208,0.7);
+  background: rgba(255,255,255,0.97);
   position: sticky;
-  bottom: 0;
+  top: 0;
+  z-index: 2;
+}
+.book-draft-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+  margin-left: auto;
 }
 .book-draft-modal-right-footer .secondary-btn,
 .book-draft-modal-right-footer .ghost-btn {
   justify-self: start;
-  min-height: 42px;
+  min-height: 36px;
+  padding: 7px 11px;
+  font-size: 13px;
 }
-.book-draft-modal-mobile-actions {
-  display: none;
+.book-draft-modal-right-footer #save-book-arrangement-btn:not(:disabled) {
+  background: linear-gradient(135deg, #4ca4a7, #5cb6b8);
+  color: #fff;
+  border-color: transparent;
+}
+.book-draft-modal-right-footer #book-arrangement-status {
+  margin: 0;
+  white-space: nowrap;
 }
 .book-draft-list { display: grid; gap: 14px; }
 .book-draft-card {
@@ -1136,9 +1154,18 @@ input:focus, textarea:focus, select:focus {
 .book-draft-actions { margin-top: 0; gap: 8px; }
 .book-draft-actions .secondary-btn,
 .book-draft-actions .ghost-btn {
-  min-height: 40px;
-  padding-inline: 14px;
+  min-height: 34px;
+  padding: 6px 10px;
   white-space: normal;
+}
+.book-draft-actions .ghost-btn {
+  border-color: transparent;
+  background: transparent;
+  color: #4e7376;
+}
+.book-draft-actions .ghost-btn:hover {
+  background: rgba(236, 248, 246, 0.8);
+  border-color: rgba(191,211,208,0.55);
 }
 .book-draft-delete-btn {
   color: #8b4f56;
@@ -7912,22 +7939,6 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
     overflow: visible;
   }
 
-  .book-draft-modal-shell.is-open .book-draft-modal-mobile-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 12px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid rgba(191,211,208,0.7);
-    background: rgba(255,255,255,0.98);
-  }
-
-  .book-draft-modal-shell.is-open .book-draft-modal-mobile-actions .secondary-btn,
-  .book-draft-modal-shell.is-open .book-draft-modal-mobile-actions .ghost-btn {
-    flex: 1 1 150px;
-    min-height: 42px;
-  }
-
   .book-draft-modal-shell.is-open .book-draft-modal-right-body {
     display: block;
     height: auto;
@@ -7960,17 +7971,31 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
   }
 
   .book-draft-modal-shell.is-open .book-draft-modal-right-footer {
-    position: static;
-    bottom: auto;
-    margin-top: 16px;
-    padding-top: 12px;
-    padding-bottom: max(32px, calc(32px + env(safe-area-inset-bottom)));
+    position: sticky;
+    top: 0;
+    z-index: 4;
+    margin: 0 0 12px;
+    padding: 8px 0 10px;
+    align-items: flex-start;
+    background: rgba(255,255,255,0.98);
   }
 
   .book-draft-modal-shell.is-open .book-draft-modal-right-footer .secondary-btn,
   .book-draft-modal-shell.is-open .book-draft-modal-right-footer .ghost-btn {
-    width: 100%;
-    justify-self: stretch;
+    flex: 0 1 auto;
+    min-height: 34px;
+    width: auto;
+    justify-self: auto;
+  }
+
+  .book-draft-modal-shell.is-open .book-draft-toolbar-actions {
+    justify-content: flex-start;
+    margin-left: 0;
+  }
+
+  .book-draft-modal-shell.is-open .book-draft-modal-right-footer #book-arrangement-status {
+    flex-basis: 100%;
+    white-space: normal;
   }
 }
 

@@ -432,7 +432,7 @@ async function run() {
           return firstTitleInput?.value === expectedTitle;
         }, secondTitleBefore, { timeout: 10000 });
         await expectVisible(page, '#book-arrangement-status:not(.hidden)', '拖曳後顯示尚未儲存狀態');
-        await clickElement(page, '#save-book-arrangement-mobile-btn');
+        await clickElement(page, '#save-book-arrangement-btn');
         await page.waitForFunction(() => document.querySelector('#book-arrangement-status')?.classList.contains('hidden'), undefined, { timeout: 10000 });
         await clickElement(page, '#close-book-draft-modal-btn');
         await clickElement(page, '[data-testid="book-open-draft"]');
