@@ -784,8 +784,8 @@ input:focus, textarea:focus, select:focus {
     padding: 18px 20px;
     border-radius: 20px;
     background:
-      linear-gradient(90deg, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0.88) 52%, rgba(255,255,255,0.62) 100%),
-      url("./assets/ui/note-writing-hero-desk.png") 68% center / cover no-repeat,
+      linear-gradient(90deg, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0.84) 52%, rgba(255,255,255,0.28) 100%),
+      url("./assets/ui/note-writing-hero-desk.png") right center / auto 100% no-repeat,
       linear-gradient(115deg, rgba(255,255,255,0.96) 0%, rgba(254,251,245,0.94) 48%, rgba(239,232,220,0.88) 100%);
     box-shadow: 0 12px 28px rgba(63, 76, 68, 0.07);
   }
