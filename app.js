@@ -180,10 +180,10 @@ const PRAYER_STATUS_LABELS = {
 const AUTO_BACKUP_SLOTS = ['08', '14', '20'];
 const AUTO_BACKUP_MAX_ITEMS = 3;
 const PRODUCTION_HOSTNAMES = new Set(['www.devotionbook.com.tw', 'devotionbook.com.tw']);
+const LOCAL_DEVELOPMENT_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1']);
 
 function isLocalDevelopmentHost() {
-  if (typeof window === 'undefined') return false;
-  return ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+  return getAppRuntimeEnvironment().kind === 'local';
 }
 
 function getCurrentHostname() {
@@ -191,17 +191,63 @@ function getCurrentHostname() {
   return String(window.location.hostname || '').trim().toLowerCase();
 }
 
+function normalizeRuntimeHostname(hostname = '') {
+  return String(hostname || '').trim().toLowerCase();
+}
+
 function isProductionHostname(hostname = getCurrentHostname()) {
-  return PRODUCTION_HOSTNAMES.has(String(hostname || '').trim().toLowerCase());
+  return PRODUCTION_HOSTNAMES.has(normalizeRuntimeHostname(hostname));
+}
+
+function getAppRuntimeEnvironment(hostname = getCurrentHostname()) {
+  const normalizedHostname = normalizeRuntimeHostname(hostname);
+  const isProductionHost = PRODUCTION_HOSTNAMES.has(normalizedHostname);
+  const isLocalHost = LOCAL_DEVELOPMENT_HOSTNAMES.has(normalizedHostname);
+  const isVercelHost = normalizedHostname.endsWith('.vercel.app');
+  const kind = isProductionHost
+    ? 'production'
+    : isLocalHost
+      ? 'local'
+      : isVercelHost
+        ? 'preview'
+        : normalizedHostname
+          ? 'non-production'
+          : 'unknown';
+
+  return {
+    hostname: normalizedHostname,
+    kind,
+    isProductionHost,
+    isLocalHost,
+    isPreviewLikeHost: !!normalizedHostname && !isProductionHost,
+    shouldShowWarning: !!normalizedHostname && !isProductionHost,
+  };
+}
+
+function getPublicRuntimeDiagnostics(hostname = getCurrentHostname()) {
+  const runtime = getAppRuntimeEnvironment(hostname);
+  return {
+    hostname: runtime.hostname,
+    kind: runtime.kind,
+    isProductionHost: runtime.isProductionHost,
+    isPreviewLikeHost: runtime.isPreviewLikeHost,
+    warningVisible: runtime.shouldShowWarning,
+  };
+}
+
+if (typeof window !== 'undefined') {
+  window.DevotionRuntime = Object.freeze({
+    getEnvironment: getPublicRuntimeDiagnostics,
+  });
 }
 
 function shouldShowEnvironmentWarningBanner() {
-  const hostname = getCurrentHostname();
-  return !!hostname && !isProductionHostname(hostname);
+  return getAppRuntimeEnvironment().shouldShowWarning;
 }
 
 function ensureEnvironmentWarningBanner() {
   if (typeof document === 'undefined') return;
+  const runtime = getAppRuntimeEnvironment();
   let banner = document.getElementById('environment-warning-banner');
   if (!banner) {
     banner = document.createElement('aside');
@@ -218,7 +264,8 @@ function ensureEnvironmentWarningBanner() {
     `;
     document.body.insertBefore(banner, document.body.firstChild);
   }
-  const shouldShow = shouldShowEnvironmentWarningBanner();
+  document.body.dataset.runtimeEnvironment = runtime.kind;
+  const shouldShow = runtime.shouldShowWarning;
   banner.hidden = !shouldShow;
   document.body.classList.toggle('environment-warning-visible', shouldShow);
 }
