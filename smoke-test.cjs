@@ -80,6 +80,7 @@ const seedBooks = [
     toc_enabled: true,
     chapters: [
       { id: 'chapter_1', note_id: 'note_1', chapter_title: '\u8a69\u7bc7 104 \u9ed8\u60f3', chapter_order: 0 },
+      { id: 'chapter_1b', note_id: 'note_2', chapter_title: '\u9748\u4fee\u624b\u8a18', chapter_order: 1 },
     ],
     updated_at: '2026-04-24T07:05:00.000Z',
     created_at: '2026-04-24T07:00:00.000Z',
@@ -415,6 +416,32 @@ async function run() {
         throw new Error(`出版檢查文案未顯示：${readinessText}`);
       }
       await assertNoHorizontalScroll(page, { label: 'smoke publishing readiness mobile' });
+      const chapterItems = page.locator('#chapters-list [data-chapter-item]');
+      const chapterItemCount = await chapterItems.count();
+      if (chapterItemCount >= 2) {
+        const secondTitleBefore = await chapterItems.nth(1).locator('[data-chapter-title]').inputValue();
+        const secondHandleBox = await chapterItems.nth(1).locator('[data-chapter-drag-handle]').boundingBox();
+        const firstBox = await chapterItems.nth(0).boundingBox();
+        if (!secondHandleBox || !firstBox) throw new Error('拖曳排序目標位置無法取得');
+        await page.mouse.move(secondHandleBox.x + secondHandleBox.width / 2, secondHandleBox.y + secondHandleBox.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(firstBox.x + firstBox.width / 2, firstBox.y + 6, { steps: 10 });
+        await page.mouse.up();
+        await page.waitForFunction((expectedTitle) => {
+          const firstTitleInput = document.querySelector('#chapters-list [data-chapter-item] [data-chapter-title]');
+          return firstTitleInput?.value === expectedTitle;
+        }, secondTitleBefore, { timeout: 10000 });
+        await expectVisible(page, '#book-arrangement-status:not(.hidden)', '拖曳後顯示尚未儲存狀態');
+        await clickElement(page, '#save-book-arrangement-mobile-btn');
+        await page.waitForFunction(() => document.querySelector('#book-arrangement-status')?.classList.contains('hidden'), undefined, { timeout: 10000 });
+        await clickElement(page, '#close-book-draft-modal-btn');
+        await clickElement(page, '[data-testid="book-open-draft"]');
+        await page.waitForFunction((expectedTitle) => {
+          const firstTitleInput = document.querySelector('#chapters-list [data-chapter-item] [data-chapter-title]');
+          return firstTitleInput?.value === expectedTitle;
+        }, secondTitleBefore, { timeout: 10000 });
+        results.push('拖曳排序與儲存後順序保留正常');
+      }
       await clickElement(page, '#close-book-draft-modal-btn');
       results.push('出版檢查區在整理章節視窗顯示正常');
     }

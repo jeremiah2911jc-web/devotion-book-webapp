@@ -961,6 +961,7 @@ const state = {
   bookArrangementDirty: false,
   bookArrangementSaving: false,
   bookArrangementDrafts: {},
+  bookChapterDrag: null,
   bookProjectDetailIds: new Set(),
   bookProjectDetailPromises: new Map(),
   bookDraftModalOpen: false,
@@ -2319,7 +2320,7 @@ function ensureOperationManualUi() {
             <p>章節整理中可以做這些事：</p>
             <ul>
               <li>修改章節標題。</li>
-              <li>使用「上移」與「下移」調整閱讀順序。</li>
+              <li>拖曳章節卡片上的「排序」把手調整閱讀順序；若使用手機或不方便拖曳，也可用小型上移、下移輔助操作。</li>
               <li>使用「移除」把不適合的章節拿掉。</li>
               <li>勾選或取消「列入目錄」。</li>
               <li>點「儲存編排」保存章節調整。</li>
@@ -9766,12 +9767,15 @@ function renderChaptersList(book) {
   }
   els.chaptersList.className = 'list-stack book-draft-chapters-list';
   els.chaptersList.innerHTML = chapters.map((chapter, index) => `
-    <div class="chapter-item">
+    <article class="chapter-item" data-chapter-item="${chapter.id}">
       <div class="chapter-row">
+        <button class="chapter-drag-handle" type="button" data-chapter-drag-handle="${chapter.id}" aria-label="拖曳調整「${escapeHtml(chapter.chapter_title || '未命名章節')}」順序" ${state.bookArrangementSaving ? 'disabled' : ''}>排序</button>
         <input value="${escapeHtml(chapter.chapter_title || '')}" data-chapter-title="${chapter.id}" ${fieldDisabled} />
         <div class="chapter-controls">
-          <button class="ghost-btn small" data-move-up="${chapter.id}" ${index === 0 || state.bookArrangementSaving ? 'disabled' : ''}>上移</button>
-          <button class="ghost-btn small" data-move-down="${chapter.id}" ${index === chapters.length - 1 || state.bookArrangementSaving ? 'disabled' : ''}>下移</button>
+          <div class="chapter-order-fallback" aria-label="輔助排序操作">
+            <button class="ghost-btn small chapter-order-btn" data-move-up="${chapter.id}" aria-label="上移「${escapeHtml(chapter.chapter_title || '未命名章節')}」" ${index === 0 || state.bookArrangementSaving ? 'disabled' : ''}><span aria-hidden="true">↑</span><span class="visually-hidden">上移</span></button>
+            <button class="ghost-btn small chapter-order-btn" data-move-down="${chapter.id}" aria-label="下移「${escapeHtml(chapter.chapter_title || '未命名章節')}」" ${index === chapters.length - 1 || state.bookArrangementSaving ? 'disabled' : ''}><span aria-hidden="true">↓</span><span class="visually-hidden">下移</span></button>
+          </div>
           <button class="danger-btn small" data-remove-chapter="${chapter.id}" ${actionDisabled}>移除</button>
         </div>
       </div>
@@ -9779,8 +9783,14 @@ function renderChaptersList(book) {
         <div class="caption">來源札記：${escapeHtml(getNoteById(getChapterSourceNoteId(chapter))?.title || '手動章節')}</div>
         <label class="checkbox-row"><input type="checkbox" data-chapter-toc="${chapter.id}" ${chapter.include_in_toc ? 'checked' : ''} ${fieldDisabled} /><span>列入目錄</span></label>
       </div>
-    </div>
+    </article>
   `).join('');
+  els.chaptersList.querySelectorAll('[data-chapter-drag-handle]').forEach(handle => {
+    handle.addEventListener('pointerdown', handleChapterDragPointerDown);
+    handle.addEventListener('pointermove', handleChapterDragPointerMove);
+    handle.addEventListener('pointerup', handleChapterDragPointerUp);
+    handle.addEventListener('pointercancel', handleChapterDragPointerCancel);
+  });
   els.chaptersList.querySelectorAll('[data-chapter-title]').forEach(input => input.addEventListener('change', event => updateChapterTitle(event.target.dataset.chapterTitle, event.target.value).catch(handleError)));
   els.chaptersList.querySelectorAll('[data-chapter-toc]').forEach(input => input.addEventListener('change', event => updateChapterToc(event.target.dataset.chapterToc, event.target.checked).catch(handleError)));
   els.chaptersList.querySelectorAll('[data-move-up]').forEach(btn => btn.addEventListener('click', () => moveChapter(btn.dataset.moveUp, -1).catch(handleError)));
@@ -9884,6 +9894,124 @@ async function moveChapter(chapterId, direction) {
     [chapters[index], chapters[target]] = [chapters[target], chapters[index]];
     return chapters;
   });
+}
+
+function getChapterOrderSignature(chapters = []) {
+  return chapters.map(chapter => chapter.id).join('|');
+}
+
+function reorderChaptersRelative(chapters = [], chapterId = '', targetId = '', placement = 'before') {
+  const fromIndex = chapters.findIndex(chapter => chapter.id === chapterId);
+  if (fromIndex < 0 || !targetId || chapterId === targetId) return null;
+  const beforeOrder = getChapterOrderSignature(chapters);
+  const [movedChapter] = chapters.splice(fromIndex, 1);
+  let targetIndex = chapters.findIndex(chapter => chapter.id === targetId);
+  if (targetIndex < 0) return null;
+  if (placement === 'after') targetIndex += 1;
+  chapters.splice(targetIndex, 0, movedChapter);
+  return beforeOrder === getChapterOrderSignature(chapters) ? null : chapters;
+}
+
+async function moveChapterRelative(chapterId, targetId, placement = 'before') {
+  stageBookArrangementChange(chapters => reorderChaptersRelative(chapters, chapterId, targetId, placement));
+}
+
+function clearChapterDragTargets() {
+  document.querySelectorAll('.chapter-item.is-drop-before, .chapter-item.is-drop-after').forEach(item => {
+    item.classList.remove('is-drop-before', 'is-drop-after');
+  });
+}
+
+function getChapterItemElement(chapterId = '') {
+  return [...document.querySelectorAll('[data-chapter-item]')]
+    .find(item => item.dataset.chapterItem === chapterId) || null;
+}
+
+function resetChapterDragState() {
+  clearChapterDragTargets();
+  document.querySelectorAll('.chapter-item.is-dragging').forEach(item => item.classList.remove('is-dragging'));
+  els.chaptersList?.classList.remove('is-sorting');
+  state.bookChapterDrag = null;
+}
+
+function handleChapterDragPointerDown(event) {
+  if (state.bookArrangementSaving) return;
+  if (event.button != null && event.button !== 0) return;
+  const handle = event.currentTarget;
+  const chapterId = handle?.dataset.chapterDragHandle || '';
+  const item = handle?.closest('[data-chapter-item]');
+  if (!chapterId || !item) return;
+  state.bookChapterDrag = {
+    chapterId,
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    active: false,
+    targetId: '',
+    placement: 'before',
+  };
+  handle.setPointerCapture?.(event.pointerId);
+}
+
+function updateChapterDragTarget(event) {
+  const dragState = state.bookChapterDrag;
+  if (!dragState?.active) return;
+  const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('[data-chapter-item]');
+  clearChapterDragTargets();
+  if (!target || target.dataset.chapterItem === dragState.chapterId) {
+    dragState.targetId = '';
+    return;
+  }
+  const rect = target.getBoundingClientRect();
+  const placement = event.clientY > rect.top + (rect.height / 2) ? 'after' : 'before';
+  target.classList.add(placement === 'after' ? 'is-drop-after' : 'is-drop-before');
+  dragState.targetId = target.dataset.chapterItem || '';
+  dragState.placement = placement;
+}
+
+function scrollChapterListDuringDrag(event) {
+  const scrollBox = els.chaptersList?.closest('.book-draft-overview-body') || els.chaptersList;
+  if (!scrollBox || scrollBox.scrollHeight <= scrollBox.clientHeight) return;
+  const rect = scrollBox.getBoundingClientRect();
+  const edgeSize = 54;
+  if (event.clientY > rect.bottom - edgeSize) {
+    scrollBox.scrollTop += 16;
+  } else if (event.clientY < rect.top + edgeSize) {
+    scrollBox.scrollTop -= 16;
+  }
+}
+
+function handleChapterDragPointerMove(event) {
+  const dragState = state.bookChapterDrag;
+  if (!dragState || dragState.pointerId !== event.pointerId) return;
+  const distance = Math.hypot(event.clientX - dragState.startX, event.clientY - dragState.startY);
+  if (!dragState.active && distance < 6) return;
+  if (!dragState.active) {
+    dragState.active = true;
+    els.chaptersList?.classList.add('is-sorting');
+    getChapterItemElement(dragState.chapterId)?.classList.add('is-dragging');
+  }
+  event.preventDefault();
+  scrollChapterListDuringDrag(event);
+  updateChapterDragTarget(event);
+}
+
+function handleChapterDragPointerUp(event) {
+  const dragState = state.bookChapterDrag;
+  if (!dragState || dragState.pointerId !== event.pointerId) return;
+  const { chapterId, targetId, placement, active } = dragState;
+  event.currentTarget.releasePointerCapture?.(event.pointerId);
+  resetChapterDragState();
+  if (active && targetId && chapterId !== targetId) {
+    moveChapterRelative(chapterId, targetId, placement).catch(handleError);
+  }
+}
+
+function handleChapterDragPointerCancel(event) {
+  const dragState = state.bookChapterDrag;
+  if (!dragState || dragState.pointerId !== event.pointerId) return;
+  event.currentTarget.releasePointerCapture?.(event.pointerId);
+  resetChapterDragState();
 }
 
 async function removeChapter(chapterId) {

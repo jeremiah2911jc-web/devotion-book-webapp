@@ -1605,7 +1605,38 @@ input:focus, textarea:focus, select:focus {
 .toc-preview-more {
   margin: 10px 0 0;
 }
-.chapter-item { display: grid; gap: 8px; border: 1px solid rgba(191,211,208,0.85); border-radius: 14px; padding: 10px 12px; background: rgba(255,255,255,0.84); }
+.chapter-item {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(191,211,208,0.85);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.84);
+  transition: border-color .16s ease, box-shadow .16s ease, opacity .16s ease, transform .16s ease, background .16s ease;
+}
+.chapter-item.is-dragging {
+  opacity: .62;
+  transform: scale(.99);
+  box-shadow: 0 12px 26px rgba(49,84,90,.14);
+}
+.chapter-item.is-drop-before::before,
+.chapter-item.is-drop-after::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(83, 177, 173, .62);
+  box-shadow: 0 0 0 4px rgba(83, 177, 173, .08);
+}
+.chapter-item.is-drop-before::before {
+  top: -7px;
+}
+.chapter-item.is-drop-after::after {
+  bottom: -7px;
+}
 .book-draft-chapter-heading { margin-top: 14px; }
 .book-draft-chapters-list {
   max-height: 280px;
@@ -1627,15 +1658,46 @@ input:focus, textarea:focus, select:focus {
   padding: 8px 10px;
   background: rgba(255,255,255,0.74);
 }
-.chapter-row,
+.chapter-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; }
 .chapter-meta-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
 .chapter-row input { padding: 8px 10px; border-radius: 10px; font-weight: 700; }
+.chapter-drag-handle {
+  align-self: stretch;
+  min-height: 34px;
+  min-width: 42px;
+  padding: 5px 9px;
+  border: 1px solid rgba(191,211,208,.92);
+  border-radius: 10px;
+  background: rgba(255,255,255,.66);
+  color: #517174;
+  cursor: grab;
+  font-size: 12px;
+  font-weight: 800;
+  touch-action: none;
+}
+.chapter-drag-handle:active {
+  cursor: grabbing;
+}
+.chapter-drag-handle:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
 .book-draft-overview-panel .chapter-row input {
   padding: 7px 9px;
   font-size: 15px;
 }
 .chapter-controls { display: flex; gap: 6px; flex-wrap: nowrap; justify-content: flex-end; }
 .chapter-controls .small { min-height: 34px; padding: 6px 9px; }
+.chapter-order-fallback {
+  display: inline-flex;
+  gap: 4px;
+}
+.chapter-order-btn {
+  width: 32px;
+  min-width: 32px;
+  padding-inline: 0 !important;
+  color: #5f7778;
+}
 .book-draft-overview-panel .chapter-controls .small,
 .book-draft-overview-panel .danger-btn.small {
   min-height: 32px;
@@ -7886,6 +7948,15 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
     max-height: none;
     overflow: visible;
     padding-right: 0;
+  }
+
+  .book-draft-modal-shell.is-open .chapter-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .book-draft-modal-shell.is-open .chapter-controls {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
   }
 
   .book-draft-modal-shell.is-open .book-draft-modal-right-footer {
