@@ -2309,7 +2309,7 @@ function ensureOperationManualUi() {
             <h3>其他選稿編排</h3>
             <p>這裡顯示目前沒有被選為工作狀態的編排。每張卡片可點「開始編這本」切換成目前正在編排，也可點「整理章節」、「加入札記」、「書籍資料」或「刪除」。</p>
             <p>點選「開始編這本」後，該卡片會移到「目前正在編排」，原本的目前編排會回到其他選稿編排。畫面會立即更新並顯示切換提示。</p>
-            <p>若建立選稿編排後，想修改書名、副標、作者、書籍簡介、日期範圍、分類、標籤、封面或模板，可以在選稿編排卡片上點「書籍資料」。「書籍資料」整理的是這本書本身的基本資料，不會直接改動已收錄的札記內容，也不會改變章節排序。若要調整章節順序或章節標題，請使用「整理章節」。</p>
+            <p>若建立選稿編排後，想修改書名、副標、作者、書籍簡介、日期範圍、分類、標籤、封面、模板或結語，可以在選稿編排卡片上點「書籍資料」。「書籍資料」整理的是這本書本身的基本資料，不會直接改動已收錄的札記內容，也不會改變章節排序。若要調整章節順序或章節標題，請使用「整理章節」。</p>
             <p>選稿編排只接收正式札記。草稿不會出現在可加入候選，也不會被加入章節。摘要是否出現在閱讀與成書中，會依照每篇札記的「閱讀與成書時顯示摘要」設定處理；今日禱告只有在有內容且勾選「閱讀與成書時顯示禱告」時才會輸出。</p>
             <p>「整理章節」會在工作區上方顯示目前進度與下一步。例如尚未加入札記、章節順序尚未儲存、可以匯出或建議補齊。出版狀態不是錯誤清單，而是幫你判斷下一步要整理什麼。</p>
             <h3>新增選稿編排</h3>
@@ -2342,9 +2342,11 @@ function ensureOperationManualUi() {
               <li>模板。</li>
               <li>書籍簡介。</li>
               <li>封面圖片。</li>
+              <li>結語。</li>
             </ul>
             <p>「成書匯出設定」是最後確認視窗，不取代前面的書籍整理流程。它會顯示簡短出版狀態，讓你在匯出前確認是否可以輸出，以及主要卡點是什麼。完整整理建議留在章節整理工作區。</p>
-            <p>若只想先保存書名、作者、封面、前言與後記，可以點「儲存成書設定」。若要直接產生電子書，請點「儲存並匯出 EPUB」。匯出只會使用已加入編排的正式札記，草稿不會進入 EPUB。若書稿勾選「成書時顯示章節摘要」，且單篇札記也勾選「閱讀與成書時顯示摘要」，EPUB 會在章節開頭顯示摘要；今日禱告則只有在有內容且勾選顯示時才會跟著該篇章節匯出。匯出完成後，書籍會加入書櫃，並提供「立即閱讀」、「下載 EPUB」與「前往書櫃」。</p>
+            <p>匯出的 EPUB 會先有書名頁；若有書籍簡介，會接著產生「書前說明」；札記章節順序仍完全以成書中心的編排為準；若有結語，會放在書末。沒有書籍簡介或結語時，系統不會產生空白頁。</p>
+            <p>若只想先保存書名、作者、封面、書前補充與結語，可以點「儲存成書設定」。若要直接產生電子書，請點「儲存並匯出 EPUB」。匯出只會使用已加入編排的正式札記，草稿不會進入 EPUB。若書稿勾選「成書時顯示章節摘要」，且單篇札記也勾選「閱讀與成書時顯示摘要」，EPUB 會在章節開頭顯示摘要；今日禱告則只有在有內容且勾選顯示時才會跟著該篇章節匯出。匯出完成後，書籍會加入書櫃，並提供「立即閱讀」、「下載 EPUB」與「前往書櫃」。</p>
             <p>下載 EPUB 時，畫面會確認「下載 EPUB？」並說明系統會下載這本書的 EPUB 檔案，完成後可以在你的裝置上閱讀或保存。</p>
             <p>下載後的 EPUB 可用 iOS「書籍」、Android「Google Play 圖書」或其他 EPUB 閱讀器開啟。</p>
           </section>
@@ -2479,7 +2481,7 @@ function ensureOperationManualUi() {
               <div class="manual-faq-item"><h3>為什麼加入按鈕不能按？</h3><p>可能尚未選擇目前正在編排，或目前已選 0 篇。請先到「選稿編排」建立或選擇一份編排，再回到札記庫勾選札記。</p></div>
               <div class="manual-faq-item"><h3>文章加入到哪一份編排？</h3><p>札記庫會加入目前正在編排的那一份選稿編排。狀態列會顯示「目前正在編排：{title}」。</p></div>
               <div class="manual-faq-item"><h3>如何切換目前正在編排？</h3><p>到「選稿編排」的「其他選稿編排」區塊，點想整理的卡片上的「開始編這本」。切換後該卡片會移到「目前正在編排」。</p></div>
-              <div class="manual-faq-item"><h3>建立選稿編排後，可以修改書籍資料嗎？</h3><p>可以。到「選稿編排」頁，在該卡片點「書籍資料」，即可修改書名、副標、作者、書籍簡介、日期範圍、分類、標籤、封面與模板。儲存後，卡片會立即更新。</p></div>
+              <div class="manual-faq-item"><h3>建立選稿編排後，可以修改書籍資料嗎？</h3><p>可以。到「選稿編排」頁，在該卡片點「書籍資料」，即可修改書名、副標、作者、書籍簡介、日期範圍、分類、標籤、封面、模板與結語。儲存後，卡片會立即更新。</p></div>
               <div class="manual-faq-item"><h3>刪除資料前會再確認嗎？</h3><p>會。刪除札記、選稿編排、書櫃書籍、移除頭像或執行較危險的還原操作前，會先顯示確認提示。</p></div>
               <div class="manual-faq-item"><h3>如果還沒儲存就關掉頁面，內容會不見嗎？</h3><p>正在編輯的札記草稿會盡量暫存。若瀏覽器重新整理、意外關閉或儲存失敗，回到「寫札記」頁時，會提示是否恢復尚未儲存的草稿。</p></div>
               <div class="manual-faq-item"><h3>書櫃跟選稿編排有什麼差別？</h3><p>選稿編排用來整理成書前的章節與設定。書櫃用來閱讀、下載與管理已完成或已匯入的電子書。</p></div>
@@ -6040,6 +6042,7 @@ function getBookDraftSettingsElements() {
     template: document.getElementById('book-draft-settings-template'),
     cover: document.getElementById('book-draft-settings-cover'),
     coverPreview: document.getElementById('book-draft-settings-cover-preview'),
+    afterword: document.getElementById('book-draft-settings-afterword'),
     startDate: document.getElementById('book-draft-settings-start-date'),
     endDate: document.getElementById('book-draft-settings-end-date'),
     category: document.getElementById('book-draft-settings-category'),
@@ -6101,6 +6104,7 @@ function populateBookDraftSettingsModal(book) {
   modalEls.description.value = getBookDraftDescription(book);
   modalEls.template.value = book.template_code || 'devotion';
   modalEls.cover.value = '';
+  modalEls.afterword.value = book.afterword || '';
   modalEls.startDate.value = settings.startDate || '';
   modalEls.endDate.value = settings.endDate || '';
   modalEls.category.value = settings.category || '';
@@ -6153,6 +6157,7 @@ async function saveBookDraftSettings() {
       description: buildBookDraftDescription(modalEls.description.value.trim(), settings),
       template_code: modalEls.template.value,
       cover_data_url: coverDataUrl,
+      afterword: modalEls.afterword.value.trim(),
     });
     if (state.bookDraftModalBookId === bookId) state.bookDraftModalBookId = bookId;
     closeBookDraftSettingsModal();
@@ -6207,6 +6212,9 @@ function ensureBookDraftSettingsUi() {
                 <input id="book-draft-settings-cover" type="file" accept="image/*" />
               </label>
             </div>
+            <label class="book-draft-settings-span-2">結語
+              <textarea id="book-draft-settings-afterword" rows="4" placeholder="可寫下這本書最後想留下的話；若留空，EPUB 不會產生結語頁"></textarea>
+            </label>
             <label>日期起
               <input id="book-draft-settings-start-date" type="date" />
             </label>
@@ -6441,11 +6449,11 @@ function ensureBookExportSettingsUi() {
                 <input id="book-export-settings-cover" type="file" accept="image/*" />
               </label>
             </div>
-            <label class="book-export-settings-span-2">前言
-              <textarea id="book-export-settings-preface" rows="5" placeholder="寫下這本書的前言"></textarea>
+            <label class="book-export-settings-span-2">書前補充
+              <textarea id="book-export-settings-preface" rows="5" placeholder="若除了書籍簡介，還想在書前多放一段說明，可寫在這裡"></textarea>
             </label>
-            <label class="book-export-settings-span-2">後記
-              <textarea id="book-export-settings-afterword" rows="5" placeholder="寫下這本書的後記"></textarea>
+            <label class="book-export-settings-span-2">結語
+              <textarea id="book-export-settings-afterword" rows="5" placeholder="寫下這本書最後想留下的話"></textarea>
             </label>
           </div>
         </div>
@@ -10675,6 +10683,9 @@ async function buildEpub(snapshot) {
   const files = [];
   const css = buildTemplateCss(book.template_code);
   const uidValue = crypto.randomUUID();
+  const exportedAt = snapshot.exported_at || nowIso();
+  const frontMatter = getBookFrontMatterText(book);
+  const closingMatter = getBookClosingMatterText(book);
   const coverImage = snapshot.book.cover_data_url ? dataUrlToBytes(snapshot.book.cover_data_url) : null;
   const coverExt = coverImage?.mime.includes('png') ? 'png' : 'jpg';
 
@@ -10683,18 +10694,54 @@ async function buildEpub(snapshot) {
   files.push({ name: 'OEBPS/styles/book.css', content: encoder.encode(css) });
   files.push({ name: 'OEBPS/nav.xhtml', content: encoder.encode(navXhtml(book, chapters)) });
   files.push({ name: 'OEBPS/toc.ncx', content: encoder.encode(tocNcx(book, chapters, uidValue)) });
-  files.push({ name: 'OEBPS/text/title.xhtml', content: encoder.encode(titlePage(book)) });
-  if (book.preface) files.push({ name: 'OEBPS/text/preface.xhtml', content: encoder.encode(simpleSection('前言', book.preface, book.language)) });
+  files.push({ name: 'OEBPS/text/title.xhtml', content: encoder.encode(titlePage(book, exportedAt)) });
+  if (frontMatter) files.push({ name: 'OEBPS/text/front-matter.xhtml', content: encoder.encode(simpleSection('書前說明', frontMatter, book.language, 'front-matter-page')) });
   chapters.forEach((chapter, index) => {
     files.push({ name: `OEBPS/text/chapter-${index + 1}.xhtml`, content: encoder.encode(chapterXhtml(chapter, index + 1, book)) });
   });
-  if (book.afterword) files.push({ name: 'OEBPS/text/afterword.xhtml', content: encoder.encode(simpleSection('後記', book.afterword, book.language)) });
+  if (closingMatter) files.push({ name: 'OEBPS/text/afterword.xhtml', content: encoder.encode(simpleSection('結語', closingMatter, book.language, 'closing-matter-page')) });
   if (coverImage) files.push({ name: `OEBPS/images/cover.${coverExt}`, content: coverImage.bytes });
-  files.push({ name: 'OEBPS/content.opf', content: encoder.encode(contentOpf(book, chapters, uidValue, !!coverImage, coverExt)) });
+  files.push({ name: 'OEBPS/content.opf', content: encoder.encode(contentOpf(book, chapters, uidValue, !!coverImage, coverExt, exportedAt)) });
   return zipStore(files);
 }
 
 const encoder = new TextEncoder();
+
+function normalizeEpubMatterText(value = '') {
+  return String(value || '').replace(/\r\n/g, '\n').trim();
+}
+
+function getBookFrontMatterText(book = {}) {
+  const description = normalizeEpubMatterText(getBookDraftDescription(book));
+  const supplementalPreface = normalizeEpubMatterText(book.preface || '');
+  return [description, supplementalPreface].filter(Boolean).join('\n\n');
+}
+
+function getBookClosingMatterText(book = {}) {
+  return normalizeEpubMatterText(book.afterword || book.closing || '');
+}
+
+function plainTextExcerpt(text = '', maxLength = 120) {
+  const normalized = String(text || '')
+    .replace(/\{\/?(red|blue|gold|purple)\}/g, '')
+    .replace(/^##+\s*/gm, '')
+    .replace(/^>\s?/gm, '')
+    .replace(/^-\s+/gm, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!normalized || normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, maxLength).trim()}...`;
+}
+
+function formatEpubDate(value = nowIso()) {
+  const date = new Date(value || nowIso());
+  if (Number.isNaN(date.getTime())) return '';
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}/${month}/${day}`;
+}
 
 function buildTemplateCss(templateCode) {
   const theme = {
@@ -10703,27 +10750,35 @@ function buildTemplateCss(templateCode) {
     testimony: ['#f7ecef', '#5b2f3a'],
   }[templateCode] || ['#f6f0e6', '#44362b'];
   return `
+html{font-size:100%;}
 body{font-family:"Noto Serif TC","PingFang TC",serif;line-height:1.92;color:#2e2823;margin:0;padding:0;background:#fffdf9;}
-main{max-width:38em;margin:0 auto;padding:2.35em 1.8em 2.7em;}
+main{max-width:40em;margin:0 auto;padding:2.45em 1.8em 2.85em;}
 h1,h2{color:${theme[1]};}
-h1{margin:0;font-size:1.7em;line-height:1.34;font-weight:700;letter-spacing:.01em;}
+h1{margin:0;font-size:1.72em;line-height:1.34;font-weight:700;letter-spacing:.01em;}
 h2{margin:1.95em 0 .72em;font-size:1.14em;line-height:1.5;font-weight:700;letter-spacing:.01em;}
 a{color:${theme[1]};text-decoration:none;}
 nav ol{padding-left:1.3em;}
-.title-page{background:${theme[0]};padding:2.4em 2.2em;border-radius:22px;margin-top:2.2em;box-shadow:inset 0 0 0 1px rgba(140,118,90,.08);}
-.meta{color:#6b6259;font-size:.95em;line-height:1.75;}
+.title-page-main{display:block;}
+.title-page{background:${theme[0]};padding:3em 2.25em 2.5em;border-radius:20px;margin-top:2.2em;box-shadow:inset 0 0 0 1px rgba(140,118,90,.1);}
+.title-page h1{font-size:2.05em;line-height:1.26;margin:.4em 0 .48em;}
+.title-subtitle{margin:0 0 1.25em;color:${theme[1]};font-size:1.04em;line-height:1.7;font-weight:700;}
+.title-description{margin:1.45em 0 1.6em;color:#5c5147;font-size:.98em;line-height:1.86;}
+.book-source{margin:2.4em 0 0;color:#7a7067;font-size:.82em;line-height:1.6;letter-spacing:.04em;}
+.meta{color:#6b6259;font-size:.94em;line-height:1.75;}
+.matter-page h1{margin:0 0 1.25em;padding-bottom:.72em;border-bottom:1px solid rgba(166,143,115,.2);font-size:1.56em;}
+.front-matter-page,.closing-matter-page{max-width:39em;}
 .chapter-head{margin:0 0 2.05em;padding:1.1em 0 1.25em;border-bottom:1px solid rgba(166,143,115,.18);text-align:left;}
-.chapter-kicker{margin:0 0 .8em;color:#6f5b47;font-size:1.42em;line-height:1.36;font-weight:700;letter-spacing:.11em;text-align:center;}
-.chapter-head h1{margin:0;font-size:1.28em;line-height:1.54;font-weight:700;letter-spacing:.01em;text-align:left;}
+.chapter-kicker{margin:0 0 .8em;color:#6f5b47;font-size:1.24em;line-height:1.36;font-weight:700;letter-spacing:.1em;text-align:center;}
+.chapter-head h1{margin:0;font-size:1.32em;line-height:1.52;font-weight:700;letter-spacing:.01em;text-align:left;}
 .chapter-head .scripture{margin:.95em 0 0;}
-.scripture{color:#736453;font-size:.96em;line-height:1.78;letter-spacing:.04em;font-style:italic;}
-.chapter-summary,.chapter-prayer{margin:1.15em 0 1.95em;padding:1.15em 1.2em 1.08em;border:1px solid rgba(160,142,112,.22);border-radius:18px;background:linear-gradient(180deg, rgba(248,244,237,.96), rgba(243,236,226,.82));box-shadow:0 10px 24px rgba(94,76,54,.06);}
-.chapter-prayer{margin-top:2em;background:linear-gradient(180deg, rgba(239,247,245,.96), rgba(232,242,239,.84));border-color:rgba(126,166,158,.24);}
-.chapter-summary .kicker,.chapter-prayer .kicker{display:block;margin-bottom:.45em;color:#7a6753;font-size:.8em;font-weight:700;letter-spacing:.08em;text-transform:uppercase;}
+.scripture{color:#736453;font-size:.95em;line-height:1.78;letter-spacing:.04em;font-style:italic;}
+.chapter-summary,.chapter-prayer{margin:1.15em 0 1.95em;padding:1.05em 1.12em;border:1px solid rgba(160,142,112,.22);border-radius:16px;background:#f8f4ed;}
+.chapter-prayer{margin-top:2em;background:#eff7f5;border-color:rgba(126,166,158,.24);}
+.chapter-summary .kicker,.chapter-prayer .kicker{display:block;margin-bottom:.45em;color:#7a6753;font-size:.78em;font-weight:700;letter-spacing:.08em;}
 .chapter-prayer .kicker{color:#52746e;}
 .chapter-summary p,.chapter-prayer p{margin:0 0 .8em;line-height:1.86;color:#4d4339;}
 .chapter-summary p:last-child,.chapter-prayer p:last-child{margin-bottom:0;}
-blockquote{margin:1.35em 0 1.55em;padding:1.05em 1.2em 1.05em 1.3em;border-left:4px solid rgba(155,122,72,.42);border-radius:0 18px 18px 0;background:linear-gradient(180deg, rgba(247,242,234,.92), rgba(243,236,226,.7));color:#4a4034;line-height:1.92;}
+blockquote{margin:1.35em 0 1.55em;padding:1.02em 1.12em 1.02em 1.25em;border-left:4px solid rgba(155,122,72,.42);border-radius:0 16px 16px 0;background:#f7f2ea;color:#4a4034;line-height:1.92;}
 hr{width:38%;margin:2em auto 1.9em;border:0;border-top:1px solid rgba(155,122,72,.34);}
 ul{margin:0 0 1.45em;padding-left:1.5em;}
 li{margin:.45em 0;line-height:1.86;padding-left:.12em;}
@@ -10747,20 +10802,25 @@ function containerXml() {
 </container>`;
 }
 
-function titlePage(book) {
-  return xhtmlWrap('title', `
-    <main>
-      <div class="title-page">
+function titlePage(book, exportedAt = nowIso()) {
+  const description = plainTextExcerpt(getBookDraftDescription(book), 118);
+  const generatedDate = formatEpubDate(exportedAt);
+  return xhtmlWrap('書名頁', `
+    <main class="title-page-main">
+      <section class="title-page">
+        <p class="meta">Devotion 靈修札記</p>
         <h1>${escapeHtml(book.title)}</h1>
-        ${book.subtitle ? `<p class="meta">${escapeHtml(book.subtitle)}</p>` : ''}
+        ${book.subtitle ? `<p class="title-subtitle">${escapeHtml(book.subtitle)}</p>` : ''}
         ${book.author_name ? `<p class="meta">作者：${escapeHtml(book.author_name)}</p>` : ''}
-        ${getBookDraftDescription(book) ? renderMarkdownContent(getBookDraftDescription(book)) : ''}
-      </div>
+        ${description ? `<p class="title-description">${escapeHtml(description)}</p>` : ''}
+        ${generatedDate ? `<p class="meta">整理日期：${escapeHtml(generatedDate)}</p>` : ''}
+        <p class="book-source">由 Devotion 靈修札記整理</p>
+      </section>
     </main>
   `, false, "../styles/book.css", resolveBookLanguage(book.language));
 }
-function simpleSection(title, content, language = DEFAULT_BOOK_LANGUAGE) {
-  return xhtmlWrap(title, `<main><h1>${escapeHtml(title)}</h1>${renderMarkdownContent(content)}</main>`, false, "../styles/book.css", resolveBookLanguage(language));
+function simpleSection(title, content, language = DEFAULT_BOOK_LANGUAGE, pageClass = 'matter-page') {
+  return xhtmlWrap(title, `<main class="matter-page ${escapeHtml(pageClass)}"><h1>${escapeHtml(title)}</h1>${renderMarkdownContent(content)}</main>`, false, "../styles/book.css", resolveBookLanguage(language));
 }
 function chapterXhtml(chapter, order, book = {}) {
   const language = resolveBookLanguage(book.language);
@@ -10787,19 +10847,23 @@ function chapterXhtml(chapter, order, book = {}) {
 }
 function navXhtml(book, chapters) {
   const items = [];
+  const frontMatter = getBookFrontMatterText(book);
+  const closingMatter = getBookClosingMatterText(book);
   items.push(`<li><a href="text/title.xhtml">書名頁</a></li>`);
-  if (book.preface) items.push(`<li><a href="text/preface.xhtml">前言</a></li>`);
+  if (frontMatter) items.push(`<li><a href="text/front-matter.xhtml">書前說明</a></li>`);
   chapters.filter(ch => ch.include_in_toc).forEach((chapter, index) => items.push(`<li><a href="text/chapter-${index + 1}.xhtml">${escapeHtml(chapter.chapter_title)}</a></li>`));
-  if (book.afterword) items.push(`<li><a href="text/afterword.xhtml">後記</a></li>`);
+  if (closingMatter) items.push(`<li><a href="text/afterword.xhtml">結語</a></li>`);
   return xhtmlWrap('目錄', `<main><nav epub:type="toc" id="toc"><h1>目錄</h1><ol>${items.join('')}</ol></nav></main>`, true, 'styles/book.css', resolveBookLanguage(book.language));
 }
 function tocNcx(book, chapters, uidValue) {
   const points = [];
   let playOrder = 1;
+  const frontMatter = getBookFrontMatterText(book);
+  const closingMatter = getBookClosingMatterText(book);
   points.push(ncxPoint(playOrder++, '書名頁', 'text/title.xhtml'));
-  if (book.preface) points.push(ncxPoint(playOrder++, '前言', 'text/preface.xhtml'));
+  if (frontMatter) points.push(ncxPoint(playOrder++, '書前說明', 'text/front-matter.xhtml'));
   chapters.filter(ch => ch.include_in_toc).forEach((chapter, index) => points.push(ncxPoint(playOrder++, chapter.chapter_title, `text/chapter-${index + 1}.xhtml`)));
-  if (book.afterword) points.push(ncxPoint(playOrder++, '後記', 'text/afterword.xhtml'));
+  if (closingMatter) points.push(ncxPoint(playOrder++, '結語', 'text/afterword.xhtml'));
   return `<?xml version="1.0" encoding="UTF-8"?>
 <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
   <head>
@@ -10812,7 +10876,10 @@ function tocNcx(book, chapters, uidValue) {
 function ncxPoint(playOrder, title, src) {
   return `<navPoint id="navPoint-${playOrder}" playOrder="${playOrder}"><navLabel><text>${escapeHtml(title)}</text></navLabel><content src="${src}"/></navPoint>`;
 }
-function contentOpf(book, chapters, uidValue, hasCover, coverExt) {
+function contentOpf(book, chapters, uidValue, hasCover, coverExt, exportedAt = nowIso()) {
+  const frontMatter = getBookFrontMatterText(book);
+  const closingMatter = getBookClosingMatterText(book);
+  const description = getBookDraftDescription(book);
   const manifest = [
     `<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>`,
     `<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>`,
@@ -10820,10 +10887,12 @@ function contentOpf(book, chapters, uidValue, hasCover, coverExt) {
     `<item id="title" href="text/title.xhtml" media-type="application/xhtml+xml"/>`,
   ];
   const spine = ['<itemref idref="nav" linear="no"/>', '<itemref idref="title"/>'];
-  if (book.preface) { manifest.push(`<item id="preface" href="text/preface.xhtml" media-type="application/xhtml+xml"/>`); spine.push('<itemref idref="preface"/>'); }
+  if (frontMatter) { manifest.push(`<item id="front-matter" href="text/front-matter.xhtml" media-type="application/xhtml+xml"/>`); spine.push('<itemref idref="front-matter"/>'); }
   chapters.forEach((chapter, index) => { manifest.push(`<item id="chapter-${index + 1}" href="text/chapter-${index + 1}.xhtml" media-type="application/xhtml+xml"/>`); spine.push(`<itemref idref="chapter-${index + 1}"/>`); });
-  if (book.afterword) { manifest.push(`<item id="afterword" href="text/afterword.xhtml" media-type="application/xhtml+xml"/>`); spine.push('<itemref idref="afterword"/>'); }
+  if (closingMatter) { manifest.push(`<item id="afterword" href="text/afterword.xhtml" media-type="application/xhtml+xml"/>`); spine.push('<itemref idref="afterword"/>'); }
   if (hasCover) manifest.push(`<item id="cover-image" href="images/cover.${coverExt}" media-type="image/${coverExt === 'png' ? 'png' : 'jpeg'}" properties="cover-image"/>`);
+  const metadataDescription = description ? `<dc:description>${escapeHtml(description)}</dc:description>` : '';
+  const metadataDate = formatEpubDate(exportedAt).replaceAll('/', '-');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <package version="3.0" unique-identifier="bookid" xmlns="http://www.idpf.org/2007/opf">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
@@ -10831,7 +10900,10 @@ function contentOpf(book, chapters, uidValue, hasCover, coverExt) {
     <dc:title>${escapeHtml(book.title)}</dc:title>
     <dc:language>${escapeHtml(resolveBookLanguage(book.language))}</dc:language>
     <dc:creator>${escapeHtml(book.author_name || 'Unknown')}</dc:creator>
-    <meta property="dcterms:modified">${new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')}</meta>
+    ${metadataDescription}
+    <dc:publisher>Devotion 靈修札記整理</dc:publisher>
+    ${metadataDate ? `<dc:date>${escapeHtml(metadataDate)}</dc:date>` : ''}
+    <meta property="dcterms:modified">${new Date(exportedAt || nowIso()).toISOString().replace(/\.\d{3}Z$/, 'Z')}</meta>
   </metadata>
   <manifest>${manifest.join('')}</manifest>
   <spine toc="ncx">${spine.join('')}</spine>
@@ -11441,9 +11513,9 @@ function makeLibraryChapters(snapshot, bookId, userId) {
     progress: 0,
   });
   push('書名頁', 'OEBPS/text/title.xhtml');
-  if (snapshot.book.preface) push('序言', 'OEBPS/text/preface.xhtml');
+  if (getBookFrontMatterText(snapshot.book)) push('書前說明', 'OEBPS/text/front-matter.xhtml');
   snapshot.chapters.forEach((chapter, index) => push(chapter.chapter_title || `第 ${index + 1} 章`, `OEBPS/text/chapter-${index + 1}.xhtml`));
-  if (snapshot.book.afterword) push('後記', 'OEBPS/text/afterword.xhtml');
+  if (getBookClosingMatterText(snapshot.book)) push('結語', 'OEBPS/text/afterword.xhtml');
   return rows;
 }
 
@@ -13433,6 +13505,7 @@ function parseOpfDocument(opfText, opfPath) {
     .filter(node => node.localName === 'itemref')
     .map((node, index) => ({
       idref: node.getAttribute('idref') || '',
+      linear: node.getAttribute('linear') || 'yes',
       index,
     }))
     .filter(item => item.idref);
@@ -13450,8 +13523,10 @@ function parseOpfDocument(opfText, opfPath) {
 function buildExternalEpubChapters(opfData, entries = new Map(), options = {}) {
   return opfData.spine
     .map((spineItem, index) => {
+      if (spineItem.linear === 'no') return null;
       const manifestItem = opfData.manifest.get(spineItem.idref);
       if (!manifestItem) return null;
+      if (/\bnav\b/i.test(manifestItem.properties || '') || /(^|\/)nav\.xhtml$/i.test(manifestItem.href || '')) return null;
       if (!/xhtml|html|xml/i.test(manifestItem.mediaType || '')) return null;
       const chapterText = entries.get(manifestItem.path)?.text || '';
       if (options.enforceImportedLimits && chapterText.length > MAX_IMPORTED_EPUB_CHAPTER_CHARS) {
