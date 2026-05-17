@@ -6219,6 +6219,7 @@ async function openBookExportSettingsModal(bookId = '') {
   let book = getSelectedBook();
   if (!book) throw new Error('請先選取一份選稿編排。');
   book = await loadBookProjectDetail(book.id) || book;
+  hideInstallAppPrompt();
   ensureBookExportSettingsUi();
   populateBookExportSettingsModal(book);
   const { modal, body } = getBookExportSettingsElements();
@@ -7010,6 +7011,7 @@ function getBookDraftStatusTone(book) {
 async function openBookDraftModal(bookId = '', { focusChapters = false } = {}) {
   state.bookDraftModalBookId = bookId || state.selectedBookId || null;
   state.bookDraftModalOpen = true;
+  hideInstallAppPrompt();
   const detailPromise = state.bookDraftModalBookId ? loadBookProjectDetail(state.bookDraftModalBookId) : Promise.resolve(null);
   refreshUi();
   await detailPromise;
