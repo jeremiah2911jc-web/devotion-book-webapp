@@ -2320,14 +2320,14 @@ function ensureOperationManualUi() {
             <p>章節整理中可以做這些事：</p>
             <ul>
               <li>修改章節標題。</li>
-              <li>拖曳章節卡片上的「排序」把手調整閱讀順序；若使用手機或不方便拖曳，也可用小型上移、下移輔助操作。</li>
+              <li>拖曳章節卡片上的「排序」把手調整閱讀順序；章節很多時，拖到列表上緣或下緣會協助捲動。若使用手機或不方便拖曳，也可用小型上移、下移輔助操作。</li>
               <li>使用「移除」把不適合的章節拿掉。</li>
               <li>勾選或取消「列入目錄」。</li>
               <li>點「儲存編排」保存章節調整。</li>
             </ul>
             <p>整理章節時，可調整閱讀順序與章節標題。手機版視窗可上下滑動。</p>
             <p>章節上方的工具列會集中放置「儲存編排」、「加入札記」與「成書匯出設定」。整理書稿時，不需要在視窗上下來回尋找主要操作。</p>
-            <p>視窗中的出版檢查會用「已就緒」、「建議補齊」或「需要處理」提示目前書稿狀態。必要項目影響能否順利輸出；建議項目用來幫助你補強閱讀品質。</p>
+            <p>視窗中的出版檢查會用「已就緒」、「建議補齊」或「需要處理」提示目前書稿狀態，並指出能否匯出、卡在哪裡，以及哪幾篇札記建議補經文、摘要或今日禱告。</p>
             <p>第一版不提供把已儲存的正式札記改回草稿，以避免已加入章節後狀態變得複雜。</p>
           </section>
 
@@ -7023,11 +7023,14 @@ function getBookDraftStatusTone(book) {
 
 const PUBLISHING_LONG_TITLE_LIMIT = 42;
 
-function publishingCheckItem(label, passed, okText, issueText) {
+function publishingCheckItem(id, label, passed, okText, issueText, affectedEntries = []) {
   return {
+    id,
     label,
     passed: !!passed,
     text: passed ? okText : issueText,
+    affectedChapterIds: affectedEntries.map(entry => entry.chapter?.id).filter(Boolean),
+    affectedTitles: affectedEntries.map(entry => getPublishingReadinessEntryTitle(entry)).filter(Boolean),
   };
 }
 
@@ -7050,6 +7053,21 @@ function getPublishingReadinessExportDetail({
   return '目前具備基本 EPUB 匯出條件。';
 }
 
+function getPublishingReadinessEntryTitle(entry) {
+  const title = String(entry?.chapter?.chapter_title || entry?.note?.title || '').trim();
+  return title || '未命名章節';
+}
+
+function buildPublishingAffectedText(item, { maxTitles = 3 } = {}) {
+  const titles = item.affectedTitles || [];
+  if (!titles.length) return item.text;
+  const visibleTitles = titles.slice(0, maxTitles).join('、');
+  const hiddenCount = Math.max(titles.length - maxTitles, 0);
+  return hiddenCount
+    ? `${item.text}（${visibleTitles}，另 ${hiddenCount} 篇）`
+    : `${item.text}（${visibleTitles}）`;
+}
+
 function buildPublishingReadinessCheck(book, options = {}) {
   if (!book) return null;
   const displayBook = { ...book, ...(options.bookOverrides || {}) };
@@ -7066,16 +7084,23 @@ function buildPublishingReadinessCheck(book, options = {}) {
     };
   });
   const selectedNotes = chapterEntries.filter(entry => entry.isPublished).map(entry => entry.note);
-  const selectedNoteCount = selectedNotes.length;
-  const missingSourceCount = chapterEntries.filter(entry => !entry.isPublished).length;
-  const emptyContentCount = selectedNotes.filter(note => !stripScriptureMarkers(note.content || '').trim()).length;
-  const missingScriptureCount = selectedNotes.filter(note => !normalizeScriptureReferences(note.scripture_reference || '').length).length;
-  const missingSummaryCount = selectedNotes.filter(note => !getNoteVisibleSummary(note)).length;
-  const missingPrayerCount = selectedNotes.filter(note => !resolveNotePrayerText(note)).length;
-  const longTitleCount = chapterEntries.filter(({ chapter, note }) => {
-    const title = String(chapter.chapter_title || note?.title || '').trim();
+  const publishedEntries = chapterEntries.filter(entry => entry.isPublished);
+  const missingSourceEntries = chapterEntries.filter(entry => !entry.isPublished);
+  const emptyContentEntries = publishedEntries.filter(entry => !stripScriptureMarkers(entry.note?.content || '').trim());
+  const missingScriptureEntries = publishedEntries.filter(entry => !normalizeScriptureReferences(entry.note?.scripture_reference || '').length);
+  const missingSummaryEntries = publishedEntries.filter(entry => !getNoteVisibleSummary(entry.note));
+  const missingPrayerEntries = publishedEntries.filter(entry => !resolveNotePrayerText(entry.note));
+  const longTitleEntries = chapterEntries.filter(entry => {
+    const title = String(entry.chapter?.chapter_title || entry.note?.title || '').trim();
     return title.length > PUBLISHING_LONG_TITLE_LIMIT;
-  }).length;
+  });
+  const selectedNoteCount = selectedNotes.length;
+  const missingSourceCount = missingSourceEntries.length;
+  const emptyContentCount = emptyContentEntries.length;
+  const missingScriptureCount = missingScriptureEntries.length;
+  const missingSummaryCount = missingSummaryEntries.length;
+  const missingPrayerCount = missingPrayerEntries.length;
+  const longTitleCount = longTitleEntries.length;
   const categories = new Set(selectedNotes.map(note => String(note.category || '').trim()).filter(Boolean));
   const tags = new Set(selectedNotes.flatMap(note => getNoteTagList(note)));
   const prayerCount = selectedNotes.filter(note => !!resolveNotePrayerText(note)).length;
@@ -7090,64 +7115,72 @@ function buildPublishingReadinessCheck(book, options = {}) {
 
   const required = [
     publishingCheckItem(
+      'title',
       '書名',
       hasTitle,
       '已填寫書名。',
-      '請先填寫書名，讓匯出的電子書有清楚名稱。',
+      '書名尚未填寫，匯出的電子書會缺少清楚名稱。',
     ),
     publishingCheckItem(
+      'notes',
       '正式札記',
       selectedNoteCount > 0,
       `已收錄 ${selectedNoteCount} 篇正式札記。`,
       '請先從札記庫加入至少一篇正式札記。',
     ),
     publishingCheckItem(
+      'content',
       '札記內容',
       emptyContentCount === 0 && missingSourceCount === 0,
       '收錄的札記都有可輸出的內容。',
       missingSourceCount
         ? `${missingSourceCount} 個章節找不到可輸出的正式札記。`
         : `${emptyContentCount} 篇札記目前沒有內容。`,
+      missingSourceCount ? missingSourceEntries : emptyContentEntries,
     ),
     publishingCheckItem(
-      'EPUB 匯出',
-      canExport,
-      '目前具備基本 EPUB 匯出條件。',
-      getPublishingReadinessExportDetail({
-        hasTitle,
-        selectedNoteCount,
-        emptyContentCount,
-        missingSourceCount,
-        hasUnsavedArrangement,
-      }),
+      'arrangement',
+      '章節編排',
+      !hasUnsavedArrangement,
+      '章節編排已儲存。',
+      '章節順序尚未儲存，匯出前請先儲存編排。',
     ),
   ];
   const recommendations = [
     publishingCheckItem(
+      'scripture',
       '經文',
       missingScriptureCount === 0,
       '收錄札記都有經文線索。',
       `${missingScriptureCount} 篇札記尚未填寫經文，可視需要補上。`,
+      missingScriptureEntries,
     ),
     publishingCheckItem(
+      'summary',
       '摘要',
       missingSummaryCount === 0,
       '收錄札記都有摘要文字。',
       `${missingSummaryCount} 篇札記尚未填寫摘要，補上後閱讀節奏會更清楚。`,
+      missingSummaryEntries,
     ),
     publishingCheckItem(
+      'prayer',
       '今日禱告',
       missingPrayerCount === 0,
       '收錄札記都有今日禱告。',
       `${missingPrayerCount} 篇札記尚未填寫今日禱告，可視內容性質補上。`,
+      missingPrayerEntries,
     ),
     publishingCheckItem(
+      'title-length',
       '標題長度',
       longTitleCount === 0,
       '章節標題長度適合閱讀。',
       `${longTitleCount} 個章節標題偏長，建議匯出前再精簡。`,
+      longTitleEntries,
     ),
     publishingCheckItem(
+      'topics',
       '主題線索',
       categories.size + tags.size > 0,
       '已有分類或標籤，可作為之後整理主題的線索。',
@@ -7175,6 +7208,14 @@ function buildPublishingReadinessCheck(book, options = {}) {
     status,
     statusLabel: statusCopy.label,
     summary: statusCopy.summary,
+    canExport,
+    exportDetail: getPublishingReadinessExportDetail({
+      hasTitle,
+      selectedNoteCount,
+      emptyContentCount,
+      missingSourceCount,
+      hasUnsavedArrangement,
+    }),
     required,
     recommendations,
     metrics: [
@@ -7188,6 +7229,7 @@ function buildPublishingReadinessCheck(book, options = {}) {
 }
 
 function renderPublishingReadinessItems(items = []) {
+  if (!items.length) return '<p class="publishing-readiness-clear">必要項目已完成。</p>';
   return `
     <ul class="publishing-readiness-items">
       ${items.map(item => `
@@ -7195,7 +7237,8 @@ function renderPublishingReadinessItems(items = []) {
           <span class="publishing-readiness-dot" aria-hidden="true"></span>
           <span>
             <strong>${escapeHtml(item.label)}</strong>
-            <small>${escapeHtml(item.text)}</small>
+            <small>${escapeHtml(buildPublishingAffectedText(item))}</small>
+            ${item.affectedChapterIds?.length ? `<button class="text-link publishing-readiness-focus" type="button" data-readiness-focus="${escapeHtml(item.id)}">在章節中查看</button>` : ''}
           </span>
         </li>
       `).join('')}
@@ -7206,12 +7249,34 @@ function renderPublishingReadinessItems(items = []) {
 function renderPublishingReadinessHtml(book, options = {}) {
   const check = buildPublishingReadinessCheck(book, options);
   if (!check) return '<p class="caption">請先選取一份編排，再查看出版檢查。</p>';
-  const detailsOpen = check.status === 'needs' ? ' open' : '';
+  const requiredIssues = check.required.filter(item => !item.passed);
+  const recommendationIssues = check.recommendations.filter(item => !item.passed);
+  const detailsOpen = check.status === 'needs' || (!options.compact && recommendationIssues.length) ? ' open' : '';
+  if (options.compact) {
+    const compactItems = requiredIssues.length ? requiredIssues : recommendationIssues.slice(0, 2);
+    return `
+      <article class="publishing-readiness publishing-readiness-${check.status} publishing-readiness-compact" data-testid="publishing-readiness-panel">
+        <header class="publishing-readiness-header">
+          <div>
+            <p class="publishing-readiness-kicker">出版狀態</p>
+            <h3>${escapeHtml(check.statusLabel)}</h3>
+            <p>${escapeHtml(check.canExport ? '可以匯出 EPUB。' : check.exportDetail)}</p>
+          </div>
+          <span class="publishing-readiness-status">${escapeHtml(check.statusLabel)}</span>
+        </header>
+        <div class="publishing-readiness-compact-note">
+          ${compactItems.length
+            ? compactItems.map(item => `<p><strong>${escapeHtml(item.label)}</strong> ${escapeHtml(buildPublishingAffectedText(item, { maxTitles: 2 }))}</p>`).join('')
+            : '<p>必要項目已完成，成書設定可繼續儲存或匯出。</p>'}
+        </div>
+      </article>
+    `;
+  }
   return `
     <article class="publishing-readiness publishing-readiness-${check.status}" data-testid="publishing-readiness-panel">
       <header class="publishing-readiness-header">
         <div>
-          <p class="publishing-readiness-kicker">出版檢查</p>
+          <p class="publishing-readiness-kicker">出版狀態</p>
           <h3>${escapeHtml(check.statusLabel)}</h3>
           <p>${escapeHtml(check.summary)}</p>
         </div>
@@ -7223,14 +7288,18 @@ function renderPublishingReadinessHtml(book, options = {}) {
         `).join('')}
       </div>
       <details class="publishing-readiness-details"${detailsOpen}>
-        <summary>查看提醒</summary>
+        <summary>${requiredIssues.length || recommendationIssues.length ? '查看整理建議' : '查看狀態'}</summary>
         <section>
-          <h4>必要</h4>
-          ${renderPublishingReadinessItems(check.required)}
+          <h4>必要項目</h4>
+          ${requiredIssues.length
+            ? renderPublishingReadinessItems(requiredIssues)
+            : '<p class="publishing-readiness-clear">必要項目已完成。</p>'}
         </section>
         <section>
-          <h4>建議</h4>
-          ${renderPublishingReadinessItems(check.recommendations)}
+          <h4>建議補強</h4>
+          ${recommendationIssues.length
+            ? renderPublishingReadinessItems(recommendationIssues)
+            : '<p class="publishing-readiness-clear">經文、摘要、禱告與主題線索目前沒有明顯缺口。</p>'}
         </section>
       </details>
     </article>
@@ -7242,7 +7311,33 @@ function renderPublishingReadinessPanel(book, options = {}) {
   if (!target) return null;
   target.innerHTML = renderPublishingReadinessHtml(book, options);
   target.classList.toggle('hidden', !book);
-  return buildPublishingReadinessCheck(book, options);
+  const check = buildPublishingReadinessCheck(book, options);
+  bindPublishingReadinessActions(target, check);
+  return check;
+}
+
+function bindPublishingReadinessActions(target, check) {
+  if (!target || !check) return;
+  target.querySelectorAll('[data-readiness-focus]').forEach(button => {
+    button.addEventListener('click', () => focusPublishingReadinessIssue(check, button.dataset.readinessFocus));
+  });
+}
+
+function focusPublishingReadinessIssue(check, issueId = '') {
+  const item = [...(check?.required || []), ...(check?.recommendations || [])]
+    .find(candidate => candidate.id === issueId);
+  const chapterIds = item?.affectedChapterIds || [];
+  if (!chapterIds.length) return;
+  const targets = chapterIds.map(id => getChapterItemElement(id)).filter(Boolean);
+  if (!targets.length) return;
+  document.querySelectorAll('.chapter-item.is-readiness-highlight').forEach(element => {
+    element.classList.remove('is-readiness-highlight');
+  });
+  targets.forEach(element => element.classList.add('is-readiness-highlight'));
+  targets[0].scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+  window.setTimeout(() => {
+    targets.forEach(element => element.classList.remove('is-readiness-highlight'));
+  }, 2600);
 }
 
 function getBookExportReadinessOverrides() {
@@ -7263,6 +7358,7 @@ function renderBookExportReadinessPanel(book = null) {
   return renderPublishingReadinessPanel(sourceBook, {
     targetId: 'book-export-readiness-panel',
     bookOverrides: getBookExportReadinessOverrides(),
+    compact: true,
   });
 }
 
@@ -7492,6 +7588,7 @@ function ensureBookDraftWorkspaceUi() {
       mobileReadinessPanel.className = 'publishing-readiness-slot publishing-readiness-mobile-slot';
       mobileReadinessPanel.dataset.testid = 'publishing-readiness-mobile-slot';
     }
+    if (els.exportSuccessActions) rightBody.appendChild(els.exportSuccessActions);
     rightBody.appendChild(chapterHeading);
     rightBody.appendChild(els.chaptersList);
     rightBody.appendChild(mobileReadinessPanel);
@@ -9906,6 +10003,9 @@ function getChapterItemElement(chapterId = '') {
 }
 
 function resetChapterDragState() {
+  if (state.bookChapterDrag?.autoScrollFrame) {
+    cancelAnimationFrame(state.bookChapterDrag.autoScrollFrame);
+  }
   clearChapterDragTargets();
   document.querySelectorAll('.chapter-item.is-dragging').forEach(item => item.classList.remove('is-dragging'));
   els.chaptersList?.classList.remove('is-sorting');
@@ -9924,9 +10024,12 @@ function handleChapterDragPointerDown(event) {
     pointerId: event.pointerId,
     startX: event.clientX,
     startY: event.clientY,
+    lastX: event.clientX,
+    lastY: event.clientY,
     active: false,
     targetId: '',
     placement: 'before',
+    autoScrollFrame: 0,
   };
   handle.setPointerCapture?.(event.pointerId);
 }
@@ -9947,15 +10050,62 @@ function updateChapterDragTarget(event) {
   dragState.placement = placement;
 }
 
-function scrollChapterListDuringDrag(event) {
-  const scrollBox = els.chaptersList?.closest('.book-draft-overview-body') || els.chaptersList;
-  if (!scrollBox || scrollBox.scrollHeight <= scrollBox.clientHeight) return;
-  const rect = scrollBox.getBoundingClientRect();
-  const edgeSize = 54;
-  if (event.clientY > rect.bottom - edgeSize) {
-    scrollBox.scrollTop += 16;
-  } else if (event.clientY < rect.top + edgeSize) {
-    scrollBox.scrollTop -= 16;
+function getChapterDragScrollContainers() {
+  const candidates = [
+    els.chaptersList,
+    document.getElementById('book-draft-modal-right-body'),
+    document.querySelector('.book-draft-modal-shell.is-open .book-draft-overview-body'),
+    document.querySelector('.book-draft-modal-shell.is-open'),
+    document.scrollingElement,
+  ].filter(Boolean);
+  return [...new Set(candidates)].filter(element => element.scrollHeight > element.clientHeight + 4);
+}
+
+function getChapterDragScrollDelta(container, pointerY) {
+  const rect = container === document.scrollingElement
+    ? { top: 0, bottom: window.innerHeight }
+    : container.getBoundingClientRect();
+  const edgeSize = Math.min(92, Math.max(54, rect.bottom - rect.top > 240 ? 72 : 48));
+  if (pointerY < rect.top || pointerY > rect.bottom) return 0;
+  if (pointerY < rect.top + edgeSize) {
+    return -Math.ceil((1 - ((pointerY - rect.top) / edgeSize)) * 24);
+  }
+  if (pointerY > rect.bottom - edgeSize) {
+    return Math.ceil((1 - ((rect.bottom - pointerY) / edgeSize)) * 24);
+  }
+  return 0;
+}
+
+function runChapterDragAutoScroll() {
+  const dragState = state.bookChapterDrag;
+  if (!dragState?.active) return;
+  dragState.autoScrollFrame = 0;
+  let didScroll = false;
+  for (const container of getChapterDragScrollContainers()) {
+    const delta = getChapterDragScrollDelta(container, dragState.lastY);
+    if (!delta) continue;
+    const before = container.scrollTop;
+    container.scrollTop += delta;
+    if (container.scrollTop !== before) {
+      didScroll = true;
+      break;
+    }
+  }
+  if (didScroll) {
+    updateChapterDragTarget({ clientX: dragState.lastX, clientY: dragState.lastY });
+  }
+  if (state.bookChapterDrag?.active) {
+    state.bookChapterDrag.autoScrollFrame = requestAnimationFrame(runChapterDragAutoScroll);
+  }
+}
+
+function scheduleChapterDragAutoScroll(event) {
+  const dragState = state.bookChapterDrag;
+  if (!dragState?.active) return;
+  dragState.lastX = event.clientX;
+  dragState.lastY = event.clientY;
+  if (!dragState.autoScrollFrame) {
+    dragState.autoScrollFrame = requestAnimationFrame(runChapterDragAutoScroll);
   }
 }
 
@@ -9970,7 +10120,7 @@ function handleChapterDragPointerMove(event) {
     getChapterItemElement(dragState.chapterId)?.classList.add('is-dragging');
   }
   event.preventDefault();
-  scrollChapterListDuringDrag(event);
+  scheduleChapterDragAutoScroll(event);
   updateChapterDragTarget(event);
 }
 

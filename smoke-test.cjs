@@ -412,7 +412,7 @@ async function run() {
       const readinessSelector = '#publishing-readiness-panel [data-testid="publishing-readiness-panel"], #publishing-readiness-mobile-panel [data-testid="publishing-readiness-panel"]';
       await expectVisible(page, readinessSelector, '出版檢查區已顯示');
       const readinessText = await page.locator(readinessSelector).first().textContent();
-      if (!readinessText || !readinessText.includes('出版檢查')) {
+      if (!readinessText || !/出版檢查|出版狀態/.test(readinessText)) {
         throw new Error(`出版檢查文案未顯示：${readinessText}`);
       }
       await assertNoHorizontalScroll(page, { label: 'smoke publishing readiness mobile' });
