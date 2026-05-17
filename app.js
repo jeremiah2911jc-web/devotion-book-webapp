@@ -443,8 +443,11 @@ function isInstallPromptBlockedByUi() {
   const notePreviewOpen = !!els.notePreviewModal && !els.notePreviewModal.classList.contains('hidden');
   const supportOpen = !!els.supportModal && !els.supportModal.classList.contains('hidden');
   const updateOpen = !!els.appUpdatePrompt && !els.appUpdatePrompt.classList.contains('hidden');
+  const bookDraftOpen = document.body.classList.contains('book-draft-modal-open');
+  const bookExportOpen = document.body.classList.contains('book-export-settings-open');
+  const modalOpen = !!document.querySelector('.modal:not(.hidden)[aria-hidden="false"]');
   const currentView = document.body.dataset.currentView || '';
-  return authOpen || accountOpen || notePreviewOpen || supportOpen || updateOpen || currentView === 'reader';
+  return authOpen || accountOpen || notePreviewOpen || supportOpen || updateOpen || bookDraftOpen || bookExportOpen || modalOpen || currentView === 'reader';
 }
 
 function shouldAutoShowInstallPrompt() {
