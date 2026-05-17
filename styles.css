@@ -769,6 +769,7 @@ input:focus, textarea:focus, select:focus {
   }
   .note-writing-form {
     grid-template-areas:
+      "hero"
       "main"
       "prayer"
       "actions"
@@ -777,6 +778,29 @@ input:focus, textarea:focus, select:focus {
     gap: 14px;
   }
   .note-writing-hero {
+    display: grid;
+    grid-template-columns: 1fr;
+    min-height: 148px;
+    padding: 18px 20px;
+    border-radius: 20px;
+    background:
+      linear-gradient(90deg, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0.88) 52%, rgba(255,255,255,0.62) 100%),
+      url("./assets/ui/note-writing-hero-desk.png") 68% center / cover no-repeat,
+      linear-gradient(115deg, rgba(255,255,255,0.96) 0%, rgba(254,251,245,0.94) 48%, rgba(239,232,220,0.88) 100%);
+    box-shadow: 0 12px 28px rgba(63, 76, 68, 0.07);
+  }
+  .note-writing-hero h2 {
+    font-size: 30px;
+    line-height: 1.08;
+  }
+  .note-writing-hero p {
+    max-width: 12em;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .note-writing-hero-verse,
+  .note-writing-hero-art-placeholder,
+  .note-hero-clear-btn {
     display: none;
   }
   .note-side-card,
@@ -847,10 +871,11 @@ input:focus, textarea:focus, select:focus {
     font-size: 16px;
   }
   .note-content-field::after {
-    left: -8px;
-    bottom: -8px;
-    width: 210px;
-    opacity: 0.16;
+    left: -18px;
+    bottom: 8px;
+    width: 232px;
+    opacity: 0.18;
+    transform: translate(-2%, 0);
   }
   #note-prayer {
     height: 116px;
@@ -6103,27 +6128,47 @@ body:not(.auth-locked) .main {
 
   .desktop-sidebar-link {
     width: 100%;
+    min-height: 48px;
     border: 1px solid rgba(191, 211, 208, 0.8);
     background: rgba(255, 255, 255, 0.82);
     color: #325157;
     border-radius: 15px;
-    padding: 11px 13px;
+    padding: 10px 13px;
     text-align: center;
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 10px;
+    line-height: 1.2;
     transition: 0.2s ease;
   }
 
-  .desktop-sidebar-link .nav-icon,
+  .desktop-sidebar-link .nav-icon {
+    flex: 0 0 24px;
+    width: 24px;
+    height: 24px;
+    display: inline-grid;
+    place-items: center;
+    align-self: center;
+    background-position: center;
+    background-size: contain;
+  }
+
   .desktop-sidebar-link .desktop-sidebar-dot {
-    flex: 0 0 auto;
+    flex: 0 0 12px;
+    width: 12px;
+    height: 12px;
+    align-self: center;
+    margin-left: 0;
   }
 
   .desktop-sidebar-link > span:last-child {
+    display: inline-flex;
+    align-items: center;
     flex: 0 1 auto;
     min-width: 0;
+    min-height: 24px;
+    line-height: 1.2;
   }
 
   .desktop-sidebar-link:hover {
@@ -6257,8 +6302,15 @@ body:not(.auth-locked) .main {
 
     .desktop-sidebar-link {
       gap: 8px;
+      min-height: 44px;
       padding: 9px 11px;
       border-radius: 13px;
+    }
+
+    .desktop-sidebar-link .nav-icon {
+      flex-basis: 22px;
+      width: 22px;
+      height: 22px;
     }
 
     .desktop-sidebar-account-card.panel.compact {
@@ -8175,6 +8227,10 @@ body:not(.auth-locked) .summary-content strong small {
     display: grid;
     gap: 6px;
   }
+}
+
+body:not(.auth-locked)[data-current-view="notes"] .topbar {
+  display: none !important;
 }
 
 @media (min-width: 1024px) {
