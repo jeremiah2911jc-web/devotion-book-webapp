@@ -7246,6 +7246,33 @@ function renderPublishingReadinessItems(items = []) {
   `;
 }
 
+function getPublishingReadinessCompactIssueCopy(item) {
+  if (!item) return { title: '', body: '' };
+  const fallbackBody = buildPublishingAffectedText(item, { maxTitles: 2 });
+  const copyMap = {
+    title: {
+      title: '書名尚未填寫',
+      body: '請先補上書名，再進入成書匯出。',
+    },
+    notes: {
+      title: '尚未加入正式札記',
+      body: '請先從札記庫加入至少一篇正式札記。',
+    },
+    content: {
+      title: '札記內容需要整理',
+      body: fallbackBody,
+    },
+    arrangement: {
+      title: '章節編排尚未儲存',
+      body: '請先儲存目前編排再匯出。',
+    },
+  };
+  return copyMap[item.id] || {
+    title: item.label,
+    body: fallbackBody,
+  };
+}
+
 function renderPublishingReadinessHtml(book, options = {}) {
   const check = buildPublishingReadinessCheck(book, options);
   if (!check) return '<p class="caption">請先選取一份編排，再查看出版檢查。</p>';
@@ -7254,19 +7281,25 @@ function renderPublishingReadinessHtml(book, options = {}) {
   const detailsOpen = check.status === 'needs' || (!options.compact && recommendationIssues.length) ? ' open' : '';
   if (options.compact) {
     const compactItems = requiredIssues.length ? requiredIssues : recommendationIssues.slice(0, 2);
+    const compactIntro = check.canExport
+      ? '可以匯出 EPUB。'
+      : '目前還不能直接匯出，請先完成下方項目。';
     return `
       <article class="publishing-readiness publishing-readiness-${check.status} publishing-readiness-compact" data-testid="publishing-readiness-panel">
         <header class="publishing-readiness-header">
           <div>
-            <p class="publishing-readiness-kicker">出版狀態</p>
-            <h3>${escapeHtml(check.statusLabel)}</h3>
-            <p>${escapeHtml(check.canExport ? '可以匯出 EPUB。' : check.exportDetail)}</p>
+            <p class="publishing-readiness-kicker">匯出前確認</p>
+            <h3>出版狀態</h3>
+            <p>${escapeHtml(compactIntro)}</p>
           </div>
           <span class="publishing-readiness-status">${escapeHtml(check.statusLabel)}</span>
         </header>
         <div class="publishing-readiness-compact-note">
           ${compactItems.length
-            ? compactItems.map(item => `<p><strong>${escapeHtml(item.label)}</strong> ${escapeHtml(buildPublishingAffectedText(item, { maxTitles: 2 }))}</p>`).join('')
+            ? compactItems.map(item => {
+              const copy = getPublishingReadinessCompactIssueCopy(item);
+              return `<p><strong>${escapeHtml(copy.title)}</strong> ${escapeHtml(copy.body)}</p>`;
+            }).join('')
             : '<p>必要項目已完成，成書設定可繼續儲存或匯出。</p>'}
         </div>
       </article>
