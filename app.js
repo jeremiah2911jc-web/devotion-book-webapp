@@ -84,6 +84,31 @@ const IMPORTED_EPUB_SAFE_TAGS = new Set([
   'a',
   'hr',
 ]);
+const GENERATED_EPUB_SAFE_CLASSES = new Set([
+  'title-page-main',
+  'title-page',
+  'title-kicker',
+  'title-divider',
+  'title-subtitle',
+  'title-meta-list',
+  'title-meta',
+  'book-source',
+  'matter-page',
+  'front-matter-page',
+  'closing-matter-page',
+  'chapter-head',
+  'chapter-kicker',
+  'scripture',
+  'chapter-summary',
+  'chapter-prayer',
+  'kicker',
+  'markdown-spacer',
+  'markdown-spacer-2',
+  'text-red',
+  'text-blue',
+  'text-gold',
+  'text-purple',
+]);
 const HTML_REMOVE_WITH_CONTENT_TAGS = new Set(['script', 'style', 'iframe', 'object', 'embed', 'link', 'meta', 'base', 'svg']);
 const EMPTY_ADMIN_USAGE = {
   updatedAt: '',
@@ -2430,7 +2455,7 @@ function ensureOperationManualUi() {
               <li>結語。</li>
             </ul>
             <p>「成書匯出設定」是最後確認視窗，不取代前面的書籍整理流程。它會顯示簡短出版狀態，讓你在匯出前確認是否可以輸出，以及主要卡點是什麼。完整整理建議留在章節整理工作區。</p>
-            <p>匯出的 EPUB 會先有書名頁；若有書籍簡介，會接著產生「書前說明」；札記章節順序仍完全以成書中心的編排為準；若有結語，會放在書末。沒有書籍簡介或結語時，系統不會產生空白頁。</p>
+            <p>匯出的 EPUB 會先有簡潔書名頁，顯示書名、副標、作者、整理日期與 Devotion 來源；若有填寫書籍簡介或書前補充，才會接著產生「書前說明」並放完整內容。書名頁不會重複放完整簡介；札記章節順序仍完全以成書中心的編排為準；若有結語，會放在書末。沒有書籍簡介、書前補充或結語時，系統不會產生空白頁。</p>
             <p>若只想先保存書名、作者、封面、書前補充與結語，可以點「儲存成書設定」。若要直接產生電子書，請點「儲存並匯出 EPUB」。匯出只會使用已加入編排的正式札記，草稿不會進入 EPUB。若書稿勾選「成書時顯示章節摘要」，且單篇札記也勾選「閱讀與成書時顯示摘要」，EPUB 會在章節開頭顯示摘要；今日禱告則只有在有內容且勾選顯示時才會跟著該篇章節匯出。匯出完成後，系統會將書加入書櫃並帶你前往書櫃查看，可在書櫃中立即閱讀或下載 EPUB。</p>
             <p>下載 EPUB 時，畫面會確認「下載 EPUB？」並說明系統會下載這本書的 EPUB 檔案，完成後可以在你的裝置上閱讀或保存。</p>
             <p>下載後的 EPUB 可用 iOS「書籍」、Android「Google Play 圖書」或其他 EPUB 閱讀器開啟。</p>
@@ -3780,6 +3805,12 @@ function sanitizeImportedHtmlFragment(html = '') {
     [...node.attributes].forEach(attribute => {
       const name = attribute.name.toLowerCase();
       const value = attribute.value || '';
+      if (name === 'class') {
+        const safeClasses = value.split(/\s+/).filter(className => GENERATED_EPUB_SAFE_CLASSES.has(className));
+        if (safeClasses.length) node.setAttribute('class', safeClasses.join(' '));
+        else node.removeAttribute(attribute.name);
+        return;
+      }
       if (name === 'href' && tagName === 'a' && isSafeHtmlUrl(value)) {
         node.setAttribute('href', value.trim());
         return;
@@ -10833,19 +10864,6 @@ function getBookClosingMatterText(book = {}) {
   return normalizeEpubMatterText(book.afterword || book.closing || '');
 }
 
-function plainTextExcerpt(text = '', maxLength = 120) {
-  const normalized = String(text || '')
-    .replace(/\{\/?(red|blue|gold|purple)\}/g, '')
-    .replace(/^##+\s*/gm, '')
-    .replace(/^>\s?/gm, '')
-    .replace(/^-\s+/gm, '')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/\s+/g, ' ')
-    .trim();
-  if (!normalized || normalized.length <= maxLength) return normalized;
-  return `${normalized.slice(0, maxLength).trim()}...`;
-}
-
 function formatEpubDate(value = nowIso()) {
   const date = new Date(value || nowIso());
   if (Number.isNaN(date.getTime())) return '';
@@ -10870,12 +10888,15 @@ h1{margin:0;font-size:1.72em;line-height:1.34;font-weight:700;letter-spacing:.01
 h2{margin:1.95em 0 .72em;font-size:1.14em;line-height:1.5;font-weight:700;letter-spacing:.01em;}
 a{color:${theme[1]};text-decoration:none;}
 nav ol{padding-left:1.3em;}
-.title-page-main{display:block;}
-.title-page{background:${theme[0]};padding:3em 2.25em 2.5em;border-radius:20px;margin-top:2.2em;box-shadow:inset 0 0 0 1px rgba(140,118,90,.1);}
-.title-page h1{font-size:2.05em;line-height:1.26;margin:.4em 0 .48em;}
-.title-subtitle{margin:0 0 1.25em;color:${theme[1]};font-size:1.04em;line-height:1.7;font-weight:700;}
-.title-description{margin:1.45em 0 1.6em;color:#5c5147;font-size:.98em;line-height:1.86;}
-.book-source{margin:2.4em 0 0;color:#7a7067;font-size:.82em;line-height:1.6;letter-spacing:.04em;}
+.title-page-main{max-width:42em;min-height:68vh;display:flex;align-items:center;justify-content:center;padding:4.4em 1.25em;}
+.title-page{width:100%;max-width:32em;background:${theme[0]};padding:3.8em 2.35em 3.25em;border-radius:22px;margin:0 auto;text-align:center;box-shadow:inset 0 0 0 1px rgba(140,118,90,.13),0 1.1em 2.8em rgba(80,62,42,.08);}
+.title-kicker{margin:0;color:#7a7067;font-size:.78em;line-height:1.45;font-weight:700;letter-spacing:.14em;}
+.title-divider{display:block;width:4.4em;height:1px;margin:1.35em auto 1.55em;background:rgba(140,118,90,.34);}
+.title-page h1{font-size:2.08em;line-height:1.28;margin:0;color:${theme[1]};}
+.title-subtitle{margin:1.05em 0 0;color:${theme[1]};font-size:1.04em;line-height:1.7;font-weight:700;}
+.title-meta-list{margin:1.55em auto 0;}
+.title-meta{margin:.28em 0;color:#6b6259;font-size:.94em;line-height:1.75;}
+.book-source{margin:2.55em 0 0;color:#7a7067;font-size:.82em;line-height:1.6;letter-spacing:.04em;}
 .meta{color:#6b6259;font-size:.94em;line-height:1.75;}
 .matter-page h1{margin:0 0 1.25em;padding-bottom:.72em;border-bottom:1px solid rgba(166,143,115,.2);font-size:1.56em;}
 .front-matter-page,.closing-matter-page{max-width:39em;}
@@ -10915,17 +10936,19 @@ function containerXml() {
 }
 
 function titlePage(book, exportedAt = nowIso()) {
-  const description = plainTextExcerpt(getBookDraftDescription(book), 118);
   const generatedDate = formatEpubDate(exportedAt);
+  const metaItems = [
+    book.author_name ? `<p class="title-meta">作者：${escapeHtml(book.author_name)}</p>` : '',
+    generatedDate ? `<p class="title-meta">整理日期：${escapeHtml(generatedDate)}</p>` : '',
+  ].filter(Boolean).join('');
   return xhtmlWrap('書名頁', `
     <main class="title-page-main">
-      <section class="title-page">
-        <p class="meta">Devotion 靈修札記</p>
+      <section class="title-page" aria-label="書名頁">
+        <p class="title-kicker">Devotion 靈修札記</p>
+        <span class="title-divider" aria-hidden="true"></span>
         <h1>${escapeHtml(book.title)}</h1>
         ${book.subtitle ? `<p class="title-subtitle">${escapeHtml(book.subtitle)}</p>` : ''}
-        ${book.author_name ? `<p class="meta">作者：${escapeHtml(book.author_name)}</p>` : ''}
-        ${description ? `<p class="title-description">${escapeHtml(description)}</p>` : ''}
-        ${generatedDate ? `<p class="meta">整理日期：${escapeHtml(generatedDate)}</p>` : ''}
+        ${metaItems ? `<div class="title-meta-list">${metaItems}</div>` : ''}
         <p class="book-source">由 Devotion 靈修札記整理</p>
       </section>
     </main>
@@ -12173,6 +12196,22 @@ function injectReaderViewStyles() {
       #view-reader .reader-flow .text-blue, #view-reader .reader-flow .text-blue strong { color: #355d8d !important; }
       #view-reader .reader-flow .text-gold, #view-reader .reader-flow .text-gold strong { color: #8a6a1f !important; }
       #view-reader .reader-flow .text-purple, #view-reader .reader-flow .text-purple strong { color: #6a4a82 !important; }
+      #view-reader .reader-flow .title-page-main { width: 100%; min-height: var(--reader-page-body-height, 100%); display: flex; align-items: center; justify-content: center; padding: 0; }
+      #view-reader .reader-flow .title-page { width: 100%; max-width: 32em; margin: 0 auto; padding: clamp(40px, 7vh, 68px) clamp(24px, 5vw, 44px) clamp(36px, 6vh, 56px); border-radius: 22px; background: linear-gradient(180deg, rgba(246,240,230,.98), rgba(255,253,248,.9)); text-align: center; box-shadow: inset 0 0 0 1px rgba(140,118,90,.14), 0 20px 48px rgba(80,62,42,.1); }
+      #view-reader .reader-flow .title-kicker { margin: 0; color: #7a7067; font-size: .78em; line-height: 1.45; font-weight: 700; letter-spacing: .14em; }
+      #view-reader .reader-flow .title-divider { display: block; width: 4.4em; height: 1px; margin: 1.35em auto 1.55em; background: rgba(140,118,90,.34); }
+      #view-reader .reader-flow .title-page h1 { margin: 0; color: #21484c; font-size: 2.04em; line-height: 1.28; }
+      #view-reader .reader-flow .title-subtitle { margin: 1.05em 0 0; color: #21484c; font-size: 1.04em; line-height: 1.7; font-weight: 700; }
+      #view-reader .reader-flow .title-meta-list { margin: 1.55em auto 0; }
+      #view-reader .reader-flow .title-meta { margin: .28em 0; color: #6b6259; font-size: .94em; line-height: 1.75; }
+      #view-reader .reader-flow .title-page .book-source { margin: 2.55em 0 0; color: #7a7067; font-size: .82em; line-height: 1.6; letter-spacing: .04em; }
+      #view-reader.reader-dark .reader-flow .title-page { background: linear-gradient(180deg, rgba(38,36,33,.98), rgba(30,30,30,.9)); box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 20px 48px rgba(0,0,0,.24); }
+      #view-reader.reader-dark .reader-flow .title-kicker,
+      #view-reader.reader-dark .reader-flow .title-meta,
+      #view-reader.reader-dark .reader-flow .title-page .book-source { color: #b8aea4; }
+      #view-reader.reader-dark .reader-flow .title-divider { background: rgba(255,255,255,.22); }
+      #view-reader.reader-dark .reader-flow .title-page h1,
+      #view-reader.reader-dark .reader-flow .title-subtitle { color: #dcefeb; }
       #view-reader .reader-flow .chapter-head { margin: 0 0 2.05em; padding: 1.02em 0 1.2em; border-bottom: 1px solid rgba(166,143,115,.18); text-align: left; }
       #view-reader .reader-flow .chapter-kicker { margin: 0 0 .8em; color: #6f5b47; font-size: 1.42em; line-height: 1.36; font-weight: 700; letter-spacing: .11em; text-align: center; }
       #view-reader .reader-flow .chapter-head h1 { margin: 0; font-size: 1.28em; line-height: 1.54; letter-spacing: .01em; text-align: left; }
@@ -12281,6 +12320,10 @@ function injectReaderViewStyles() {
       #view-reader .reader-flow .chapter-kicker { font-size: 1.24em; letter-spacing: .09em; margin-bottom: .66em; }
       #view-reader .reader-flow .chapter-head h1 { font-size: 1.16em; line-height: 1.5; }
       #view-reader .reader-flow .chapter-summary, #view-reader .reader-flow .chapter-prayer { margin-bottom: 1.55em; padding: 1em 1em .96em; }
+      #view-reader .reader-flow .title-page { padding: clamp(34px, 7vh, 54px) clamp(20px, 7vw, 32px) clamp(30px, 6vh, 46px); border-radius: 18px; }
+      #view-reader .reader-flow .title-page h1 { font-size: 1.72em; line-height: 1.3; }
+      #view-reader .reader-flow .title-subtitle { font-size: .98em; line-height: 1.65; }
+      #view-reader .reader-flow .title-page .book-source { margin-top: 2.1em; }
       #view-reader .reader-footer { grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; padding-inline: 8px; }
       #view-reader .reader-footer > button { min-width: 0; padding-inline: 10px; }
       #view-reader .reader-action-button { right: 14px; bottom: calc(var(--reader-stage-bottom) + 14px); min-height: 42px; padding-inline: 14px; }
