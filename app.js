@@ -2381,7 +2381,7 @@ function ensureOperationManualUi() {
               <li>已選 0 篇：提示先勾選札記，按鈕顯示「先勾選札記」。</li>
               <li>已選 1 篇以上：按鈕顯示「加入「{title}」（已選 {count} 篇）」。</li>
             </ul>
-            <p>加入成功後，系統會清除勾選狀態並更新目前正在編排的章節數。若有重複札記，系統會略過並提示略過數量。</p>
+            <p>加入成功後，系統會清除勾選狀態並更新目前正在編排的章節數。多篇一起加入時，會依勾選加入順序接在既有章節後方；若有重複札記，系統會略過並提示略過數量。</p>
             <p>草稿完成為正式札記後，才會出現在札記庫，也才可以被加入目前正在編排的書稿。</p>
           </section>
 
@@ -2407,7 +2407,7 @@ function ensureOperationManualUi() {
             <p>章節整理視窗會用一條小型流程提示提醒目前進度與下一步。通常流程是：書籍資料 → 加入札記 → 編排順序 → 出版檢查 → 匯出 EPUB。</p>
             <ol>
               <li>確認這份編排已經收錄想放進書裡的正式札記。</li>
-              <li>拖曳章節卡片上的「排序」把手調整閱讀順序；章節很多時，拖到列表上緣或下緣會協助捲動。若使用手機或不方便拖曳，也可用小型上移、下移輔助操作。</li>
+              <li>加入札記後會依加入順序排列。可拖曳章節卡片上的「排序」把手調整閱讀順序；章節很多時，拖到列表上緣或下緣會協助捲動。若使用手機或不方便拖曳，也可用小型上移、下移輔助操作。</li>
               <li>必要時可修改章節標題，或取消「列入目錄」。</li>
               <li>調整後若畫面提示「章節順序已調整，尚未儲存」，請點「儲存編排」保存章節調整。</li>
               <li>確認出版狀態的下一步，再點「匯出 EPUB」做最後確認。</li>
@@ -7980,7 +7980,10 @@ async function addSelectedNotesToCurrentBookDraft() {
   book = await loadBookProjectDetail(book.id) || book;
   if (!state.contentLibrarySelectedNoteIds.length) throw new Error('請先勾選至少一篇文章。');
   if (state.bookArrangementSaving) return;
-  const selectedNotes = getPublishedNotes().filter(note => state.contentLibrarySelectedNoteIds.includes(note.id));
+  const publishedNotesById = new Map(getPublishedNotes().map(note => [note.id, note]));
+  const selectedNotes = state.contentLibrarySelectedNoteIds
+    .map(noteId => publishedNotesById.get(noteId))
+    .filter(Boolean);
   const baseChapters = getBookDisplayChapters(book);
   const existingSourceIds = new Set(baseChapters.map(chapter => getChapterSourceNoteId(chapter)).filter(Boolean));
   const nextChapters = cloneBookChapters(baseChapters);
