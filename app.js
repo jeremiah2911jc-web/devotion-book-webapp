@@ -8222,8 +8222,11 @@ function renderTodayReadingCard() {
   els.todayReadingList.classList.remove('is-loading');
   const readings = entry.readings.map((reading, index) => `
     <button class="today-reading-ref" type="button" data-today-reading-index="${index}">
-      <span class="today-reading-ref-kicker">${index < 2 ? '家庭' : '個人'} ${index + 1}</span>
-      <strong>${escapeHtml(reading)}</strong>
+      <span class="today-reading-ref-main">
+        <span class="today-reading-ref-kicker">${index < 2 ? '家庭' : '個人'} ${index + 1}</span>
+        <strong>${escapeHtml(reading)}</strong>
+      </span>
+      <span class="today-reading-ref-action">閱讀經文 <span aria-hidden="true">›</span></span>
     </button>
   `).join('');
   setElementHtmlIfChanged(els.todayReadingList, readings);
