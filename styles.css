@@ -6249,11 +6249,12 @@ body:not(.auth-locked) .main {
 
 .today-reading-ref {
   width: 100%;
-  min-height: 54px;
+  min-height: 50px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(86px, 26%);
-  align-items: stretch;
-  padding: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+  padding: 9px 10px 9px 12px;
   border: 1px solid rgba(191, 211, 208, 0.72);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.78);
@@ -6272,9 +6273,10 @@ body:not(.auth-locked) .main {
 .today-reading-ref-main {
   min-width: 0;
   display: grid;
-  align-content: center;
-  gap: 3px;
-  padding: 9px 12px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: 10px;
+  row-gap: 2px;
 }
 
 .today-reading-ref-kicker {
@@ -6294,9 +6296,12 @@ body:not(.auth-locked) .main {
 .today-reading-ref-action {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 3px;
-  padding: 0 9px;
+  align-self: stretch;
+  min-width: 88px;
+  max-width: 112px;
+  padding-left: 10px;
   border-left: 1px solid rgba(191, 211, 208, 0.62);
   color: #4a7375;
   font-size: 12px;
@@ -6361,7 +6366,15 @@ body:not(.auth-locked) .main {
   }
 
   .today-reading-ref {
-    grid-template-columns: minmax(0, 1fr) 88px;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .today-reading-ref-main {
+    column-gap: 8px;
+  }
+
+  .today-reading-ref-action {
+    min-width: 84px;
   }
 }
 
@@ -7571,11 +7584,12 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
 
   .today-reading-ref {
     width: 100%;
-    min-height: 54px;
+    min-height: 50px;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 92px;
-    align-items: stretch;
-    padding: 0;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 10px;
+    padding: 9px 10px 9px 12px;
     border: 1px solid rgba(191, 211, 208, 0.72);
     border-radius: 12px;
     background: rgba(255, 255, 255, 0.78);
@@ -7594,9 +7608,10 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
   .today-reading-ref-main {
     min-width: 0;
     display: grid;
-    align-content: center;
-    gap: 3px;
-    padding: 9px 12px;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: baseline;
+    column-gap: 10px;
+    row-gap: 2px;
   }
 
   .today-reading-ref-kicker {
@@ -7616,9 +7631,12 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
   .today-reading-ref-action {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-end;
     gap: 3px;
-    padding: 0 9px;
+    align-self: stretch;
+    min-width: 88px;
+    max-width: 112px;
+    padding-left: 10px;
     border-left: 1px solid rgba(191, 211, 208, 0.62);
     color: #4a7375;
     font-size: 12px;
