@@ -2989,7 +2989,7 @@ body.account-settings-open {
   background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(246,251,251,0.9));
 }
 .scripture-card h4 { margin: 0 0 8px; color: #35585d; font-size: 15px; }
-.scripture-text { margin: 0; line-height: 1.75; color: #31484d; }
+.scripture-text { margin: 0; line-height: 1.75; color: #31484d; white-space: pre-wrap; }
 .error-text { color: var(--danger); }
 
 

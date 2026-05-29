@@ -1,6 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  normalizeScriptureReferenceForFetch,
+  parseScriptureReference,
+} from '../assets/js/scripture-reference-utils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, '..');
@@ -51,6 +55,10 @@ plan.forEach((entry, index) => {
   if (entry.readings.length !== 4) fail(`${label} expected 4 readings, got ${entry.readings.length}`);
   entry.readings.forEach((reading, readingIndex) => {
     if (typeof reading !== 'string' || !reading.trim()) fail(`${label} reading ${readingIndex + 1} is empty`);
+    const parsed = parseScriptureReference(reading);
+    if (!parsed) fail(`${label} reading ${readingIndex + 1} cannot be parsed: ${reading}`);
+    const normalized = normalizeScriptureReferenceForFetch(reading);
+    if (!normalized || normalized === reading && !parsed.normalized) fail(`${label} reading ${readingIndex + 1} has no normalized reference: ${reading}`);
   });
   if (entry.sourceReadings !== undefined) {
     if (!Array.isArray(entry.sourceReadings) || entry.sourceReadings.length !== 4) fail(`${label} sourceReadings must contain 4 items`);
@@ -59,6 +67,7 @@ plan.forEach((entry, index) => {
     if (!Array.isArray(entry.normalizedReadings) || entry.normalizedReadings.length !== 4) fail(`${label} normalizedReadings must contain 4 items`);
     entry.normalizedReadings.forEach((reading, readingIndex) => {
       if (typeof reading !== 'string' || !reading.trim()) fail(`${label} normalizedReading ${readingIndex + 1} is empty`);
+      if (!parseScriptureReference(reading)) fail(`${label} normalizedReading ${readingIndex + 1} cannot be parsed: ${reading}`);
     });
   }
   const dateKey = `${entry.month}-${entry.day}`;
@@ -89,4 +98,4 @@ spotChecks.forEach((expected) => {
   }
 });
 
-console.log('mcheyne-reading-plan validation passed: 365 records, 4 readings per day, spot checks OK');
+console.log('mcheyne-reading-plan validation passed: 365 records, 4 readings per day, parser coverage and spot checks OK');

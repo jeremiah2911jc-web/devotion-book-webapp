@@ -319,16 +319,6 @@ async function run() {
   });
 
   const page = await context.newPage();
-  await page.route('https://bible-api.com/**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        reference: 'Smoke Scripture',
-        verses: [{ chapter: 1, verse: 1, text: 'Smoke test scripture text.' }],
-      }),
-    });
-  });
   const consoleCollector = attachConsoleErrorCollector(page);
   const results = [];
 
@@ -397,6 +387,11 @@ async function run() {
     await clickElement(page, '#today-reading-list [data-today-reading-index="0"]');
     await expectVisible(page, '#today-reading-dialog:not(.hidden)', '單段經文閱讀視窗已開啟');
     await expectVisible(page, '#today-reading-dialog-insert', '閱讀視窗顯示帶入這段');
+    await page.waitForFunction(() => {
+      const body = document.querySelector('#today-reading-dialog-body');
+      const text = body?.textContent || '';
+      return text.length > 50 && !body?.classList.contains('error-text') && !text.includes('正在抓取');
+    }, null, { timeout: 20000 });
     await clickElement(page, '#today-reading-dialog [data-today-reading-close]');
     await page.waitForFunction(() => document.querySelector('#today-reading-dialog')?.classList.contains('hidden'), { timeout: 10000 });
     await clickElement(page, '#today-reading-note-btn');
@@ -411,6 +406,11 @@ async function run() {
     if (!todayReadingToast || !todayReadingToast.includes('已帶入今日讀經')) {
       throw new Error(`今日讀經帶入提示不正確：${todayReadingToast}`);
     }
+    await clickElement(page, '#fetch-scripture-btn');
+    await page.waitForFunction(() => document.querySelector('#scripture-fetch-status')?.textContent.includes('已帶出 4 處'), { timeout: 20000 });
+    await expectVisible(page, '#scripture-preview:not(.hidden)', '今日讀經帶入後可抓取四段全文');
+    await page.fill('#note-scripture', '');
+    await page.fill('#note-content', '');
     await clickElement(page, '.mobile-bottom-link[data-view="dashboard"]');
     await expectVisible(page, '#view-dashboard.view.active', '今日讀經驗證後已返回 dashboard');
     results.push(`今日讀經顯示 4 段、可切換日期、可開閱讀視窗並帶入經文欄：${todayReadingRefs.join(' / ')}`);

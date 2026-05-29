@@ -1,4 +1,11 @@
-﻿const STORAGE_KEYS = {
+﻿import {
+  isLikelyScriptureReference,
+  normalizeScriptureReferenceForFetch,
+  parseScriptureReference,
+  splitScriptureReferences,
+} from './assets/js/scripture-reference-utils.js';
+
+const STORAGE_KEYS = {
   config: 'devotion-app-config',
   user: 'devotion-app-local-user',
   notes: 'devotion-app-notes',
@@ -18,95 +25,13 @@ const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
 const DEFAULT_BIBLE_ASSET_VERSION = '2026.05.13-reflow-3c43edc7';
 const DEFAULT_BIBLE_ASSET_VERSION_KEY = 'devotion-default-bible-asset-version';
 const DEFAULT_BIBLE_EPUB_PATH = `/assets/default-books/bible.epub?v=${DEFAULT_BIBLE_ASSET_VERSION}`;
-const SCRIPTURE_FETCH_TIMEOUT_MS = 12000;
 const SCRIPTURE_FETCH_MESSAGES = Object.freeze({
-  invalidReference: '請確認經文格式，例如：哥林多前書2:1 或 哥林多前書2:1-5。',
+  invalidReference: '請確認經文格式，例如：申命記 2、詩篇 83-84 或 路 1:1-38。',
   network: '經文暫時無法載入，請確認網路後再試。',
   notFound: '找不到這段經文。',
   source: '經文資料暫時無法取得，請稍後再試。',
   unknown: '經文暫時無法載入，請稍後再試。',
 });
-const SCRIPTURE_REFERENCE_BOOK_MAP = Object.freeze({
-  創: 'Genesis',
-  太: 'Matthew',
-  以斯拉: 'Ezra',
-  徒: 'Acts',
-  尼希米: 'Nehemiah',
-  以斯帖: 'Esther',
-  可: 'Mark',
-  羅: 'Romans',
-  約伯記: 'Job',
-  路: 'Luke',
-  林前: '1 Corinthians',
-  哥林多前書: '1 Corinthians',
-  出: 'Exodus',
-  林後: '2 Corinthians',
-  哥林多後書: '2 Corinthians',
-  約: 'John',
-  箴言: 'Proverbs',
-  加拉太: 'Galatians',
-  以弗所: 'Ephesians',
-  腓利比: 'Philippians',
-  利未記: 'Leviticus',
-  歌羅西: 'Colossians',
-  詩篇: 'Psalms',
-  詩: 'Psalms',
-  帖前: '1 Thessalonians',
-  帖後: '2 Thessalonians',
-  傳道書: 'Ecclesiastes',
-  提前: '1 Timothy',
-  提後: '2 Timothy',
-  提多書: 'Titus',
-  民數記: 'Numbers',
-  腓利門: 'Philemon',
-  腓利門書: 'Philemon',
-  雅歌: 'Song of Solomon',
-  希伯來書: 'Hebrews',
-  賽: 'Isaiah',
-  雅各書: 'James',
-  彼前: '1 Peter',
-  彼後: '2 Peter',
-  約壹: '1 John',
-  約貳: '2 John',
-  約參: '3 John',
-  申命記: 'Deuteronomy',
-  申: 'Deuteronomy',
-  猶大書: 'Jude',
-  啟示錄: 'Revelation',
-  約書亞: 'Joshua',
-  耶利米: 'Jeremiah',
-  士師記: 'Judges',
-  路得記: 'Ruth',
-  撒上: '1 Samuel',
-  哀: 'Lamentations',
-  以西結: 'Ezekiel',
-  撒下: '2 Samuel',
-  王上: '1 Kings',
-  王下: '2 Kings',
-  但以理: 'Daniel',
-  何西阿: 'Hosea',
-  代上: '1 Chronicles',
-  約珥書: 'Joel',
-  阿摩司: 'Amos',
-  俄巴底亞: 'Obadiah',
-  約拿書: 'Jonah',
-  彌迦書: 'Micah',
-  代下: '2 Chronicles',
-  那鴻書: 'Nahum',
-  哈巴谷: 'Habakkuk',
-  西番雅: 'Zephaniah',
-  哈該書: 'Haggai',
-  撒迦利亞: 'Zechariah',
-  撒迦: 'Zechariah',
-  瑪拉基: 'Malachi',
-});
-const SCRIPTURE_REFERENCE_BOOK_KEYS = Object.keys(SCRIPTURE_REFERENCE_BOOK_MAP).sort((a, b) => b.length - a.length);
-const SCRIPTURE_REFERENCE_ENGLISH_BOOKS = Object.freeze(
-  [...new Set(Object.values(SCRIPTURE_REFERENCE_BOOK_MAP))]
-    .sort((a, b) => b.length - a.length)
-);
-const SCRIPTURE_ONE_CHAPTER_BOOKS = new Set(['Philemon', '2 John', '3 John', 'Jude', 'Obadiah']);
-
 const TEMPLATE_LABELS = {
   devotion: '靈修札記版',
   sermon: '講章整理版',
@@ -1119,6 +1044,8 @@ const state = {
   prayerSaving: false,
   prayerSyncError: '',
   scriptureCache: new Map(),
+  scriptureBibleEntries: null,
+  scriptureBibleEntriesPromise: null,
   scriptureFetchTimer: null,
   scriptureAbortController: null,
   scriptureLastAppliedBlock: '',
@@ -8350,8 +8277,8 @@ function appendReferencesToNoteScripture(readings = []) {
   const nextReadings = readings.map(reading => String(reading || '').trim()).filter(Boolean);
   if (!nextReadings.length || !els.noteScripture) return false;
   const current = els.noteScripture.value.trim();
-  const addition = nextReadings.join('；');
-  els.noteScripture.value = current ? `${current}；${addition}` : addition;
+  const addition = nextReadings.join('; ');
+  els.noteScripture.value = current ? `${current}; ${addition}` : addition;
   resetScripturePreview({ clearApplied: true });
   return true;
 }
@@ -8464,10 +8391,7 @@ async function openTodayReadingDialog(index = 0) {
 }
 
 function normalizeScriptureReferences(raw = '') {
-  return raw
-    .split(/[;；]+/)
-    .map(item => item.trim())
-    .filter(Boolean);
+  return splitScriptureReferences(raw);
 }
 
 function handleScriptureInput() {
@@ -8520,23 +8444,6 @@ function normalizeScriptureText(text = '') {
   return String(text || '').replace(/\s+/g, ' ').trim();
 }
 
-function normalizeScriptureReferenceForFetch(reference = '') {
-  let normalized = String(reference || '')
-    .replace(/[：]/g, ':')
-    .replace(/[–—~～]/g, '-')
-    .replace(/\s+/g, ' ')
-    .trim();
-  for (const bookKey of SCRIPTURE_REFERENCE_BOOK_KEYS) {
-    if (normalized === bookKey || normalized.startsWith(`${bookKey} `) || new RegExp(`^${bookKey}\\d`).test(normalized)) {
-      const rest = normalized.slice(bookKey.length).trim();
-      const bookName = SCRIPTURE_REFERENCE_BOOK_MAP[bookKey];
-      const suffix = rest || (SCRIPTURE_ONE_CHAPTER_BOOKS.has(bookName) ? '1' : '');
-      return `${bookName} ${suffix}`.trim();
-    }
-  }
-  return normalized;
-}
-
 function createScriptureFetchError(type, reference = '', cause = null) {
   const error = new Error(SCRIPTURE_FETCH_MESSAGES[type] || SCRIPTURE_FETCH_MESSAGES.unknown);
   error.name = 'ScriptureFetchError';
@@ -8546,27 +8453,11 @@ function createScriptureFetchError(type, reference = '', cause = null) {
   return error;
 }
 
-function isLikelyScriptureReference(reference = '') {
-  const normalized = normalizeScriptureReferenceForFetch(reference).trim().replace(/\s+/g, ' ');
-  if (!normalized) return false;
-  if (!/[^\d:：,\-–—~～\s]/.test(normalized)) return false;
-  const lowerNormalized = normalized.toLowerCase();
-  const matchedBook = SCRIPTURE_REFERENCE_ENGLISH_BOOKS.find(book => {
-    const lowerBook = book.toLowerCase();
-    return lowerNormalized === lowerBook || lowerNormalized.startsWith(`${lowerBook} `);
-  });
-  if (matchedBook) {
-    const rest = normalized.slice(matchedBook.length).trim();
-    return /\d/.test(rest);
-  }
-  const withoutLeadingBookNumber = normalized.replace(/^[1-3]\s+(?=[A-Za-z])/, '');
-  return /\d/.test(withoutLeadingBookNumber);
-}
-
 function getScriptureFetchMessage(error) {
   if (error?.name === 'AbortError') return '';
   if (error?.name === 'ScriptureFetchError') {
-    return SCRIPTURE_FETCH_MESSAGES[error.type] || SCRIPTURE_FETCH_MESSAGES.unknown;
+    const message = SCRIPTURE_FETCH_MESSAGES[error.type] || SCRIPTURE_FETCH_MESSAGES.unknown;
+    return error.reference ? `${error.reference}：${message}` : message;
   }
   if (!navigator.onLine) return SCRIPTURE_FETCH_MESSAGES.network;
   if (error instanceof TypeError || /failed to fetch|load failed|network|fetch/i.test(String(error?.message || ''))) {
@@ -8583,62 +8474,92 @@ function isScriptureExpectedError(error) {
     || /failed to fetch|load failed|network|fetch/i.test(String(error?.message || ''));
 }
 
-function formatFetchedVerses(verses = []) {
-  if (!Array.isArray(verses) || !verses.length) return '';
-  return verses.map((verse, index) => {
-    const previous = verses[index - 1];
-    const chapter = verse.chapter ?? '';
-    const verseNo = verse.verse ?? '';
-    const prefix = index === 0
-      ? `${verseNo}`
-      : previous && previous.chapter === chapter
-        ? `${verseNo}`
-        : `${chapter}:${verseNo}`;
-    return `${prefix} ${normalizeScriptureText(verse.text)}`.trim();
-  }).join(' ');
+function throwIfScriptureFetchAborted(signal) {
+  if (!signal?.aborted) return;
+  const error = new Error('Scripture fetch aborted');
+  error.name = 'AbortError';
+  throw error;
+}
+
+async function loadScriptureBibleEntries(reference = '') {
+  if (state.scriptureBibleEntries) return state.scriptureBibleEntries;
+  if (!state.scriptureBibleEntriesPromise) {
+    state.scriptureBibleEntriesPromise = fetchPublicAssetBlob(DEFAULT_BIBLE_EPUB_PATH, '下載聖經資料失敗')
+      .then(blob => unzipStoredEntries(blob))
+      .then(entries => {
+        state.scriptureBibleEntries = entries;
+        return entries;
+      })
+      .catch(error => {
+        state.scriptureBibleEntriesPromise = null;
+        throw createScriptureFetchError('source', reference, error);
+      });
+  }
+  return state.scriptureBibleEntriesPromise;
+}
+
+function parseBibleBookDocument(xhtml = '') {
+  const xmlDoc = new DOMParser().parseFromString(String(xhtml || ''), 'application/xhtml+xml');
+  if (!xmlDoc.querySelector('parsererror')) return xmlDoc;
+  return new DOMParser().parseFromString(String(xhtml || ''), 'text/html');
+}
+
+function extractBibleChapterVerses(bookHtml = '', chapter = 1) {
+  const doc = parseBibleBookDocument(bookHtml);
+  return [...doc.querySelectorAll(`.verse[id^="v${chapter}_"]`)]
+    .map(node => {
+      const id = node.getAttribute('id') || '';
+      const match = id.match(/^v(\d+)_(\d+)$/);
+      if (!match || Number.parseInt(match[1], 10) !== chapter) return null;
+      const verse = Number.parseInt(match[2], 10);
+      const text = normalizeScriptureText(node.querySelector('.verse-text')?.textContent || '');
+      return Number.isInteger(verse) && verse > 0 && text ? { chapter, verse, text } : null;
+    })
+    .filter(Boolean);
+}
+
+function selectBibleVersesForReference(parsed, chapter, verses = []) {
+  const startVerse = parsed.wholeChapter || chapter !== parsed.startChapter ? 1 : parsed.startVerse;
+  const endVerse = parsed.wholeChapter || chapter !== parsed.endChapter ? Number.MAX_SAFE_INTEGER : parsed.endVerse;
+  return verses.filter(verse => verse.verse >= startVerse && verse.verse <= endVerse);
+}
+
+function formatLocalScriptureText(parsed, chapterGroups = []) {
+  const showChapterLabels = chapterGroups.length > 1;
+  return chapterGroups.map(group => {
+    const text = group.verses.map(verse => `${verse.verse} ${verse.text}`).join(' ');
+    return showChapterLabels ? `第 ${group.chapter} 章\n${text}` : text;
+  }).join('\n\n');
 }
 
 async function fetchScriptureReference(reference, signal) {
-  const queryReference = normalizeScriptureReferenceForFetch(reference);
-  const cacheKey = `${reference}::${queryReference}`;
+  const parsed = parseScriptureReference(reference);
+  if (!parsed) throw createScriptureFetchError('invalidReference', reference);
+  const queryReference = parsed.normalized;
+  const cacheKey = queryReference;
   if (state.scriptureCache.has(cacheKey)) return state.scriptureCache.get(cacheKey);
-  if (!isLikelyScriptureReference(reference)) {
-    throw createScriptureFetchError('invalidReference', reference);
+  throwIfScriptureFetchAborted(signal);
+  const entries = await loadScriptureBibleEntries(reference);
+  throwIfScriptureFetchAborted(signal);
+  const entryPath = `OEBPS/text/${parsed.book.code}.xhtml`;
+  const bookEntry = entries.get(entryPath);
+  if (!bookEntry?.text) throw createScriptureFetchError('notFound', reference);
+  const chapterGroups = [];
+  const ranges = Array.isArray(parsed.ranges) && parsed.ranges.length ? parsed.ranges : [parsed];
+  for (const range of ranges) {
+    for (let chapter = range.startChapter; chapter <= range.endChapter; chapter += 1) {
+      const allVerses = extractBibleChapterVerses(bookEntry.text, chapter);
+      const verses = selectBibleVersesForReference(range, chapter, allVerses);
+      if (!verses.length) throw createScriptureFetchError('notFound', reference);
+      chapterGroups.push({ chapter, verses });
+    }
   }
-  const url = `https://bible-api.com/${encodeURIComponent(queryReference)}?translation=cuv`;
-  const timeoutController = new AbortController();
-  const timeoutId = setTimeout(() => timeoutController.abort(), SCRIPTURE_FETCH_TIMEOUT_MS);
-  const abortHandler = () => timeoutController.abort();
-  signal?.addEventListener('abort', abortHandler, { once: true });
-  let response;
-  try {
-    response = await fetch(url, { signal: timeoutController.signal });
-  } catch (error) {
-    if (error?.name === 'AbortError' && signal?.aborted) throw error;
-    throw createScriptureFetchError('network', reference, error);
-  } finally {
-    clearTimeout(timeoutId);
-    signal?.removeEventListener('abort', abortHandler);
-  }
-  let data;
-  try {
-    data = await response.json();
-  } catch (error) {
-    throw createScriptureFetchError('source', reference, error);
-  }
-  if (!response.ok) {
-    throw createScriptureFetchError(response.status === 404 ? 'notFound' : 'source', reference);
-  }
-  if (data.error) {
-    throw createScriptureFetchError('notFound', reference);
-  }
-  if (!data.verses?.length && !normalizeScriptureText(data.text)) {
-    throw createScriptureFetchError('notFound', reference);
-  }
+  const text = formatLocalScriptureText(parsed, chapterGroups);
+  if (!text) throw createScriptureFetchError('notFound', reference);
   const result = {
     query: reference,
-    normalizedQuery: data.reference || queryReference,
-    text: formatFetchedVerses(data.verses) || normalizeScriptureText(data.text),
+    normalizedQuery: queryReference,
+    text,
   };
   state.scriptureCache.set(cacheKey, result);
   return result;
@@ -8653,7 +8574,7 @@ async function fetchAndRenderScriptures({ force = false, syncToContent = false }
   const invalidReference = references.find(reference => !isLikelyScriptureReference(reference));
   if (invalidReference) {
     resetScripturePreview();
-    setScriptureStatus(SCRIPTURE_FETCH_MESSAGES.invalidReference, true);
+    setScriptureStatus(`${invalidReference}：${SCRIPTURE_FETCH_MESSAGES.invalidReference}`, true);
     return;
   }
   if (!force && els.scripturePreview.dataset.lastRefs === references.join('|')) return;

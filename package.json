@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "npm run serve:local",
-    "check": "node --check app.js && node --check api/admin-usage.js && node --check api/system-backup.js && node --check api/support-receipt-request.js",
+    "check": "node --check assets/js/scripture-reference-utils.js && node --check app.js && node --check api/admin-usage.js && node --check api/system-backup.js && node --check api/support-receipt-request.js",
     "serve:local": "node static-server.cjs",
     "smoke": "node smoke-test.cjs",
     "validate:mcheyne": "node scripts/validate-mcheyne-reading-plan.mjs",
