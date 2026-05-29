@@ -6158,13 +6158,16 @@ body:not(.auth-locked) .main {
 }
 
 .dashboard-lower-grid {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .dashboard-side-column {
+  order: -1;
   display: grid;
   gap: 16px;
-  margin-top: 16px;
+  margin-top: 0;
 }
 
 .home-today-reading-card {
@@ -7351,6 +7354,7 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
   }
 
   .dashboard-side-column {
+    order: 0;
     display: grid;
     gap: 20px;
     margin-top: 0;
