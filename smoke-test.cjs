@@ -319,6 +319,16 @@ async function run() {
   });
 
   const page = await context.newPage();
+  await page.route('https://bible-api.com/**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        reference: 'Smoke Scripture',
+        verses: [{ chapter: 1, verse: 1, text: 'Smoke test scripture text.' }],
+      }),
+    });
+  });
   const consoleCollector = attachConsoleErrorCollector(page);
   const results = [];
 
@@ -366,6 +376,44 @@ async function run() {
     await expectNoVisibleLocator(page.locator('.home-primary-actions'), 'Dashboard 不應顯示舊的大圖快捷卡');
     await expectNoVisibleLocator(page.locator('#cloud-sync-panel'), 'Dashboard 不應顯示舊的同步長條');
     await expectNoVisibleLocator(page.locator('[data-testid="account-sync"]'), '手機 Dashboard 不應顯示桌機帳號卡同步列');
+    await expectNoVisibleLocator(page.locator(`text=${['今日', '默想'].join('')}`), 'Dashboard 不應顯示舊版每日卡片標題');
+    await expectVisible(page, '[data-testid="today-reading-card"]', '今日讀經卡已顯示');
+    await page.waitForFunction(() => document.querySelectorAll('#today-reading-list [data-today-reading-index]').length === 4, { timeout: 10000 });
+    const todayReadingRefs = (await page.locator('#today-reading-list [data-today-reading-index] strong').allTextContents())
+      .map((text) => text.trim())
+      .filter(Boolean);
+    if (todayReadingRefs.length !== 4) {
+      throw new Error(`今日讀經筆數錯誤：${todayReadingRefs.join(' / ')}`);
+    }
+    const todayReadingOriginalDay = (await page.locator('#today-reading-day').textContent() || '').trim();
+    await clickElement(page, '#today-reading-next-btn');
+    await page.waitForFunction((original) => document.querySelector('#today-reading-day')?.textContent.trim() !== original, todayReadingOriginalDay, { timeout: 10000 });
+    await clickElement(page, '#today-reading-prev-btn');
+    await page.waitForFunction((original) => document.querySelector('#today-reading-day')?.textContent.trim() === original, todayReadingOriginalDay, { timeout: 10000 });
+    await clickElement(page, '#today-reading-prev-btn');
+    await page.waitForFunction((original) => document.querySelector('#today-reading-day')?.textContent.trim() !== original, todayReadingOriginalDay, { timeout: 10000 });
+    await clickElement(page, '#today-reading-today-btn');
+    await page.waitForFunction((original) => document.querySelector('#today-reading-day')?.textContent.trim() === original, todayReadingOriginalDay, { timeout: 10000 });
+    await clickElement(page, '#today-reading-list [data-today-reading-index="0"]');
+    await expectVisible(page, '#today-reading-dialog:not(.hidden)', '單段經文閱讀視窗已開啟');
+    await expectVisible(page, '#today-reading-dialog-insert', '閱讀視窗顯示帶入這段');
+    await clickElement(page, '#today-reading-dialog [data-today-reading-close]');
+    await page.waitForFunction(() => document.querySelector('#today-reading-dialog')?.classList.contains('hidden'), { timeout: 10000 });
+    await clickElement(page, '#today-reading-note-btn');
+    await expectVisible(page, '#view-notes.view.active', '今日讀經可帶入寫札記頁');
+    const insertedReadingRefs = (await page.inputValue('#note-scripture')).split(/[;；]+/).map((text) => text.trim()).filter(Boolean);
+    if (insertedReadingRefs.length !== 4) {
+      throw new Error(`今日讀經帶入經文欄筆數錯誤：${insertedReadingRefs.join(' / ')}`);
+    }
+    const scripturePreviewVisible = await page.locator('#scripture-preview').isVisible();
+    if (scripturePreviewVisible) throw new Error('帶入今日讀經不應自動抓取經文全文');
+    const todayReadingToast = await page.locator('#toast').textContent();
+    if (!todayReadingToast || !todayReadingToast.includes('已帶入今日讀經')) {
+      throw new Error(`今日讀經帶入提示不正確：${todayReadingToast}`);
+    }
+    await clickElement(page, '.mobile-bottom-link[data-view="dashboard"]');
+    await expectVisible(page, '#view-dashboard.view.active', '今日讀經驗證後已返回 dashboard');
+    results.push(`今日讀經顯示 4 段、可切換日期、可開閱讀視窗並帶入經文欄：${todayReadingRefs.join(' / ')}`);
 
     const navTexts = await page.locator('.bottom-nav .nav-link span:last-child').allTextContents();
     results.push(`底部導覽文字：${navTexts.join(' / ')}`);

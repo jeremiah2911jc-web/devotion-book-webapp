@@ -26,6 +26,86 @@ const SCRIPTURE_FETCH_MESSAGES = Object.freeze({
   source: '經文資料暫時無法取得，請稍後再試。',
   unknown: '經文暫時無法載入，請稍後再試。',
 });
+const SCRIPTURE_REFERENCE_BOOK_MAP = Object.freeze({
+  創: 'Genesis',
+  太: 'Matthew',
+  以斯拉: 'Ezra',
+  徒: 'Acts',
+  尼希米: 'Nehemiah',
+  以斯帖: 'Esther',
+  可: 'Mark',
+  羅: 'Romans',
+  約伯記: 'Job',
+  路: 'Luke',
+  林前: '1 Corinthians',
+  哥林多前書: '1 Corinthians',
+  出: 'Exodus',
+  林後: '2 Corinthians',
+  哥林多後書: '2 Corinthians',
+  約: 'John',
+  箴言: 'Proverbs',
+  加拉太: 'Galatians',
+  以弗所: 'Ephesians',
+  腓利比: 'Philippians',
+  利未記: 'Leviticus',
+  歌羅西: 'Colossians',
+  詩篇: 'Psalms',
+  詩: 'Psalms',
+  帖前: '1 Thessalonians',
+  帖後: '2 Thessalonians',
+  傳道書: 'Ecclesiastes',
+  提前: '1 Timothy',
+  提後: '2 Timothy',
+  提多書: 'Titus',
+  民數記: 'Numbers',
+  腓利門: 'Philemon',
+  腓利門書: 'Philemon',
+  雅歌: 'Song of Solomon',
+  希伯來書: 'Hebrews',
+  賽: 'Isaiah',
+  雅各書: 'James',
+  彼前: '1 Peter',
+  彼後: '2 Peter',
+  約壹: '1 John',
+  約貳: '2 John',
+  約參: '3 John',
+  申命記: 'Deuteronomy',
+  申: 'Deuteronomy',
+  猶大書: 'Jude',
+  啟示錄: 'Revelation',
+  約書亞: 'Joshua',
+  耶利米: 'Jeremiah',
+  士師記: 'Judges',
+  路得記: 'Ruth',
+  撒上: '1 Samuel',
+  哀: 'Lamentations',
+  以西結: 'Ezekiel',
+  撒下: '2 Samuel',
+  王上: '1 Kings',
+  王下: '2 Kings',
+  但以理: 'Daniel',
+  何西阿: 'Hosea',
+  代上: '1 Chronicles',
+  約珥書: 'Joel',
+  阿摩司: 'Amos',
+  俄巴底亞: 'Obadiah',
+  約拿書: 'Jonah',
+  彌迦書: 'Micah',
+  代下: '2 Chronicles',
+  那鴻書: 'Nahum',
+  哈巴谷: 'Habakkuk',
+  西番雅: 'Zephaniah',
+  哈該書: 'Haggai',
+  撒迦利亞: 'Zechariah',
+  撒迦: 'Zechariah',
+  瑪拉基: 'Malachi',
+});
+const SCRIPTURE_REFERENCE_BOOK_KEYS = Object.keys(SCRIPTURE_REFERENCE_BOOK_MAP).sort((a, b) => b.length - a.length);
+const SCRIPTURE_REFERENCE_ENGLISH_BOOKS = Object.freeze(
+  [...new Set(Object.values(SCRIPTURE_REFERENCE_BOOK_MAP))]
+    .sort((a, b) => b.length - a.length)
+);
+const SCRIPTURE_ONE_CHAPTER_BOOKS = new Set(['Philemon', '2 John', '3 John', 'Jude', 'Obadiah']);
 
 const TEMPLATE_LABELS = {
   devotion: '靈修札記版',
@@ -902,11 +982,14 @@ const els = {
   goSnapshotsBtn: document.getElementById('go-snapshots-btn'),
   dashboardFlowCard: document.getElementById('dashboard-flow-card'),
   desktopBookshelfList: document.getElementById('desktop-bookshelf-list'),
-  todayDevotionDate: document.getElementById('today-devotion-date'),
-  todayDevotionScripture: document.getElementById('today-devotion-scripture'),
-  todayDevotionTheme: document.getElementById('today-devotion-theme'),
-  todayDevotionSummary: document.getElementById('today-devotion-summary'),
-  todayDevotionNoteBtn: document.getElementById('today-devotion-note-btn'),
+  todayReadingDate: document.getElementById('today-reading-date'),
+  todayReadingLabel: document.getElementById('today-reading-label'),
+  todayReadingDay: document.getElementById('today-reading-day'),
+  todayReadingList: document.getElementById('today-reading-list'),
+  todayReadingPrevBtn: document.getElementById('today-reading-prev-btn'),
+  todayReadingTodayBtn: document.getElementById('today-reading-today-btn'),
+  todayReadingNextBtn: document.getElementById('today-reading-next-btn'),
+  todayReadingNoteBtn: document.getElementById('today-reading-note-btn'),
   topbarForceSyncBtn: document.getElementById('topbar-force-sync-btn'),
   resetPasswordBtn: document.getElementById('reset-password-btn'),
   resendVerificationHint: document.getElementById('resend-verification-hint'),
@@ -1067,9 +1150,11 @@ const state = {
   lastPassiveCloudReloadAt: 0,
   loadAllDataPromise: null,
   lastCloudFullLoadAt: 0,
-  todayDevotions: null,
-  todayDevotionsStatus: 'idle',
-  todayDevotionsPromise: null,
+  mcheynePlan: null,
+  mcheynePlanStatus: 'idle',
+  mcheynePlanPromise: null,
+  mcheyneSelectedIndex: null,
+  todayReadingDialogAbortController: null,
   bookArrangementDirty: false,
   bookArrangementSaving: false,
   bookArrangementDrafts: {},
@@ -2206,7 +2291,7 @@ function ensureOperationManualUi() {
             <li><a href="#manual-export">十、匯出 EPUB</a></li>
             <li><a href="#manual-library">十一、書櫃</a></li>
             <li><a href="#manual-reader">十二、閱讀器</a></li>
-            <li><a href="#manual-today-devotion">十三、今日默想</a></li>
+            <li><a href="#manual-today-reading">十三、今日讀經</a></li>
             <li><a href="#manual-mobile">十四、手機 / 平板使用方式</a></li>
             <li><a href="#manual-install-app-section">十五、把靈修札記安裝成 App</a></li>
             <li><a href="#manual-account-data">十六、帳號設定與資料</a></li>
@@ -2231,7 +2316,7 @@ function ensureOperationManualUi() {
 
           <section id="manual-flow" class="manual-section">
             <h2>二、快速開始</h2>
-            <p>登入後可以先看「總覽」。總覽會把最近的正式札記、選稿編排、書櫃與今日默想集中在同一頁，適合快速判斷今天要繼續寫、閱讀，或整理成書。</p>
+            <p>登入後可以先看「總覽」。總覽會把最近的正式札記、選稿編排、書櫃與今日讀經集中在同一頁，適合快速判斷今天要繼續寫、閱讀，或整理成書。</p>
             <p>總覽上方的三張統計卡可以直接點擊：</p>
             <ul>
               <li>札記：進入「札記閱讀」，安靜重讀自己寫過的札記。</li>
@@ -2255,14 +2340,14 @@ function ensureOperationManualUi() {
 
           <section id="manual-dashboard" class="manual-section">
             <h2>三、總覽</h2>
-            <p>「總覽」是登入後的起點。這裡會顯示正式札記、書稿與書櫃統計，也會整理最近編輯的正式札記、最近編輯書冊、書櫃預覽與今日默想。尚未完成的草稿不會混入正式札記統計。</p>
+            <p>「總覽」是登入後的起點。這裡會顯示正式札記、書稿與書櫃統計，也會整理最近編輯的正式札記、最近編輯書冊、書櫃預覽與今日讀經。尚未完成的草稿不會混入正式札記統計。</p>
             <p>三張統計卡本身就是快速入口：</p>
             <ul>
               <li>「札記」卡：進入「札記閱讀」，適合回顧和查找自己已寫下的內容。</li>
               <li>「書稿」卡：進入「選稿編排」，繼續整理目前正在編排的內容。</li>
               <li>「書櫃」卡：進入「書櫃」，開啟已完成或已匯入的電子書。</li>
             </ul>
-            <p>若今日默想有內容，可以從卡片上的「寫成札記」開始記錄今天的回應；桌機與平板可使用側邊欄進入寫札記、札記閱讀、札記庫與選稿編排，手機可用底部導覽進入寫札記、札記庫與選稿編排，也可從總覽的「札記」卡進入札記閱讀。</p>
+            <p>今日讀經卡片會依本地日期顯示麥琴讀經進度的四段經文。你可以切換前一天、後一天或回到今天，點單段經文開啟小型閱讀視窗，也可以把當日四段經文引用帶入寫札記頁的經文欄；系統不會自動抓全文、建立札記或儲存草稿。</p>
             <p>手機版主要使用底部導覽切換總覽、禱告、寫札記、札記庫、選稿編排、書櫃與操作手冊；桌機版使用左側側欄，並在側欄底部帳號卡查看簡潔同步狀態與手動同步。總覽已不再放舊版同步長條或大型快捷卡。</p>
           </section>
 
@@ -2493,11 +2578,11 @@ function ensureOperationManualUi() {
             <p>若已安裝成 App，系統更新後會自動刷新預設聖經的閱讀快取。若仍看到舊排版，可先關閉 App 後重新開啟，或在出現更新提示時點「立即更新」。</p>
           </section>
 
-          <section id="manual-today-devotion" class="manual-section">
-            <h2>十三、今日默想</h2>
-            <p>「今日默想」會在總覽中顯示當日的靈修提醒或內容，幫助你從今天的經文與主題開始安靜思想。</p>
-            <p>若今日默想內容已載入，卡片會顯示主題、經文或摘要。你可以點「寫成札記」，把今天的領受帶到寫札記頁，繼續補上自己的觀察、禱告與回應。</p>
-            <p>若暫時看不到內容，可能是資料尚未載入或網路狀態不穩。可以稍候重新整理頁面，再回到總覽查看。</p>
+          <section id="manual-today-reading" class="manual-section">
+            <h2>十三、今日讀經</h2>
+            <p>「今日讀經」會在總覽中顯示麥琴年度讀經計畫。系統依你裝置的本地日期對應一年 365 天進度，每天顯示四段經文引用；閏年 2 月 29 日會安全對應到可用進度，不會中斷。</p>
+            <p>卡片上的「前一天」、「回到今天」與「後一天」可以循環切換讀經日。點任一段經文引用，會開啟小型閱讀視窗並使用現有抓取經文能力顯示經文全文；若資料來源暫時無法取得，畫面會顯示中文提示。</p>
+            <p>點「帶入寫札記」會切換到寫札記頁，將當日四段經文引用用分號放入經文欄。若欄位已有內容，系統會追加在後面；這個動作不會自動抓全文、不會建立札記，也不會儲存草稿。閱讀視窗裡也可以用「帶入這段」只帶入單段經文。</p>
           </section>
 
           <section id="manual-mobile" class="manual-section">
@@ -5148,7 +5233,16 @@ function bindEvents() {
     renderNoteReader();
     els.noteReaderSearch?.focus();
   });
-  els.todayDevotionNoteBtn?.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
+  els.todayReadingPrevBtn?.addEventListener('click', () => shiftTodayReadingDay(-1));
+  els.todayReadingTodayBtn?.addEventListener('click', () => resetTodayReadingToToday());
+  els.todayReadingNextBtn?.addEventListener('click', () => shiftTodayReadingDay(1));
+  els.todayReadingNoteBtn?.addEventListener('click', () => insertTodayReadingIntoNote());
+  els.todayReadingList?.addEventListener('click', event => {
+    const target = event.target instanceof Element ? event.target : event.target?.parentElement;
+    const button = target?.closest('[data-today-reading-index]');
+    if (!button) return;
+    openTodayReadingDialog(button.dataset.todayReadingIndex).catch(handleError);
+  });
   els.viewAllNotesBtn?.addEventListener('click', () => setView('notes'));
   els.newNoteBtn.addEventListener('click', clearNoteForm);
   els.newBookBtn.addEventListener('click', clearBookForm);
@@ -6640,7 +6734,7 @@ function syncDesktopDashboardStaticCopy() {
   document.querySelector('.home-recent-panel .panel-header h2')?.replaceChildren(document.createTextNode('最近編輯札記'));
   document.querySelector('#recent-books-heading')?.replaceChildren(document.createTextNode('最近編輯書冊'));
   document.querySelector('#dashboard-bookshelf-card .panel-header h2')?.replaceChildren(document.createTextNode('書櫃'));
-  document.querySelector('.home-today-devotion-card .panel-header h2')?.replaceChildren(document.createTextNode('今日默想'));
+  document.querySelector('.home-today-reading-card .panel-header h2')?.replaceChildren(document.createTextNode('今日讀經'));
   document.querySelector('.account-settings-sync-section .account-settings-label')?.replaceChildren(document.createTextNode('同步狀態'));
 }
 
@@ -6712,7 +6806,7 @@ function refreshUi() {
   renderPrayerWorkspace();
   renderRecentCards();
   renderDesktopBookshelfCard();
-  renderTodayDevotionCard();
+  renderTodayReadingCard();
   renderNotes();
   renderNoteReader();
   renderContentLibrary();
@@ -8117,102 +8211,256 @@ function renderDesktopBookshelfCard() {
   hydrateLibraryCoverImages(els.desktopBookshelfList);
 }
 
-function renderTodayDevotionCard() {
-  const today = new Date();
-  const todayLabel = new Intl.DateTimeFormat('zh-TW', {
+const MCHEYNE_MONTH_DAYS = Object.freeze([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]);
+
+function getTodayReadingDateLabel(date = new Date()) {
+  return new Intl.DateTimeFormat('zh-TW', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
     weekday: 'long',
-  }).format(today);
-  applyTodayDevotionFallback(todayLabel);
-  const devotion = getTodayDevotionByDate(today);
-  if (devotion) applyTodayDevotionContent(devotion, todayLabel);
-  if (els.todayDevotionNoteBtn) els.todayDevotionNoteBtn.textContent = '寫成札記';
-  ensureTodayDevotionsLoaded();
+  }).format(date);
 }
 
-function applyTodayDevotionFallback(todayLabel) {
-  if (els.todayDevotionDate) els.todayDevotionDate.textContent = todayLabel;
-  if (els.todayDevotionTheme) els.todayDevotionTheme.textContent = '尚未載入今日默想內容';
-  if (els.todayDevotionScripture) els.todayDevotionScripture.textContent = '今日默想';
-  if (els.todayDevotionSummary) els.todayDevotionSummary.textContent = '請先建立或匯入今日默想資料庫';
+function getMcheyneDayIndexForDate(date = new Date()) {
+  const monthIndex = Math.max(0, Math.min(11, date.getMonth()));
+  const maxDay = MCHEYNE_MONTH_DAYS[monthIndex] || 31;
+  const rawDay = date.getDate();
+  const safeDay = monthIndex === 1 && rawDay === 29 ? 28 : Math.max(1, Math.min(rawDay, maxDay));
+  const daysBeforeMonth = MCHEYNE_MONTH_DAYS.slice(0, monthIndex).reduce((sum, count) => sum + count, 0);
+  return Math.max(0, Math.min(364, daysBeforeMonth + safeDay - 1));
 }
 
-function applyTodayDevotionContent(devotion, todayLabel) {
-  const quote = sanitizeDisplayText(devotion?.quote, '');
-  const scripture = sanitizeDisplayText(devotion?.scripture, '');
-  const title = sanitizeDisplayText(devotion?.title, '');
-  const summary = sanitizeDisplayText(devotion?.summary, '');
-  if (els.todayDevotionDate) els.todayDevotionDate.textContent = todayLabel;
-  if (els.todayDevotionScripture) els.todayDevotionScripture.textContent = quote || scripture || '今日默想';
-  if (els.todayDevotionTheme) els.todayDevotionTheme.textContent = title || '尚未載入今日默想內容';
-  if (els.todayDevotionSummary) els.todayDevotionSummary.textContent = summary || '請先建立或匯入今日默想資料庫';
-}
-
-function getLocalDateKey(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function normalizeTodayDevotionRecord(entry) {
+function normalizeMcheynePlanRecord(entry) {
   if (!entry || typeof entry !== 'object') return null;
-  const date = String(entry.date || '').trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const month = Number.parseInt(entry.month, 10);
+  const day = Number.parseInt(entry.day, 10);
+  const readings = Array.isArray(entry.readings) ? entry.readings.map(reading => String(reading || '').trim()).filter(Boolean) : [];
+  const sourceReadings = Array.isArray(entry.sourceReadings)
+    ? entry.sourceReadings.map(reading => String(reading || '').trim()).filter(Boolean)
+    : readings;
+  const normalizedReadings = Array.isArray(entry.normalizedReadings)
+    ? entry.normalizedReadings.map(reading => String(reading || '').trim()).filter(Boolean)
+    : sourceReadings.map(normalizeScriptureReferenceForFetch);
+  if (!Number.isInteger(month) || !Number.isInteger(day) || readings.length !== 4) return null;
   return {
-    date,
-    month: Number.isFinite(entry.month) ? entry.month : Number.parseInt(entry.month, 10) || null,
-    weekday: String(entry.weekday || '').trim(),
-    title: String(entry.title || '').trim(),
-    scripture: String(entry.scripture || '').trim(),
-    quote: String(entry.quote || '').trim(),
-    summary: String(entry.summary || '').trim(),
-    theme: String(entry.theme || '').trim(),
-    specialDay: String(entry.specialDay || '').trim(),
-    specialGroup: String(entry.specialGroup || '').trim(),
-    isSpecial: entry.isSpecial === true,
-    cssTag: String(entry.cssTag || '').trim(),
-    signature: String(entry.signature || '').trim(),
-    sourceNote: String(entry.sourceNote || '').trim(),
+    month,
+    day,
+    dayOfYear: Number.parseInt(entry.dayOfYear, 10) || 0,
+    label: String(entry.label || '').trim() || `${month}/${day}`,
+    readings,
+    sourceReadings: sourceReadings.length === 4 ? sourceReadings : readings,
+    normalizedReadings: normalizedReadings.length === 4 ? normalizedReadings : sourceReadings.map(normalizeScriptureReferenceForFetch),
   };
 }
 
-function getTodayDevotionByDate(date = new Date()) {
-  if (!Array.isArray(state.todayDevotions)) return null;
-  const todayKey = getLocalDateKey(date);
-  return state.todayDevotions.find(entry => entry.date === todayKey) || null;
+function getSelectedMcheyneIndex() {
+  if (!Number.isInteger(state.mcheyneSelectedIndex)) {
+    state.mcheyneSelectedIndex = getMcheyneDayIndexForDate(new Date());
+  }
+  return ((state.mcheyneSelectedIndex % 365) + 365) % 365;
 }
 
-async function ensureTodayDevotionsLoaded() {
-  if (state.todayDevotionsStatus === 'loaded' || state.todayDevotionsStatus === 'loading') {
-    return state.todayDevotionsPromise;
+function getSelectedMcheyneEntry() {
+  const plan = Array.isArray(state.mcheynePlan) ? state.mcheynePlan : [];
+  return plan[getSelectedMcheyneIndex()] || null;
+}
+
+function renderTodayReadingCard() {
+  if (!els.todayReadingList) return;
+  const today = new Date();
+  const todayIndex = getMcheyneDayIndexForDate(today);
+  const selectedIndex = getSelectedMcheyneIndex();
+  const entry = getSelectedMcheyneEntry();
+  if (els.todayReadingDate) els.todayReadingDate.textContent = getTodayReadingDateLabel(today);
+  const isLoaded = state.mcheynePlanStatus === 'loaded' && !!entry;
+  [els.todayReadingPrevBtn, els.todayReadingTodayBtn, els.todayReadingNextBtn, els.todayReadingNoteBtn]
+    .forEach(button => button?.toggleAttribute('disabled', !isLoaded));
+
+  if (!isLoaded) {
+    if (els.todayReadingLabel) els.todayReadingLabel.textContent = state.mcheynePlanStatus === 'error' ? '讀經表載入失敗' : '正在載入';
+    if (els.todayReadingDay) els.todayReadingDay.textContent = '第 - 日';
+    els.todayReadingList.classList.add('is-loading');
+    els.todayReadingList.textContent = state.mcheynePlanStatus === 'error'
+      ? '目前無法載入麥琴讀經進度，請稍後再試。'
+      : '正在載入麥琴讀經進度。';
+    if (state.mcheynePlanStatus === 'idle') ensureMcheynePlanLoaded();
+    return;
   }
 
-  state.todayDevotionsStatus = 'loading';
-  state.todayDevotionsPromise = fetch('./data/today-devotions-2026.json')
+  if (els.todayReadingLabel) {
+    els.todayReadingLabel.textContent = selectedIndex === todayIndex ? `${entry.label}｜今天` : entry.label;
+  }
+  if (els.todayReadingDay) els.todayReadingDay.textContent = `第 ${selectedIndex + 1} 日`;
+  els.todayReadingList.classList.remove('is-loading');
+  const readings = entry.readings.map((reading, index) => `
+    <button class="today-reading-ref" type="button" data-today-reading-index="${index}">
+      <span class="today-reading-ref-kicker">${index < 2 ? '家庭' : '個人'} ${index + 1}</span>
+      <strong>${escapeHtml(reading)}</strong>
+    </button>
+  `).join('');
+  setElementHtmlIfChanged(els.todayReadingList, readings);
+  if (state.mcheynePlanStatus === 'idle') ensureMcheynePlanLoaded();
+}
+
+async function ensureMcheynePlanLoaded() {
+  if (state.mcheynePlanStatus === 'loaded' || state.mcheynePlanStatus === 'loading') {
+    return state.mcheynePlanPromise;
+  }
+
+  state.mcheynePlanStatus = 'loading';
+  state.mcheynePlanPromise = fetch('./assets/data/mcheyne-reading-plan.json')
     .then(response => {
-      if (!response.ok) throw new Error(`Failed to fetch today devotions: ${response.status}`);
+      if (!response.ok) throw new Error(`Failed to fetch MCheyne reading plan: ${response.status}`);
       return response.json();
     })
     .then(payload => {
-      if (!Array.isArray(payload)) throw new Error('Today devotions JSON must be an array.');
-      state.todayDevotions = payload
-        .map(normalizeTodayDevotionRecord)
-        .filter(Boolean);
-      state.todayDevotionsStatus = 'loaded';
-      refreshUi();
-      return state.todayDevotions;
+      if (!Array.isArray(payload)) throw new Error('MCheyne reading plan JSON must be an array.');
+      const plan = payload.map(normalizeMcheynePlanRecord).filter(Boolean);
+      if (plan.length !== 365 || plan.some(entry => entry.readings.length !== 4)) {
+        throw new Error('MCheyne reading plan must contain 365 days and 4 readings per day.');
+      }
+      state.mcheynePlan = plan.sort((a, b) => (a.dayOfYear || 0) - (b.dayOfYear || 0));
+      state.mcheynePlanStatus = 'loaded';
+      renderTodayReadingCard();
+      return state.mcheynePlan;
     })
     .catch(error => {
       console.error(error);
-      state.todayDevotions = [];
-      state.todayDevotionsStatus = 'error';
-      return state.todayDevotions;
+      state.mcheynePlan = [];
+      state.mcheynePlanStatus = 'error';
+      renderTodayReadingCard();
+      return state.mcheynePlan;
     });
 
-  return state.todayDevotionsPromise;
+  return state.mcheynePlanPromise;
+}
+
+function shiftTodayReadingDay(offset) {
+  state.mcheyneSelectedIndex = (getSelectedMcheyneIndex() + offset + 365) % 365;
+  renderTodayReadingCard();
+}
+
+function resetTodayReadingToToday() {
+  state.mcheyneSelectedIndex = getMcheyneDayIndexForDate(new Date());
+  renderTodayReadingCard();
+}
+
+function appendReferencesToNoteScripture(readings = []) {
+  const nextReadings = readings.map(reading => String(reading || '').trim()).filter(Boolean);
+  if (!nextReadings.length || !els.noteScripture) return false;
+  const current = els.noteScripture.value.trim();
+  const addition = nextReadings.join('；');
+  els.noteScripture.value = current ? `${current}；${addition}` : addition;
+  resetScripturePreview({ clearApplied: true });
+  return true;
+}
+
+function insertTodayReadingIntoNote() {
+  const entry = getSelectedMcheyneEntry();
+  if (!entry) return;
+  setView('notes');
+  if (appendReferencesToNoteScripture(entry.readings)) {
+    els.noteScripture?.focus();
+    showToast('已帶入今日讀經，可按「抓取經文」帶出全文。');
+  }
+}
+
+function insertSingleTodayReadingIntoNote(reading = '') {
+  setView('notes');
+  if (appendReferencesToNoteScripture([reading])) {
+    els.noteScripture?.focus();
+    showToast('已帶入今日讀經，可按「抓取經文」帶出全文。');
+  }
+}
+
+function getTodayReadingByIndex(index = 0) {
+  const entry = getSelectedMcheyneEntry();
+  const safeIndex = Number.parseInt(index, 10);
+  if (!entry || !Number.isInteger(safeIndex) || safeIndex < 0 || safeIndex > 3) return null;
+  return {
+    source: entry.readings[safeIndex],
+    normalized: entry.normalizedReadings?.[safeIndex] || normalizeScriptureReferenceForFetch(entry.readings[safeIndex]),
+    entry,
+  };
+}
+
+function ensureTodayReadingDialogUi() {
+  let modal = document.getElementById('today-reading-dialog');
+  if (modal) return modal;
+  modal = document.createElement('div');
+  modal.id = 'today-reading-dialog';
+  modal.className = 'modal today-reading-dialog hidden';
+  modal.setAttribute('aria-hidden', 'true');
+  modal.innerHTML = `
+    <div class="modal-backdrop" data-today-reading-close></div>
+    <div class="modal-card today-reading-dialog-card" role="dialog" aria-modal="true" aria-labelledby="today-reading-dialog-title">
+      <div class="panel-header today-reading-dialog-header">
+        <div>
+          <p id="today-reading-dialog-kicker" class="today-reading-dialog-kicker">今日讀經</p>
+          <h2 id="today-reading-dialog-title">經文閱讀</h2>
+        </div>
+        <button class="ghost-btn small" type="button" data-today-reading-close>關閉</button>
+      </div>
+      <div id="today-reading-dialog-body" class="today-reading-dialog-body" aria-live="polite"></div>
+      <button id="today-reading-dialog-insert" class="today-reading-inline-action" type="button">帶入這段</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  modal.querySelectorAll('[data-today-reading-close]').forEach(button => {
+    button.addEventListener('click', closeTodayReadingDialog);
+  });
+  modal.querySelector('#today-reading-dialog-insert')?.addEventListener('click', () => {
+    const reading = modal.dataset.sourceReading || '';
+    closeTodayReadingDialog();
+    insertSingleTodayReadingIntoNote(reading);
+  });
+  return modal;
+}
+
+function closeTodayReadingDialog() {
+  state.todayReadingDialogAbortController?.abort();
+  state.todayReadingDialogAbortController = null;
+  const modal = document.getElementById('today-reading-dialog');
+  modal?.classList.add('hidden');
+  modal?.setAttribute('aria-hidden', 'true');
+}
+
+async function openTodayReadingDialog(index = 0) {
+  const reading = getTodayReadingByIndex(index);
+  if (!reading) return;
+  const modal = ensureTodayReadingDialogUi();
+  const title = modal.querySelector('#today-reading-dialog-title');
+  const kicker = modal.querySelector('#today-reading-dialog-kicker');
+  const body = modal.querySelector('#today-reading-dialog-body');
+  modal.dataset.sourceReading = reading.source;
+  if (title) title.textContent = reading.source;
+  if (kicker) kicker.textContent = `${reading.entry.label}｜麥琴讀經進度`;
+  if (body) {
+    body.classList.remove('error-text');
+    body.textContent = '正在抓取經文…';
+  }
+  modal.classList.remove('hidden');
+  modal.setAttribute('aria-hidden', 'false');
+  state.todayReadingDialogAbortController?.abort();
+  const controller = new AbortController();
+  state.todayReadingDialogAbortController = controller;
+  try {
+    const result = await fetchScriptureReference(reading.normalized, controller.signal);
+    if (body) {
+      body.classList.remove('error-text');
+      body.innerHTML = `<article class="scripture-card"><h4>${escapeHtml(reading.source)}</h4><div class="scripture-text">${escapeHtml(result.text)}</div></article>`;
+    }
+  } catch (error) {
+    if (error.name === 'AbortError') return;
+    if (body) {
+      body.classList.add('error-text');
+      body.textContent = getScriptureFetchMessage(error);
+    }
+    if (!isScriptureExpectedError(error)) throw error;
+  } finally {
+    if (state.todayReadingDialogAbortController === controller) state.todayReadingDialogAbortController = null;
+  }
 }
 
 function normalizeScriptureReferences(raw = '') {
@@ -8272,6 +8520,23 @@ function normalizeScriptureText(text = '') {
   return String(text || '').replace(/\s+/g, ' ').trim();
 }
 
+function normalizeScriptureReferenceForFetch(reference = '') {
+  let normalized = String(reference || '')
+    .replace(/[：]/g, ':')
+    .replace(/[–—~～]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
+  for (const bookKey of SCRIPTURE_REFERENCE_BOOK_KEYS) {
+    if (normalized === bookKey || normalized.startsWith(`${bookKey} `) || new RegExp(`^${bookKey}\\d`).test(normalized)) {
+      const rest = normalized.slice(bookKey.length).trim();
+      const bookName = SCRIPTURE_REFERENCE_BOOK_MAP[bookKey];
+      const suffix = rest || (SCRIPTURE_ONE_CHAPTER_BOOKS.has(bookName) ? '1' : '');
+      return `${bookName} ${suffix}`.trim();
+    }
+  }
+  return normalized;
+}
+
 function createScriptureFetchError(type, reference = '', cause = null) {
   const error = new Error(SCRIPTURE_FETCH_MESSAGES[type] || SCRIPTURE_FETCH_MESSAGES.unknown);
   error.name = 'ScriptureFetchError';
@@ -8282,10 +8547,20 @@ function createScriptureFetchError(type, reference = '', cause = null) {
 }
 
 function isLikelyScriptureReference(reference = '') {
-  const normalized = String(reference || '').trim().replace(/\s+/g, '');
+  const normalized = normalizeScriptureReferenceForFetch(reference).trim().replace(/\s+/g, ' ');
   if (!normalized) return false;
-  if (!/[^\d:：,\-–—~～]/.test(normalized)) return false;
-  return /\d+\s*[:：]\s*\d+/.test(reference);
+  if (!/[^\d:：,\-–—~～\s]/.test(normalized)) return false;
+  const lowerNormalized = normalized.toLowerCase();
+  const matchedBook = SCRIPTURE_REFERENCE_ENGLISH_BOOKS.find(book => {
+    const lowerBook = book.toLowerCase();
+    return lowerNormalized === lowerBook || lowerNormalized.startsWith(`${lowerBook} `);
+  });
+  if (matchedBook) {
+    const rest = normalized.slice(matchedBook.length).trim();
+    return /\d/.test(rest);
+  }
+  const withoutLeadingBookNumber = normalized.replace(/^[1-3]\s+(?=[A-Za-z])/, '');
+  return /\d/.test(withoutLeadingBookNumber);
 }
 
 function getScriptureFetchMessage(error) {
@@ -8324,11 +8599,13 @@ function formatFetchedVerses(verses = []) {
 }
 
 async function fetchScriptureReference(reference, signal) {
-  if (state.scriptureCache.has(reference)) return state.scriptureCache.get(reference);
+  const queryReference = normalizeScriptureReferenceForFetch(reference);
+  const cacheKey = `${reference}::${queryReference}`;
+  if (state.scriptureCache.has(cacheKey)) return state.scriptureCache.get(cacheKey);
   if (!isLikelyScriptureReference(reference)) {
     throw createScriptureFetchError('invalidReference', reference);
   }
-  const url = `https://bible-api.com/${encodeURIComponent(reference)}?translation=cuv`;
+  const url = `https://bible-api.com/${encodeURIComponent(queryReference)}?translation=cuv`;
   const timeoutController = new AbortController();
   const timeoutId = setTimeout(() => timeoutController.abort(), SCRIPTURE_FETCH_TIMEOUT_MS);
   const abortHandler = () => timeoutController.abort();
@@ -8359,10 +8636,11 @@ async function fetchScriptureReference(reference, signal) {
     throw createScriptureFetchError('notFound', reference);
   }
   const result = {
-    query: data.reference || reference,
+    query: reference,
+    normalizedQuery: data.reference || queryReference,
     text: formatFetchedVerses(data.verses) || normalizeScriptureText(data.text),
   };
-  state.scriptureCache.set(reference, result);
+  state.scriptureCache.set(cacheKey, result);
   return result;
 }
 

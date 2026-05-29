@@ -6162,7 +6162,183 @@ body:not(.auth-locked) .main {
 }
 
 .dashboard-side-column {
-  display: none;
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.home-today-reading-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.today-reading-copy {
+  display: grid;
+  gap: 14px;
+}
+
+.today-reading-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.today-reading-subtitle {
+  margin: 4px 0 0;
+  color: #667b78;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.today-reading-date {
+  margin-left: auto;
+  text-align: right;
+  color: #667b78;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.today-reading-progress-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(241, 248, 247, 0.9);
+  border: 1px solid rgba(191, 211, 208, 0.58);
+}
+
+.today-reading-label {
+  color: #21484c;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.today-reading-day {
+  flex: 0 0 auto;
+  color: #6f817d;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.today-reading-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  color: #496468;
+}
+
+.today-reading-list.is-loading {
+  display: block;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px dashed rgba(191, 211, 208, 0.7);
+  line-height: 1.65;
+}
+
+.today-reading-ref {
+  width: 100%;
+  min-height: 68px;
+  display: grid;
+  gap: 6px;
+  justify-items: start;
+  align-content: center;
+  padding: 11px;
+  border: 1px solid rgba(191, 211, 208, 0.72);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #21484c;
+  text-align: left;
+  cursor: pointer;
+}
+
+.today-reading-ref:hover,
+.today-reading-ref:focus-visible {
+  border-color: rgba(90, 166, 166, 0.68);
+  box-shadow: 0 10px 22px rgba(90, 166, 166, 0.12);
+}
+
+.today-reading-ref-kicker {
+  color: #89a09b;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.today-reading-ref strong {
+  font-size: 15px;
+  line-height: 1.4;
+  color: #21484c;
+}
+
+.today-reading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.today-reading-actions > button {
+  flex: 1 1 auto;
+  min-width: 92px;
+}
+
+.today-reading-dialog-card {
+  width: min(92vw, 560px);
+  max-height: min(78vh, 680px);
+  overflow: auto;
+}
+
+.today-reading-dialog-header {
+  align-items: flex-start;
+}
+
+.today-reading-dialog-kicker {
+  margin: 0 0 4px;
+  color: #6f817d;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.today-reading-dialog-body {
+  display: grid;
+  gap: 12px;
+  line-height: 1.75;
+}
+
+.today-reading-inline-action {
+  margin-top: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary-dark);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (max-width: 520px) {
+  .today-reading-list {
+    grid-template-columns: 1fr;
+  }
+
+  .today-reading-progress-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .today-reading-date {
+    width: 100%;
+    margin-left: 0;
+    text-align: left;
+  }
 }
 
 .sidebar-brand,
@@ -7177,6 +7353,7 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
   .dashboard-side-column {
     display: grid;
     gap: 20px;
+    margin-top: 0;
   }
 
   .desktop-only-panel {
@@ -7185,14 +7362,14 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
 
   .home-recent-panel,
   .home-bookshelf-card,
-  .home-today-devotion-card {
+  .home-today-reading-card {
     margin-top: 0;
     padding: 20px 22px;
     border-radius: 24px;
   }
 
   .home-bookshelf-card,
-  .home-today-devotion-card {
+  .home-today-reading-card {
     min-height: 224px;
   }
 
@@ -7299,13 +7476,13 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
     margin: 0;
   }
 
-  .today-devotion-copy {
+  .today-reading-copy {
     display: grid;
     gap: 14px;
     margin-bottom: 16px;
   }
 
-  .today-devotion-header {
+  .today-reading-header {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
@@ -7313,7 +7490,14 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
     flex-wrap: wrap;
   }
 
-  .today-devotion-date {
+  .today-reading-subtitle {
+    margin: 4px 0 0;
+    color: #667b78;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .today-reading-date {
     margin-left: auto;
     text-align: right;
     color: #667b78;
@@ -7321,44 +7505,91 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
     line-height: 1.5;
   }
 
-  .today-devotion-section {
-    display: grid;
-    gap: 6px;
+  .today-reading-progress-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: rgba(241, 248, 247, 0.9);
+    border: 1px solid rgba(191, 211, 208, 0.58);
   }
 
-  .today-devotion-label {
-    color: #89a09b;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
-
-  .today-devotion-theme {
-    margin: 0;
+  .today-reading-label {
     color: #21484c;
-    font-size: 22px;
+    font-size: 18px;
     font-weight: 700;
     line-height: 1.35;
   }
 
-  .today-devotion-quote {
-    margin: 0;
-    color: #7a5630;
-    font-size: 16px;
-    font-weight: 600;
-    line-height: 1.65;
+  .today-reading-day {
+    flex: 0 0 auto;
+    color: #6f817d;
+    font-size: 13px;
+    line-height: 1.4;
   }
 
-  .today-devotion-summary {
-    margin: 0;
-    line-height: 1.7;
+  .today-reading-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
     color: #496468;
   }
 
-  .today-devotion-section + .today-devotion-section {
-    padding-top: 2px;
-    border-top: 1px solid rgba(191, 211, 208, 0.4);
+  .today-reading-list.is-loading {
+    display: block;
+    padding: 14px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px dashed rgba(191, 211, 208, 0.7);
+    line-height: 1.65;
+  }
+
+  .today-reading-ref {
+    width: 100%;
+    min-height: 72px;
+    display: grid;
+    gap: 6px;
+    justify-items: start;
+    align-content: center;
+    padding: 12px;
+    border: 1px solid rgba(191, 211, 208, 0.72);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.78);
+    color: #21484c;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .today-reading-ref:hover,
+  .today-reading-ref:focus-visible {
+    border-color: rgba(90, 166, 166, 0.68);
+    box-shadow: 0 10px 22px rgba(90, 166, 166, 0.12);
+  }
+
+  .today-reading-ref-kicker {
+    color: #89a09b;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  .today-reading-ref strong {
+    font-size: 15px;
+    line-height: 1.4;
+    color: #21484c;
+  }
+
+  .today-reading-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .today-reading-actions > button {
+    flex: 1 1 auto;
+    min-width: 92px;
   }
 
   .account-summary-card {

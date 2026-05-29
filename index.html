@@ -307,26 +307,27 @@
                 </div>
               </section>
 
-              <section class="panel home-today-devotion-card desktop-only-panel">
-                <div class="panel-header today-devotion-header">
-                  <h2>今日默想</h2>
-                  <span id="today-devotion-date" class="caption today-devotion-date">今日日期</span>
+              <section class="panel home-today-reading-card" data-testid="today-reading-card">
+                <div class="panel-header today-reading-header">
+                  <div>
+                    <h2>今日讀經</h2>
+                    <p class="today-reading-subtitle">麥琴讀經進度</p>
+                  </div>
+                  <span id="today-reading-date" class="caption today-reading-date">今日日期</span>
                 </div>
-                <div class="today-devotion-copy">
-                  <div class="today-devotion-section">
-                    <span class="today-devotion-label">主題</span>
-                    <h3 id="today-devotion-theme" class="today-devotion-theme">尚未載入今日默想內容</h3>
+                <div class="today-reading-copy">
+                  <div class="today-reading-progress-row">
+                    <span id="today-reading-label" class="today-reading-label">載入中</span>
+                    <span id="today-reading-day" class="today-reading-day">第 - 日</span>
                   </div>
-                  <div class="today-devotion-section">
-                    <span class="today-devotion-label">金句</span>
-                    <p id="today-devotion-scripture" class="today-devotion-quote">今日默想</p>
-                  </div>
-                  <div class="today-devotion-section">
-                    <span class="today-devotion-label">默想</span>
-                    <p id="today-devotion-summary" class="today-devotion-summary">請先建立或匯入今日默想資料庫</p>
-                  </div>
+                  <div id="today-reading-list" class="today-reading-list" aria-label="今日讀經經文">正在載入麥琴讀經進度。</div>
                 </div>
-                <button id="today-devotion-note-btn" class="ghost-btn" type="button">寫成札記</button>
+                <div class="today-reading-actions" role="group" aria-label="今日讀經操作">
+                  <button id="today-reading-prev-btn" class="ghost-btn small" type="button">前一天</button>
+                  <button id="today-reading-today-btn" class="ghost-btn small" type="button">回到今天</button>
+                  <button id="today-reading-next-btn" class="ghost-btn small" type="button">後一天</button>
+                  <button id="today-reading-note-btn" class="secondary-btn small" type="button">帶入寫札記</button>
+                </div>
               </section>
             </aside>
           </section>
