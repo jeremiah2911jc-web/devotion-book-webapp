@@ -390,9 +390,9 @@ input:focus, textarea:focus, select:focus {
     "hero"
     "main"
     "prayer"
+    "organize"
     "actions"
-    "drafts"
-    "organize";
+    "drafts";
   gap: 14px;
   align-items: start;
 }
@@ -476,9 +476,9 @@ input:focus, textarea:focus, select:focus {
     grid-template-areas:
       "hero hero"
       "main prayer"
+      "main organize"
       "main actions"
-      "main drafts"
-      "main organize";
+      "main drafts";
     column-gap: 22px;
     row-gap: 12px;
   }
@@ -795,9 +795,9 @@ input:focus, textarea:focus, select:focus {
       "hero"
       "main"
       "prayer"
+      "organize"
       "actions"
-      "drafts"
-      "organize";
+      "drafts";
     gap: 14px;
   }
   .note-writing-hero {
