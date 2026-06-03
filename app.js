@@ -8682,23 +8682,48 @@ function renderNotes() {
     return;
   }
   els.notesList.className = 'list-stack';
-  els.notesList.innerHTML = filtered.map(note => `
-    <article class="card" data-testid="note-library-card" data-note-id="${escapeHtml(String(note.id || ''))}">
-      <div class="row gap-sm wrap">
-        ${isDraftNote(note) ? '<span class="badge note-status-badge is-draft">草稿</span>' : '<span class="badge note-status-badge is-published">正式札記</span>'}
-      </div>
-      <h3>${escapeHtml(getNoteDisplayTitle(note))}</h3>
+  els.notesList.innerHTML = filtered.map(note => {
+    const noteId = escapeHtml(String(note.id || ''));
+    const updatedAt = escapeHtml(formatDate(note.updated_at || note.created_at));
+    const title = escapeHtml(getNoteDisplayTitle(note));
+    const meta = `
       <div class="card-meta">
         <span>${escapeHtml(note.scripture_reference || '未填經文')}</span>
         <span>${escapeHtml(note.category || '未分類')}</span>
-        <span>${formatDate(note.updated_at)}</span>
+        <span>${updatedAt}</span>
       </div>
-      <div>${escapeHtml(getNotePreviewText(note, 140))}</div>
-      <div class="card-actions">
-        <button class="secondary-btn" data-edit-note="${note.id}" data-testid="note-library-edit">編輯</button>
-      </div>
-    </article>
-  `).join('');
+    `;
+    const preview = `<div>${escapeHtml(getNotePreviewText(note, 140))}</div>`;
+    if (isDraftNote(note)) {
+      return `
+        <article class="card note-library-draft-card" data-testid="note-library-card" data-note-id="${noteId}">
+          <div class="note-draft-card-top">
+            <button class="secondary-btn note-draft-primary-action" data-edit-note="${noteId}" data-testid="note-library-edit">繼續編輯</button>
+            <span class="caption note-draft-updated">最近更新：${updatedAt}</span>
+          </div>
+          <div class="note-draft-title-row">
+            <h3>${title}</h3>
+            <span class="caption note-draft-status-text">狀態：草稿</span>
+          </div>
+          ${meta}
+          ${preview}
+        </article>
+      `;
+    }
+    return `
+      <article class="card" data-testid="note-library-card" data-note-id="${noteId}">
+        <div class="row gap-sm wrap">
+          <span class="badge note-status-badge is-published">正式札記</span>
+        </div>
+        <h3>${title}</h3>
+        ${meta}
+        ${preview}
+        <div class="card-actions">
+          <button class="secondary-btn" data-edit-note="${noteId}" data-testid="note-library-edit">編輯</button>
+        </div>
+      </article>
+    `;
+  }).join('');
   els.notesList.querySelectorAll('[data-edit-note]').forEach(btn => btn.addEventListener('click', () => populateNoteForm(btn.dataset.editNote)));
   updateChapterSourceOptions();
   renderNoteDraftsList();
@@ -8714,23 +8739,25 @@ function renderNoteDraftsList() {
   }
   els.noteDraftsList.className = 'list-stack note-drafts-list';
   els.noteDraftsList.innerHTML = drafts.map(note => {
+    const noteId = escapeHtml(String(note.id));
     const title = getNoteDisplayTitle(note);
     const excerpt = getNotePreviewText(note, 120);
+    const updatedAt = escapeHtml(formatDate(note.updated_at || note.created_at));
     return `
-      <article class="card note-draft-card" data-testid="note-draft-card" data-note-id="${escapeHtml(String(note.id))}">
-        <div class="row gap-sm wrap">
-          <span class="badge note-status-badge is-draft">草稿</span>
-          <span class="caption">最近更新：${escapeHtml(formatDate(note.updated_at || note.created_at))}</span>
+      <article class="card note-draft-card" data-testid="note-draft-card" data-note-id="${noteId}">
+        <div class="note-draft-card-top">
+          <button class="secondary-btn note-draft-primary-action" type="button" data-edit-note-draft="${noteId}" data-testid="note-draft-edit">繼續編輯</button>
+          <span class="caption note-draft-updated">最近更新：${updatedAt}</span>
         </div>
-        <h3>${escapeHtml(title)}</h3>
+        <div class="note-draft-title-row">
+          <h3>${escapeHtml(title)}</h3>
+          <span class="caption note-draft-status-text">狀態：草稿</span>
+        </div>
         <div class="card-meta">
           <span>${escapeHtml(note.scripture_reference || '未填經文')}</span>
           <span>${escapeHtml(note.category || '未分類')}</span>
         </div>
         <div>${escapeHtml(excerpt || '尚無內容預覽')}</div>
-        <div class="card-actions">
-          <button class="secondary-btn" type="button" data-edit-note-draft="${escapeHtml(String(note.id))}" data-testid="note-draft-edit">繼續編輯</button>
-        </div>
       </article>
     `;
   }).join('');

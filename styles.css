@@ -388,11 +388,11 @@ input:focus, textarea:focus, select:focus {
   display: grid;
   grid-template-areas:
     "hero"
+    "drafts"
     "main"
     "prayer"
     "organize"
-    "actions"
-    "drafts";
+    "actions";
   gap: 14px;
   align-items: start;
 }
@@ -475,10 +475,10 @@ input:focus, textarea:focus, select:focus {
     grid-template-columns: minmax(0, 1fr) minmax(300px, 340px);
     grid-template-areas:
       "hero hero"
+      "main drafts"
       "main prayer"
       "main organize"
-      "main actions"
-      "main drafts";
+      "main actions";
     column-gap: 22px;
     row-gap: 12px;
   }
@@ -727,23 +727,65 @@ input:focus, textarea:focus, select:focus {
   font-size: 16px;
 }
 .note-draft-card {
+  display: grid;
+  gap: 6px;
   padding: 10px 11px;
   border-radius: 13px;
   overflow-wrap: anywhere;
 }
+.note-draft-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.note-draft-primary-action {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.note-draft-updated {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #6f7f7c;
+  line-height: 1.35;
+  text-align: right;
+}
+.note-draft-title-row {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
 .note-draft-card h3 {
-  margin-bottom: 4px;
+  margin: 0;
   font-size: 15px;
+  line-height: 1.25;
+}
+.note-draft-status-text {
+  color: #8a6426;
+  line-height: 1.35;
 }
 .note-draft-card .card-meta {
   gap: 6px;
-  margin-bottom: 4px;
+  margin-bottom: 0;
   font-size: 12px;
 }
-.note-draft-card .card-actions {
-  margin-top: 8px;
-}
 .note-draft-card .secondary-btn {
+  min-height: 34px;
+  padding: 7px 11px;
+  border-radius: 11px;
+}
+.note-library-draft-card {
+  display: grid;
+  gap: 8px;
+}
+.note-library-draft-card h3 {
+  margin: 0;
+}
+.note-library-draft-card .card-meta {
+  margin-bottom: 0;
+}
+.note-library-draft-card .secondary-btn {
   min-height: 34px;
   padding: 7px 11px;
   border-radius: 11px;
@@ -793,11 +835,11 @@ input:focus, textarea:focus, select:focus {
   .note-writing-form {
     grid-template-areas:
       "hero"
+      "drafts"
       "main"
       "prayer"
       "organize"
-      "actions"
-      "drafts";
+      "actions";
     gap: 14px;
   }
   .note-writing-hero {
