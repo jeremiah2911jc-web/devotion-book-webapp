@@ -487,21 +487,30 @@
 
       <section id="view-note-reader" class="view note-reader-view" data-testid="note-reader-view">
         <div class="note-reader-shell">
-          <section class="panel note-reader-list-panel">
+          <section class="panel note-reader-search-panel" aria-labelledby="note-reader-search-title">
             <div class="panel-header note-reader-header">
               <div>
-                <h2>札記閱讀</h2>
-                <p class="caption">選擇一篇札記，安靜重讀自己的領受與整理。</p>
+                <h2 id="note-reader-search-title">搜尋札記</h2>
+                <p class="caption">依標題、經文、分類或標籤找到想閱讀的札記。</p>
               </div>
-              <button id="note-reader-write-btn" class="ghost-btn" type="button">寫一篇札記</button>
             </div>
             <div class="note-reader-tools" aria-label="札記閱讀搜尋與篩選">
               <div class="note-reader-search-row">
                 <label class="note-reader-search-field">
-                  <span class="caption">搜尋札記</span>
+                  <span class="caption">關鍵字</span>
                   <input id="note-reader-search" class="search" type="search" placeholder="搜尋標題、經文、分類、標籤、摘要、內容" autocomplete="off" data-testid="note-reader-search" />
                 </label>
-                <button id="note-reader-clear-search" class="ghost-btn small" type="button" data-testid="note-reader-clear-search">清除搜尋</button>
+                <label class="compact-control note-reader-filter-control">
+                  <span class="caption">搜尋範圍</span>
+                  <select id="note-reader-search-scope" data-testid="note-reader-search-scope">
+                    <option value="all">全部範圍</option>
+                    <option value="title">標題</option>
+                    <option value="scripture">經文</option>
+                    <option value="content">內容</option>
+                    <option value="category">分類</option>
+                    <option value="tags">標籤</option>
+                  </select>
+                </label>
               </div>
               <div class="note-reader-filter-grid">
                 <label class="compact-control note-reader-filter-control">
@@ -522,15 +531,24 @@
                 </label>
               </div>
               <div class="note-reader-result-row">
-                <strong id="note-reader-result-count">顯示 0 / 0 篇</strong>
-                <button id="note-reader-reset-filters" class="ghost-btn small" type="button">重設篩選</button>
+                <button id="note-reader-search-btn" class="primary-btn" type="button" data-testid="note-reader-search-submit">搜尋</button>
+                <div class="note-reader-filter-actions">
+                  <button id="note-reader-clear-search" class="ghost-btn small" type="button" data-testid="note-reader-clear-search">清除搜尋</button>
+                  <button id="note-reader-reset-filters" class="ghost-btn small" type="button">重設篩選</button>
+                </div>
               </div>
+              <p id="note-reader-result-count" class="caption note-reader-filter-status">共 0 篇正式札記</p>
             </div>
-            <div id="note-reader-list" class="note-reader-list" data-testid="note-reader-list"></div>
           </section>
 
-          <section id="note-reader-detail" class="panel note-reader-detail-panel" aria-live="polite" data-testid="note-reader-detail">
-            <div class="note-reader-detail-placeholder">請先從列表選擇一篇札記。</div>
+          <section class="panel note-reader-recent-panel" aria-labelledby="note-reader-recent-title">
+            <div class="panel-header note-reader-recent-header">
+              <div>
+                <h2 id="note-reader-recent-title">最近編輯</h2>
+                <p class="caption">最近整理過的札記，可以直接點選閱讀。</p>
+              </div>
+            </div>
+            <div id="note-reader-list" class="note-reader-recent-list" data-testid="note-reader-list"></div>
           </section>
         </div>
       </section>
@@ -989,6 +1007,35 @@
         <button id="close-note-preview-btn" class="ghost-btn small" type="button" data-testid="note-preview-close">關閉</button>
       </div>
       <article id="note-preview" class="note-preview-article" data-testid="note-preview"></article>
+    </div>
+  </div>
+
+  <div id="note-reader-search-modal" class="modal note-reader-modal hidden" aria-hidden="true" data-testid="note-reader-search-modal">
+    <div id="note-reader-search-backdrop" class="modal-backdrop"></div>
+    <div class="modal-card note-reader-modal-card note-reader-search-modal-card" role="dialog" aria-modal="true" aria-labelledby="note-reader-search-modal-title">
+      <div class="panel-header note-reader-modal-header">
+        <div>
+          <h2 id="note-reader-search-modal-title">搜尋結果</h2>
+          <p class="modal-intro">選擇一篇札記開始閱讀。</p>
+        </div>
+        <button id="note-reader-search-modal-close" class="ghost-btn small" type="button" data-testid="note-reader-search-modal-close">關閉</button>
+      </div>
+      <div id="note-reader-search-results" class="note-reader-search-results" data-testid="note-reader-search-results"></div>
+      <div class="note-reader-modal-actions">
+        <button id="note-reader-search-modal-clear" class="ghost-btn" type="button" data-testid="note-reader-search-modal-clear">清除搜尋</button>
+        <button id="note-reader-search-modal-close-bottom" class="secondary-btn" type="button">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="note-reader-reading-modal" class="modal note-reader-modal hidden" aria-hidden="true" data-testid="note-reader-reading-modal">
+    <div id="note-reader-reading-backdrop" class="modal-backdrop"></div>
+    <div class="modal-card note-reader-modal-card note-reader-reading-modal-card" role="dialog" aria-modal="true" aria-labelledby="note-reader-reading-title">
+      <article id="note-reader-reading-content" class="note-preview-article note-reader-modal-article" data-testid="note-reader-reading-content"></article>
+      <div class="note-reader-modal-actions note-reader-reading-actions">
+        <button id="note-reader-reading-close" class="ghost-btn" type="button" data-testid="note-reader-reading-close">關閉</button>
+        <button id="note-reader-reading-edit" class="secondary-btn" type="button" data-testid="note-reader-reading-edit">編輯這篇札記</button>
+      </div>
     </div>
   </div>
 

@@ -9271,59 +9271,55 @@ body:not(.auth-locked)[data-current-view="notes"] .topbar {
 
 .note-reader-shell {
   display: grid;
-  grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
   gap: 18px;
   align-items: start;
 }
 
-.note-reader-list-panel,
-.note-reader-detail-panel {
+.note-reader-search-panel,
+.note-reader-recent-panel {
   min-width: 0;
   overflow-x: hidden;
 }
 
-.note-reader-list-panel {
+.note-reader-search-panel {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 14px;
-  max-height: calc(100vh - 130px);
+  gap: 12px;
+  position: sticky;
+  top: 18px;
 }
 
 .note-reader-header {
   align-items: flex-start;
-  gap: 14px;
+  gap: 12px;
 }
 
 .note-reader-header h2,
-.note-reader-header .caption {
+.note-reader-header .caption,
+.note-reader-recent-header h2,
+.note-reader-recent-header .caption {
   margin: 0;
 }
 
-.note-reader-header .caption {
+.note-reader-header .caption,
+.note-reader-recent-header .caption {
   margin-top: 6px;
   line-height: 1.65;
 }
 
 .note-reader-tools {
   display: grid;
-  gap: 12px;
+  gap: 11px;
   padding: 12px;
   border: 1px solid rgba(191, 211, 208, 0.68);
-  border-radius: 16px;
+  border-radius: 14px;
   background: rgba(247, 252, 251, 0.84);
-}
-
-.note-reader-mobile-calendar,
-.note-reader-card-date,
-.note-reader-card-scripture {
-  display: none;
 }
 
 .note-reader-search-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1.15fr) minmax(118px, 0.85fr);
   gap: 10px;
-  align-items: end;
 }
 
 .note-reader-search-field {
@@ -9338,8 +9334,12 @@ body:not(.auth-locked)[data-current-view="notes"] .topbar {
 
 .note-reader-filter-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.note-reader-filter-grid .note-reader-filter-control:last-child {
+  grid-column: 1 / -1;
 }
 
 .note-reader-filter-control {
@@ -9347,60 +9347,70 @@ body:not(.auth-locked)[data-current-view="notes"] .topbar {
   min-width: 0;
 }
 
-.note-reader-filter-control select {
+.note-reader-filter-control select,
+.note-reader-filter-control input {
   width: 100%;
 }
 
 .note-reader-result-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
   gap: 10px;
   color: #315b60;
 }
 
-.note-reader-result-row strong {
-  font-size: 0.94rem;
+.note-reader-result-row .primary-btn {
+  width: 100%;
 }
 
-.note-reader-list {
+.note-reader-filter-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.note-reader-filter-status {
+  margin: 0;
+}
+
+.note-reader-recent-list,
+.note-reader-search-results {
   display: grid;
   gap: 12px;
   min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-right: 4px;
 }
 
-.note-reader-list-card {
-  width: 100%;
+.note-reader-note-card {
   min-width: 0;
-  padding: 16px;
+  padding: 15px;
   border: 1px solid rgba(191, 211, 208, 0.82);
-  border-radius: 16px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.92);
   color: #2c4549;
-  font: inherit;
-  text-align: left;
   display: grid;
-  gap: 10px;
-  cursor: pointer;
+  gap: 11px;
 }
 
-.note-reader-list-card:hover,
-.note-reader-list-card:focus-visible,
-.note-reader-list-card.active {
+.note-reader-note-card:hover {
   border-color: rgba(63, 152, 144, 0.48);
   background: rgba(247, 252, 251, 0.98);
   box-shadow: 0 10px 22px rgba(33, 72, 76, 0.1);
 }
 
-.note-reader-list-card:focus-visible {
-  outline: 3px solid rgba(63, 152, 144, 0.24);
-  outline-offset: 2px;
+.note-reader-note-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
 }
 
-.note-reader-card-title {
+.note-reader-note-copy {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.note-reader-note-card h3 {
+  margin: 0;
   color: #21484c;
   font-size: 1.05rem;
   font-weight: 800;
@@ -9408,34 +9418,69 @@ body:not(.auth-locked)[data-current-view="notes"] .topbar {
   overflow-wrap: anywhere;
 }
 
+.note-reader-scripture {
+  margin: 0;
+  color: #557174;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.note-reader-read-btn {
+  min-height: 36px;
+  padding: 7px 12px;
+  white-space: nowrap;
+}
+
 .note-reader-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 7px;
   min-width: 0;
 }
 
 .note-reader-meta span {
   max-width: 100%;
-  padding: 6px 10px;
+  padding: 5px 9px;
   border: 1px solid rgba(191, 211, 208, 0.72);
   border-radius: 999px;
   background: rgba(236, 245, 244, 0.88);
   color: #557174;
-  font-size: 0.86rem;
+  font-size: 0.82rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
 
 .note-reader-summary {
+  margin: 0;
   color: #4d6265;
-  line-height: 1.75;
+  font-size: 0.94rem;
+  line-height: 1.68;
   overflow-wrap: anywhere;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .note-reader-empty-state {
   display: grid;
   gap: 14px;
+  justify-items: center;
+  padding: 28px 18px;
+  text-align: center;
+  color: var(--muted);
+  line-height: 1.75;
+}
+
+.note-reader-empty-state strong {
+  color: #21484c;
+  font-size: 1.05rem;
+}
+
+.note-reader-empty-state p {
+  max-width: 46ch;
+  margin: 0;
 }
 
 .note-reader-empty-actions {
@@ -9443,462 +9488,188 @@ body:not(.auth-locked)[data-current-view="notes"] .topbar {
   justify-content: center;
 }
 
-.note-reader-detail-panel {
-  position: sticky;
-  top: 18px;
-  max-height: calc(100vh - 130px);
-  overflow-y: auto;
+body.note-reader-modal-open {
+  overflow: hidden;
+}
+
+.note-reader-modal {
+  padding: 22px;
+  overflow: hidden;
   overscroll-behavior: contain;
 }
 
-.note-reader-detail-placeholder {
-  min-height: 260px;
-  display: grid;
-  place-items: center;
-  gap: 14px;
-  color: var(--muted);
-  text-align: center;
-  line-height: 1.75;
+.note-reader-modal-card {
+  width: min(900px, calc(100vw - 44px));
+  max-width: min(900px, calc(100vw - 44px));
+  max-height: calc(100dvh - 44px);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+  text-align: left;
 }
 
-.note-reader-article {
-  max-width: 820px;
-  margin: 0 auto;
+.note-reader-search-modal-card {
+  width: min(760px, calc(100vw - 44px));
+  max-width: min(760px, calc(100vw - 44px));
 }
 
-.note-reader-detail-actions {
+.note-reader-modal-header {
+  margin-bottom: 0;
+  align-items: start;
+  flex-shrink: 0;
+}
+
+.note-reader-modal-header .modal-intro {
+  margin: 7px 0 0;
+  line-height: 1.65;
+}
+
+.note-reader-search-results {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+  overscroll-behavior: contain;
+}
+
+.note-reader-search-results .note-reader-note-card {
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.note-reader-modal-article {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
+  overscroll-behavior: contain;
+}
+
+.note-reader-modal-title-block h2 {
+  margin: 0;
+  color: #21484c;
+  font-size: clamp(1.8rem, 3vw, 2.65rem);
+  line-height: 1.22;
+  overflow-wrap: anywhere;
+}
+
+.note-reader-modal-actions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 10px;
-  margin-bottom: 4px;
+  flex-shrink: 0;
+  padding-top: 12px;
+  border-top: 1px solid rgba(191, 211, 208, 0.68);
+  background: rgba(255, 255, 255, 0.96);
 }
 
-.note-reader-article .note-preview-header h4 {
-  font-size: clamp(1.7rem, 3vw, 2.55rem);
+.note-reader-reading-actions {
+  justify-content: space-between;
 }
 
-.note-reader-article .note-preview-content {
-  font-size: 1.06rem;
-  line-height: 1.92;
-}
-
-@media (max-width: 900px) {
-  body:not(.auth-locked)[data-current-view="note-reader"] .topbar {
-    display: none;
-  }
-
-  body:not(.auth-locked)[data-current-view="note-reader"] .main {
-    padding-top: 12px;
-  }
-
-  .note-reader-view {
-    margin: 0 -4px 0;
-  }
-
+@media (max-width: 960px) {
   .note-reader-shell {
     grid-template-columns: minmax(0, 1fr);
-    gap: 0;
   }
 
-  .note-reader-list-panel {
-    grid-template-rows: auto auto minmax(0, auto);
-    max-height: none;
-    padding: 18px 14px calc(110px + env(safe-area-inset-bottom, 0px));
-    border: 0;
-    border-radius: 0;
-    background:
-      linear-gradient(180deg, rgba(252, 246, 235, 0.96) 0%, rgba(247, 251, 249, 0.96) 45%, rgba(255, 255, 255, 0.94) 100%);
-    box-shadow: none;
-  }
-
-  .note-reader-header {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 8px 12px;
-    padding: 12px 14px;
-    border: 1px solid rgba(221, 204, 173, 0.62);
-    border-radius: 20px;
-    background:
-      linear-gradient(135deg, rgba(255, 252, 245, 0.98), rgba(239, 248, 245, 0.92));
-    box-shadow: 0 14px 34px rgba(88, 70, 45, 0.08);
-  }
-
-  .note-reader-header::before {
-    content: "DEVOTION";
-    grid-column: 1 / -1;
-    color: #8f7240;
-    font-size: 0.74rem;
-    font-weight: 800;
-    letter-spacing: 0.22em;
-  }
-
-  .note-reader-header > div {
-    min-width: 0;
-  }
-
-  .note-reader-header h2 {
-    color: #21484c;
-    font-size: 1.28rem;
-    letter-spacing: 0;
-  }
-
-  .note-reader-header .caption {
-    max-width: none;
-    margin-top: 0;
-    color: #6a7b77;
-    font-size: 0.86rem;
-    line-height: 1.48;
-  }
-
-  .note-reader-header .ghost-btn {
-    justify-self: end;
-    min-height: 36px;
-    padding: 7px 12px;
-    white-space: nowrap;
-  }
-
-  .note-reader-mobile-calendar {
-    display: grid;
-    gap: 12px;
-    padding: 14px 0 2px;
-  }
-
-  .note-reader-mobile-month-row {
-    display: flex;
-    align-items: end;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 0 2px;
-  }
-
-  .note-reader-mobile-month-row strong {
-    color: #2f4f4e;
-    font-size: 1.02rem;
-    letter-spacing: 0;
-  }
-
-  .note-reader-mobile-kicker {
-    color: #9a7a42;
-    font-size: 0.74rem;
-    font-weight: 800;
-    letter-spacing: 0.18em;
-  }
-
-  .note-reader-week-controls {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-  }
-
-  .note-reader-week-nav {
-    width: 34px;
-    height: 34px;
-    border: 1px solid rgba(191, 211, 208, 0.9);
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.82);
-    color: #496468;
-    font: inherit;
-    font-size: 1.18rem;
-    font-weight: 800;
-    line-height: 1;
-    display: grid;
-    place-items: center;
-    box-shadow: 0 8px 18px rgba(42, 72, 72, 0.05);
-  }
-
-  .note-reader-week-nav:focus-visible {
-    outline: 3px solid rgba(89, 132, 126, 0.25);
-    outline-offset: 2px;
-  }
-
-  .note-reader-date-strip {
-    display: flex;
-    gap: 9px;
-    min-width: 0;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    padding: 0 2px 8px;
-    scrollbar-width: none;
-  }
-
-  .note-reader-date-strip::-webkit-scrollbar {
-    display: none;
-  }
-
-  .note-reader-date-chip {
-    flex: 0 0 auto;
-    min-width: 58px;
-    min-height: 78px;
-    padding: 8px 9px;
-    border: 1px solid rgba(203, 214, 204, 0.82);
-    border-radius: 22px;
-    background: rgba(255, 255, 255, 0.86);
-    color: #60736f;
-    font: inherit;
-    display: grid;
-    justify-items: center;
-    align-content: center;
-    gap: 4px;
-    box-shadow: 0 8px 20px rgba(42, 72, 72, 0.06);
-  }
-
-  .note-reader-date-chip.active {
-    border-color: rgba(77, 115, 88, 0.48);
-    background: #f9f3e9;
-    color: #314d42;
-    box-shadow: 0 12px 24px rgba(65, 92, 72, 0.14);
-  }
-
-  .note-reader-date-chip.is-empty {
-    color: #8b9b97;
-    opacity: 0.72;
-  }
-
-  .note-reader-date-chip.is-empty:not(.active) {
-    background: rgba(255, 255, 255, 0.58);
-    box-shadow: none;
-  }
-
-  .note-reader-date-chip.is-today:not(.active) {
-    border-color: rgba(143, 114, 64, 0.45);
-    color: #6d5b37;
-  }
-
-  .note-reader-date-weekday,
-  .note-reader-date-count {
-    font-size: 0.72rem;
-    line-height: 1.2;
-  }
-
-  .note-reader-date-day {
-    width: 32px;
-    height: 32px;
-    border-radius: 999px;
-    display: grid;
-    place-items: center;
-    color: inherit;
-    font-size: 1rem;
-    font-weight: 800;
-    line-height: 1;
-  }
-
-  .note-reader-date-chip.active .note-reader-date-day {
-    background: #536d58;
-    color: #fffaf0;
-  }
-
-  .note-reader-date-chip.is-empty:not(.active) .note-reader-date-day {
-    color: #7a8c88;
-  }
-
-  .note-reader-date-chip-all {
-    min-width: 68px;
-  }
-
-  .note-reader-date-chip-all .note-reader-date-day {
-    width: auto;
-    padding: 0 7px;
-    font-size: 0.86rem;
-  }
-
-  .note-reader-date-empty {
-    align-self: center;
-    color: #788b87;
-    font-size: 0.88rem;
-    white-space: nowrap;
-  }
-
-  .note-reader-tools {
-    gap: 10px;
-    padding: 12px;
-    border-color: rgba(216, 203, 181, 0.72);
-    border-radius: 20px;
-    background: rgba(255, 255, 255, 0.78);
-    box-shadow: 0 10px 24px rgba(74, 93, 88, 0.06);
-  }
-
-  .note-reader-list {
-    max-height: none;
-    overflow: visible;
-    padding: 4px 0 0;
-    gap: 12px;
-  }
-
-  .note-reader-list-card {
-    min-height: 142px;
-    padding: 16px;
-    border-color: rgba(224, 211, 187, 0.84);
-    border-radius: 20px;
-    background:
-      linear-gradient(135deg, rgba(255, 253, 247, 0.98), rgba(246, 242, 232, 0.94));
-    box-shadow: 0 16px 34px rgba(83, 71, 50, 0.08);
-  }
-
-  .note-reader-list-card.active,
-  .note-reader-list-card:hover,
-  .note-reader-list-card:focus-visible {
-    border-color: rgba(83, 109, 88, 0.46);
-    background:
-      linear-gradient(135deg, rgba(255, 253, 247, 1), rgba(240, 248, 244, 0.96));
-    box-shadow: 0 18px 34px rgba(63, 85, 73, 0.12);
-  }
-
-  .note-reader-card-date,
-  .note-reader-card-scripture {
-    display: block;
-  }
-
-  .note-reader-card-date {
-    color: #8f7240;
-    font-size: 0.86rem;
-    font-weight: 800;
-  }
-
-  .note-reader-card-title {
-    font-size: 1.05rem;
-    line-height: 1.42;
-  }
-
-  .note-reader-card-scripture {
-    color: #5f746f;
-    font-size: 0.9rem;
-    line-height: 1.45;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 1;
-    -webkit-box-orient: vertical;
-  }
-
-  .note-reader-list-card .note-reader-meta {
-    display: none;
-  }
-
-  .note-reader-summary {
-    display: -webkit-box;
-    color: #667670;
-    font-size: 0.93rem;
-    line-height: 1.62;
-    overflow: hidden;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-  }
-
-  .note-reader-detail-panel {
+  .note-reader-search-panel {
     position: static;
-    max-height: none;
-    overflow-y: visible;
-    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
-    border: 0;
-    border-radius: 0;
-    background: #fffdf7;
-    box-shadow: none;
-  }
-
-  .note-reader-view:not(.note-reader-detail-open) .note-reader-detail-panel {
-    display: none;
-  }
-
-  .note-reader-view.note-reader-detail-open .note-reader-list-panel {
-    display: none;
-  }
-
-  .note-reader-view.note-reader-detail-open .note-reader-detail-panel {
-    display: block;
-    padding-top: 10px;
-  }
-
-  .note-reader-detail-placeholder {
-    min-height: 150px;
-  }
-
-  .note-reader-article {
-    max-width: none;
-  }
-
-  .note-reader-detail-actions {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    padding: 10px 0;
-    background: linear-gradient(180deg, #fffdf7 0%, rgba(255, 253, 247, 0.92) 78%, rgba(255, 253, 247, 0) 100%);
   }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 760px) {
+  .note-reader-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .note-reader-header > div,
+  .note-reader-recent-header > div {
+    min-width: 0;
+  }
+
+  .note-reader-header h2,
+  .note-reader-recent-header h2 {
+    font-size: 1.24rem;
+  }
+
+  .note-reader-header .caption,
+  .note-reader-recent-header .caption {
+    font-size: 0.9rem;
+    line-height: 1.52;
+  }
+
   .note-reader-tools {
+    gap: 9px;
     padding: 10px;
   }
 
-  .note-reader-search-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
+  .note-reader-search-row,
   .note-reader-filter-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
   }
 
-  .note-reader-filter-grid .note-reader-filter-control:last-child {
-    grid-column: 1 / -1;
+  .note-reader-search-field {
+    gap: 4px;
   }
 
-  .note-reader-result-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
+  .note-reader-note-main {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .note-reader-search-row .ghost-btn,
-  .note-reader-result-row .ghost-btn {
-    width: auto;
+  .note-reader-read-btn {
+    justify-self: start;
   }
 
-  .note-reader-header {
-    align-items: stretch;
+  .note-reader-modal {
+    align-items: flex-end;
+    padding: 10px;
   }
 
-  .note-reader-header,
-  .note-reader-detail-actions {
-    flex-direction: column;
+  .note-reader-modal-card,
+  .note-reader-search-modal-card {
+    width: calc(100vw - 20px);
+    max-width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+    padding: 18px;
+    border-radius: 20px 20px 18px 18px;
   }
 
-  .note-reader-header .ghost-btn,
-  .note-reader-detail-actions .ghost-btn,
-  .note-reader-detail-actions .secondary-btn,
-  .note-reader-empty-actions .primary-btn {
-    width: 100%;
+  .note-reader-reading-modal-card {
+    max-height: calc(100dvh - 16px);
   }
 
-  .note-reader-header .ghost-btn {
-    width: auto;
-    justify-self: end;
-  }
-
-  .note-reader-list-card {
-    padding: 14px;
-  }
-
-  .note-reader-meta {
-    gap: 6px;
-  }
-
-  .note-reader-meta span {
-    font-size: 0.82rem;
+  .note-reader-modal-title-block h2 {
+    font-size: 1.7rem;
   }
 }
 
 @media (max-width: 479px) {
-  .note-reader-search-row,
-  .note-reader-result-row,
-  .note-reader-filter-grid {
-    grid-template-columns: minmax(0, 1fr);
+  .note-reader-modal-actions > button,
+  .note-reader-empty-actions .primary-btn {
+    width: 100%;
   }
 
-  .note-reader-search-row .ghost-btn,
-  .note-reader-result-row .ghost-btn {
-    width: 100%;
+  .note-reader-search-row {
+    grid-template-columns: minmax(0, 1fr) minmax(106px, 0.72fr);
+  }
+
+  .note-reader-filter-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .note-reader-note-card {
+    padding: 14px;
+  }
+
+  .note-reader-modal-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

@@ -777,15 +777,27 @@ const els = {
   recentNotes: document.getElementById('recent-notes'),
   recentBooks: document.getElementById('recent-books'),
   noteReaderSearch: document.getElementById('note-reader-search'),
+  noteReaderSearchScope: document.getElementById('note-reader-search-scope'),
   noteReaderClearSearch: document.getElementById('note-reader-clear-search'),
   noteReaderCategory: document.getElementById('note-reader-category'),
   noteReaderTag: document.getElementById('note-reader-tag'),
   noteReaderSort: document.getElementById('note-reader-sort'),
   noteReaderResultCount: document.getElementById('note-reader-result-count'),
   noteReaderResetFilters: document.getElementById('note-reader-reset-filters'),
+  noteReaderSearchBtn: document.getElementById('note-reader-search-btn'),
   noteReaderList: document.getElementById('note-reader-list'),
-  noteReaderDetail: document.getElementById('note-reader-detail'),
   noteReaderWriteBtn: document.getElementById('note-reader-write-btn'),
+  noteReaderSearchModal: document.getElementById('note-reader-search-modal'),
+  noteReaderSearchBackdrop: document.getElementById('note-reader-search-backdrop'),
+  noteReaderSearchModalClose: document.getElementById('note-reader-search-modal-close'),
+  noteReaderSearchModalCloseBottom: document.getElementById('note-reader-search-modal-close-bottom'),
+  noteReaderSearchModalClear: document.getElementById('note-reader-search-modal-clear'),
+  noteReaderSearchResults: document.getElementById('note-reader-search-results'),
+  noteReaderReadingModal: document.getElementById('note-reader-reading-modal'),
+  noteReaderReadingBackdrop: document.getElementById('note-reader-reading-backdrop'),
+  noteReaderReadingContent: document.getElementById('note-reader-reading-content'),
+  noteReaderReadingClose: document.getElementById('note-reader-reading-close'),
+  noteReaderReadingEdit: document.getElementById('note-reader-reading-edit'),
   noteForm: document.getElementById('note-form'),
   noteId: document.getElementById('note-id'),
   noteTitle: document.getElementById('note-title'),
@@ -1126,17 +1138,6 @@ function showAuthVerificationPanel(mode = 'signup', email = '') {
   updateResendVerificationButtons();
 }
 
-function ensureNoteReaderMobileUi() {
-  const panel = document.querySelector('#view-note-reader .note-reader-list-panel');
-  const tools = panel?.querySelector('.note-reader-tools');
-  if (!panel || !tools || document.getElementById('note-reader-mobile-calendar')) return;
-  const calendar = document.createElement('section');
-  calendar.id = 'note-reader-mobile-calendar';
-  calendar.className = 'note-reader-mobile-calendar';
-  calendar.setAttribute('aria-label', '札記日期篩選');
-  tools.insertAdjacentElement('beforebegin', calendar);
-}
-
 const state = {
   config: buildMergedConfig(loadJson(STORAGE_KEYS.config, null)),
   supabase: null,
@@ -1155,9 +1156,11 @@ const state = {
   noteSearch: '',
   noteReaderSelectedId: null,
   noteReaderSearch: '',
+  noteReaderSearchScope: 'all',
   noteReaderCategory: '',
   noteReaderTag: '',
   noteReaderSort: 'updated-desc',
+  noteReaderReadingId: '',
   noteReaderDate: '',
   noteReaderWeekDate: '',
   noteReaderListScrollTop: 0,
@@ -5188,7 +5191,6 @@ async function bootstrap() {
   initVercelWebAnalytics();
   removeRetiredInterfaceElements();
   ensureAuthVerificationResendUi();
-  ensureNoteReaderMobileUi();
   ensureContentLibraryUi();
   ensureOperationManualUi();
   ensureBookDraftWorkspaceUi();
@@ -5324,7 +5326,7 @@ function bindEvents() {
     const target = event.target instanceof Element ? event.target : null;
     const openNoteButton = target?.closest('[data-prayer-open-note]');
     if (openNoteButton) {
-      openNoteReaderNote(openNoteButton.dataset.prayerOpenNote || '', { scrollToDetail: true });
+      openNoteReaderNote(openNoteButton.dataset.prayerOpenNote || '');
     }
   });
   els.prayerFilterButtons.forEach(button => button.addEventListener('click', () => {
@@ -5337,7 +5339,7 @@ function bindEvents() {
     const target = event.target instanceof Element ? event.target : null;
     const openNoteButton = target?.closest('[data-prayer-open-note]');
     if (openNoteButton) {
-      openNoteReaderNote(openNoteButton.dataset.prayerOpenNote || '', { scrollToDetail: true });
+      openNoteReaderNote(openNoteButton.dataset.prayerOpenNote || '');
       return;
     }
     const reviewButton = target?.closest('[data-review-prayer]');
@@ -5354,24 +5356,66 @@ function bindEvents() {
   els.noteReaderWriteBtn?.addEventListener('click', () => { setView('notes'); clearNoteForm(); });
   els.noteReaderSearch?.addEventListener('input', event => {
     state.noteReaderSearch = String(event.target.value || '');
-    renderNoteReader({ preserveScroll: true });
+    syncNoteReaderControls();
+  });
+  els.noteReaderSearch?.addEventListener('keydown', event => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    openNoteReaderSearchModal();
+  });
+  els.noteReaderSearchScope?.addEventListener('change', event => {
+    state.noteReaderSearchScope = String(event.target.value || 'all');
+    syncNoteReaderControls();
   });
   els.noteReaderClearSearch?.addEventListener('click', () => {
     state.noteReaderSearch = '';
-    renderNoteReader();
+    syncNoteReaderControls();
+    if (!els.noteReaderSearchModal?.classList.contains('hidden')) renderNoteReaderSearchResults();
     els.noteReaderSearch?.focus();
+  });
+  els.noteReaderSearchBtn?.addEventListener('click', () => openNoteReaderSearchModal());
+  els.noteReaderSearchModalClose?.addEventListener('click', closeNoteReaderSearchModal);
+  els.noteReaderSearchModalCloseBottom?.addEventListener('click', closeNoteReaderSearchModal);
+  els.noteReaderSearchBackdrop?.addEventListener('click', closeNoteReaderSearchModal);
+  els.noteReaderSearchModalClear?.addEventListener('click', () => {
+    resetNoteReaderFilters();
+    renderNoteReader();
+    renderNoteReaderSearchResults();
+    els.noteReaderSearch?.focus();
+  });
+  els.noteReaderSearchResults?.addEventListener('click', event => {
+    const target = event.target instanceof Element ? event.target : null;
+    const readButton = target?.closest('[data-note-reader-open]');
+    if (readButton) {
+      openNoteReaderNote(readButton.dataset.noteReaderOpen || '');
+      return;
+    }
+    const resetButton = target?.closest('[data-note-reader-reset-empty]');
+    if (resetButton) {
+      resetNoteReaderFilters();
+      renderNoteReader();
+      renderNoteReaderSearchResults();
+      els.noteReaderSearch?.focus();
+    }
+  });
+  els.noteReaderReadingClose?.addEventListener('click', closeNoteReaderReadingModal);
+  els.noteReaderReadingBackdrop?.addEventListener('click', closeNoteReaderReadingModal);
+  els.noteReaderReadingEdit?.addEventListener('click', () => {
+    const noteId = state.noteReaderReadingId;
+    closeNoteReaderReadingModal();
+    if (noteId) populateNoteForm(noteId);
   });
   els.noteReaderCategory?.addEventListener('change', event => {
     state.noteReaderCategory = String(event.target.value || '');
-    renderNoteReader();
+    syncNoteReaderControls();
   });
   els.noteReaderTag?.addEventListener('change', event => {
     state.noteReaderTag = String(event.target.value || '');
-    renderNoteReader();
+    syncNoteReaderControls();
   });
   els.noteReaderSort?.addEventListener('change', event => {
     state.noteReaderSort = String(event.target.value || 'updated-desc');
-    renderNoteReader();
+    syncNoteReaderControls();
   });
   els.noteReaderResetFilters?.addEventListener('click', () => {
     resetNoteReaderFilters();
@@ -5474,6 +5518,8 @@ function bindEvents() {
     if (event.key === 'Escape' && !els.authInlinePanel?.classList.contains('hidden')) closeAuthInline();
     if (event.key === 'Escape' && !els.accountSettingsModal?.classList.contains('hidden')) closeAccountSettingsModal();
     if (event.key === 'Escape' && !els.notePreviewModal?.classList.contains('hidden')) closeNotePreview();
+    if (event.key === 'Escape' && !els.noteReaderReadingModal?.classList.contains('hidden')) closeNoteReaderReadingModal();
+    if (event.key === 'Escape' && !els.noteReaderSearchModal?.classList.contains('hidden')) closeNoteReaderSearchModal();
     if (event.key === 'Escape' && state.bookDraftModalOpen) closeBookDraftModal();
   });
   document.addEventListener('visibilitychange', () => {
@@ -6995,7 +7041,6 @@ function refreshUi() {
   const accountEmail = String(state.currentUser?.email || state.currentUser?.id || '').trim() || '未顯示帳號';
   syncDesktopDashboardStaticCopy();
   ensureWritingWorkspaceUi();
-  ensureNoteReaderMobileUi();
   ensureOperationManualUi();
   ensureBookDraftWorkspaceUi();
   renderMobileBottomNav();
@@ -9089,8 +9134,8 @@ const NOTE_READER_UNCATEGORIZED_VALUE = '__uncategorized__';
 
 function getNoteReaderDateValue(note, field = 'updated') {
   const raw = field === 'created'
-    ? (note?.created_at || note?.updated_at || '')
-    : (note?.updated_at || note?.created_at || '');
+    ? (note?.created_at || note?.createdAt || note?.updated_at || note?.updatedAt || '')
+    : (note?.updated_at || note?.updatedAt || note?.created_at || note?.createdAt || '');
   const time = new Date(raw || 0).getTime();
   return Number.isNaN(time) ? 0 : time;
 }
@@ -9116,16 +9161,24 @@ function getNoteReaderFilterOptions() {
   };
 }
 
-function getNoteReaderSearchHaystack(note) {
-  return [
-    note.title,
-    note.scripture_reference,
-    note.category,
-    getNoteTagList(note).join(' '),
-    note.summary,
-    stripScriptureMarkers(note.content || ''),
-    getRenderableNotePrayer(note),
-  ].join(' ').toLowerCase();
+function normalizeNoteReaderSearchScope(scope = 'all') {
+  const value = String(scope || 'all').trim();
+  return ['all', 'title', 'scripture', 'content', 'category', 'tags'].includes(value) ? value : 'all';
+}
+
+function getNoteReaderSearchHaystack(note, scope = state.noteReaderSearchScope) {
+  const normalizedScope = normalizeNoteReaderSearchScope(scope);
+  const fields = {
+    title: [note.title],
+    scripture: [note.scripture_reference],
+    content: [note.summary, stripScriptureMarkers(note.content || ''), resolveNotePrayerText(note)],
+    category: [note.category],
+    tags: [getNoteTagList(note).join(' ')],
+  };
+  const values = normalizedScope === 'all'
+    ? [...fields.title, ...fields.scripture, ...fields.content, ...fields.category, ...fields.tags]
+    : fields[normalizedScope];
+  return values.join(' ').toLowerCase();
 }
 
 function compareNotesForReading(left, right) {
@@ -9137,219 +9190,78 @@ function compareNotesForReading(left, right) {
     const rightTitle = sanitizeDisplayText(right.title, '未命名札記');
     return leftTitle.localeCompare(rightTitle, 'zh-Hant');
   }
-  return getNoteReaderDateValue(right, 'updated') - getNoteReaderDateValue(left, 'updated');
+  return compareNotesByRecentUpdate(left, right);
 }
 
-function getNoteReaderDate(note) {
-  const raw = note?.updated_at || note?.created_at || '';
-  if (!raw) return null;
-  const date = new Date(raw);
-  return Number.isNaN(date.getTime()) ? null : date;
+function compareNotesByRecentUpdate(left, right) {
+  const updatedDelta = getNoteReaderDateValue(right, 'updated') - getNoteReaderDateValue(left, 'updated');
+  if (updatedDelta) return updatedDelta;
+  const createdDelta = getNoteReaderDateValue(right, 'created') - getNoteReaderDateValue(left, 'created');
+  if (createdDelta) return createdDelta;
+  return getNoteDisplayTitle(left).localeCompare(getNoteDisplayTitle(right), 'zh-Hant');
 }
 
-function formatNoteReaderDateKey(date) {
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+function getNoteReaderRawDate(note = {}, field = 'updated') {
+  return field === 'created'
+    ? (note.created_at || note.createdAt || note.updated_at || note.updatedAt || '')
+    : (note.updated_at || note.updatedAt || note.created_at || note.createdAt || '');
 }
 
-function getNoteReaderDateKey(note) {
-  return formatNoteReaderDateKey(getNoteReaderDate(note));
+function getNoteReaderUpdatedDate(note = {}) {
+  return getNoteReaderRawDate(note, 'updated');
 }
 
-function getNoteReaderDateOptions() {
-  const dateMap = new Map();
-  getPublishedNotes().forEach(note => {
-    const date = getNoteReaderDate(note);
-    const key = formatNoteReaderDateKey(date);
-    if (!key) return;
-    const existing = dateMap.get(key);
-    if (existing) {
-      existing.count += 1;
-      return;
-    }
-    dateMap.set(key, { key, date, count: 1 });
-  });
-  return [...dateMap.values()].sort((left, right) => right.date - left.date);
-}
-
-function parseNoteReaderDateKey(key = '') {
-  const match = String(key || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return null;
-  const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function syncNoteReaderDateState() {
-  if (!state.noteReaderDate) return;
-  if (!parseNoteReaderDateKey(state.noteReaderDate)) state.noteReaderDate = '';
-}
-
-function formatNoteReaderMonthLabel(date) {
-  const base = date instanceof Date && !Number.isNaN(date.getTime()) ? date : new Date();
-  return `${base.getFullYear()}年${base.getMonth() + 1}月`;
-}
-
-function formatNoteReaderMobileDate(note) {
-  const date = getNoteReaderDate(note);
-  if (!date) return '未記錄日期';
-  return `${date.getMonth() + 1}月${date.getDate()}日`;
-}
-
-function getNoteReaderWeekdayLabel(date) {
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat('zh-TW', { weekday: 'short' }).format(date);
-}
-
-function addNoteReaderDays(date, days = 0) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-}
-
-function getNoteReaderWeekStartDate(date = new Date()) {
-  const base = date instanceof Date && !Number.isNaN(date.getTime()) ? new Date(date) : new Date();
-  base.setHours(0, 0, 0, 0);
-  const day = base.getDay();
-  const offset = day === 0 ? -6 : 1 - day;
-  return addNoteReaderDays(base, offset);
-}
-
-function getNoteReaderWeekBaseDate() {
-  return parseNoteReaderDateKey(state.noteReaderWeekDate)
-    || parseNoteReaderDateKey(state.noteReaderDate)
-    || new Date();
-}
-
-function getNoteReaderDateCountMap() {
-  return new Map(getNoteReaderDateOptions().map(option => [option.key, option.count]));
-}
-
-function getNoteReaderDateCount(key = '') {
-  return getNoteReaderDateCountMap().get(key) || 0;
-}
-
-function isSameCalendarDay(left, right) {
-  return left instanceof Date
-    && right instanceof Date
-    && !Number.isNaN(left.getTime())
-    && !Number.isNaN(right.getTime())
-    && left.getFullYear() === right.getFullYear()
-    && left.getMonth() === right.getMonth()
-    && left.getDate() === right.getDate();
-}
-
-function getNoteReaderWeekDateOptions(weekBaseDate = getNoteReaderWeekBaseDate()) {
-  const weekStart = getNoteReaderWeekStartDate(weekBaseDate);
-  const countMap = getNoteReaderDateCountMap();
-  return Array.from({ length: 7 }, (_, index) => {
-    const date = addNoteReaderDays(weekStart, index);
-    const key = formatNoteReaderDateKey(date);
-    const count = countMap.get(key) || 0;
-    return {
-      key,
-      date,
-      count,
-      hasNotes: count > 0,
-      isToday: isSameCalendarDay(date, new Date()),
-    };
-  });
-}
-
-function formatNoteReaderWeekLabel(weekOptions = []) {
-  const first = weekOptions[0]?.date || getNoteReaderWeekStartDate();
-  const last = weekOptions[weekOptions.length - 1]?.date || addNoteReaderDays(first, 6);
-  const firstLabel = formatNoteReaderMonthLabel(first);
-  const lastLabel = formatNoteReaderMonthLabel(last);
-  if (firstLabel === lastLabel) return firstLabel;
-  if (first.getFullYear() === last.getFullYear()) {
-    return `${first.getFullYear()}年${first.getMonth() + 1}月 / ${last.getMonth() + 1}月`;
-  }
-  return `${firstLabel} / ${lastLabel}`;
-}
-
-function formatNoteReaderSelectedDateLabel(key = state.noteReaderDate) {
-  const date = parseNoteReaderDateKey(key);
-  if (!date) return '';
-  return `${date.getMonth() + 1}月${date.getDate()}日`;
-}
-
-function renderNoteReaderMobileCalendar() {
-  const target = document.getElementById('note-reader-mobile-calendar');
-  if (!target) return;
-  const weekOptions = getNoteReaderWeekDateOptions();
-  const allActive = !state.noteReaderDate;
-  const totalCount = getPublishedNotes().length;
-  const dateChips = weekOptions.map(option => {
-    const active = option.key === state.noteReaderDate;
-    const classes = [
-      'note-reader-date-chip',
-      active ? 'active' : '',
-      option.hasNotes ? 'has-notes' : 'is-empty',
-      option.isToday ? 'is-today' : '',
-    ].filter(Boolean).join(' ');
-    return `
-      <button class="${classes}" type="button" data-note-reader-date="${escapeHtml(option.key)}" aria-pressed="${active ? 'true' : 'false'}">
-        <span class="note-reader-date-weekday">${escapeHtml(getNoteReaderWeekdayLabel(option.date))}</span>
-        <span class="note-reader-date-day">${option.date.getDate()}</span>
-        <span class="note-reader-date-count">${option.count ? `${option.count}篇` : '無札記'}</span>
-      </button>
-    `;
-  }).join('');
-  target.innerHTML = `
-    <div class="note-reader-mobile-month-row">
-      <span class="note-reader-mobile-kicker">DEVOTION</span>
-      <div class="note-reader-week-controls" aria-label="切換札記週別">
-        <button class="note-reader-week-nav" type="button" data-note-reader-week="-1" aria-label="上一週">‹</button>
-        <strong>${escapeHtml(formatNoteReaderWeekLabel(weekOptions))}</strong>
-        <button class="note-reader-week-nav" type="button" data-note-reader-week="1" aria-label="下一週">›</button>
-      </div>
-    </div>
-    <div class="note-reader-date-strip" aria-label="依日期篩選札記">
-      <button class="note-reader-date-chip note-reader-date-chip-all ${allActive ? 'active' : ''}" type="button" data-note-reader-date="" aria-pressed="${allActive ? 'true' : 'false'}">
-        <span class="note-reader-date-weekday">全部</span>
-        <span class="note-reader-date-day">All</span>
-        <span class="note-reader-date-count">${totalCount}篇</span>
-      </button>
-      ${dateChips}
-    </div>
-  `;
+function getNoteReaderCreatedDate(note = {}) {
+  return getNoteReaderRawDate(note, 'created');
 }
 
 function getNotesForReading() {
-  syncNoteReaderDateState();
   const query = state.noteReaderSearch.trim().toLowerCase();
-  return state.notes
-    .filter(isPublishedNote)
+  return getPublishedNotes()
     .filter(note => {
       if (query && !getNoteReaderSearchHaystack(note).includes(query)) return false;
       if (state.noteReaderCategory && getNoteReaderCategoryValue(note) !== state.noteReaderCategory) return false;
       if (state.noteReaderTag && !getNoteTagList(note).includes(state.noteReaderTag)) return false;
-      if (state.noteReaderDate && getNoteReaderDateKey(note) !== state.noteReaderDate) return false;
       return true;
     })
     .sort(compareNotesForReading);
 }
 
+function getRecentEditedNotes(limit = 5) {
+  return getPublishedNotes()
+    .slice()
+    .sort(compareNotesByRecentUpdate)
+    .slice(0, limit);
+}
+
 function resetNoteReaderFilters() {
   state.noteReaderSearch = '';
+  state.noteReaderSearchScope = 'all';
   state.noteReaderCategory = '';
   state.noteReaderTag = '';
   state.noteReaderSort = 'updated-desc';
   state.noteReaderDate = '';
 }
 
-function syncNoteReaderControls({ filteredCount = 0, totalCount = 0 } = {}) {
+function hasActiveNoteReaderFilters() {
+  return !!state.noteReaderSearch
+    || state.noteReaderSearchScope !== 'all'
+    || !!state.noteReaderCategory
+    || !!state.noteReaderTag
+    || state.noteReaderSort !== 'updated-desc';
+}
+
+function syncNoteReaderControls() {
   const { categories, tags } = getNoteReaderFilterOptions();
   if (state.noteReaderCategory && !categories.includes(state.noteReaderCategory)) state.noteReaderCategory = '';
   if (state.noteReaderTag && !tags.includes(state.noteReaderTag)) state.noteReaderTag = '';
+  state.noteReaderSearchScope = normalizeNoteReaderSearchScope(state.noteReaderSearchScope);
   if (!['updated-desc', 'created-asc', 'title-asc'].includes(state.noteReaderSort)) state.noteReaderSort = 'updated-desc';
 
   if (els.noteReaderSearch && els.noteReaderSearch.value !== state.noteReaderSearch) {
     els.noteReaderSearch.value = state.noteReaderSearch;
   }
+  if (els.noteReaderSearchScope) els.noteReaderSearchScope.value = state.noteReaderSearchScope;
   if (els.noteReaderCategory) {
     els.noteReaderCategory.innerHTML = [
       '<option value="">全部分類</option>',
@@ -9366,39 +9278,36 @@ function syncNoteReaderControls({ filteredCount = 0, totalCount = 0 } = {}) {
   }
   if (els.noteReaderSort) els.noteReaderSort.value = state.noteReaderSort;
   if (els.noteReaderResultCount) {
-    els.noteReaderResultCount.textContent = `顯示 ${filteredCount} / ${totalCount} 篇`;
+    const totalCount = getPublishedNotes().length;
+    els.noteReaderResultCount.textContent = `共 ${totalCount} 篇正式札記`;
   }
   els.noteReaderClearSearch?.toggleAttribute('disabled', !state.noteReaderSearch.trim());
-  els.noteReaderResetFilters?.toggleAttribute('disabled', !state.noteReaderSearch && !state.noteReaderCategory && !state.noteReaderTag && !state.noteReaderDate && state.noteReaderSort === 'updated-desc');
+  els.noteReaderResetFilters?.toggleAttribute('disabled', !hasActiveNoteReaderFilters());
 }
 
-function syncNoteReaderDetailMode() {
-  document.getElementById('view-note-reader')?.classList.toggle('note-reader-detail-open', !!state.noteReaderSelectedId);
+function syncNoteReaderModalLock() {
+  const searchOpen = !!els.noteReaderSearchModal && !els.noteReaderSearchModal.classList.contains('hidden');
+  const readingOpen = !!els.noteReaderReadingModal && !els.noteReaderReadingModal.classList.contains('hidden');
+  document.body.classList.toggle('note-reader-modal-open', searchOpen || readingOpen);
 }
 
-function isNoteReaderNarrowView() {
-  return typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches;
-}
-
-function scrollNoteReaderIntoView(target = 'detail') {
-  if (!isNoteReaderNarrowView()) return;
-  const element = target === 'list'
-    ? document.querySelector('#view-note-reader .note-reader-list-panel')
-    : els.noteReaderDetail;
+function scrollNoteReaderIntoView() {
+  if (typeof window === 'undefined' || !window.matchMedia('(max-width: 900px)').matches) return;
   requestAnimationFrame(() => {
-    (element || document.getElementById('view-note-reader'))?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    document.getElementById('view-note-reader')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   });
 }
 
-function getNoteReaderMetaItems(note, { includeDate = true } = {}) {
+function getNoteReaderMetaItems(note, { includeScripture = true, includeCreated = false } = {}) {
   const tags = getNoteTagList(note);
   const items = [
-    `經文｜${sanitizeDisplayText(note.scripture_reference, '未填經文')}`,
+    includeScripture ? `經文｜${sanitizeDisplayText(note.scripture_reference, '未填經文')}` : '',
     `分類｜${sanitizeDisplayText(note.category, '未分類')}`,
     `標籤｜${tags.length ? tags.map(tag => `#${tag}`).join(' ') : '未設標籤'}`,
+    includeCreated ? `日期｜${formatDate(getNoteReaderCreatedDate(note))}` : '',
+    `最近更新｜${formatDate(getNoteReaderUpdatedDate(note))}`,
   ];
-  if (includeDate) items.push(`日期｜${formatDate(note.updated_at || note.created_at)}`);
-  return items;
+  return items.filter(Boolean);
 }
 
 function renderNoteReaderMeta(note, options = {}) {
@@ -9418,206 +9327,167 @@ function renderNotePrayerBlock(prayer = '') {
   `;
 }
 
-function renderNoteReaderListCard(note) {
-  const noteId = String(note.id);
+function renderNoteReaderCard(note, { testId = 'note-reader-card' } = {}) {
+  const noteId = String(note.id || '');
   const title = getNoteDisplayTitle(note);
   const scripture = sanitizeDisplayText(note.scripture_reference, '未填經文');
-  const excerpt = getNotePreviewText(note, 180);
-  const isSelected = state.noteReaderSelectedId === noteId;
+  const excerpt = getNotePreviewText(note, 150);
   return `
-    <button class="note-reader-list-card ${isSelected ? 'active' : ''}" type="button" data-note-reader-open="${escapeHtml(noteId)}" data-testid="note-reader-card">
-      <span class="note-reader-card-date">${escapeHtml(formatNoteReaderMobileDate(note))}</span>
-      <span class="note-reader-card-title">${escapeHtml(title)}</span>
-      <span class="note-reader-card-scripture">${escapeHtml(scripture)}</span>
-      ${renderNoteReaderMeta(note)}
-      ${excerpt ? `<span class="note-reader-summary">${escapeHtml(excerpt)}</span>` : ''}
-    </button>
+    <article class="note-reader-note-card" data-note-id="${escapeHtml(noteId)}" data-testid="${escapeHtml(testId)}">
+      <div class="note-reader-note-main">
+        <div class="note-reader-note-copy">
+          <h3>${escapeHtml(title)}</h3>
+          <p class="note-reader-scripture">${escapeHtml(scripture)}</p>
+        </div>
+        <button class="secondary-btn note-reader-read-btn" type="button" data-note-reader-open="${escapeHtml(noteId)}" data-testid="note-reader-open-note">閱讀</button>
+      </div>
+      ${renderNoteReaderMeta(note, { includeScripture: false })}
+      <p class="note-reader-summary">${escapeHtml(excerpt || '尚無內容摘要')}</p>
+    </article>
   `;
 }
 
-function renderNoteReaderNoResultsState(totalCount = 0) {
-  state.noteReaderSelectedId = null;
-  syncNoteReaderDetailMode();
-  const selectedDateLabel = formatNoteReaderSelectedDateLabel();
-  const selectedDateCount = state.noteReaderDate ? getNoteReaderDateCount(state.noteReaderDate) : 0;
-  const emptyDateSelected = !!state.noteReaderDate && selectedDateCount === 0;
-  const title = emptyDateSelected ? '這一天還沒有札記' : '找不到符合條件的札記';
-  const caption = emptyDateSelected
-    ? `${selectedDateLabel} 目前沒有札記。可以點「全部」回到所有札記，或先寫一篇新札記。`
-    : '試試清除搜尋、日期、分類或標籤篩選。';
-  if (els.noteReaderList) {
-    els.noteReaderList.className = 'note-reader-list note-reader-empty-state empty-state';
-    els.noteReaderList.innerHTML = `
-      <strong>${escapeHtml(title)}</strong>
-      <p class="caption">${escapeHtml(caption)}</p>
-      <div class="note-reader-empty-actions">
-        <button class="ghost-btn" type="button" data-note-reader-reset-empty>重設篩選</button>
-      </div>
-    `;
-  }
-  if (els.noteReaderDetail) {
-    els.noteReaderDetail.innerHTML = `<div class="note-reader-detail-placeholder">目前顯示 0 / ${totalCount} 篇。調整條件後再選擇札記閱讀。</div>`;
-  }
-}
-
 function renderNoteReaderEmptyState() {
-  state.noteReaderSelectedId = null;
-  syncNoteReaderDetailMode();
-  if (els.noteReaderList) {
-    els.noteReaderList.className = 'note-reader-list note-reader-empty-state empty-state';
-    els.noteReaderList.innerHTML = `
-      <strong>目前還沒有正式札記，可以先寫一篇札記。</strong>
-      <div class="note-reader-empty-actions">
-        <button class="primary-btn" type="button" data-note-reader-write>寫一篇札記</button>
-      </div>
-    `;
-  }
-  if (els.noteReaderDetail) {
-    els.noteReaderDetail.innerHTML = '<div class="note-reader-detail-placeholder">草稿完成為正式札記後，就可以在這裡安靜閱讀。</div>';
-  }
+  if (!els.noteReaderList) return;
+  els.noteReaderList.className = 'note-reader-recent-list note-reader-empty-state empty-state';
+  els.noteReaderList.innerHTML = `
+    <strong>目前還沒有札記</strong>
+    <p>你可以先到「寫札記」記下今天的靈修內容，之後會在這裡看到最近編輯的札記。</p>
+    <div class="note-reader-empty-actions">
+      <button class="primary-btn" type="button" data-note-reader-write>寫一篇札記</button>
+    </div>
+  `;
 }
 
-function renderNoteReaderDetail(notes) {
-  if (!els.noteReaderDetail) return;
-  if (!state.noteReaderSelectedId) {
-    syncNoteReaderDetailMode();
-    els.noteReaderDetail.innerHTML = '<div class="note-reader-detail-placeholder">請先從列表選擇一篇札記。</div>';
-    return;
-  }
-  const note = notes.find(item => String(item.id) === state.noteReaderSelectedId);
-  if (!note) {
-    syncNoteReaderDetailMode();
-    els.noteReaderDetail.innerHTML = `
-      <div class="note-reader-detail-placeholder">
-        <strong>找不到這篇札記。</strong>
-        <button class="ghost-btn" type="button" data-note-reader-back>返回札記閱讀列表</button>
-      </div>
-    `;
-    return;
-  }
-  syncNoteReaderDetailMode();
+function renderNoteReaderNoSearchResultsState() {
+  if (!els.noteReaderSearchResults) return;
+  els.noteReaderSearchResults.className = 'note-reader-search-results note-reader-empty-state empty-state';
+  els.noteReaderSearchResults.innerHTML = `
+    <strong>找不到符合條件的札記</strong>
+    <p>你可以調整關鍵字、分類或標籤後再試一次。</p>
+    <div class="note-reader-empty-actions">
+      <button class="ghost-btn" type="button" data-note-reader-reset-empty>清除搜尋</button>
+    </div>
+  `;
+}
 
+function renderNoteReaderSearchResults() {
+  if (!els.noteReaderSearchResults) return;
+  const notes = getNotesForReading();
+  if (!notes.length) {
+    renderNoteReaderNoSearchResultsState();
+    return;
+  }
+  els.noteReaderSearchResults.className = 'note-reader-search-results';
+  els.noteReaderSearchResults.innerHTML = notes
+    .map(note => renderNoteReaderCard(note, { testId: 'note-reader-search-result' }))
+    .join('');
+}
+
+function renderNoteReaderReadingContent(note) {
+  if (!els.noteReaderReadingContent) return;
   const title = getNoteDisplayTitle(note);
-  const summary = getRenderableNoteSummary(note);
-  const prayer = getRenderableNotePrayer(note);
+  const visibleSummary = sanitizeDisplayText(getNoteVisibleSummary(note), '');
+  const prayer = resolveNotePrayerText(note);
   const content = stripScriptureMarkers(note.content || '');
   const contentBlocks = content
     ? renderMarkdownContent(content)
     : '<p class="note-preview-placeholder">這篇札記尚未填寫內容。</p>';
 
-  els.noteReaderDetail.innerHTML = `
-    <article class="note-preview-article note-reader-article" data-testid="note-reader-article">
-      <div class="note-reader-detail-actions">
-        <button class="ghost-btn" type="button" data-note-reader-back data-testid="note-reader-back">返回札記閱讀列表</button>
-        <button class="secondary-btn" type="button" data-note-reader-edit="${escapeHtml(String(note.id))}" data-testid="note-reader-edit">前往編輯</button>
-      </div>
-      <header class="note-preview-header">
-        <h4>${escapeHtml(title)}</h4>
-        ${renderNoteReaderMeta(note)}
-      </header>
-      ${summary ? `<section class="note-preview-summary">
-        <span class="note-preview-kicker">摘要</span>
-        <p>${escapeHtml(summary)}</p>
-      </section>` : ''}
-      <section class="note-preview-content">
-        ${contentBlocks}
-      </section>
-      ${renderNotePrayerBlock(prayer)}
-    </article>
+  els.noteReaderReadingContent.innerHTML = `
+    <header class="note-preview-header note-reader-modal-title-block">
+      <h2 id="note-reader-reading-title">${escapeHtml(title)}</h2>
+      ${renderNoteReaderMeta(note, { includeCreated: true })}
+    </header>
+    ${visibleSummary ? `<section class="note-preview-summary">
+      <span class="note-preview-kicker">摘要</span>
+      <p>${escapeHtml(visibleSummary)}</p>
+    </section>` : ''}
+    <section class="note-preview-content">
+      ${contentBlocks}
+    </section>
+    ${renderNotePrayerBlock(prayer)}
   `;
 }
 
-function bindNoteReaderActions({ scrollToDetail = false } = {}) {
-  document.querySelectorAll('[data-note-reader-week]').forEach(button => {
-    button.addEventListener('click', () => {
-      const direction = Number(button.dataset.noteReaderWeek || 0);
-      if (!direction) return;
-      const weekStart = getNoteReaderWeekStartDate(getNoteReaderWeekBaseDate());
-      state.noteReaderWeekDate = formatNoteReaderDateKey(addNoteReaderDays(weekStart, direction * 7));
-      state.noteReaderDate = '';
-      state.noteReaderSelectedId = null;
-      renderNoteReader();
-      scrollNoteReaderIntoView('list');
-    });
-  });
-  document.querySelectorAll('[data-note-reader-date]').forEach(button => {
-    button.addEventListener('click', () => {
-      const nextDate = String(button.dataset.noteReaderDate || '');
-      state.noteReaderDate = nextDate;
-      if (nextDate) state.noteReaderWeekDate = nextDate;
-      state.noteReaderSelectedId = null;
-      renderNoteReader();
-      scrollNoteReaderIntoView('list');
-    });
-  });
+function getPublishedNoteById(noteId = '') {
+  const id = String(noteId || '');
+  return getPublishedNotes().find(note => String(note.id || '') === id) || null;
+}
+
+function openNoteReaderSearchModal() {
+  syncNoteReaderControls();
+  renderNoteReaderSearchResults();
+  closeNoteReaderReadingModal();
+  els.noteReaderSearchModal?.classList.remove('hidden');
+  els.noteReaderSearchModal?.setAttribute('aria-hidden', 'false');
+  syncNoteReaderModalLock();
+  requestAnimationFrame(() => els.noteReaderSearchModalClose?.focus());
+}
+
+function closeNoteReaderSearchModal() {
+  els.noteReaderSearchModal?.classList.add('hidden');
+  els.noteReaderSearchModal?.setAttribute('aria-hidden', 'true');
+  syncNoteReaderModalLock();
+}
+
+function openNoteReaderReadingModal(note) {
+  if (!note) return;
+  state.noteReaderReadingId = String(note.id || '');
+  renderNoteReaderReadingContent(note);
+  closeNoteReaderSearchModal();
+  els.noteReaderReadingModal?.classList.remove('hidden');
+  els.noteReaderReadingModal?.setAttribute('aria-hidden', 'false');
+  syncNoteReaderModalLock();
+  requestAnimationFrame(() => els.noteReaderReadingClose?.focus());
+}
+
+function closeNoteReaderReadingModal() {
+  state.noteReaderReadingId = '';
+  els.noteReaderReadingModal?.classList.add('hidden');
+  els.noteReaderReadingModal?.setAttribute('aria-hidden', 'true');
+  syncNoteReaderModalLock();
+}
+
+function bindNoteReaderActions() {
   els.noteReaderList?.querySelectorAll('[data-note-reader-open]').forEach(button => {
-    button.addEventListener('click', () => {
-      state.noteReaderListScrollTop = els.noteReaderList?.scrollTop || 0;
-      openNoteReaderNote(button.dataset.noteReaderOpen, { scrollToDetail: true });
-    });
+    button.addEventListener('click', () => openNoteReaderNote(button.dataset.noteReaderOpen || ''));
   });
   els.noteReaderList?.querySelector('[data-note-reader-write]')?.addEventListener('click', () => {
     setView('notes');
     clearNoteForm();
   });
-  els.noteReaderList?.querySelector('[data-note-reader-reset-empty]')?.addEventListener('click', () => {
-    resetNoteReaderFilters();
-    renderNoteReader();
-    els.noteReaderSearch?.focus();
-  });
-  els.noteReaderDetail?.querySelector('[data-note-reader-back]')?.addEventListener('click', () => {
-    const restoreListScrollTop = state.noteReaderListScrollTop || 0;
-    state.noteReaderSelectedId = null;
-    renderNoteReader({ restoreListScrollTop });
-    scrollNoteReaderIntoView('list');
-  });
-  els.noteReaderDetail?.querySelector('[data-note-reader-edit]')?.addEventListener('click', event => {
-    const noteId = event.currentTarget?.dataset?.noteReaderEdit;
-    if (noteId) populateNoteForm(noteId);
-  });
-  if (scrollToDetail) scrollNoteReaderIntoView('detail');
 }
 
-function renderNoteReader(options = {}) {
-  if (!els.noteReaderList || !els.noteReaderDetail) return;
-  const previousScrollTop = options.preserveScroll ? els.noteReaderList.scrollTop : 0;
-  const notes = getNotesForReading();
+function renderNoteReader() {
+  if (!els.noteReaderList) return;
+  syncNoteReaderControls();
   const totalCount = getPublishedNotes().length;
-  syncNoteReaderControls({ filteredCount: notes.length, totalCount });
-  renderNoteReaderMobileCalendar();
   if (!totalCount) {
     renderNoteReaderEmptyState();
     bindNoteReaderActions();
     return;
   }
-  if (!notes.length) {
-    renderNoteReaderNoResultsState(totalCount);
-    bindNoteReaderActions();
-    return;
-  }
-  if (state.noteReaderSelectedId && !notes.some(note => String(note.id) === state.noteReaderSelectedId)) {
-    state.noteReaderSelectedId = null;
-  }
-  els.noteReaderList.className = 'note-reader-list';
-  els.noteReaderList.innerHTML = notes.map(renderNoteReaderListCard).join('');
-  renderNoteReaderDetail(notes);
-  bindNoteReaderActions(options);
-  if (options.preserveScroll) requestAnimationFrame(() => { els.noteReaderList.scrollTop = previousScrollTop; });
-  if (Number.isFinite(options.restoreListScrollTop)) {
-    requestAnimationFrame(() => { els.noteReaderList.scrollTop = Math.max(0, options.restoreListScrollTop); });
-  }
+  const recentNotes = getRecentEditedNotes(5);
+  els.noteReaderList.className = 'note-reader-recent-list';
+  els.noteReaderList.innerHTML = recentNotes.map(note => renderNoteReaderCard(note)).join('');
+  bindNoteReaderActions();
 }
 
 function openNoteReader() {
   state.noteReaderSelectedId = null;
   setView('note-reader');
-  scrollNoteReaderIntoView('list');
+  scrollNoteReaderIntoView();
 }
 
-function openNoteReaderNote(noteId, options = {}) {
-  state.noteReaderSelectedId = noteId || null;
+function openNoteReaderNote(noteId) {
+  const note = getPublishedNoteById(noteId);
   if (document.body.dataset.currentView !== 'note-reader') setView('note-reader');
-  renderNoteReader(options);
+  if (!note) {
+    showToast('找不到這篇正式札記。');
+    return;
+  }
+  openNoteReaderReadingModal(note);
 }
 
 function renderNotePreview() {

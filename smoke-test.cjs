@@ -62,6 +62,42 @@ const seedNotes = [
     updated_at: '2026-04-22T11:10:00.000Z',
     created_at: '2026-04-22T10:30:00.000Z',
   },
+  {
+    id: 'note_4',
+    user_id: seedUser.id,
+    title: 'Smoke recent note 4',
+    scripture_reference: 'Psalm 1:1-3',
+    category: 'Smoke',
+    tags: ['recent'],
+    summary: 'Fourth recent note used to verify the reading center list.',
+    content: 'Fourth recent note content for the reading modal smoke test.',
+    updated_at: '2026-04-24T08:00:00.000Z',
+    created_at: '2026-04-24T07:50:00.000Z',
+  },
+  {
+    id: 'note_5',
+    user_id: seedUser.id,
+    title: 'Smoke recent note 5',
+    scripture_reference: 'Psalm 2:1-3',
+    category: 'Smoke',
+    tags: ['recent'],
+    summary: 'Fifth recent note used to verify that recent notes are sorted.',
+    content: 'Fifth recent note content for the reading modal smoke test.',
+    updated_at: '2026-04-24T09:00:00.000Z',
+    created_at: '2026-04-24T08:50:00.000Z',
+  },
+  {
+    id: 'note_6',
+    user_id: seedUser.id,
+    title: 'Smoke newest note',
+    scripture_reference: 'Psalm 3:1-3',
+    category: 'Smoke',
+    tags: ['newest'],
+    summary: 'Newest note used to verify the first recent reading card.',
+    content: 'Newest note content should open in the reading modal.',
+    updated_at: '2026-04-25T09:00:00.000Z',
+    created_at: '2026-04-25T08:50:00.000Z',
+  },
 ];
 
 const seedBooks = [
@@ -346,6 +382,56 @@ async function verifyPendingVerificationReminder(page, results) {
   results.push('同裝置剛註冊 pending verification 只在登入模式顯示輕提醒');
 }
 
+async function verifyNoteReaderWorkspace(page, results) {
+  await clickElement(page, '#summary-notes-card');
+  await expectVisible(page, '#view-note-reader.view.active', '札記閱讀頁已開啟');
+  await expectVisible(page, '#note-reader-search-title', '札記閱讀搜尋卡片已顯示');
+  await expectVisible(page, '#note-reader-recent-title', '最近編輯區已顯示');
+  await expectNoVisibleLocator(page.locator('#note-reader-detail'), '札記閱讀頁不應存在固定右側預覽區');
+  await expectNoVisibleLocator(page.locator('text=請先從列表選擇一篇札記。'), '札記閱讀頁不應顯示舊版空白預覽文案');
+
+  const recentCards = page.locator('[data-testid="note-reader-card"]');
+  await page.waitForFunction(() => document.querySelectorAll('[data-testid="note-reader-card"]').length === 5, { timeout: 10000 });
+  const firstRecentText = await recentCards.first().textContent();
+  if (!firstRecentText || !firstRecentText.includes('Smoke newest note')) {
+    throw new Error(`最近編輯排序錯誤：${firstRecentText}`);
+  }
+  await assertNoHorizontalScroll(page, { label: 'smoke note reader entry mobile' });
+
+  await clickElement(page, '[data-testid="note-reader-card"] [data-testid="note-reader-open-note"]');
+  await expectVisible(page, '[data-testid="note-reader-reading-modal"]:not(.hidden)', '最近札記可開啟閱讀 modal');
+  let readingText = await page.locator('[data-testid="note-reader-reading-content"]').textContent();
+  if (!readingText || !readingText.includes('Smoke newest note') || !readingText.includes('Newest note content')) {
+    throw new Error(`最近札記閱讀 modal 內容錯誤：${readingText}`);
+  }
+  await clickElement(page, '[data-testid="note-reader-reading-close"]');
+  await page.waitForFunction(() => document.querySelector('[data-testid="note-reader-reading-modal"]')?.classList.contains('hidden'), { timeout: 10000 });
+
+  await page.fill('[data-testid="note-reader-search"]', '\u7f85\u99ac');
+  await clickElement(page, '[data-testid="note-reader-search-submit"]');
+  await expectVisible(page, '[data-testid="note-reader-search-modal"]:not(.hidden)', '搜尋結果 modal 已開啟');
+  await expectVisible(page, '[data-testid="note-reader-search-result"]', '搜尋結果列表已顯示');
+  const searchText = await page.locator('[data-testid="note-reader-search-results"]').textContent();
+  if (!searchText || !searchText.includes('\u7f85\u99ac\u66f8\u4e2d\u7684\u76fc\u671b')) {
+    throw new Error(`搜尋結果 modal 未顯示指定札記：${searchText}`);
+  }
+  await clickElement(page, '[data-testid="note-reader-search-result"] [data-testid="note-reader-open-note"]');
+  await page.waitForFunction(() => document.querySelector('[data-testid="note-reader-search-modal"]')?.classList.contains('hidden'), { timeout: 10000 });
+  await expectVisible(page, '[data-testid="note-reader-reading-modal"]:not(.hidden)', '搜尋結果可切換到閱讀 modal');
+  readingText = await page.locator('[data-testid="note-reader-reading-content"]').textContent();
+  if (!readingText || !readingText.includes('\u7f85\u99ac\u66f8\u4e2d\u7684\u76fc\u671b')) {
+    throw new Error(`搜尋結果閱讀 modal 內容錯誤：${readingText}`);
+  }
+  await clickElement(page, '[data-testid="note-reader-reading-edit"]');
+  await expectVisible(page, '#view-notes.view.active', '閱讀 modal 可進入編輯流程');
+  const editedTitle = await page.inputValue('#note-title');
+  if (editedTitle !== '\u7f85\u99ac\u66f8\u4e2d\u7684\u76fc\u671b') {
+    throw new Error(`編輯這篇札記未載入正確札記：${editedTitle}`);
+  }
+  await assertNoHorizontalScroll(page, { label: 'smoke note reader modal mobile' });
+  results.push('札記閱讀頁最近 5 篇、搜尋 modal、閱讀 modal、編輯流程正常');
+}
+
 async function launchSmokeBrowser() {
   try {
     return await chromium.launch({ headless: true });
@@ -573,6 +659,9 @@ async function run() {
     }
     await clickElement(page, '.mobile-bottom-link[data-view="dashboard"]');
     await expectVisible(page, '#view-dashboard.view.active', '已返回 dashboard');
+    await verifyNoteReaderWorkspace(page, results);
+    await clickElement(page, '.mobile-bottom-link[data-view="dashboard"]');
+    await expectVisible(page, '#view-dashboard.view.active', '札記閱讀驗證後已返回 dashboard');
     await clickElement(page, '.account-summary-settings-btn');
     await expectVisible(page, '#account-settings-modal:not(.hidden)', '帳號設定已開啟');
     await expectVisible(page, '[data-testid="account-settings-sync-status"]', '帳號設定同步狀態已顯示');
