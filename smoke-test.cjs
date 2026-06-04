@@ -399,12 +399,16 @@ async function verifyNoteReaderWorkspace(page, results) {
   }
   await assertNoHorizontalScroll(page, { label: 'smoke note reader entry mobile' });
 
-  await clickElement(page, '[data-testid="note-reader-card"] [data-testid="note-reader-open-note"]');
-  await expectVisible(page, '[data-testid="note-reader-reading-modal"]:not(.hidden)', '最近札記可開啟閱讀 modal');
+  await clickElement(page, '[data-testid="note-reader-card"]');
+  await expectVisible(page, '[data-testid="note-reader-reading-modal"]:not(.hidden)', '最近札記整張卡片可開啟閱讀 modal');
   let readingText = await page.locator('[data-testid="note-reader-reading-content"]').textContent();
   if (!readingText || !readingText.includes('Smoke newest note') || !readingText.includes('Newest note content')) {
     throw new Error(`最近札記閱讀 modal 內容錯誤：${readingText}`);
   }
+  await clickElement(page, '[data-testid="note-reader-reading-close"]');
+  await page.waitForFunction(() => document.querySelector('[data-testid="note-reader-reading-modal"]')?.classList.contains('hidden'), { timeout: 10000 });
+  await clickElement(page, '[data-testid="note-reader-card"] [data-testid="note-reader-open-note"]');
+  await expectVisible(page, '[data-testid="note-reader-reading-modal"]:not(.hidden)', '最近札記右上角閱讀按鈕可開啟閱讀 modal');
   await clickElement(page, '[data-testid="note-reader-reading-close"]');
   await page.waitForFunction(() => document.querySelector('[data-testid="note-reader-reading-modal"]')?.classList.contains('hidden'), { timeout: 10000 });
 
@@ -416,9 +420,20 @@ async function verifyNoteReaderWorkspace(page, results) {
   if (!searchText || !searchText.includes('\u7f85\u99ac\u66f8\u4e2d\u7684\u76fc\u671b')) {
     throw new Error(`搜尋結果 modal 未顯示指定札記：${searchText}`);
   }
+  await clickElement(page, '[data-testid="note-reader-search-result"]');
+  await page.waitForFunction(() => document.querySelector('[data-testid="note-reader-search-modal"]')?.classList.contains('hidden'), { timeout: 10000 });
+  await expectVisible(page, '[data-testid="note-reader-reading-modal"]:not(.hidden)', '搜尋結果整張卡片可切換到閱讀 modal');
+  readingText = await page.locator('[data-testid="note-reader-reading-content"]').textContent();
+  if (!readingText || !readingText.includes('\u7f85\u99ac\u66f8\u4e2d\u7684\u76fc\u671b')) {
+    throw new Error(`搜尋結果整卡閱讀 modal 內容錯誤：${readingText}`);
+  }
+  await clickElement(page, '[data-testid="note-reader-reading-close"]');
+  await page.waitForFunction(() => document.querySelector('[data-testid="note-reader-reading-modal"]')?.classList.contains('hidden'), { timeout: 10000 });
+  await clickElement(page, '[data-testid="note-reader-search-submit"]');
+  await expectVisible(page, '[data-testid="note-reader-search-modal"]:not(.hidden)', '搜尋結果 modal 可再次開啟');
   await clickElement(page, '[data-testid="note-reader-search-result"] [data-testid="note-reader-open-note"]');
   await page.waitForFunction(() => document.querySelector('[data-testid="note-reader-search-modal"]')?.classList.contains('hidden'), { timeout: 10000 });
-  await expectVisible(page, '[data-testid="note-reader-reading-modal"]:not(.hidden)', '搜尋結果可切換到閱讀 modal');
+  await expectVisible(page, '[data-testid="note-reader-reading-modal"]:not(.hidden)', '搜尋結果右上角閱讀按鈕可切換到閱讀 modal');
   readingText = await page.locator('[data-testid="note-reader-reading-content"]').textContent();
   if (!readingText || !readingText.includes('\u7f85\u99ac\u66f8\u4e2d\u7684\u76fc\u671b')) {
     throw new Error(`搜尋結果閱讀 modal 內容錯誤：${readingText}`);

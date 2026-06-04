@@ -5384,12 +5384,8 @@ function bindEvents() {
     els.noteReaderSearch?.focus();
   });
   els.noteReaderSearchResults?.addEventListener('click', event => {
+    if (handleNoteReaderOpenClick(event)) return;
     const target = event.target instanceof Element ? event.target : null;
-    const readButton = target?.closest('[data-note-reader-open]');
-    if (readButton) {
-      openNoteReaderNote(readButton.dataset.noteReaderOpen || '');
-      return;
-    }
     const resetButton = target?.closest('[data-note-reader-reset-empty]');
     if (resetButton) {
       resetNoteReaderFilters();
@@ -5398,6 +5394,7 @@ function bindEvents() {
       els.noteReaderSearch?.focus();
     }
   });
+  els.noteReaderSearchResults?.addEventListener('keydown', handleNoteReaderOpenKeydown);
   els.noteReaderReadingClose?.addEventListener('click', closeNoteReaderReadingModal);
   els.noteReaderReadingBackdrop?.addEventListener('click', closeNoteReaderReadingModal);
   els.noteReaderReadingEdit?.addEventListener('click', () => {
@@ -9334,16 +9331,16 @@ function renderNoteReaderCard(note, { testId = 'note-reader-card' } = {}) {
   const scripture = sanitizeDisplayText(note.scripture_reference, '未填經文');
   const excerpt = getNotePreviewText(note, 150);
   return `
-    <article class="note-reader-note-card" data-note-id="${escapeHtml(noteId)}" data-testid="${escapeHtml(testId)}">
-      <div class="note-reader-note-main">
-        <div class="note-reader-note-copy">
+    <article class="note-reader-note-card" data-note-id="${escapeHtml(noteId)}" data-note-reader-open="${escapeHtml(noteId)}" data-testid="${escapeHtml(testId)}">
+      <a class="note-reader-card-link" href="#note-reader-${escapeHtml(noteId)}" data-note-reader-open="${escapeHtml(noteId)}" aria-label="閱讀 ${escapeHtml(title)}">
+        <div class="note-reader-note-main">
           <h3>${escapeHtml(title)}</h3>
-          <p class="note-reader-scripture">${escapeHtml(scripture)}</p>
+          <span class="secondary-btn note-reader-read-btn" data-testid="note-reader-open-note">閱讀</span>
         </div>
-        <button class="secondary-btn note-reader-read-btn" type="button" data-note-reader-open="${escapeHtml(noteId)}" data-testid="note-reader-open-note">閱讀</button>
-      </div>
-      ${renderNoteReaderMeta(note, { includeScripture: false })}
-      <p class="note-reader-summary">${escapeHtml(excerpt || '尚無內容摘要')}</p>
+        <p class="note-reader-scripture">${escapeHtml(scripture)}</p>
+        ${renderNoteReaderMeta(note, { includeScripture: false })}
+        <p class="note-reader-summary">${escapeHtml(excerpt || '尚無內容摘要')}</p>
+      </a>
     </article>
   `;
 }
@@ -9450,9 +9447,33 @@ function closeNoteReaderReadingModal() {
   syncNoteReaderModalLock();
 }
 
+function getNoteReaderOpenIdFromTarget(target) {
+  const element = target instanceof Element ? target : null;
+  if (!element) return '';
+  const nestedControl = element.closest('button, input, select, textarea, a[href]');
+  if (nestedControl && !nestedControl.matches('[data-note-reader-open]')) return '';
+  const openTarget = element.closest('[data-note-reader-open]');
+  return openTarget?.dataset.noteReaderOpen || '';
+}
+
+function handleNoteReaderOpenClick(event) {
+  const noteId = getNoteReaderOpenIdFromTarget(event.target);
+  if (!noteId) return false;
+  event.preventDefault();
+  event.stopPropagation();
+  openNoteReaderNote(noteId);
+  return true;
+}
+
+function handleNoteReaderOpenKeydown(event) {
+  if (event.key !== ' ') return;
+  handleNoteReaderOpenClick(event);
+}
+
 function bindNoteReaderActions() {
-  els.noteReaderList?.querySelectorAll('[data-note-reader-open]').forEach(button => {
-    button.addEventListener('click', () => openNoteReaderNote(button.dataset.noteReaderOpen || ''));
+  els.noteReaderList?.querySelectorAll('.note-reader-note-card[data-note-reader-open]').forEach(card => {
+    card.addEventListener('click', handleNoteReaderOpenClick);
+    card.addEventListener('keydown', handleNoteReaderOpenKeydown);
   });
   els.noteReaderList?.querySelector('[data-note-reader-write]')?.addEventListener('click', () => {
     setView('notes');
