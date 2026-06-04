@@ -240,6 +240,27 @@ body.auth-locked .app-shell { display: none; }
 .auth-google-section-compact {
   margin-top: 8px;
 }
+.auth-pending-verification-reminder {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(89, 133, 128, 0.22);
+  border-radius: 10px;
+  background: rgba(246, 251, 249, 0.78);
+}
+.auth-pending-verification-reminder.hidden {
+  display: none;
+}
+.auth-pending-verification-reminder p {
+  margin: 0;
+  color: #506769;
+  line-height: 1.55;
+}
+.auth-pending-verification-reminder button {
+  justify-self: start;
+  min-height: 32px;
+}
 .auth-divider {
   display: flex;
   align-items: center;
@@ -315,6 +336,7 @@ body.auth-locked .app-shell { display: none; }
   margin: 0;
   font-size: 0.92rem;
   line-height: 1.6;
+  white-space: pre-line;
 }
 .auth-verification-subject {
   display: grid;

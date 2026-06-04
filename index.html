@@ -52,6 +52,10 @@
               <button id="close-auth-inline-btn" class="ghost-btn small" type="button" data-testid="auth-inline-close">關閉</button>
             </div>
             <p id="auth-inline-intro" class="modal-intro">輸入 Email 與密碼後即可建立帳戶或登入。</p>
+            <section id="auth-pending-verification-reminder" class="auth-pending-verification-reminder hidden" aria-live="polite" data-testid="auth-pending-verification-reminder">
+              <p id="gate-resend-verification-hint" class="caption auth-verification-hint">你剛建立的帳號還需要完成信箱驗證。請到信箱尋找「【Devotion 靈修札記】請完成信箱驗證」。</p>
+              <button id="gate-resend-verification-btn" class="ghost-btn subtle-action small" type="button" data-testid="auth-pending-verification-resend">重新寄送驗證信</button>
+            </section>
             <form id="auth-inline-form" class="form-stack">
               <label>Email
                 <input id="gate-auth-email" type="email" placeholder="name@example.com" data-testid="auth-email-input" />

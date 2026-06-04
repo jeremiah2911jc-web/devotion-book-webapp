@@ -17,6 +17,7 @@ const STORAGE_KEYS = {
   autoBackupMeta: 'devotion-auto-backup-meta',
   autoBackups: 'devotion-auto-backups',
   installPromptPrefs: 'devotion-app-install-prompt-prefs',
+  pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
 const APP_VERSION = '2026.05.16-01';
@@ -54,6 +55,7 @@ const AUTH_VERIFICATION_HELP = '如果你不熟悉信箱操作，或一直找不
 const RESEND_VERIFICATION_SUCCESS_MESSAGE = '驗證信已重新寄出。請到信箱收信，若收件匣沒有看到，請到垃圾郵件、促銷內容或垃圾信箱找看看。';
 const RESEND_VERIFICATION_FAILURE_MESSAGE = '驗證信暫時無法寄出，請稍後再試。若仍無法收到，請聯絡管理員協助開通。';
 const RESEND_VERIFICATION_COOLDOWN_MS = 60 * 1000;
+const AUTH_PENDING_EMAIL_VERIFICATION_TTL_MS = 2 * 60 * 60 * 1000;
 const AUTH_GOOGLE_REDIRECT_URL = 'https://www.devotionbook.com.tw';
 const AUTH_PENDING_OAUTH_PROVIDER_KEY = 'devotion-pending-oauth-provider';
 const GOOGLE_LOGIN_FAILURE_MESSAGE = 'Google 登入沒有完成，請再試一次，或改用 Email 登入。';
@@ -885,6 +887,7 @@ const els = {
   gateResetPasswordBtn: document.getElementById('gate-reset-password-btn'),
   gateResendVerificationHint: document.getElementById('gate-resend-verification-hint'),
   gateResendVerificationBtn: document.getElementById('gate-resend-verification-btn'),
+  gatePendingVerificationReminder: document.getElementById('auth-pending-verification-reminder'),
   authGoogleSection: document.getElementById('auth-google-section'),
   gateGoogleLoginBtn: document.getElementById('gate-google-login-btn'),
   authVerificationPanel: document.getElementById('auth-verification-panel'),
@@ -988,6 +991,53 @@ function createResendVerificationButton() {
   row.append(button);
   return { row, button };
 }
+function normalizeEmailAddress(email = '') {
+  return String(email || '').trim().toLowerCase();
+}
+function readPendingEmailVerification() {
+  const pending = loadJson(STORAGE_KEYS.pendingEmailVerification, null);
+  const email = normalizeEmailAddress(pending?.email);
+  const createdAt = Number(pending?.createdAt || 0);
+  if (!email || !createdAt || Date.now() - createdAt > AUTH_PENDING_EMAIL_VERIFICATION_TTL_MS) {
+    localStorage.removeItem(STORAGE_KEYS.pendingEmailVerification);
+    return null;
+  }
+  return { email, createdAt };
+}
+function rememberPendingEmailVerification(email = '') {
+  const normalizedEmail = normalizeEmailAddress(email);
+  if (!normalizedEmail) return;
+  saveJson(STORAGE_KEYS.pendingEmailVerification, {
+    email: normalizedEmail,
+    createdAt: Date.now(),
+  });
+  state.authVerificationEmail = normalizedEmail;
+}
+function clearPendingEmailVerification(email = '') {
+  const normalizedEmail = normalizeEmailAddress(email);
+  if (!normalizedEmail) {
+    localStorage.removeItem(STORAGE_KEYS.pendingEmailVerification);
+    return;
+  }
+  const pending = readPendingEmailVerification();
+  if (pending?.email === normalizedEmail) localStorage.removeItem(STORAGE_KEYS.pendingEmailVerification);
+}
+function setPendingVerificationReminderVisible(isVisible = false) {
+  els.gatePendingVerificationReminder?.classList.toggle('hidden', !isVisible);
+  els.gateResendVerificationHint?.classList.toggle('hidden', !isVisible);
+  els.gateResendVerificationBtn?.classList.toggle('hidden', !isVisible);
+  updateResendVerificationButtons();
+}
+function syncPendingVerificationReminder() {
+  const pending = readPendingEmailVerification();
+  const panelVisible = !!els.authVerificationPanel && !els.authVerificationPanel.classList.contains('hidden');
+  const shouldShow = state.authInlineMode === 'login'
+    && !state.passwordRecoveryActive
+    && !panelVisible
+    && !!pending;
+  if (shouldShow) state.authVerificationEmail = pending.email;
+  setPendingVerificationReminderVisible(shouldShow);
+}
 function ensureAuthVerificationResendUi() {
   if (!els.gateResendVerificationBtn && els.gateResetPasswordBtn) {
     const actionRow = els.gateResetPasswordBtn.closest('.auth-modal-actions');
@@ -1025,7 +1075,7 @@ function getAuthVerificationCopy(mode = 'signup') {
   if (mode === 'login-unverified') {
     return {
       title: '你的帳號尚未完成信箱驗證',
-      body: '請先到註冊信箱收取驗證信，並點選信中的「完成信箱驗證」。',
+      body: '這個 Email 已經建立帳號，但還沒有完成信箱驗證。\n\n請到註冊時使用的信箱收取驗證信，並點選信中的「完成信箱驗證」。',
       loginAction: '我已完成驗證，重新登入',
     };
   }
@@ -1047,9 +1097,9 @@ function hideAuthVerificationPanel() {
   els.authVerificationPanel?.classList.add('hidden');
   els.authVerificationPanel?.setAttribute('aria-hidden', 'true');
   const showSecondaryAuthActions = state.authInlineMode !== 'password-recovery';
+  state.authVerificationMode = '';
   els.gateResetPasswordBtn?.classList.toggle('hidden', !showSecondaryAuthActions);
-  els.gateResendVerificationHint?.classList.toggle('hidden', !showSecondaryAuthActions);
-  els.gateResendVerificationBtn?.classList.toggle('hidden', !showSecondaryAuthActions);
+  setPendingVerificationReminderVisible(false);
   els.authGoogleSection?.classList.toggle('hidden', !showSecondaryAuthActions);
 }
 
@@ -1068,8 +1118,7 @@ function showAuthVerificationPanel(mode = 'signup', email = '') {
   if (els.authVerificationHelp) els.authVerificationHelp.textContent = AUTH_VERIFICATION_HELP;
   if (els.authVerificationLoginBtn) els.authVerificationLoginBtn.textContent = copy.loginAction;
   els.gateResetPasswordBtn?.classList.add('hidden');
-  els.gateResendVerificationHint?.classList.add('hidden');
-  els.gateResendVerificationBtn?.classList.add('hidden');
+  setPendingVerificationReminderVisible(false);
   els.authGoogleSection?.classList.add('hidden');
   els.authVerificationPanel.classList.remove('hidden');
   els.authVerificationPanel.setAttribute('aria-hidden', 'false');
@@ -4447,9 +4496,7 @@ function openAuthInline(mode = 'register') {
     els.gateResetPasswordBtn.classList.toggle('hidden', isPasswordRecovery);
     els.gateResetPasswordBtn.textContent = '忘記密碼';
   }
-  const showResendVerification = !isPasswordRecovery;
-  els.gateResendVerificationHint?.classList.toggle('hidden', !showResendVerification);
-  els.gateResendVerificationBtn?.classList.toggle('hidden', !showResendVerification);
+  syncPendingVerificationReminder();
   els.closeAuthInlineBtn?.classList.toggle('hidden', isPasswordRecovery);
   (isPasswordRecovery ? els.gateAuthPassword : els.gateAuthEmail)?.focus();
 }
@@ -5211,6 +5258,7 @@ function bindEvents() {
   els.authVerificationResendBtn?.addEventListener('click', () => handleResendVerificationEmail().catch(handleError));
   els.authVerificationLoginBtn?.addEventListener('click', () => {
     const email = state.authVerificationEmail || els.gateAuthEmail?.value?.trim() || els.authEmail?.value?.trim() || '';
+    clearPendingEmailVerification(email);
     openAuthInline('login');
     syncAuthInputs({ email, password: '' });
     els.gateAuthPassword?.focus();
@@ -5539,7 +5587,9 @@ function setGoogleAuthLoading(isLoading = false) {
 }
 
 async function handleResendVerificationEmail() {
-  const { email } = getAuthCredentials();
+  const pending = readPendingEmailVerification();
+  const { email: inputEmail } = getAuthCredentials();
+  const email = normalizeEmailAddress(inputEmail || state.authVerificationEmail || pending?.email || '');
   if (!email) {
     showToast('請先輸入 Email。');
     return;
@@ -5568,6 +5618,7 @@ async function handleResendVerificationEmail() {
     });
     if (error) throw error;
     state.authVerificationEmail = email;
+    rememberPendingEmailVerification(email);
     startResendVerificationCooldown();
     showToast(RESEND_VERIFICATION_SUCCESS_MESSAGE, 5600);
   } catch (error) {
@@ -5623,6 +5674,7 @@ async function handleRegister() {
       showToast('這個 Email 已建立帳戶。若尚未完成信箱驗證，請重新寄送驗證信。', 4800);
       return;
     }
+    rememberPendingEmailVerification(email);
     showAuthVerificationPanel('signup', email);
     showToast('帳號已建立，請到信箱完成驗證。', 4200);
     return;
@@ -5651,6 +5703,8 @@ async function handleLogin() {
       throw createAuthError(error);
     }
     hideAuthVerificationPanel();
+    clearPendingEmailVerification(email);
+    state.authVerificationEmail = '';
     showToast('\u767b\u5165\u6210\u529f\u3002');
     return;
   }

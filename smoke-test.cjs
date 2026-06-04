@@ -277,6 +277,10 @@ async function verifyAuthModal(page, triggerSelector, expectedTitle, expectedSub
   await expectButtonText(page, '#gate-submit-btn', expectedSubmitText, `${expectedTitle} modal 主按鈕文字正確`);
   await expectVisible(page, '#gate-reset-password-btn', `${expectedTitle} modal 顯示忘記密碼 / 重設密碼`);
   await expectVisible(page, '#gate-google-login-btn', `${expectedTitle} modal 顯示 Google 登入按鈕`);
+  await expectNoVisibleLocator(page.locator('#auth-pending-verification-reminder'), `${expectedTitle} modal 預設不應顯示 pending verification 輕提醒`);
+  await expectNoVisibleLocator(page.locator('#gate-resend-verification-btn'), `${expectedTitle} modal 預設不應顯示重新寄送驗證信`);
+  await expectNoVisibleLocator(page.locator('#auth-verification-panel'), `${expectedTitle} modal 預設不應顯示完整信箱驗證提醒`);
+  await expectNoVisibleLocator(page.locator('#auth-inline-panel').getByText('還沒收到驗證信？'), `${expectedTitle} modal 預設不應顯示驗證信說明`);
   const actionLayout = await page.evaluate(() => {
     const submit = document.querySelector('#gate-submit-btn');
     const reset = document.querySelector('#gate-reset-password-btn');
@@ -307,6 +311,27 @@ async function verifyAuthModal(page, triggerSelector, expectedTitle, expectedSub
   await clickElement(page, '#close-auth-inline-btn');
   await page.waitForFunction(() => document.querySelector('#auth-inline-panel')?.classList.contains('hidden'), { timeout: 10000 });
   results.push(`${expectedTitle} modal 已驗證 Email / Password / 主按鈕 / 重設密碼 / 關閉按鈕，且無 Magic Link`);
+}
+
+async function verifyPendingVerificationReminder(page, results) {
+  await page.evaluate((key) => {
+    localStorage.setItem(key, JSON.stringify({
+      email: 'pending@example.com',
+      createdAt: Date.now(),
+    }));
+  }, STORAGE_KEYS.pendingEmailVerification);
+  await clickElement(page, '[data-testid="auth-open-login"]');
+  await expectVisible(page, '#auth-pending-verification-reminder', '同裝置 pending verification 輕提醒已顯示');
+  await expectVisible(page, '#gate-resend-verification-btn', '同裝置 pending verification 可重新寄送驗證信');
+  const reminderText = await page.locator('#auth-pending-verification-reminder').textContent();
+  if (!reminderText || !reminderText.includes('你剛建立的帳號還需要完成信箱驗證') || !reminderText.includes('【Devotion 靈修札記】請完成信箱驗證')) {
+    throw new Error(`同裝置 pending verification 輕提醒文案錯誤：${reminderText}`);
+  }
+  await expectNoVisibleLocator(page.locator('#auth-verification-panel'), '同裝置 pending verification 不應直接顯示完整提醒面板');
+  await clickElement(page, '#close-auth-inline-btn');
+  await page.waitForFunction(() => document.querySelector('#auth-inline-panel')?.classList.contains('hidden'), { timeout: 10000 });
+  await page.evaluate((key) => localStorage.removeItem(key), STORAGE_KEYS.pendingEmailVerification);
+  results.push('同裝置剛註冊 pending verification 只在登入模式顯示輕提醒');
 }
 
 async function launchSmokeBrowser() {
@@ -352,6 +377,7 @@ async function run() {
     await verifyWelcomeScreen(page, results);
     await verifyAuthModal(page, '[data-testid="auth-open-register"]', '建立帳戶', '建立帳戶', results);
     await verifyAuthModal(page, '[data-testid="auth-open-login"]', '登入', '登入', results);
+    await verifyPendingVerificationReminder(page, results);
 
     await seedLocalUserState(page, { user: seedUser, notes: seedNotes, books: seedBooks, snapshots: seedSnapshots });
     await page.reload({ waitUntil: 'networkidle', timeout: 20000 });
