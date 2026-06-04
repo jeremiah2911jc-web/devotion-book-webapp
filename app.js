@@ -54,6 +54,10 @@ const AUTH_VERIFICATION_HELP = '如果你不熟悉信箱操作，或一直找不
 const RESEND_VERIFICATION_SUCCESS_MESSAGE = '驗證信已重新寄出。請到信箱收信，若收件匣沒有看到，請到垃圾郵件、促銷內容或垃圾信箱找看看。';
 const RESEND_VERIFICATION_FAILURE_MESSAGE = '驗證信暫時無法寄出，請稍後再試。若仍無法收到，請聯絡管理員協助開通。';
 const RESEND_VERIFICATION_COOLDOWN_MS = 60 * 1000;
+const AUTH_GOOGLE_REDIRECT_URL = 'https://www.devotionbook.com.tw';
+const AUTH_PENDING_OAUTH_PROVIDER_KEY = 'devotion-pending-oauth-provider';
+const GOOGLE_LOGIN_FAILURE_MESSAGE = 'Google 登入沒有完成，請再試一次，或改用 Email 登入。';
+const GOOGLE_LOGIN_UNAVAILABLE_MESSAGE = 'Google 登入暫時無法使用，請改用 Email 登入。';
 const SUPPORT_PAYMENT_INFO = {
   bank: '台北富邦銀行',
   code: '012',
@@ -881,6 +885,8 @@ const els = {
   gateResetPasswordBtn: document.getElementById('gate-reset-password-btn'),
   gateResendVerificationHint: document.getElementById('gate-resend-verification-hint'),
   gateResendVerificationBtn: document.getElementById('gate-resend-verification-btn'),
+  authGoogleSection: document.getElementById('auth-google-section'),
+  gateGoogleLoginBtn: document.getElementById('gate-google-login-btn'),
   authVerificationPanel: document.getElementById('auth-verification-panel'),
   authVerificationTitle: document.getElementById('auth-verification-title'),
   authVerificationBody: document.getElementById('auth-verification-body'),
@@ -933,6 +939,7 @@ const els = {
   resetPasswordBtn: document.getElementById('reset-password-btn'),
   resendVerificationHint: document.getElementById('resend-verification-hint'),
   resendVerificationBtn: document.getElementById('resend-verification-btn'),
+  googleLoginBtn: document.getElementById('google-login-btn'),
   bookSaveFeedback: document.getElementById('book-save-feedback'),
   importEpubBtn: document.getElementById('import-epub-btn'),
   importEpubInput: document.getElementById('import-epub-input'),
@@ -1043,6 +1050,7 @@ function hideAuthVerificationPanel() {
   els.gateResetPasswordBtn?.classList.toggle('hidden', !showSecondaryAuthActions);
   els.gateResendVerificationHint?.classList.toggle('hidden', !showSecondaryAuthActions);
   els.gateResendVerificationBtn?.classList.toggle('hidden', !showSecondaryAuthActions);
+  els.authGoogleSection?.classList.toggle('hidden', !showSecondaryAuthActions);
 }
 
 function showAuthVerificationPanel(mode = 'signup', email = '') {
@@ -1062,6 +1070,7 @@ function showAuthVerificationPanel(mode = 'signup', email = '') {
   els.gateResetPasswordBtn?.classList.add('hidden');
   els.gateResendVerificationHint?.classList.add('hidden');
   els.gateResendVerificationBtn?.classList.add('hidden');
+  els.authGoogleSection?.classList.add('hidden');
   els.authVerificationPanel.classList.remove('hidden');
   els.authVerificationPanel.setAttribute('aria-hidden', 'false');
   updateResendVerificationButtons();
@@ -1128,6 +1137,7 @@ const state = {
   resendVerificationLoading: false,
   resendVerificationCooldownUntil: 0,
   resendVerificationCooldownTimer: null,
+  googleAuthLoading: false,
   passwordRecoveryActive: false,
   deviceId: getOrCreateDeviceId(),
   realtimeChannel: null,
@@ -4190,6 +4200,8 @@ function getErrorText(error) {
     error?.code,
     error?.name,
     error?.status,
+    error?.error,
+    error?.errorDescription,
     error?.error_description,
   ].filter(Boolean).join(' ')).toLowerCase();
 }
@@ -4197,9 +4209,49 @@ function isEmailNotConfirmedError(error) {
   const text = getErrorText(error);
   return text.includes('email not confirmed') || text.includes('email_not_confirmed');
 }
+function getPendingOAuthProvider() {
+  try {
+    return sessionStorage.getItem(AUTH_PENDING_OAUTH_PROVIDER_KEY) || '';
+  } catch (error) {
+    return '';
+  }
+}
+function setPendingOAuthProvider(provider = '') {
+  try {
+    if (provider) sessionStorage.setItem(AUTH_PENDING_OAUTH_PROVIDER_KEY, provider);
+    else sessionStorage.removeItem(AUTH_PENDING_OAUTH_PROVIDER_KEY);
+  } catch (error) {
+    // Session storage can be blocked in restrictive browsers; OAuth still works without the marker.
+  }
+}
+function consumePendingOAuthProvider() {
+  const provider = getPendingOAuthProvider();
+  setPendingOAuthProvider('');
+  return provider;
+}
+function isGoogleAuthContext(errorOrState = null) {
+  const text = getErrorText(errorOrState);
+  return getPendingOAuthProvider() === 'google'
+    || text.includes('google')
+    || text.includes('oauth')
+    || text.includes('provider');
+}
+function localizeGoogleAuthError(error = null) {
+  const text = getErrorText(error);
+  if (text.includes('access_denied')
+    || text.includes('user denied')
+    || text.includes('cancel')
+    || text.includes('popup closed')) return '登入過程已取消，尚未登入。';
+  if (text.includes('provider is not enabled')
+    || text.includes('unsupported provider')
+    || text.includes('provider not enabled')
+    || text.includes('oauth provider')) return GOOGLE_LOGIN_UNAVAILABLE_MESSAGE;
+  return GOOGLE_LOGIN_FAILURE_MESSAGE;
+}
 function localizeAuthError(error, fallback = '操作失敗，請稍後再試。') {
   const text = getErrorText(error);
   if (!text) return fallback;
+  if (isGoogleAuthContext(error)) return localizeGoogleAuthError(error);
   if (text.includes('invalid login credentials')) return 'Email 或密碼錯誤，請重新輸入。';
   if (isEmailNotConfirmedError(error)) return '你的帳號尚未完成信箱驗證。請先到註冊信箱收取驗證信，並點選信中的「完成信箱驗證」。';
   if (isDuplicateRegistrationError(error)) return '這個 Email 已建立帳戶。如果尚未完成信箱驗證，請使用「重新寄送驗證信」。';
@@ -4481,10 +4533,13 @@ async function handleSupabaseAuthRedirect(urlState = getAuthRedirectUrlState()) 
   if (!state.supabase || !urlState.hasAuthParams || urlState.isRecovery) return { handled: false };
   if (urlState.hasError) {
     clearAuthCallbackUrl();
+    const isGoogle = isGoogleAuthContext(urlState);
+    const message = isGoogle ? localizeGoogleAuthError(urlState) : '信箱驗證連結無效或已過期，請重新申請驗證信。';
+    if (isGoogle) consumePendingOAuthProvider();
     return {
       handled: true,
       success: false,
-      message: '信箱驗證連結無效或已過期，請重新申請驗證信。',
+      message,
     };
   }
 
@@ -4514,18 +4569,24 @@ async function handleSupabaseAuthRedirect(urlState = getAuthRedirectUrlState()) 
     clearAuthCallbackUrl();
     const { data } = await state.supabase.auth.getSession();
     const session = data?.session || null;
+    const provider = consumePendingOAuthProvider();
     return {
       handled: true,
       success: true,
       session,
-      message: session?.user ? '信箱驗證完成，已登入。' : '信箱驗證完成，請登入。',
+      message: provider === 'google'
+        ? (session?.user ? 'Google 登入完成，已登入。' : 'Google 登入完成，請登入。')
+        : (session?.user ? '信箱驗證完成，已登入。' : '信箱驗證完成，請登入。'),
     };
   } catch (error) {
     clearAuthCallbackUrl();
+    const isGoogle = isGoogleAuthContext(error);
+    const message = isGoogle ? localizeGoogleAuthError(error) : '信箱驗證連結無效或已過期，請重新申請驗證信。';
+    if (isGoogle) consumePendingOAuthProvider();
     return {
       handled: true,
       success: false,
-      message: '信箱驗證連結無效或已過期，請重新申請驗證信。',
+      message,
     };
   }
 }
@@ -5133,6 +5194,7 @@ function bindEvents() {
   els.registerBtn.addEventListener('click', () => handleRegister().catch(handleError));
   els.loginBtn.addEventListener('click', () => handleLogin().catch(handleError));
   els.magicLinkBtn.addEventListener('click', () => handleMagicLink().catch(handleError));
+  els.googleLoginBtn?.addEventListener('click', () => handleGoogleLogin().catch(handleError));
   els.closeAuthSettingsBtn?.addEventListener('click', closeAuthSettings);
   els.openRegisterBtn?.addEventListener('click', () => openAuthInline('register'));
   els.openLoginBtn?.addEventListener('click', () => openAuthInline('login'));
@@ -5144,6 +5206,7 @@ function bindEvents() {
     els.gateSubmitBtn?.addEventListener('click', () => submitAuthInlineForm().catch(handleError));
   }
   els.gateResetPasswordBtn?.addEventListener('click', () => handleResetPassword().catch(handleError));
+  els.gateGoogleLoginBtn?.addEventListener('click', () => handleGoogleLogin().catch(handleError));
   els.resetPasswordBtn?.addEventListener('click', () => handleResetPassword().catch(handleError));
   els.gateResendVerificationBtn?.addEventListener('click', () => handleResendVerificationEmail().catch(handleError));
   els.resendVerificationBtn?.addEventListener('click', () => handleResendVerificationEmail().catch(handleError));
@@ -5459,6 +5522,24 @@ function startResendVerificationCooldown(duration = RESEND_VERIFICATION_COOLDOWN
   }, 1000);
 }
 
+function getGoogleLoginButtons() {
+  return [els.gateGoogleLoginBtn, els.googleLoginBtn].filter(Boolean);
+}
+
+function setGoogleAuthLoading(isLoading = false) {
+  state.googleAuthLoading = !!isLoading;
+  getGoogleLoginButtons().forEach((button) => {
+    const label = button.querySelector('span:last-child');
+    if (!button.dataset.defaultText) button.dataset.defaultText = label?.textContent?.trim() || '使用 Google 登入';
+    button.disabled = state.googleAuthLoading;
+    if (state.googleAuthLoading) {
+      label?.replaceChildren(document.createTextNode('前往 Google...'));
+    } else {
+      label?.replaceChildren(document.createTextNode(button.dataset.defaultText));
+    }
+  });
+}
+
 async function handleResendVerificationEmail() {
   const { email } = getAuthCredentials();
   if (!email) {
@@ -5495,6 +5576,29 @@ async function handleResendVerificationEmail() {
     showToast(localizeResendVerificationError(error), 5600);
   } finally {
     setResendVerificationLoading(false);
+  }
+}
+
+async function handleGoogleLogin() {
+  if (!state.supabase || typeof state.supabase.auth?.signInWithOAuth !== 'function') {
+    showToast(GOOGLE_LOGIN_UNAVAILABLE_MESSAGE, 5200);
+    return;
+  }
+  setGoogleAuthLoading(true);
+  setPendingOAuthProvider('google');
+  try {
+    const { error } = await state.supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: AUTH_GOOGLE_REDIRECT_URL,
+      },
+    });
+    if (error) throw error;
+  } catch (error) {
+    setPendingOAuthProvider('');
+    showToast(localizeGoogleAuthError(error), 5200);
+  } finally {
+    setGoogleAuthLoading(false);
   }
 }
 
