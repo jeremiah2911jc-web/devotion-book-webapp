@@ -215,10 +215,19 @@ body.auth-locked .app-shell { display: none; }
   margin-bottom: 8px;
 }
 .auth-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: nowrap;
   margin-top: 2px;
 }
-.auth-modal-secondary-actions {
-  margin-top: -2px;
+.auth-modal-actions button {
+  flex: 0 0 auto;
+  min-height: 40px;
+  white-space: nowrap;
+}
+.auth-modal-actions .subtle-action {
+  padding-inline: 14px;
 }
 .auth-google-section {
   display: grid;

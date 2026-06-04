@@ -990,14 +990,14 @@ function createResendVerificationButton() {
 }
 function ensureAuthVerificationResendUi() {
   if (!els.gateResendVerificationBtn && els.gateResetPasswordBtn) {
-    const secondaryActions = els.gateResetPasswordBtn.closest('.auth-modal-secondary-actions');
-    if (secondaryActions) {
+    const actionRow = els.gateResetPasswordBtn.closest('.auth-modal-actions');
+    if (actionRow) {
       const hint = createResendVerificationHint();
       hint.id = 'gate-resend-verification-hint';
       const { row, button } = createResendVerificationButton();
       button.id = 'gate-resend-verification-btn';
-      secondaryActions.insertAdjacentElement('afterend', row);
-      secondaryActions.insertAdjacentElement('afterend', hint);
+      actionRow.insertAdjacentElement('afterend', row);
+      actionRow.insertAdjacentElement('afterend', hint);
       els.gateResendVerificationHint = hint;
       els.gateResendVerificationBtn = button;
     }
@@ -4384,12 +4384,10 @@ function getAuthInlineSubmitLabel() {
 
 function syncAuthInlineSubmitButton(isSubmitting = state.authInlineSubmitting) {
   if (!els.gateSubmitBtn) return;
-  const isRegister = state.authInlineMode === 'register';
-  const isPasswordRecovery = state.authInlineMode === 'password-recovery';
   els.gateSubmitBtn.disabled = !!isSubmitting;
   els.gateSubmitBtn.textContent = isSubmitting ? '處理中...' : getAuthInlineSubmitLabel();
-  els.gateSubmitBtn.classList.toggle('secondary-btn', !isRegister && !isPasswordRecovery);
-  els.gateSubmitBtn.classList.toggle('primary-btn', isRegister || isPasswordRecovery);
+  els.gateSubmitBtn.classList.remove('secondary-btn');
+  els.gateSubmitBtn.classList.add('primary-btn');
 }
 
 async function submitAuthInlineForm(event = null) {

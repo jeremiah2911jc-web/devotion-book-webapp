@@ -276,6 +276,30 @@ async function verifyAuthModal(page, triggerSelector, expectedTitle, expectedSub
   await expectVisible(page, '#gate-submit-btn', `${expectedTitle} modal 顯示主按鈕`);
   await expectButtonText(page, '#gate-submit-btn', expectedSubmitText, `${expectedTitle} modal 主按鈕文字正確`);
   await expectVisible(page, '#gate-reset-password-btn', `${expectedTitle} modal 顯示忘記密碼 / 重設密碼`);
+  await expectVisible(page, '#gate-google-login-btn', `${expectedTitle} modal 顯示 Google 登入按鈕`);
+  const actionLayout = await page.evaluate(() => {
+    const submit = document.querySelector('#gate-submit-btn');
+    const reset = document.querySelector('#gate-reset-password-btn');
+    const google = document.querySelector('#gate-google-login-btn');
+    const submitRect = submit.getBoundingClientRect();
+    const resetRect = reset.getBoundingClientRect();
+    const googleRect = google.getBoundingClientRect();
+    return {
+      sameLine: Math.abs(submitRect.top - resetRect.top) < 3,
+      resetAfterSubmit: resetRect.left > submitRect.left,
+      compactButtons: submitRect.width < 180 && resetRect.width < 160,
+      googleBelowActions: googleRect.top > Math.max(submitRect.bottom, resetRect.bottom),
+      horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth,
+      submitText: submit.textContent.trim(),
+      resetText: reset.textContent.trim(),
+    };
+  });
+  if (!actionLayout.sameLine || !actionLayout.resetAfterSubmit || !actionLayout.compactButtons || actionLayout.horizontalOverflow) {
+    throw new Error(`${expectedTitle} modal 按鈕排列錯誤：${JSON.stringify(actionLayout)}`);
+  }
+  if (!actionLayout.googleBelowActions) {
+    throw new Error(`${expectedTitle} modal Google 登入位置錯誤：${JSON.stringify(actionLayout)}`);
+  }
   await expectVisible(page, '#close-auth-inline-btn', `${expectedTitle} modal 顯示關閉按鈕`);
   await expectNoVisibleLocator(page.locator('#auth-inline-panel').getByText('Magic Link'), `${expectedTitle} modal 不應顯示 Magic Link`);
   await expectNoVisibleLocator(page.locator('#magic-link-btn'), 'hidden 舊 auth card 的 Magic Link 按鈕不應可見');
