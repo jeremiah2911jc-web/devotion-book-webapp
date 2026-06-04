@@ -591,7 +591,7 @@
                   <div id="scripture-preview" class="scripture-preview hidden"></div>
                 </section>
 
-                <section class="note-section note-content-section" aria-labelledby="note-content-section-title">
+                <section id="note-editor-section" class="note-section note-content-section" aria-labelledby="note-content-section-title">
                   <div class="note-section-heading">
                     <h3 id="note-content-section-title">我的札記</h3>
                   </div>
@@ -613,6 +613,19 @@
                     <textarea id="note-content" rows="20" placeholder="在這裡寫下今天的札記..." data-testid="note-content"></textarea>
                   </label>
                 </section>
+              </section>
+
+              <section class="note-side-card note-actions-card" aria-labelledby="note-actions-title">
+                <div class="note-section-heading">
+                  <h3 id="note-actions-title">工具</h3>
+                </div>
+                <div class="note-save-actions">
+                  <button id="new-note-btn" class="ghost-btn" type="button">清空重填</button>
+                  <button type="button" id="save-note-draft-btn" class="ghost-btn" data-testid="note-save-draft">儲存草稿</button>
+                  <button type="button" id="publish-note-btn" class="primary-btn" data-testid="note-publish">儲存為正式札記</button>
+                  <button type="button" id="note-preview-btn" class="ghost-btn" data-testid="note-preview-open">預覽文章</button>
+                  <button type="button" id="delete-note-btn" class="danger-btn hidden">刪除札記</button>
+                </div>
               </section>
 
               <section class="note-section note-side-card note-prayer-section" aria-labelledby="note-prayer-section-title">
@@ -648,19 +661,6 @@
                   <input id="note-show-summary" type="checkbox" data-testid="note-show-summary" />
                   <span>閱讀與成書時顯示摘要</span>
                 </label>
-              </section>
-
-              <section class="note-side-card note-actions-card" aria-labelledby="note-actions-title">
-                <div class="note-section-heading">
-                  <h3 id="note-actions-title">工具</h3>
-                </div>
-                <div class="note-save-actions">
-                  <button id="new-note-btn" class="ghost-btn" type="button">清空重填</button>
-                  <button type="button" id="save-note-draft-btn" class="ghost-btn" data-testid="note-save-draft">儲存草稿</button>
-                  <button type="button" id="publish-note-btn" class="primary-btn" data-testid="note-publish">儲存為正式札記</button>
-                  <button type="button" id="note-preview-btn" class="ghost-btn" data-testid="note-preview-open">預覽文章</button>
-                  <button type="button" id="delete-note-btn" class="danger-btn hidden">刪除札記</button>
-                </div>
               </section>
 
               <section class="note-side-card note-drafts-panel" aria-labelledby="note-drafts-title">

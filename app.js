@@ -9043,7 +9043,11 @@ function renderNotes() {
       </article>
     `;
   }).join('');
-  els.notesList.querySelectorAll('[data-edit-note]').forEach(btn => btn.addEventListener('click', () => populateNoteForm(btn.dataset.editNote)));
+  els.notesList.querySelectorAll('[data-edit-note]').forEach(btn => btn.addEventListener('click', () => {
+    const note = state.notes.find(item => item.id === btn.dataset.editNote);
+    const isDraft = isDraftNote(note);
+    populateNoteForm(btn.dataset.editNote, { focusEditor: isDraft, showDraftLoadedToast: isDraft });
+  }));
   updateChapterSourceOptions();
   renderNoteDraftsList();
 }
@@ -9077,7 +9081,7 @@ function renderNoteDraftsList() {
     `;
   }).join('');
   els.noteDraftsList.querySelectorAll('[data-edit-note-draft]').forEach(btn => {
-    btn.addEventListener('click', () => populateNoteForm(btn.dataset.editNoteDraft));
+    btn.addEventListener('click', () => populateNoteForm(btn.dataset.editNoteDraft, { focusEditor: true, showDraftLoadedToast: true }));
   });
 }
 
@@ -10177,9 +10181,27 @@ function ignoreCurrentNoteDraft() {
   showToast('已忽略草稿。');
 }
 
-function populateNoteForm(noteId) {
+function focusNoteEditorSection() {
+  const section = document.getElementById('note-editor-section') || els.noteContent?.closest('.note-content-section');
+  section?.scrollIntoView({
+    behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ? 'auto' : 'smooth',
+    block: 'start',
+    inline: 'nearest',
+  });
+  window.setTimeout(() => {
+    if (!els.noteContent) return;
+    els.noteContent.focus({ preventScroll: true });
+    const position = els.noteContent.value.length;
+    if (typeof els.noteContent.setSelectionRange === 'function') {
+      els.noteContent.setSelectionRange(position, position);
+    }
+  }, 180);
+}
+
+function populateNoteForm(noteId, options = {}) {
   const note = state.notes.find(item => item.id === noteId);
   if (!note) return;
+  const { focusEditor = false, showDraftLoadedToast = false } = options;
   setView('notes');
   state.currentNoteStatus = resolveNoteStatus(note);
   els.noteId.value = note.id;
@@ -10208,6 +10230,8 @@ function populateNoteForm(noteId) {
   syncNoteStatusUi();
   state.noteDraftDirty = false;
   syncCurrentNoteDraftNotice();
+  if (focusEditor) focusNoteEditorSection();
+  if (showDraftLoadedToast) showToast('已載入草稿，可以繼續編輯。');
 }
 
 function clearNoteForm({ clearDraft = false } = {}) {

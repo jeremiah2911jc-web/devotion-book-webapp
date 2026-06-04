@@ -524,11 +524,11 @@ input:focus, textarea:focus, select:focus {
   display: grid;
   grid-template-areas:
     "hero"
-    "drafts"
     "main"
+    "actions"
     "prayer"
     "organize"
-    "actions";
+    "drafts";
   gap: 14px;
   align-items: start;
 }
@@ -606,15 +606,15 @@ input:focus, textarea:focus, select:focus {
 .note-organize-section { grid-area: organize; }
 .note-actions-card { grid-area: actions; }
 .note-drafts-panel { grid-area: drafts; }
-@media (min-width: 1160px) {
+@media (min-width: 980px) {
   .note-writing-form {
-    grid-template-columns: minmax(0, 1fr) minmax(300px, 340px);
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
     grid-template-areas:
       "hero hero"
-      "main drafts"
       "main prayer"
       "main organize"
-      "main actions";
+      "main actions"
+      "main drafts";
     column-gap: 22px;
     row-gap: 12px;
   }
@@ -769,6 +769,8 @@ input:focus, textarea:focus, select:focus {
 }
 .note-content-section {
   gap: 10px;
+  scroll-margin-top: 18px;
+  scroll-margin-bottom: 96px;
 }
 .note-content-field {
   position: relative;
@@ -977,11 +979,11 @@ input:focus, textarea:focus, select:focus {
   .note-writing-form {
     grid-template-areas:
       "hero"
-      "drafts"
       "main"
+      "actions"
       "prayer"
       "organize"
-      "actions";
+      "drafts";
     gap: 14px;
   }
   .note-writing-hero {
