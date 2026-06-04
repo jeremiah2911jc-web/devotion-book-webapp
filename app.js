@@ -209,7 +209,7 @@ const PRAYER_STATUS_LABELS = {
 
 const AUTO_BACKUP_SLOTS = ['08', '14', '20'];
 const AUTO_BACKUP_MAX_ITEMS = 3;
-const PRODUCTION_HOSTNAMES = new Set(['www.devotionbook.com.tw', 'devotionbook.com.tw']);
+const PRODUCTION_HOSTNAMES = new Set(['www.devotionbook.com.tw', 'devotionbook.com.tw', 'devotion-book-webapp.vercel.app']);
 const LOCAL_DEVELOPMENT_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1']);
 
 function isLocalDevelopmentHost() {
@@ -250,7 +250,7 @@ function getAppRuntimeEnvironment(hostname = getCurrentHostname()) {
     isProductionHost,
     isLocalHost,
     isPreviewLikeHost: !!normalizedHostname && !isProductionHost,
-    shouldShowWarning: !!normalizedHostname && !isProductionHost,
+    shouldShowWarning: !!normalizedHostname && !isProductionHost && !isLocalHost,
   };
 }
 
@@ -287,9 +287,9 @@ function ensureEnvironmentWarningBanner() {
     banner.setAttribute('aria-live', 'polite');
     banner.innerHTML = `
       <div class="environment-warning-inner">
-        <strong>測試版本</strong>
-        <span class="environment-warning-copy environment-warning-copy-desktop">這是測試環境。若使用正式帳號登入，新增、修改、匯出或刪除的資料可能會同步到正式帳號。請避免用正式資料做測試。</span>
-        <span class="environment-warning-copy environment-warning-copy-mobile">使用正式帳號時，新增、匯出或刪除可能同步到正式資料。</span>
+        <strong>站台提醒</strong>
+        <span class="environment-warning-copy environment-warning-copy-desktop">這不是主要服務網域。若使用正式帳號登入，新增、修改、匯出或刪除的內容仍可能同步到帳號。</span>
+        <span class="environment-warning-copy environment-warning-copy-mobile">這不是主要服務網域，帳號內容仍可能同步。</span>
       </div>
     `;
     document.body.insertBefore(banner, document.body.firstChild);
@@ -1068,8 +1068,8 @@ const state = {
   libraryCoverObjectUrlPromises: new Map(),
   libraryCoverImageObserver: null,
   libraryCoverRefreshPromise: null,
-  syncStatus: '本機模式',
-  syncDetail: '目前資料只保存在這台裝置。',
+  syncStatus: '尚未同步',
+  syncDetail: '這些內容目前只儲存在你正在使用的裝置，尚未同步到帳號。',
   lastSyncAt: '',
   syncReloadTimer: null,
   cloudReloadPromise: null,
@@ -1211,7 +1211,7 @@ function refreshAccountSyncUi({ isSignedIn = false } = {}) {
   const syncClock = state.lastSyncAt ? formatSyncClock(state.lastSyncAt) : '尚未同步';
   const fallbackDetail = state.supabase
     ? '登入同一個雲端帳號後，可在多裝置同步。'
-    : '目前資料只保存在這台裝置。';
+    : '這些內容目前只儲存在你正在使用的裝置，尚未同步到帳號。';
   const detail = statusLabel === '同步失敗'
     ? '同步失敗，請稍後再試。'
     : (isSignedIn ? (state.syncDetail || fallbackDetail) : '登入後可查看同步狀態。');
@@ -1432,7 +1432,7 @@ function getAdminDashboardStats() {
     {
       label: '匯入 EPUB 數量',
       value: String(importedEpubCount),
-      detail: '依目前裝置 imported_epub 本機資料統計，可用於查看已匯入 EPUB 數量',
+      detail: '依目前裝置匯入書籍資料統計，可用於查看已匯入 EPUB 數量',
     },
     {
       label: '目前登入使用者 email',
@@ -2567,8 +2567,8 @@ function ensureOperationManualUi() {
           <section id="manual-account-data" class="manual-section">
             <h2>十六、帳號設定與資料</h2>
             <p>登入後，畫面會顯示帳號資訊與同步狀態。桌機可從側邊欄帳號卡查看簡潔同步狀態、按「同步」，也可進入「帳號設定」或「登出」；手機可在總覽中的帳號區塊進入「帳號設定」，並在帳號設定裡查看同步狀態與手動同步。</p>
-            <p>「帳號設定」可以查看目前帳號、查看安裝成 App / 加入主畫面教學、上傳或移除頭像、修改密碼、上傳本機資料、下載雲端備份，也可以登出。手動同步執行中時，同步按鈕會暫時不可重複點擊，完成後會更新同步狀態。</p>
-            <p>若目前使用雲端登入，札記、禱告、選稿編排與書櫃資料會依同步狀態與網路狀況保存。若尚未登入雲端帳號，禱告同步、雲端備份與跨裝置同步會受到限制；本機模式、離線，或某些外部匯入資料，可能只保存在目前裝置與瀏覽器中。</p>
+            <p>「帳號設定」可以查看目前帳號、查看安裝成 App / 加入主畫面教學、上傳或移除頭像、修改密碼、管理未同步內容、下載雲端備份，也可以登出。手動同步執行中時，同步按鈕會暫時不可重複點擊，完成後會更新同步狀態。</p>
+            <p>若目前使用雲端登入，札記、禱告、選稿編排與書櫃資料會依同步狀態與網路狀況保存。若尚未登入雲端帳號，禱告同步、雲端備份與跨裝置同步會受到限制；未同步內容、離線期間新增的內容，或某些外部匯入資料，可能只保存在你正在使用的裝置與瀏覽器中。</p>
             <p>閱讀位置、外部 EPUB 與部分使用偏好會依目前裝置保存。重要資料可保留備份或下載檔案。</p>
           </section>
 
@@ -2592,7 +2592,7 @@ function ensureOperationManualUi() {
               <div class="manual-faq-item"><h3>抓取經文失敗怎麼辦？</h3><p>常見原因包含經文格式不完整、書卷名稱或章節不存在、網路不穩，或經文資料暫時無法取得。可確認格式，例如：哥林多前書2:1 或 哥林多前書2:1-5，再重新按「抓取經文」。</p></div>
               <div class="manual-faq-item"><h3>禱告或長期記念的事要寫在哪裡？</h3><p>每篇札記可以在「今日禱告」欄位另外寫下最後的禱告回應。若是需要長期追蹤的禱告、關心的人或持續記念的事，請使用「禱告」功能，可設定狀態、補上後續回顧，並記錄「回顧神的恩典與帶領」。</p></div>
               <div class="manual-faq-item"><h3>今日禱告一定會出現在閱讀或成書裡嗎？</h3><p>不一定。只有勾選「閱讀與成書時顯示禱告」且今日禱告有內容時，札記閱讀與 EPUB 才會顯示。取消勾選時，禱告文字仍會保存在札記中，但不會出現在閱讀與成書裡。</p></div>
-              <div class="manual-faq-item"><h3>沒有登入雲端帳號可以使用嗎？</h3><p>可以先使用部分本機功能，但禱告同步、雲端備份與跨裝置同步會受到限制。若要讓手機與桌機看到同一份資料，請登入同一個雲端帳號後再手動同步或重新整理。</p></div>
+              <div class="manual-faq-item"><h3>沒有登入雲端帳號可以使用嗎？</h3><p>可以先使用部分功能，但禱告同步、雲端備份與跨裝置同步會受到限制。若要讓手機與桌機看到同一份資料，請登入同一個雲端帳號後再手動同步或重新整理。</p></div>
               <div class="manual-faq-item"><h3>如何申請支持款項收款證明？</h3><p>完成轉帳後，可在「支持平台／支持事工」中點選「申請收款證明」，填寫姓名或抬頭、Email、支持金額、轉帳日期與匯款帳號後五碼。平台確認後會依你填寫的 Email 聯繫。本證明為支持款項收款紀錄，不作為稅務扣抵憑證。</p></div>
               <div class="manual-faq-item"><h3>為什麼編輯區會出現 ##、{red}、{/red} 這些符號？</h3><p>這些是格式標記，用來讓系統在預覽與成書時轉成小標題或重點色。寫作時會先看到標記，點「預覽文章」後可以確認實際效果。</p></div>
               <div class="manual-faq-item"><h3>為什麼 {red}##重點{/red} 沒有正常變成小標題？</h3><p>小標題的 <code>##</code> 需要放在一行最前面，不能被顏色標記包住。如果想使用小標題，請寫成「## 重點整理」。如果想標記紅字，請另起一行寫「{red}這一句是重點。{/red}」。</p></div>
@@ -2748,7 +2748,7 @@ async function uploadLocalDataToCloud() {
   requireUser();
   if (!state.supabase) throw new Error('請先登入雲端帳號。');
   const localPack = collectMatchingLocalDataForCloudUser();
-  if (!localPack.localUserId) throw new Error('這台裝置找不到同 Email 的本機資料可上傳。');
+  if (!localPack.localUserId) throw new Error('目前找不到同 Email 的未同步內容可上傳。');
 
   const remoteNotes = new Map(state.notes.map(item => [item.id, item]));
   const remoteBooks = new Map(state.books.map(item => [item.id, item]));
@@ -2774,10 +2774,10 @@ async function uploadLocalDataToCloud() {
     }));
 
   if (!notesToUpload.length && !booksToUpload.length && !snapshotsToUpload.length) {
-    throw new Error('本機沒有比雲端更新的資料可上傳。');
+    throw new Error('目前沒有比雲端更新的內容可上傳。');
   }
 
-  setSyncState({ status: '同步中', detail: '正在把本機資料上傳到雲端…' });
+  setSyncState({ status: '同步中', detail: '正在上傳未同步內容…' });
   refreshUi();
   if (notesToUpload.length) {
     const { error } = await state.supabase.from('devotion_notes').upsert(notesToUpload);
@@ -2791,7 +2791,7 @@ async function uploadLocalDataToCloud() {
     const { error } = await state.supabase.from('book_snapshots').upsert(snapshotsToUpload);
     if (error) throw error;
   }
-  await loadAllData({ silent: true, syncReason: '本機資料已上傳到雲端。' });
+  await loadAllData({ silent: true, syncReason: '未同步內容已上傳到雲端。' });
   showToast(`已上傳：札記 ${notesToUpload.length}、書籍 ${booksToUpload.length}`);
 }
 function buildBackupPayload(exportedAtIso = nowIso()) {
@@ -4951,10 +4951,10 @@ async function applyConnectionSettings({ supabaseUrl = '', supabaseAnonKey = '' 
   } else {
     state.currentUser = getLocalUser();
     ensureAdminUi();
-    setSyncState({ status: '本機模式', detail: '目前資料只保存在這台裝置。', at: '' });
+    setSyncState({ status: '尚未同步', detail: '這些內容目前只儲存在你正在使用的裝置，尚未同步到帳號。', at: '' });
   }
 
-  await loadAllData({ silent: true, syncReason: state.supabase ? '雲端設定已更新。' : '已切回本機模式。' });
+  await loadAllData({ silent: true, syncReason: state.supabase ? '雲端設定已更新。' : '已改為管理未同步內容。' });
   refreshUi();
   if (successMessage) showToast(successMessage);
 }
@@ -4969,10 +4969,10 @@ async function clearConnectionSettings() {
 
   state.currentUser = getLocalUser();
   ensureAdminUi();
-  setSyncState({ status: '本機模式', detail: '目前資料只保存在這台裝置。', at: '' });
-  await loadAllData({ silent: true, syncReason: '已切回本機模式。' });
+  setSyncState({ status: '尚未同步', detail: '這些內容目前只儲存在你正在使用的裝置，尚未同步到帳號。', at: '' });
+  await loadAllData({ silent: true, syncReason: '已改為管理未同步內容。' });
   refreshUi();
-  showToast('已切回本機模式。');
+  showToast('已改為管理未同步內容。');
 }
 
 async function bootstrap() {
@@ -5026,7 +5026,7 @@ async function bootstrap() {
   } else {
     state.currentUser = getLocalUser();
     ensureAdminUi();
-    setSyncState({ status: '本機模式', detail: '目前資料只保存在這台裝置。', at: '' });
+    setSyncState({ status: '尚未同步', detail: '這些內容目前只儲存在你正在使用的裝置，尚未同步到帳號。', at: '' });
   }
   if (!state.passwordRecoveryActive) await loadAllData({ silent: true });
   runAutoBackupCheck();
@@ -5393,7 +5393,7 @@ async function handleRegister() {
   accounts.unshift(account);
   saveLocalAccounts(accounts);
   const user = sanitizeLocalUser(account);
-  await completeLocalAuth(user, '\u672c\u6a5f\u5e33\u6236\u5df2\u5efa\u7acb\uff0c\u5df2\u9032\u5165\u9996\u9801\u3002');
+  await completeLocalAuth(user, '帳號已建立，已進入首頁。');
 }
 
 async function handleLogin() {
@@ -5408,7 +5408,7 @@ async function handleLogin() {
   const account = findLocalAccountByEmail(email);
   if (!account || account.password !== password) throw new Error('Email \u6216\u5bc6\u78bc\u932f\u8aa4\u3002');
   const user = sanitizeLocalUser(account);
-  await completeLocalAuth(user, '\u5df2\u767b\u5165\u672c\u6a5f\u5e33\u6236\u3002');
+  await completeLocalAuth(user, '已登入帳號。');
 }
 
 async function handleResetPassword() {
@@ -5498,7 +5498,7 @@ async function handleSignOut() {
     state.currentUser = null;
   }
   resetProfileAvatarState();
-  setSyncState({ status: state.supabase ? '尚未登入' : '本機模式', detail: state.supabase ? '雲端設定仍在，但目前尚未登入帳號。' : '目前資料只保存在這台裝置。', at: '' });
+  setSyncState({ status: state.supabase ? '尚未登入' : '尚未同步', detail: state.supabase ? '雲端設定仍在，但目前尚未登入帳號。' : '這些內容目前只儲存在你正在使用的裝置，尚未同步到帳號。', at: '' });
   state.selectedBookId = null;
   await loadAllData({ silent: true });
   setView('dashboard');
@@ -5510,7 +5510,7 @@ function getUserId() {
   return state.currentUser?.id || 'guest';
 }
 function requireUser() {
-  if (!state.currentUser) throw new Error('請先登入或以本機模式建立測試帳號。');
+  if (!state.currentUser) throw new Error('請先登入或建立帳號。');
 }
 
 function hashStorageScope(value = '') {
@@ -5667,8 +5667,8 @@ async function loadAllData({ silent = false, syncReason = '', reason = '', minIn
       state.snapshots = loadJson(STORAGE_KEYS.snapshots, []).filter(item => item.user_id === userId);
       clearCloudLibrary('請先登入雲端帳號。');
       setSyncState({
-        status: state.supabase ? '尚未登入' : '本機模式',
-        detail: state.supabase ? '已設定雲端，但目前還沒有登入帳號。' : '目前資料只保存在這台裝置。',
+        status: state.supabase ? '尚未登入' : '尚未同步',
+        detail: state.supabase ? '已設定雲端，但目前還沒有登入帳號。' : '這些內容目前只儲存在你正在使用的裝置，尚未同步到帳號。',
         at: state.supabase ? state.lastSyncAt : '',
       });
     }
@@ -6026,7 +6026,7 @@ function ensureAdminUi() {
             <div class="panel-header">
               <div>
                 <h3>站內內容統計</h3>
-                <p class="muted">使用目前前端 state 與現有 Supabase / 本機資料來源彙整。</p>
+                <p class="muted">使用目前前端 state 與現有 Supabase / 未同步內容來源彙整。</p>
               </div>
             </div>
             <div id="admin-summary-cards" class="admin-summary-grid"></div>
@@ -6682,8 +6682,8 @@ function refreshUi() {
   if (isAdminView(document.body.dataset.currentView || 'dashboard') && !isAdminUser()) {
     setView('dashboard');
   }
-  if (els.authModeBadge) els.authModeBadge.textContent = state.supabase ? '雲端模式' : '本機模式';
-  if (els.statusStorage) els.statusStorage.textContent = state.supabase ? 'Supabase' : 'Local';
+  if (els.authModeBadge) els.authModeBadge.textContent = state.supabase ? '雲端模式' : '未同步內容';
+  if (els.statusStorage) els.statusStorage.textContent = state.supabase ? '雲端' : '未同步';
   if (els.statusSync) els.statusSync.textContent = state.syncStatus || '未啟用';
   els.authForms.classList.toggle('hidden', isSignedIn);
   els.authUser.classList.toggle('hidden', !isSignedIn);
@@ -6700,7 +6700,7 @@ function refreshUi() {
   if (els.authInlineHint) {
     els.authInlineHint.textContent = state.supabase
       ? '請使用信箱與密碼登入，或改用 Magic Link。'
-      : '目前為本機模式，可直接建立或登入本機帳戶。';
+      : '目前可先建立帳戶並管理未同步內容。';
   }
   if (els.authInlineResetHint) {
     els.authInlineResetHint.classList.toggle('hidden', state.authInlineMode !== 'login');
@@ -6714,7 +6714,7 @@ function refreshUi() {
   els.downloadBackupBtn?.toggleAttribute('disabled', !cloudActionsAvailable);
   if (els.accountCloudHint) {
     els.accountCloudHint.textContent = cloudActionsAvailable
-      ? '登入雲端帳號後，可上傳本機資料或下載雲端備份。'
+      ? '登入雲端帳號後，可管理未同步內容或下載雲端備份。'
       : '請先登入雲端帳號使用同步與備份。';
   }
   if (els.syncStatusText) els.syncStatusText.textContent = state.syncStatus || '未啟用';
@@ -8730,7 +8730,10 @@ function renderNoteDraftsList() {
   const drafts = getDraftNotes();
   if (!drafts.length) {
     els.noteDraftsList.className = 'list-stack note-drafts-list empty-state';
-    els.noteDraftsList.textContent = '目前沒有草稿。';
+    els.noteDraftsList.innerHTML = `
+      <strong>目前沒有草稿</strong>
+      <p>你可以先寫下一段想法，之後再回來繼續整理成札記。</p>
+    `;
     return;
   }
   els.noteDraftsList.className = 'list-stack note-drafts-list';
@@ -12052,7 +12055,7 @@ function renderLibrary() {
     const selected = book.id === cloudLibrary.selectedBookId || book.id === cloudLibrary.readerBook?.id;
     const description = getBookDraftDescription(book)
       || (book.source === 'imported_epub'
-        ? '這本 EPUB 已匯入本機書櫃，可直接開啟閱讀。'
+        ? '這本 EPUB 已匯入書櫃，可直接開啟閱讀。'
         : isSystemBook
           ? '這是系統內建的聖經電子書，可直接開啟閱讀。'
         : '這本書已保存於雲端書櫃，可在登入後跨裝置閱讀。');
@@ -12124,7 +12127,7 @@ async function deleteImportedLibraryBook(bookId) {
   if (cloudLibrary.readerBook?.id === bookId) cloudLibrary.readerBook = null;
   if (cloudLibrary.selectedBookId === bookId) cloudLibrary.selectedBookId = '';
   renderLibrary();
-  showToast('外部 EPUB 已從本機書櫃移除。');
+  showToast('外部 EPUB 已從書櫃移除。');
 }
 
 async function openLibraryBook(bookId) {
@@ -12204,7 +12207,7 @@ async function openImportedLibraryBook(bookId) {
   if (!book) throw new Error('找不到這本外部 EPUB。');
   if (!book.chapters?.length) throw new Error('這本 EPUB 沒有可讀章節，可能是格式不支援。');
   const stored = await getImportedBookBlob(bookId);
-  if (!stored?.epubBlob) throw new Error('找不到這本 EPUB 的本機檔案，請重新匯入。');
+  if (!stored?.epubBlob) throw new Error('找不到這本 EPUB 檔案，請重新匯入。');
   resetReaderPaginationCache();
   cloudLibrary.selectedBookId = book.id;
   cloudLibrary.readerBook = { ...book, source: 'imported_epub' };
@@ -12242,7 +12245,7 @@ async function downloadImportedLibraryBookEpub(bookId) {
   const book = getImportedBook(bookId);
   if (!book) throw new Error('找不到這本外部 EPUB。');
   const stored = await getImportedBookBlob(bookId);
-  if (!stored?.epubBlob) throw new Error('找不到這本 EPUB 的本機檔案，請重新匯入。');
+  if (!stored?.epubBlob) throw new Error('找不到這本 EPUB 檔案，請重新匯入。');
   const safeTitle = String(book.title || book.fileName || 'book').replace(/[\\/:*?"<>|]+/g, '').trim() || 'book';
   downloadBlob(`${safeTitle}.epub`, stored.epubBlob);
   showToast('EPUB 已下載。');
@@ -13129,7 +13132,7 @@ function renderReaderBookmarksPanel() {
         <strong>${escapeHtml(getReaderCurrentChapterTitle())}｜${escapeHtml(getReaderCurrentPageLabel())}</strong>
       </div>
       <p class="reader-panel-muted">會記住最後閱讀位置，下次可接續閱讀。</p>
-      <p class="reader-panel-muted">目前保存在這台裝置與瀏覽器。</p>
+      <p class="reader-panel-muted">尚未同步到帳號時，會保留在目前閱讀環境中。</p>
     </section>
     <section class="reader-panel-section" aria-labelledby="reader-manual-bookmarks-title">
       <h4 id="reader-manual-bookmarks-title" class="reader-panel-section-title">手動書籤</h4>
@@ -13139,7 +13142,7 @@ function renderReaderBookmarksPanel() {
           ${currentBookmark ? '移除目前位置書籤' : '加入目前位置書籤'}
         </button>
       </div>
-      <p class="reader-panel-muted">手動書籤目前保存在這台裝置與瀏覽器。</p>
+      <p class="reader-panel-muted">手動書籤尚未同步到帳號時，會保留在目前閱讀環境中。</p>
       <div class="reader-bookmark-list" aria-label="手動書籤列表">
         ${bookmarkItems || '<p class="reader-panel-muted">這本書目前沒有手動書籤。</p>'}
       </div>
@@ -13587,7 +13590,7 @@ async function persistReadingProgress(bookId, currentChapter, readingProgress) {
   const { error } = await state.supabase.from('library_books').update(payload).eq('id', bookId).eq('user_id', getUserId());
   if (error) {
     queuePendingReadingProgress(bookId, payload);
-    showToast(`閱讀進度暫存於本機，稍後會再同步：${error.message}`);
+    showToast(`閱讀進度已暫存，稍後會再同步：${error.message}`);
   }
 }
 
@@ -13677,7 +13680,7 @@ async function importExternalEpub(file) {
     saveImportedLibraryBooks([importedBook, ...importedLibrary.books.filter(book => book.id !== id)]);
     await refreshImportedLibraryCoverUrls();
   } catch (error) {
-    throw new Error(`匯入失敗，無法保存本機 EPUB：${error?.message || error}`);
+    throw new Error(`匯入失敗，無法保存 EPUB：${error?.message || error}`);
   }
   return getImportedBook(id) || importedBook;
 }

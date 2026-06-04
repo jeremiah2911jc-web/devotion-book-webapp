@@ -213,7 +213,7 @@
             <span id="account-sync-status" class="desktop-sidebar-sync-status" data-testid="account-sync-status">同步狀態</span>
             <span id="account-sync-time" class="desktop-sidebar-sync-time" data-testid="account-sync-time">尚未同步</span>
             <button id="account-sync-button" class="ghost-btn small desktop-sidebar-sync-btn" type="button" data-testid="account-sync-button">同步</button>
-            <span id="account-sync-detail" class="visually-hidden" data-testid="account-sync-detail">目前資料只保存在這台裝置。</span>
+            <span id="account-sync-detail" class="visually-hidden" data-testid="account-sync-detail">這些內容目前只儲存在你正在使用的裝置，尚未同步到帳號。</span>
           </div>
           <div class="desktop-sidebar-account-actions">
             <button class="ghost-btn small" data-open-account-settings type="button">帳號設定</button>
@@ -232,7 +232,7 @@
         <div class="row gap-sm wrap topbar-actions">
           <div class="desktop-topbar-sync-pill">
             <strong id="topbar-sync-status-text">同步狀態</strong>
-            <span id="topbar-sync-detail-text">目前資料只保存在這台裝置。</span>
+            <span id="topbar-sync-detail-text">這些內容目前只儲存在你正在使用的裝置，尚未同步到帳號。</span>
           </div>
           <button id="topbar-force-sync-btn" class="ghost-btn desktop-topbar-sync-btn" type="button">立即同步</button>
           <button class="ghost-btn icon-only desktop-topbar-notify" type="button" aria-label="通知">
@@ -640,7 +640,10 @@
                     <h3 id="note-drafts-title">我的草稿</h3>
                   </div>
                 </div>
-                <div id="note-drafts-list" class="list-stack note-drafts-list empty-state" data-testid="note-drafts-list">目前沒有草稿。</div>
+                <div id="note-drafts-list" class="list-stack note-drafts-list empty-state" data-testid="note-drafts-list">
+                  <strong>目前沒有草稿</strong>
+                  <p>你可以先寫下一段想法，之後再回來繼續整理成札記。</p>
+                </div>
               </section>
             </form>
           </section>
@@ -880,7 +883,7 @@
             <div class="account-settings-sync-copy">
               <strong id="account-settings-sync-status" data-testid="account-settings-sync-status">同步狀態</strong>
               <span id="account-settings-sync-time" data-testid="account-settings-sync-time">最後同步：尚未同步</span>
-              <span id="account-settings-sync-detail" class="account-settings-sync-detail">目前資料只保存在這台裝置。</span>
+              <span id="account-settings-sync-detail" class="account-settings-sync-detail">這些內容目前只儲存在你正在使用的裝置，尚未同步到帳號。</span>
             </div>
             <button id="account-settings-sync-button" class="ghost-btn small account-settings-sync-btn" type="button" data-testid="account-settings-sync-button">同步</button>
           </div>
@@ -931,10 +934,10 @@
         <div id="account-cloud-actions" class="account-settings-section">
           <span class="account-settings-label">雲端資料</span>
           <div class="account-settings-actions">
-            <button id="push-local-to-cloud-btn" class="ghost-btn" type="button">上傳本機資料</button>
+            <button id="push-local-to-cloud-btn" class="ghost-btn" type="button">管理未同步內容</button>
             <button id="download-backup-btn" class="ghost-btn" type="button">下載雲端備份</button>
           </div>
-          <p id="account-cloud-hint" class="caption">登入雲端帳號後，可上傳本機資料或下載雲端備份。</p>
+          <p id="account-cloud-hint" class="caption">登入雲端帳號後，可管理未同步內容或下載雲端備份。</p>
         </div>
         <div class="account-settings-section account-settings-signout-section">
           <span class="account-settings-label">登出</span>
@@ -968,7 +971,7 @@
         <button id="close-support-modal" class="ghost-btn small" type="button">關閉</button>
       </div>
       <section id="support-payment-section" class="support-modal-section">
-        <p class="modal-intro">您所提供之支持款項，將用於內容製作、系統開發、雲端維護與出版功能優化。</p>
+        <p class="modal-intro">您所提供之支持款項，將用於內容製作、系統維護、雲端服務與出版功能優化。</p>
         <div class="support-info" aria-label="轉帳資訊">
           <div class="support-info-row">
             <span>轉帳銀行</span>

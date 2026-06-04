@@ -31,14 +31,14 @@
             <button id="save-config-btn" class="secondary-btn">儲存設定</button>
             <button id="clear-config-btn" class="ghost-btn">清除設定</button>
           </div>
-          <p class="caption">未設定時，系統會以本機模式運作，方便先測流程。</p>
+          <p class="caption">未設定時，仍可先管理未同步內容。</p>
         </div>
       </section>
 
       <section class="panel compact" id="auth-card">
         <div class="panel-header">
           <h2>帳號</h2>
-          <span id="auth-mode-badge" class="badge">本機模式</span>
+          <span id="auth-mode-badge" class="badge">未同步內容</span>
         </div>
         <div id="auth-forms">
           <label>Email
@@ -52,7 +52,7 @@
             <button id="login-btn" class="secondary-btn">登入</button>
             <button id="magic-link-btn" class="ghost-btn">Magic Link</button>
           </div>
-          <p class="caption">本機模式會以 Email 建立測試帳號；雲端模式會走 Supabase Auth。</p>
+          <p class="caption">未設定雲端時，可先以 Email 建立帳號；雲端模式會走 Supabase Auth。</p>
         </div>
         <div id="auth-user" class="hidden">
           <p id="current-user-text"></p>
@@ -73,7 +73,7 @@
       <section class="panel compact">
         <h2>系統狀態</h2>
         <ul class="status-list">
-          <li><span>資料模式</span><strong id="status-storage">本機</strong></li>
+          <li><span>同步狀態</span><strong id="status-storage">未同步</strong></li>
           <li><span>目前書籍</span><strong id="status-current-book">未選取</strong></li>
           <li><span>章節數</span><strong id="status-chapter-count">0</strong></li>
         </ul>
@@ -99,7 +99,7 @@
               <h2>使用流程</h2>
             </div>
             <ol class="steps">
-              <li>登入或使用本機模式測試。</li>
+              <li>登入後開始建立靈修內容。</li>
               <li>在札記庫建立靈修內容。</li>
               <li>新增一本書，設定書名、作者、前言、後記與模板。</li>
               <li>把札記加入書中，拖曳排序並調整章名。</li>
@@ -290,7 +290,7 @@
         <h2 id="support-modal-title">支持平台／支持事工</h2>
         <button id="close-support-modal" class="ghost-btn small" type="button">關閉</button>
       </div>
-      <p class="modal-intro">您所提供之支持款項，將用於內容製作、系統開發、雲端維護與出版功能優化。</p>
+      <p class="modal-intro">您所提供之支持款項，將用於內容製作、系統維護、雲端服務與出版功能優化。</p>
       <div class="support-info">
         <p><strong>匯款銀行：</strong>台北富邦銀行</p>
         <p><strong>銀行代碼：</strong>000</p>

@@ -208,7 +208,7 @@ async function waitForLocalServer(url, childProcess) {
     if (childProcess?.exitCode !== null) break;
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
-  throw new Error(`本機測試 server 未啟動或無法連線：${url}`);
+  throw new Error(`本地 server 未啟動或無法連線：${url}`);
 }
 
 async function ensureSmokeServer() {
@@ -254,7 +254,7 @@ async function verifyWelcomeScreen(page, results) {
     throw new Error(`welcome screen CTA 文字錯誤：${ctaTexts.join(' / ')}`);
   }
 
-  await expectNoVisibleLocator(page.locator('text=先用本機模式試用'), 'welcome screen 不應顯示本機試用入口');
+  await expectNoVisibleLocator(page.locator('text=/先用.*試用/'), 'welcome screen 不應顯示試用入口');
   await expectNoVisibleLocator(page.locator('text=Magic Link'), 'welcome screen 不應顯示 Magic Link');
   await expectNoVisibleLocator(page.locator('text=雲端設定'), 'welcome screen 不應顯示雲端設定入口');
   await expectNoVisibleLocator(page.locator('text=安全提示'), 'welcome screen 不應顯示安全提示');
@@ -426,12 +426,12 @@ async function run() {
 
     await clickElement(page, '[data-testid="nav-prayer"]');
     await expectVisible(page, '[data-testid="view-prayer"].view.active', '已由底部導覽進入禱告頁');
-    await expectVisible(page, '#prayer-cloud-notice:not(.hidden)', '本機模式顯示禱告雲端同步提示');
+    await expectVisible(page, '#prayer-cloud-notice:not(.hidden)', '未同步內容顯示禱告雲端同步提示');
     await expectVisible(page, '[data-testid="prayer-create-button"]', '禱告新增按鈕已顯示');
     const prayerCreateDisabled = await page.locator('[data-testid="prayer-create-button"]').isDisabled();
-    if (!prayerCreateDisabled) throw new Error('本機模式不應允許新增雲端禱告紀錄');
+    if (!prayerCreateDisabled) throw new Error('未同步狀態不應允許新增雲端禱告紀錄');
     await assertNoHorizontalScroll(page, { label: 'smoke prayer mobile' });
-    results.push('禱告頁入口與本機模式提示正常');
+    results.push('禱告頁入口與未同步內容提示正常');
 
     await clickElement(page, '.mobile-bottom-link[data-view="notes"]');
     await expectVisible(page, '#view-notes.view.active', '已由底部導覽進入札記頁');
@@ -571,7 +571,7 @@ async function run() {
     await clickElement(page, '[data-view="dashboard"]');
     assertNoConsoleErrors(consoleCollector);
   } catch (error) {
-    results.push(`測試失敗：${error.message}`);
+    results.push(`驗證失敗：${error.message}`);
     throw error;
   } finally {
     fs.writeFileSync(path.join(artifactsDir, 'smoke-test-results.json'), JSON.stringify({ results }, null, 2));
