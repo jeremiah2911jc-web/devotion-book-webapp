@@ -20,7 +20,8 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '2026.05.16-01';
+const APP_VERSION = '1.1.0';
+const APP_RELEASE_DATE = '2026/06/04';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
 const DEFAULT_BIBLE_ASSET_VERSION = '2026.05.13-reflow-3c43edc7';
@@ -58,6 +59,17 @@ const RESEND_VERIFICATION_COOLDOWN_MS = 60 * 1000;
 const AUTH_PENDING_EMAIL_VERIFICATION_TTL_MS = 2 * 60 * 60 * 1000;
 const AUTH_GOOGLE_REDIRECT_URL = 'https://www.devotionbook.com.tw';
 const AUTH_PENDING_OAUTH_PROVIDER_KEY = 'devotion-pending-oauth-provider';
+
+function getAppVersionLabel() {
+  return `版本：v${APP_VERSION}｜更新：${APP_RELEASE_DATE}`;
+}
+
+function syncAppVersionLabels(root = document) {
+  if (!root?.querySelectorAll) return;
+  root.querySelectorAll('[data-app-version-label]').forEach((element) => {
+    element.textContent = getAppVersionLabel();
+  });
+}
 const GOOGLE_LOGIN_FAILURE_MESSAGE = 'Google 登入沒有完成，請再試一次，或改用 Email 登入。';
 const GOOGLE_LOGIN_UNAVAILABLE_MESSAGE = 'Google 登入暫時無法使用，請改用 Email 登入。';
 const SUPPORT_PAYMENT_INFO = {
@@ -362,7 +374,7 @@ function showAppUpdatePrompt(remote = {}) {
   state.appVersion.remote = remote;
   state.appVersion.updateAvailable = true;
   if (els.appUpdateVersionText) {
-    els.appUpdateVersionText.textContent = `目前版本：${APP_VERSION}｜新版：${remoteVersion}`;
+    els.appUpdateVersionText.textContent = `目前版本：v${APP_VERSION}｜新版：v${remoteVersion}`;
   }
   els.appUpdatePrompt?.classList.remove('hidden');
 }
@@ -2414,7 +2426,7 @@ function ensureOperationManualUi() {
               <li>「書櫃」卡：進入「書櫃」，開啟已完成或已匯入的電子書。</li>
             </ul>
             <p>今日讀經卡片會依本地日期顯示麥琴讀經進度的四段經文。你可以切換前一天、後一天或回到今天，點單段經文開啟小型閱讀視窗，也可以把當日四段經文引用帶入寫札記頁的經文欄；系統不會自動抓全文、建立札記或儲存草稿。</p>
-            <p>手機版主要使用底部導覽切換總覽、禱告、寫札記、札記庫、選稿編排、書櫃與操作手冊；桌機版使用左側側欄，並在側欄底部帳號卡查看簡潔同步狀態與手動同步。總覽已不再放舊版同步長條或大型快捷卡。</p>
+            <p>手機版主要使用底部導覽切換總覽、禱告、寫札記、札記閱讀、札記庫、選稿編排、書櫃與操作手冊；桌機版使用左側側欄，並在側欄底部帳號卡查看簡潔同步狀態與手動同步。總覽已不再放舊版同步長條或大型快捷卡。</p>
           </section>
 
           <section id="manual-writing-note" class="manual-section">
@@ -2534,8 +2546,9 @@ function ensureOperationManualUi() {
               <li>結果數：畫面會顯示目前符合條件與全部札記的篇數。</li>
             </ul>
             <p>若沒有符合條件的札記，畫面會出現無結果提示，可調整搜尋字、分類、標籤，或使用「重設篩選」回到完整列表。</p>
-            <p>點一篇札記後會進入單篇閱讀。單篇閱讀中可以點「返回札記閱讀列表」回到列表，也可以點「前往編輯」回到寫札記頁修改內容。前往編輯只會載入該篇札記，仍需按「儲存草稿」或「儲存為正式札記」才會更新資料。若札記勾選「閱讀與成書時顯示禱告」且有今日禱告內容，單篇閱讀會在正文後顯示今日禱告。</p>
-            <p>手機版流程是「列表 → 單篇閱讀 → 返回列表」。手機上方有本週日期列，可以切換上一週 / 下一週；有札記的日期會顯示篇數，沒有札記的日期會顯示「無札記」。桌機版則較接近左右分欄，左側用來搜尋、篩選與選擇札記，右側閱讀單篇內容。</p>
+            <p>主畫面左側是搜尋與篩選卡片，右側顯示最近編輯的 5 篇正式札記。搜尋結果會以視窗顯示，單篇閱讀也會用閱讀視窗呈現，不會在主畫面保留大型空白預覽區。</p>
+            <p>點最近編輯卡片、搜尋結果卡片，或卡片右上角「閱讀」按鈕，都會開啟同一個閱讀視窗。閱讀視窗中可以點「編輯這篇札記」回到寫札記頁修改內容；前往編輯只會載入該篇札記，仍需按「儲存草稿」或「儲存為正式札記」才會更新資料。若札記勾選「閱讀與成書時顯示禱告」且有今日禱告內容，閱讀視窗會在正文後顯示今日禱告。</p>
+            <p>手機版與平板版會依螢幕寬度調整成單欄或穩定兩欄，搜尋結果與閱讀內容都以接近全螢幕的視窗呈現，方便長文閱讀。</p>
             <p>若只是想閱讀與查找，建議使用「札記閱讀」。若要批次挑選文章加入選稿編排，請使用「札記庫」。</p>
           </section>
 
@@ -2653,8 +2666,8 @@ function ensureOperationManualUi() {
 
           <section id="manual-mobile" class="manual-section">
             <h2>十四、手機 / 平板使用方式</h2>
-            <p>手機與平板主要使用底部導覽切換頁面，常見項目包含總覽、禱告、寫札記、札記庫、選稿編排、書櫃與操作手冊。若項目較多，可以在底部導覽列左右滑動尋找。桌機版主要使用左側側欄。</p>
-            <p>札記閱讀在手機上是單欄流程：先看列表，點一篇札記進入單篇閱讀，再用「返回札記閱讀列表」回到列表。桌機版則比較像左右分欄，左側選札記，右側閱讀內容。</p>
+            <p>手機與平板主要使用底部導覽切換頁面，常見項目包含總覽、禱告、寫札記、札記閱讀、札記庫、選稿編排、書櫃與操作手冊。若項目較多，可以在底部導覽列左右滑動尋找。桌機版主要使用左側側欄。</p>
+            <p>札記閱讀在手機上會先顯示搜尋卡片與最近編輯札記。搜尋結果與單篇閱讀都會以視窗開啟，閱讀時保留足夠的文字寬度與關閉按鈕。</p>
             <p>書櫃與 Reader 在手機上也可以正常閱讀。Reader 會把控制項收得比較精簡，讓閱讀內容不被底部導覽遮住。若沒有看到功能按鈕，可以先點一下閱讀畫面。</p>
             <p>在手機上編輯札記、整理章節或書籍資料時，儲存成功後再離開頁面較穩妥。若畫面沒有更新，可重新整理後再查看。</p>
           </section>
@@ -2764,7 +2777,7 @@ function ensureOperationManualUi() {
             <p>這套系統的目的，是幫助你把平常寫下的內容好好保存下來。</p>
             <p>不用一開始就想著要完成一本很完整的書。可以先從一篇札記開始，慢慢累積，慢慢整理。</p>
             <p>當那些日子裡的領受、禱告、眼淚、感恩與提醒被留下來，它們有一天可能就會成為一本值得回頭閱讀的書。</p>
-            <p class="manual-app-version">版本：${APP_VERSION}</p>
+            <p class="manual-app-version" data-app-version-label>${getAppVersionLabel()}</p>
           </section>
         </article>
       </section>
@@ -5193,6 +5206,7 @@ async function bootstrap() {
   ensureAuthVerificationResendUi();
   ensureContentLibraryUi();
   ensureOperationManualUi();
+  syncAppVersionLabels();
   ensureBookDraftWorkspaceUi();
   ensureAppUpdatePromptUi();
   ensureInstallAppPromptUi();
@@ -7040,6 +7054,7 @@ function refreshUi() {
   syncDesktopDashboardStaticCopy();
   ensureWritingWorkspaceUi();
   ensureOperationManualUi();
+  syncAppVersionLabels();
   ensureBookDraftWorkspaceUi();
   renderMobileBottomNav();
   ensureAdminUi();
@@ -9287,6 +9302,7 @@ function syncNoteReaderModalLock() {
   const searchOpen = !!els.noteReaderSearchModal && !els.noteReaderSearchModal.classList.contains('hidden');
   const readingOpen = !!els.noteReaderReadingModal && !els.noteReaderReadingModal.classList.contains('hidden');
   document.body.classList.toggle('note-reader-modal-open', searchOpen || readingOpen);
+  if (searchOpen || readingOpen) hideInstallAppPrompt();
 }
 
 function scrollNoteReaderIntoView() {

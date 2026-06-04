@@ -1,64 +1,55 @@
-# 靈修札記成書系統
+# Devotion 靈修札記成書系統
 
-這是可直接部署到 Vercel 的靜態版本，已包含：
+Devotion 是可部署到 Vercel 的前台靈修札記網站，協助使用者記錄禱告、撰寫札記、整理選稿、匯出 EPUB，並在書櫃中閱讀已完成或匯入的書籍。
 
-- 未同步內容帳號登入
-- Supabase Auth 註冊 / 登入 / Magic Link
-- 札記、書籍、快照的雲端同步
-- 同帳號跨手機、電腦、平板共用資料
-- 雲端即時同步監看
-- 備份 JSON 下載
+## 目前版本
+
+- 版本：v1.1.0
+- 更新：2026/06/04
+- 正式站：https://www.devotionbook.com.tw
+- 版本紀錄：請見 `CHANGELOG.md`
+
+## 前台功能
+
+- 首頁、Email / Password 登入、建立帳戶、忘記密碼、信箱驗證提醒與重新寄送驗證信
+- Google 登入 / 建立帳戶入口
+- 帳號設定、同步狀態、未同步內容管理、雲端備份下載
+- 總覽、禱告、寫札記、我的草稿
+- 札記閱讀中心：搜尋 / 篩選、最近編輯 5 篇、搜尋結果視窗、閱讀視窗
+- 札記庫、選稿編排、章節整理、EPUB 匯出
+- 書櫃、內建閱讀器、外部 EPUB 匯入
+- 操作手冊、支持平台與收款證明申請入口
+- 手機底部導覽、平板與桌面 RWD
 
 ## 本地執行
 
-直接開啟 `index.html`，或在專案目錄執行：
-
 ```bash
-python3 -m http.server 3000
+npm install
+npm run serve:local
 ```
 
-然後開啟 `http://localhost:3000`。
+開啟 `http://127.0.0.1:4173/index.html`。
 
-## Vercel 部署
+## 驗證
 
-1. 將整個資料夾上傳到 GitHub。
-2. 在 Vercel 匯入該 repository。
-3. Framework Preset 選 `Other`。
-4. Build Command 留空。
-5. Output Directory 留空。
-6. Deploy。
+```bash
+npm run verify
+```
 
-## Supabase 建置步驟
+`verify` 會執行語法檢查、讀經計畫驗證與 smoke test。
 
-1. 建立一個新的 Supabase 專案。
-2. 到 SQL Editor 執行 `schema.sql`。
-3. 到 Authentication 開啟 Email / Password。
-4. 若要使用 Magic Link，也開啟 Email OTP / Magic Link。
-5. 在 URL Configuration 裡加入你的站點網址：
-   - Vercel 正式網址
-   - 若有自訂網域，也一併加入
-6. 在專案 Settings 取得：
-   - Project URL
-   - anon public key
-7. 回到系統登入頁右上角設定，填入 URL 與 anon key。
+## 部署
 
-## 同步邏輯
+正式站部署於 Vercel。正式改版時請同步：
 
-- 同一個雲端帳號登入後，札記、書籍、快照會存到雲端。
-- 其他裝置用同一帳號登入後，會讀到同一份資料。
-- 系統會監看雲端資料變更，其他裝置更新後會自動重新同步。
-- 若你之前已經建立未同步內容，可在登入雲端帳號後按「管理未同步內容」。
-- 可另外按「下載備份」匯出 JSON 備份檔。
+1. 更新 `package.json` 的 `version`。
+2. 更新 `app.js` 的 `APP_VERSION` 與 `APP_RELEASE_DATE`。
+3. 更新 `version.json`。
+4. 更新 `index.html` 中 `styles.css` / `app.js` 的 cache query。
+5. 更新 `CHANGELOG.md`。
+6. 執行 `npm run verify` 與 `git diff --check`。
+7. commit、push `main`，確認 Vercel production deployment Ready。
 
-## 主要功能
+## Supabase 設定
 
-- 未同步內容 / Supabase 模式登入
-- 跳出式註冊 / 登入視窗
-- 札記新增、編輯、刪除、搜尋
-- 經文抓取與自動帶入內容
-- 書籍專案新增、編輯、刪除
-- 章節加入、排序、移除、改名
-- 前言、後記、封面、模板
-- 快照備份
-- EPUB 匯出
-- 雲端同步與跨裝置作業
+前台使用既有 Supabase Auth 與資料同步設定。本 repo 的一般前台改版不應修改 Supabase schema、provider 設定或 Google Client Secret。

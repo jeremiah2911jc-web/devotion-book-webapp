@@ -4861,6 +4861,12 @@ body:not(.auth-locked) .note-writing-form-panel {
   gap: 10px;
 }
 
+.account-settings-version-text {
+  margin: 0;
+  color: #8d7a54;
+  font-size: 0.82rem;
+}
+
 .account-password-message {
   margin: 0;
 }
@@ -9807,6 +9813,7 @@ body[data-current-view="reader"] .app-update-prompt {
 
 .install-app-prompt.hidden,
 body.auth-locked .install-app-prompt,
+body.note-reader-modal-open .install-app-prompt,
 body[data-current-view="reader"] .install-app-prompt {
   display: none !important;
 }
