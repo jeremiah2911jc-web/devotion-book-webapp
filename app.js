@@ -4432,6 +4432,23 @@ function getAuthInlineSubmitLabel() {
   return state.authInlineMode === 'register' ? '建立帳戶' : '登入';
 }
 
+function getGoogleAuthButtonLabel(button) {
+  if (button === els.gateGoogleLoginBtn && state.authInlineMode === 'register') {
+    return '使用 Google 建立帳戶';
+  }
+  return '使用 Google 登入';
+}
+
+function syncGoogleAuthButtonLabels() {
+  if (state.googleAuthLoading) return;
+  getGoogleLoginButtons().forEach((button) => {
+    const label = button.querySelector('span:last-child');
+    const text = getGoogleAuthButtonLabel(button);
+    button.dataset.defaultText = text;
+    label?.replaceChildren(document.createTextNode(text));
+  });
+}
+
 function syncAuthInlineSubmitButton(isSubmitting = state.authInlineSubmitting) {
   if (!els.gateSubmitBtn) return;
   els.gateSubmitBtn.disabled = !!isSubmitting;
@@ -4493,6 +4510,7 @@ function openAuthInline(mode = 'register') {
   }
   syncPasswordRecoveryForm(isPasswordRecovery);
   syncAuthInlineSubmitButton(false);
+  syncGoogleAuthButtonLabels();
   if (els.gateResetPasswordBtn) {
     els.gateResetPasswordBtn.classList.toggle('hidden', mode !== 'login');
     els.gateResetPasswordBtn.textContent = '忘記密碼';
@@ -5577,12 +5595,13 @@ function setGoogleAuthLoading(isLoading = false) {
   state.googleAuthLoading = !!isLoading;
   getGoogleLoginButtons().forEach((button) => {
     const label = button.querySelector('span:last-child');
-    if (!button.dataset.defaultText) button.dataset.defaultText = label?.textContent?.trim() || '使用 Google 登入';
+    const defaultText = getGoogleAuthButtonLabel(button);
+    button.dataset.defaultText = defaultText;
     button.disabled = state.googleAuthLoading;
     if (state.googleAuthLoading) {
       label?.replaceChildren(document.createTextNode('前往 Google...'));
     } else {
-      label?.replaceChildren(document.createTextNode(button.dataset.defaultText));
+      label?.replaceChildren(document.createTextNode(defaultText));
     }
   });
 }
