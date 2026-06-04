@@ -1096,11 +1096,12 @@ function getAuthVerificationCopy(mode = 'signup') {
 function hideAuthVerificationPanel() {
   els.authVerificationPanel?.classList.add('hidden');
   els.authVerificationPanel?.setAttribute('aria-hidden', 'true');
-  const showSecondaryAuthActions = state.authInlineMode !== 'password-recovery';
+  const showPasswordResetAction = state.authInlineMode === 'login';
+  const showAuthFormExtras = state.authInlineMode !== 'password-recovery';
   state.authVerificationMode = '';
-  els.gateResetPasswordBtn?.classList.toggle('hidden', !showSecondaryAuthActions);
+  els.gateResetPasswordBtn?.classList.toggle('hidden', !showPasswordResetAction);
   setPendingVerificationReminderVisible(false);
-  els.authGoogleSection?.classList.toggle('hidden', !showSecondaryAuthActions);
+  els.authGoogleSection?.classList.toggle('hidden', !showAuthFormExtras);
 }
 
 function showAuthVerificationPanel(mode = 'signup', email = '') {
@@ -4493,7 +4494,7 @@ function openAuthInline(mode = 'register') {
   syncPasswordRecoveryForm(isPasswordRecovery);
   syncAuthInlineSubmitButton(false);
   if (els.gateResetPasswordBtn) {
-    els.gateResetPasswordBtn.classList.toggle('hidden', isPasswordRecovery);
+    els.gateResetPasswordBtn.classList.toggle('hidden', mode !== 'login');
     els.gateResetPasswordBtn.textContent = '忘記密碼';
   }
   syncPendingVerificationReminder();

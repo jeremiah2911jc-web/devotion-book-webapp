@@ -267,7 +267,8 @@ async function verifyWelcomeScreen(page, results) {
   results.push('welcome screen 僅保留開始寫我的第一篇靈修 / 我已經有帳戶了兩個入口');
 }
 
-async function verifyAuthModal(page, triggerSelector, expectedTitle, expectedSubmitText, results) {
+async function verifyAuthModal(page, triggerSelector, expectedTitle, expectedSubmitText, results, options = {}) {
+  const { expectResetPassword = true } = options;
   await clickElement(page, triggerSelector);
   await expectVisible(page, '#auth-inline-panel', `${expectedTitle} modal 已開啟`);
   await expectButtonText(page, '#auth-inline-title', expectedTitle, `${expectedTitle} modal 標題正確`);
@@ -275,7 +276,11 @@ async function verifyAuthModal(page, triggerSelector, expectedTitle, expectedSub
   await expectVisible(page, '#gate-auth-password', `${expectedTitle} modal 顯示 Password 欄位`);
   await expectVisible(page, '#gate-submit-btn', `${expectedTitle} modal 顯示主按鈕`);
   await expectButtonText(page, '#gate-submit-btn', expectedSubmitText, `${expectedTitle} modal 主按鈕文字正確`);
-  await expectVisible(page, '#gate-reset-password-btn', `${expectedTitle} modal 顯示忘記密碼 / 重設密碼`);
+  if (expectResetPassword) {
+    await expectVisible(page, '#gate-reset-password-btn', `${expectedTitle} modal 顯示忘記密碼 / 重設密碼`);
+  } else {
+    await expectNoVisibleLocator(page.locator('#gate-reset-password-btn'), `${expectedTitle} modal 不應顯示忘記密碼`);
+  }
   await expectVisible(page, '#gate-google-login-btn', `${expectedTitle} modal 顯示 Google 登入按鈕`);
   await expectNoVisibleLocator(page.locator('#auth-pending-verification-reminder'), `${expectedTitle} modal 預設不應顯示 pending verification 輕提醒`);
   await expectNoVisibleLocator(page.locator('#gate-resend-verification-btn'), `${expectedTitle} modal 預設不應顯示重新寄送驗證信`);
@@ -287,12 +292,14 @@ async function verifyAuthModal(page, triggerSelector, expectedTitle, expectedSub
     const google = document.querySelector('#gate-google-login-btn');
     const submitRect = submit.getBoundingClientRect();
     const resetRect = reset.getBoundingClientRect();
+    const resetVisible = resetRect.width > 0 && resetRect.height > 0 && !reset.classList.contains('hidden');
     const googleRect = google.getBoundingClientRect();
     return {
-      sameLine: Math.abs(submitRect.top - resetRect.top) < 3,
-      resetAfterSubmit: resetRect.left > submitRect.left,
-      compactButtons: submitRect.width < 180 && resetRect.width < 160,
-      googleBelowActions: googleRect.top > Math.max(submitRect.bottom, resetRect.bottom),
+      resetVisible,
+      sameLine: resetVisible ? Math.abs(submitRect.top - resetRect.top) < 3 : true,
+      resetAfterSubmit: resetVisible ? resetRect.left > submitRect.left : true,
+      compactButtons: submitRect.width < 180 && (!resetVisible || resetRect.width < 160),
+      googleBelowActions: googleRect.top > (resetVisible ? Math.max(submitRect.bottom, resetRect.bottom) : submitRect.bottom),
       horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth,
       submitText: submit.textContent.trim(),
       resetText: reset.textContent.trim(),
@@ -310,7 +317,7 @@ async function verifyAuthModal(page, triggerSelector, expectedTitle, expectedSub
   await expectNoVisibleLocator(page.locator('#auth-card'), 'hidden 舊 auth card 不應可見');
   await clickElement(page, '#close-auth-inline-btn');
   await page.waitForFunction(() => document.querySelector('#auth-inline-panel')?.classList.contains('hidden'), { timeout: 10000 });
-  results.push(`${expectedTitle} modal 已驗證 Email / Password / 主按鈕 / 重設密碼 / 關閉按鈕，且無 Magic Link`);
+  results.push(`${expectedTitle} modal 已驗證 Email / Password / 主按鈕 / ${expectResetPassword ? '重設密碼入口' : '無重設密碼入口'} / 關閉按鈕，且無 Magic Link`);
 }
 
 async function verifyPendingVerificationReminder(page, results) {
@@ -375,8 +382,8 @@ async function run() {
     serverProcess = await ensureSmokeServer();
     await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
     await verifyWelcomeScreen(page, results);
-    await verifyAuthModal(page, '[data-testid="auth-open-register"]', '建立帳戶', '建立帳戶', results);
-    await verifyAuthModal(page, '[data-testid="auth-open-login"]', '登入', '登入', results);
+    await verifyAuthModal(page, '[data-testid="auth-open-register"]', '建立帳戶', '建立帳戶', results, { expectResetPassword: false });
+    await verifyAuthModal(page, '[data-testid="auth-open-login"]', '登入', '登入', results, { expectResetPassword: true });
     await verifyPendingVerificationReminder(page, results);
 
     await seedLocalUserState(page, { user: seedUser, notes: seedNotes, books: seedBooks, snapshots: seedSnapshots });
