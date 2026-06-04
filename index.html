@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-title" content="DEVOTION" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>DEVOTION｜與神更親近的每一天</title>
-  <link rel="stylesheet" href="./styles.css?v=app-audit-20260513" />
+  <link rel="stylesheet" href="./styles.css?v=auth-verification-20260604" />
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png" />
@@ -56,7 +56,7 @@
               <label>Email
                 <input id="gate-auth-email" type="email" placeholder="name@example.com" data-testid="auth-email-input" />
               </label>
-              <label>Password
+              <label>密碼
                 <input id="gate-auth-password" type="password" placeholder="至少 6 碼" data-testid="auth-password-input" />
               </label>
               <label id="gate-auth-password-confirm-label" class="hidden">確認新密碼
@@ -69,6 +69,20 @@
                 <button id="gate-reset-password-btn" class="ghost-btn subtle-action hidden" type="button" data-testid="auth-reset-password">忘記密碼</button>
               </div>
             </form>
+            <section id="auth-verification-panel" class="auth-verification-panel hidden" aria-hidden="true" aria-live="polite" data-testid="auth-verification-panel">
+              <h4 id="auth-verification-title">帳號已建立，請到信箱完成驗證</h4>
+              <p id="auth-verification-body">我們已寄出一封驗證信到你的 Email。請打開信件並點選「完成信箱驗證」，完成後就可以登入使用。</p>
+              <div class="auth-verification-subject">
+                <span>信件主旨：</span>
+                <strong id="auth-verification-subject">【Devotion 靈修札記】請完成信箱驗證</strong>
+              </div>
+              <p id="auth-verification-folder-hint" class="auth-verification-note">如果收件匣找不到，請到垃圾郵件、促銷內容或垃圾信箱找看看。</p>
+              <p id="auth-verification-help" class="auth-verification-note">如果你不熟悉信箱操作，或一直找不到驗證信，可以聯絡管理員協助開通帳號。</p>
+              <div class="auth-verification-actions">
+                <button id="auth-verification-resend-btn" class="secondary-btn small" type="button" data-testid="auth-verification-resend">重新寄送驗證信</button>
+                <button id="auth-verification-login-btn" class="ghost-btn small" type="button" data-testid="auth-verification-login">我已完成驗證，前往登入</button>
+              </div>
+            </section>
           </div>
         </div>
       </div>
@@ -183,7 +197,7 @@
           <div class="row wrap gap-sm">
             <button id="register-btn" class="primary-btn" type="button">建立帳戶</button>
             <button id="login-btn" class="secondary-btn" type="button">登入</button>
-            <button id="magic-link-btn" class="ghost-btn" type="button" hidden aria-hidden="true" tabindex="-1">Magic Link</button>
+            <button id="magic-link-btn" class="ghost-btn" type="button" hidden aria-hidden="true" tabindex="-1">寄送登入連結</button>
           </div>
           <div class="row wrap gap-sm">
             <button id="reset-password-btn" class="ghost-btn subtle-action" type="button">忘記密碼</button>
@@ -1029,6 +1043,6 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./app.js?v=app-audit-20260513"></script>
+  <script type="module" src="./app.js?v=auth-verification-20260604"></script>
 </body>
 </html>

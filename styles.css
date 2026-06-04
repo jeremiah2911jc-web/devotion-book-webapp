@@ -220,6 +220,53 @@ body.auth-locked .app-shell { display: none; }
 .auth-modal-secondary-actions {
   margin-top: -2px;
 }
+.auth-verification-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid rgba(89, 133, 128, 0.24);
+  border-radius: 12px;
+  background: rgba(246, 251, 249, 0.86);
+  color: #284244;
+}
+.auth-verification-panel.hidden {
+  display: none;
+}
+.auth-verification-panel h4 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.35;
+  color: #1f3b3d;
+}
+.auth-verification-panel p {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+.auth-verification-subject {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+.auth-verification-subject strong {
+  color: #245f5b;
+}
+.auth-verification-note {
+  color: #5e6f70;
+}
+.auth-verification-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.auth-verification-actions button {
+  min-height: 34px;
+}
 .auth-settings-sheet {
   margin-top: 18px;
 }

@@ -48,6 +48,12 @@ const PROFILE_AVATAR_SIZE = 512;
 const PROFILE_AVATAR_BUCKET = 'library-books';
 const PROFILE_AVATAR_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const SUPPORT_EMAIL = 'devotionbook.tw@gmail.com';
+const AUTH_CONFIRMATION_EMAIL_SUBJECT = '【Devotion 靈修札記】請完成信箱驗證';
+const AUTH_VERIFICATION_FOLDER_HINT = '如果收件匣找不到，請到垃圾郵件、促銷內容或垃圾信箱找看看。';
+const AUTH_VERIFICATION_HELP = '如果你不熟悉信箱操作，或一直找不到驗證信，可以聯絡管理員協助開通帳號。';
+const RESEND_VERIFICATION_SUCCESS_MESSAGE = '驗證信已重新寄出。請到信箱收信，若收件匣沒有看到，請到垃圾郵件、促銷內容或垃圾信箱找看看。';
+const RESEND_VERIFICATION_FAILURE_MESSAGE = '驗證信暫時無法寄出，請稍後再試。若仍無法收到，請聯絡管理員協助開通。';
+const RESEND_VERIFICATION_COOLDOWN_MS = 60 * 1000;
 const SUPPORT_PAYMENT_INFO = {
   bank: '台北富邦銀行',
   code: '012',
@@ -875,6 +881,14 @@ const els = {
   gateResetPasswordBtn: document.getElementById('gate-reset-password-btn'),
   gateResendVerificationHint: document.getElementById('gate-resend-verification-hint'),
   gateResendVerificationBtn: document.getElementById('gate-resend-verification-btn'),
+  authVerificationPanel: document.getElementById('auth-verification-panel'),
+  authVerificationTitle: document.getElementById('auth-verification-title'),
+  authVerificationBody: document.getElementById('auth-verification-body'),
+  authVerificationSubject: document.getElementById('auth-verification-subject'),
+  authVerificationFolderHint: document.getElementById('auth-verification-folder-hint'),
+  authVerificationHelp: document.getElementById('auth-verification-help'),
+  authVerificationResendBtn: document.getElementById('auth-verification-resend-btn'),
+  authVerificationLoginBtn: document.getElementById('auth-verification-login-btn'),
   authSettingsSheet: document.getElementById('auth-settings-sheet'),
   closeAuthSettingsBtn: document.getElementById('close-auth-settings-btn'),
   gateSupabaseUrl: document.getElementById('gate-supabase-url'),
@@ -954,7 +968,7 @@ function removeRetiredInterfaceElements() {
 function createResendVerificationHint() {
   const hint = document.createElement('p');
   hint.className = 'caption auth-verification-hint';
-  hint.textContent = 'Email 尚未驗證？請先到信箱點擊驗證連結，或重新寄送驗證信。';
+  hint.textContent = '還沒收到驗證信？請先檢查垃圾郵件、促銷內容或垃圾信箱，也可以重新寄送驗證信。';
   return hint;
 }
 function createResendVerificationButton() {
@@ -994,6 +1008,63 @@ function ensureAuthVerificationResendUi() {
       els.resendVerificationBtn = button;
     }
   }
+}
+
+function getAuthConfirmationRedirectUrl() {
+  return window.location.origin + window.location.pathname;
+}
+
+function getAuthVerificationCopy(mode = 'signup') {
+  if (mode === 'login-unverified') {
+    return {
+      title: '你的帳號尚未完成信箱驗證',
+      body: '請先到註冊信箱收取驗證信，並點選信中的「完成信箱驗證」。',
+      loginAction: '我已完成驗證，重新登入',
+    };
+  }
+  if (mode === 'duplicate-registration') {
+    return {
+      title: '這個 Email 已建立帳戶',
+      body: '如果你還沒有完成信箱驗證，請先到註冊信箱收取驗證信，或重新寄送驗證信。',
+      loginAction: '我已完成驗證，前往登入',
+    };
+  }
+  return {
+    title: '帳號已建立，請到信箱完成驗證',
+    body: '我們已寄出一封驗證信到你的 Email。請打開信件並點選「完成信箱驗證」，完成後就可以登入使用。',
+    loginAction: '我已完成驗證，前往登入',
+  };
+}
+
+function hideAuthVerificationPanel() {
+  els.authVerificationPanel?.classList.add('hidden');
+  els.authVerificationPanel?.setAttribute('aria-hidden', 'true');
+  const showSecondaryAuthActions = state.authInlineMode !== 'password-recovery';
+  els.gateResetPasswordBtn?.classList.toggle('hidden', !showSecondaryAuthActions);
+  els.gateResendVerificationHint?.classList.toggle('hidden', !showSecondaryAuthActions);
+  els.gateResendVerificationBtn?.classList.toggle('hidden', !showSecondaryAuthActions);
+}
+
+function showAuthVerificationPanel(mode = 'signup', email = '') {
+  if (!els.authVerificationPanel) return;
+  const copy = getAuthVerificationCopy(mode);
+  state.authVerificationMode = mode;
+  state.authVerificationEmail = email || state.authVerificationEmail || '';
+  if (state.authVerificationEmail) syncAuthInputs({ email: state.authVerificationEmail, password: '' });
+  if (els.authVerificationTitle) els.authVerificationTitle.textContent = copy.title;
+  if (els.authVerificationBody) els.authVerificationBody.textContent = copy.body;
+  if (els.authVerificationSubject) els.authVerificationSubject.textContent = AUTH_CONFIRMATION_EMAIL_SUBJECT;
+  if (els.authVerificationFolderHint) els.authVerificationFolderHint.textContent = mode === 'login-unverified'
+    ? '如果沒有看到信件，請到垃圾郵件、促銷內容或垃圾信箱找看看。'
+    : AUTH_VERIFICATION_FOLDER_HINT;
+  if (els.authVerificationHelp) els.authVerificationHelp.textContent = AUTH_VERIFICATION_HELP;
+  if (els.authVerificationLoginBtn) els.authVerificationLoginBtn.textContent = copy.loginAction;
+  els.gateResetPasswordBtn?.classList.add('hidden');
+  els.gateResendVerificationHint?.classList.add('hidden');
+  els.gateResendVerificationBtn?.classList.add('hidden');
+  els.authVerificationPanel.classList.remove('hidden');
+  els.authVerificationPanel.setAttribute('aria-hidden', 'false');
+  updateResendVerificationButtons();
 }
 
 function ensureNoteReaderMobileUi() {
@@ -1052,6 +1123,11 @@ const state = {
   scriptureAppliedBlocks: [],
   authInlineMode: 'register',
   authInlineSubmitting: false,
+  authVerificationMode: '',
+  authVerificationEmail: '',
+  resendVerificationLoading: false,
+  resendVerificationCooldownUntil: 0,
+  resendVerificationCooldownTimer: null,
   passwordRecoveryActive: false,
   deviceId: getOrCreateDeviceId(),
   realtimeChannel: null,
@@ -3835,11 +3911,11 @@ function sanitizeImportedHtmlFragment(html = '') {
   });
   return template.innerHTML;
 }
-function showToast(message) {
+function showToast(message, duration = 2600) {
   els.toast.textContent = message;
   els.toast.classList.remove('hidden');
   clearTimeout(showToast.timer);
-  showToast.timer = setTimeout(() => els.toast.classList.add('hidden'), 2600);
+  showToast.timer = setTimeout(() => els.toast.classList.add('hidden'), duration);
 }
 
 function ensureConfirmDialogUi() {
@@ -4125,11 +4201,16 @@ function localizeAuthError(error, fallback = '操作失敗，請稍後再試。'
   const text = getErrorText(error);
   if (!text) return fallback;
   if (text.includes('invalid login credentials')) return 'Email 或密碼錯誤，請重新輸入。';
-  if (isEmailNotConfirmedError(error)) return '這個 Email 尚未完成驗證，請先到信箱點擊驗證連結。';
+  if (isEmailNotConfirmedError(error)) return '你的帳號尚未完成信箱驗證。請先到註冊信箱收取驗證信，並點選信中的「完成信箱驗證」。';
+  if (isDuplicateRegistrationError(error)) return '這個 Email 已建立帳戶。如果尚未完成信箱驗證，請使用「重新寄送驗證信」。';
+  if (text.includes('unable to validate email address')
+    || text.includes('invalid email')
+    || text.includes('email address is invalid')) return '請確認 Email 格式是否正確。';
   if (text.includes('email rate limit')
     || text.includes('rate limit exceeded')
     || text.includes('too many requests')
-    || text.includes('over_email_send_rate_limit')) return '重設密碼信寄送過於頻繁，請稍後再試。';
+    || text.includes('for security purposes')
+    || text.includes('over_email_send_rate_limit')) return '寄送信件過於頻繁，請稍後再試。';
   if (text.includes('user not found') || text.includes('user_not_found')) return '找不到此帳號，請確認 Email 是否正確。';
   if (text.includes('password should be at least 6 characters')
     || text.includes('password too short')
@@ -4296,6 +4377,7 @@ function settleMobileViewport() {
 function openAuthInline(mode = 'register') {
   state.authInlineMode = mode;
   state.authInlineSubmitting = false;
+  hideAuthVerificationPanel();
   const isRegister = mode === 'register';
   const isPasswordRecovery = mode === 'password-recovery';
   els.authInlinePanel?.classList.remove('hidden');
@@ -4307,7 +4389,7 @@ function openAuthInline(mode = 'register') {
   if (intro) {
     intro.textContent = isPasswordRecovery
       ? '請輸入新密碼，更新後會回到登入頁。'
-      : (isRegister ? '輸入 Email 與密碼後即可建立帳戶。' : '輸入 Email 與密碼後即可登入。');
+      : (isRegister ? '輸入 Email 與密碼建立帳戶。送出後需要到信箱完成驗證。' : '輸入 Email 與密碼後即可登入。');
   }
   syncPasswordRecoveryForm(isPasswordRecovery);
   syncAuthInlineSubmitButton(false);
@@ -4325,6 +4407,7 @@ function closeAuthInline() {
   if (state.passwordRecoveryActive) return;
   state.authInlineSubmitting = false;
   syncAuthInlineSubmitButton(false);
+  hideAuthVerificationPanel();
   els.authInlinePanel?.classList.add('hidden');
   els.authInlinePanel?.setAttribute('aria-hidden', 'true');
 }
@@ -4340,7 +4423,7 @@ function syncPasswordRecoveryForm(isPasswordRecovery = false) {
     els.gateAuthPassword.value = '';
     els.gateAuthPassword.autocomplete = isPasswordRecovery ? 'new-password' : 'current-password';
     els.gateAuthPassword.placeholder = isPasswordRecovery ? '至少 6 碼' : '至少 6 碼';
-    setLabelTextForInput(els.gateAuthPassword, isPasswordRecovery ? '新密碼' : 'Password');
+    setLabelTextForInput(els.gateAuthPassword, isPasswordRecovery ? '新密碼' : '密碼');
   }
   if (els.gateAuthPasswordConfirm) els.gateAuthPasswordConfirm.value = '';
 }
@@ -4401,7 +4484,7 @@ async function handleSupabaseAuthRedirect(urlState = getAuthRedirectUrlState()) 
     return {
       handled: true,
       success: false,
-      message: 'Email 驗證連結無效或已過期，請重新申請驗證信。',
+      message: '信箱驗證連結無效或已過期，請重新申請驗證信。',
     };
   }
 
@@ -4435,14 +4518,14 @@ async function handleSupabaseAuthRedirect(urlState = getAuthRedirectUrlState()) 
       handled: true,
       success: true,
       session,
-      message: session?.user ? 'Email 驗證完成，已登入。' : 'Email 驗證完成，請登入。',
+      message: session?.user ? '信箱驗證完成，已登入。' : '信箱驗證完成，請登入。',
     };
   } catch (error) {
     clearAuthCallbackUrl();
     return {
       handled: true,
       success: false,
-      message: 'Email 驗證連結無效或已過期，請重新申請驗證信。',
+      message: '信箱驗證連結無效或已過期，請重新申請驗證信。',
     };
   }
 }
@@ -5064,6 +5147,13 @@ function bindEvents() {
   els.resetPasswordBtn?.addEventListener('click', () => handleResetPassword().catch(handleError));
   els.gateResendVerificationBtn?.addEventListener('click', () => handleResendVerificationEmail().catch(handleError));
   els.resendVerificationBtn?.addEventListener('click', () => handleResendVerificationEmail().catch(handleError));
+  els.authVerificationResendBtn?.addEventListener('click', () => handleResendVerificationEmail().catch(handleError));
+  els.authVerificationLoginBtn?.addEventListener('click', () => {
+    const email = state.authVerificationEmail || els.gateAuthEmail?.value?.trim() || els.authEmail?.value?.trim() || '';
+    openAuthInline('login');
+    syncAuthInputs({ email, password: '' });
+    els.gateAuthPassword?.focus();
+  });
   els.gateSaveConfigBtn?.addEventListener('click', () => applyConnectionSettings({
     supabaseUrl: els.gateSupabaseUrl.value,
     supabaseAnonKey: els.gateSupabaseAnonKey.value,
@@ -5293,7 +5383,7 @@ function closeSupportModal() {
 }
 
 function isDuplicateRegistrationError(error) {
-  const message = String(error?.message || error?.code || error?.name || '').toLowerCase();
+  const message = getErrorText(error);
   return message.includes('already registered')
     || message.includes('already exists')
     || message.includes('user_already_exists')
@@ -5302,10 +5392,11 @@ function isDuplicateRegistrationError(error) {
 }
 
 function isEmailRateLimitError(error) {
-  const message = String(error?.message || error?.code || error?.name || '').toLowerCase();
+  const message = getErrorText(error);
   return message.includes('email rate limit')
     || message.includes('rate limit exceeded')
     || message.includes('too many requests')
+    || message.includes('for security purposes')
     || message.includes('over_email_send_rate_limit');
 }
 
@@ -5315,24 +5406,57 @@ function isValidEmailAddress(email = '') {
 
 function localizeResendVerificationError(error) {
   const text = getErrorText(error);
-  if (!text) return '驗證信暫時無法寄出，請稍後再試。';
+  if (!text) return RESEND_VERIFICATION_FAILURE_MESSAGE;
   if (text.includes('invalid email') || text.includes('email address is invalid')) return '請先輸入正確的 Email。';
-  if (isEmailRateLimitError(error)) return '驗證信寄送太頻繁，請稍後再試。';
+  if (isEmailRateLimitError(error)) return '驗證信寄送太頻繁，請稍後再試。若仍無法收到，請聯絡管理員協助開通。';
   if (text.includes('user not found')
     || text.includes('user_not_found')
     || text.includes('not found')
     || text.includes('signup required')) return '若你尚未建立帳戶，請先建立帳戶。';
   if (text.includes('already confirmed') || text.includes('already verified')) return '這個 Email 已完成驗證，請直接登入。';
-  return '驗證信暫時無法寄出，請稍後再試。';
+  return RESEND_VERIFICATION_FAILURE_MESSAGE;
 }
 
 function setResendVerificationLoading(isLoading = false) {
-  [els.gateResendVerificationBtn, els.resendVerificationBtn].forEach((button) => {
+  state.resendVerificationLoading = !!isLoading;
+  updateResendVerificationButtons();
+}
+
+function getResendVerificationButtons() {
+  return [els.gateResendVerificationBtn, els.resendVerificationBtn, els.authVerificationResendBtn].filter(Boolean);
+}
+
+function getResendVerificationCooldownRemaining() {
+  return Math.max(0, Math.ceil(((state.resendVerificationCooldownUntil || 0) - Date.now()) / 1000));
+}
+
+function updateResendVerificationButtons() {
+  const cooldownRemaining = getResendVerificationCooldownRemaining();
+  getResendVerificationButtons().forEach((button) => {
     if (!button) return;
     if (!button.dataset.defaultText) button.dataset.defaultText = button.textContent || '重新寄送驗證信';
-    button.disabled = isLoading;
-    button.textContent = isLoading ? '寄送中...' : button.dataset.defaultText;
+    button.disabled = state.resendVerificationLoading || cooldownRemaining > 0;
+    if (state.resendVerificationLoading) {
+      button.textContent = '寄送中...';
+    } else if (cooldownRemaining > 0) {
+      button.textContent = `${cooldownRemaining} 秒後可再次寄送`;
+    } else {
+      button.textContent = button.dataset.defaultText;
+    }
   });
+}
+
+function startResendVerificationCooldown(duration = RESEND_VERIFICATION_COOLDOWN_MS) {
+  state.resendVerificationCooldownUntil = Date.now() + duration;
+  clearInterval(state.resendVerificationCooldownTimer);
+  updateResendVerificationButtons();
+  state.resendVerificationCooldownTimer = setInterval(() => {
+    updateResendVerificationButtons();
+    if (getResendVerificationCooldownRemaining() <= 0) {
+      clearInterval(state.resendVerificationCooldownTimer);
+      state.resendVerificationCooldownTimer = null;
+    }
+  }, 1000);
 }
 
 async function handleResendVerificationEmail() {
@@ -5345,8 +5469,13 @@ async function handleResendVerificationEmail() {
     showToast('請先輸入正確的 Email。');
     return;
   }
+  const cooldownRemaining = getResendVerificationCooldownRemaining();
+  if (cooldownRemaining > 0) {
+    showToast(`請稍候 ${cooldownRemaining} 秒後再重新寄送驗證信。`);
+    return;
+  }
   if (!state.supabase || typeof state.supabase.auth?.resend !== 'function') {
-    showToast('驗證信暫時無法寄出，請稍後再試。');
+    showToast(RESEND_VERIFICATION_FAILURE_MESSAGE, 5200);
     return;
   }
   setResendVerificationLoading(true);
@@ -5355,13 +5484,15 @@ async function handleResendVerificationEmail() {
       type: 'signup',
       email,
       options: {
-        emailRedirectTo: window.location.origin + window.location.pathname,
+        emailRedirectTo: getAuthConfirmationRedirectUrl(),
       },
     });
     if (error) throw error;
-    showToast('驗證信已重新寄出，請到信箱完成 Email 驗證。若沒看到信件，請檢查垃圾郵件匣。');
+    state.authVerificationEmail = email;
+    startResendVerificationCooldown();
+    showToast(RESEND_VERIFICATION_SUCCESS_MESSAGE, 5600);
   } catch (error) {
-    showToast(localizeResendVerificationError(error));
+    showToast(localizeResendVerificationError(error), 5600);
   } finally {
     setResendVerificationLoading(false);
   }
@@ -5375,16 +5506,23 @@ async function handleRegister() {
     const { data, error } = await state.supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: window.location.origin + window.location.pathname },
+      options: { emailRedirectTo: getAuthConfirmationRedirectUrl() },
     });
     if (error) {
-      if (isDuplicateRegistrationError(error)) throw new Error('這個 Email 已建立帳戶。如果尚未完成驗證，請使用「重新寄送驗證信」。');
+      if (isDuplicateRegistrationError(error)) {
+        showAuthVerificationPanel('duplicate-registration', email);
+        showToast('這個 Email 已建立帳戶。若尚未完成信箱驗證，請重新寄送驗證信。', 4800);
+        return;
+      }
       throw createAuthError(error);
     }
     if (Array.isArray(data?.user?.identities) && data.user.identities.length === 0) {
-      throw new Error('這個 Email 已建立帳戶。如果尚未完成驗證，請使用「重新寄送驗證信」。');
+      showAuthVerificationPanel('duplicate-registration', email);
+      showToast('這個 Email 已建立帳戶。若尚未完成信箱驗證，請重新寄送驗證信。', 4800);
+      return;
     }
-    showToast('帳戶已建立，請到信箱點擊驗證連結完成 Email 驗證。若沒看到信件，請檢查垃圾郵件匣。');
+    showAuthVerificationPanel('signup', email);
+    showToast('帳號已建立，請到信箱完成驗證。', 4200);
     return;
   }
   if (findLocalAccountByEmail(email)) throw new Error('\u9019\u500b Email \u5df2\u7d93\u5efa\u7acb\u904e\u5e33\u6236\u3002');
@@ -5399,9 +5537,18 @@ async function handleRegister() {
 async function handleLogin() {
   const { email, password } = getAuthCredentials();
   if (!email) throw new Error('\u8acb\u5148\u8f38\u5165 Email\u3002');
+  if (!password) throw new Error('請先輸入密碼。');
   if (state.supabase) {
     const { error } = await state.supabase.auth.signInWithPassword({ email, password });
-    if (error) throw createAuthError(error);
+    if (error) {
+      if (isEmailNotConfirmedError(error)) {
+        showAuthVerificationPanel('login-unverified', email);
+        showToast('你的帳號尚未完成信箱驗證，請先到信箱完成驗證。', 4800);
+        return;
+      }
+      throw createAuthError(error);
+    }
+    hideAuthVerificationPanel();
     showToast('\u767b\u5165\u6210\u529f\u3002');
     return;
   }
@@ -5414,12 +5561,12 @@ async function handleLogin() {
 async function handleResetPassword() {
   const { email } = getAuthCredentials();
   if (!email) throw new Error('\u8acb\u5148\u8f38\u5165 Email\u3002');
-  if (!state.supabase) throw new Error('\u91cd\u8a2d\u5bc6\u78bc\u9700\u8981\u5148\u8a2d\u5b9a Supabase\u3002');
+  if (!state.supabase) throw new Error('目前無法寄出重設密碼信，請稍後再試或聯絡管理員協助。');
   const { error } = await state.supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + window.location.pathname,
+    redirectTo: getAuthConfirmationRedirectUrl(),
   });
   if (error) throw createAuthError(error);
-  showToast('\u91cd\u8a2d\u5bc6\u78bc\u4fe1\u5df2\u5bc4\u51fa\uff0c\u8acb\u6aa2\u67e5\u4fe1\u7bb1\u3002');
+  showToast('重設密碼信已寄出，請檢查信箱；若收件匣沒有看到，請到垃圾郵件或促銷內容找看看。', 5200);
 }
 
 async function handleUpdateRecoveryPassword() {
@@ -5474,13 +5621,13 @@ async function handleAccountPasswordUpdate() {
 async function handleMagicLink() {
   const { email } = getAuthCredentials();
   if (!email) throw new Error('\u8acb\u5148\u8f38\u5165 Email\u3002');
-  if (!state.supabase) throw new Error('Magic Link \u9700\u8981\u5148\u8a2d\u5b9a Supabase\u3002');
+  if (!state.supabase) throw new Error('目前無法寄出登入連結，請稍後再試或聯絡管理員協助。');
   const { error } = await state.supabase.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: window.location.origin + window.location.pathname },
+    options: { emailRedirectTo: getAuthConfirmationRedirectUrl() },
   });
   if (error) throw createAuthError(error);
-  showToast('Magic Link \u5df2\u5bc4\u51fa\u3002');
+  showToast('登入連結已寄出，請檢查信箱。');
 }
 
 async function handleForgotPassword() {
@@ -6699,7 +6846,7 @@ function refreshUi() {
   els.authGate?.setAttribute('aria-hidden', isSignedIn ? 'true' : 'false');
   if (els.authInlineHint) {
     els.authInlineHint.textContent = state.supabase
-      ? '請使用信箱與密碼登入，或改用 Magic Link。'
+      ? '請使用信箱與密碼登入，或改用登入連結。'
       : '目前可先建立帳戶並管理未同步內容。';
   }
   if (els.authInlineResetHint) {
