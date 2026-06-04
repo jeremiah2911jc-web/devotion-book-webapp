@@ -383,8 +383,9 @@ async function verifyPendingVerificationReminder(page, results) {
 }
 
 async function verifyNoteReaderWorkspace(page, results) {
-  await clickElement(page, '#summary-notes-card');
+  await clickElement(page, '.mobile-bottom-link[data-view="note-reader"]');
   await expectVisible(page, '#view-note-reader.view.active', '札記閱讀頁已開啟');
+  await expectVisible(page, '.mobile-bottom-link[data-view="note-reader"].active', '札記閱讀底部導覽 active 狀態正確');
   await expectVisible(page, '#note-reader-search-title', '札記閱讀搜尋卡片已顯示');
   await expectVisible(page, '#note-reader-recent-title', '最近編輯區已顯示');
   await expectNoVisibleLocator(page.locator('#note-reader-detail'), '札記閱讀頁不應存在固定右側預覽區');
@@ -568,7 +569,19 @@ async function run() {
     const dashboardIndex = navTexts.indexOf('總覽');
     const prayerIndex = navTexts.indexOf('禱告');
     const notesIndex = navTexts.indexOf('寫札記');
-    if (!(dashboardIndex >= 0 && prayerIndex === dashboardIndex + 1 && notesIndex === prayerIndex + 1)) {
+    const noteReaderIndex = navTexts.indexOf('札記閱讀');
+    const contentLibraryIndex = navTexts.indexOf('札記庫');
+    const booksIndex = navTexts.indexOf('選稿編排');
+    const libraryIndex = navTexts.indexOf('書櫃');
+    if (!(
+      dashboardIndex >= 0
+      && prayerIndex === dashboardIndex + 1
+      && notesIndex === prayerIndex + 1
+      && noteReaderIndex === notesIndex + 1
+      && contentLibraryIndex === noteReaderIndex + 1
+      && booksIndex === contentLibraryIndex + 1
+      && libraryIndex === booksIndex + 1
+    )) {
       throw new Error(`底部導覽順序錯誤：${navTexts.join(' / ')}`);
     }
 

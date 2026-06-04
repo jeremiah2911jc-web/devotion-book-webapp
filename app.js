@@ -6489,6 +6489,7 @@ function getMobileBottomNavItems() {
     { view: 'dashboard', label: '總覽' },
     { view: 'prayer', label: '禱告', testid: 'nav-prayer' },
     { view: 'notes', label: '寫札記' },
+    { view: 'note-reader', label: '札記閱讀', testid: 'nav-note-reader' },
     { view: 'content-library', label: '札記庫' },
     { view: 'books', label: '選稿編排' },
     { view: 'library', label: '書櫃' },
