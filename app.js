@@ -20,7 +20,7 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.1.2';
+const APP_VERSION = '1.1.3';
 const APP_RELEASE_DATE = '2026/06/05';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
@@ -2476,7 +2476,7 @@ function getOperationManualHtml() {
             <p>每篇札記也有「今日禱告」欄位，用來寫那一篇札記最後的回應禱告；「禱告」頁則比較適合長期追蹤與回顧。</p>
           </section>
 
-          <section id="manual-writing-note" class="manual-section">
+          <section id="manual-writing-note" class="manual-section" data-testid="manual-writing-note-section">
             <h2>八、寫札記</h2>
             <p>「寫札記」是記錄今天靈修領受、經文、禱告與整理重點的地方。還沒完成可以先放草稿，完成後再儲存為正式札記。</p>
             <h3>操作步驟</h3>
@@ -2711,7 +2711,7 @@ function getOperationManualHtml() {
 
           <section id="manual-version" class="manual-section manual-closing">
             <h2>十七、版本資訊</h2>
-            <p class="manual-app-version" data-app-version-label>${getAppVersionLabel()}</p>
+            <p class="manual-app-version" data-app-version-label data-testid="version-display">${getAppVersionLabel()}</p>
             <h3>本次主要更新</h3>
             <ul>
               <li>操作手冊改成更白話、可照著做的說明。</li>
@@ -2762,7 +2762,7 @@ function ensureOperationManualUi() {
     const section = document.createElement('section');
     section.id = 'view-manual';
     section.className = 'view manual-view';
-    section.dataset.testid = 'manual-view';
+    section.dataset.testid = 'operation-manual-page';
     section.innerHTML = getOperationManualHtml();
     libraryView?.insertAdjacentElement('beforebegin', section);
   }
@@ -4443,12 +4443,20 @@ function syncGoogleAuthButtonLabels() {
     const label = button.querySelector('span:last-child');
     const text = getGoogleAuthButtonLabel(button);
     button.dataset.defaultText = text;
+    if (button === els.gateGoogleLoginBtn) {
+      button.dataset.testid = state.authInlineMode === 'register' ? 'auth-google-register' : 'auth-google-login';
+    }
     label?.replaceChildren(document.createTextNode(text));
   });
 }
 
 function syncAuthInlineSubmitButton(isSubmitting = state.authInlineSubmitting) {
   if (!els.gateSubmitBtn) return;
+  els.gateSubmitBtn.dataset.testid = state.authInlineMode === 'register'
+    ? 'auth-register-submit'
+    : state.authInlineMode === 'login'
+      ? 'auth-login-submit'
+      : 'auth-password-recovery-submit';
   els.gateSubmitBtn.disabled = !!isSubmitting;
   els.gateSubmitBtn.textContent = isSubmitting ? '處理中...' : getAuthInlineSubmitLabel();
   els.gateSubmitBtn.classList.remove('secondary-btn');
@@ -6479,14 +6487,14 @@ function getPrimaryViewIconClass(viewName = '') {
 
 function getMobileBottomNavItems() {
   const items = [
-    { view: 'dashboard', label: '總覽' },
-    { view: 'prayer', label: '禱告', testid: 'nav-prayer' },
-    { view: 'notes', label: '寫札記' },
-    { view: 'note-reader', label: '札記閱讀', testid: 'nav-note-reader' },
-    { view: 'content-library', label: '札記庫' },
-    { view: 'books', label: '選稿編排' },
-    { view: 'library', label: '書櫃' },
-    { view: 'manual', label: '操作手冊' },
+    { view: 'dashboard', label: '總覽', testid: 'mobile-nav-overview' },
+    { view: 'prayer', label: '禱告', testid: 'mobile-nav-prayer' },
+    { view: 'notes', label: '寫札記', testid: 'mobile-nav-write-note' },
+    { view: 'note-reader', label: '札記閱讀', testid: 'mobile-nav-note-reader' },
+    { view: 'content-library', label: '札記庫', testid: 'mobile-nav-note-library' },
+    { view: 'books', label: '選稿編排', testid: 'mobile-nav-book-planner' },
+    { view: 'library', label: '書櫃', testid: 'mobile-nav-bookshelf' },
+    { view: 'manual', label: '操作手冊', testid: 'mobile-nav-operation-manual' },
   ];
   if (isAdminUser()) {
     items.push({ view: 'admin-dashboard', label: '管理', id: 'mobile-admin-dashboard-link' });
@@ -9110,10 +9118,10 @@ function renderNoteDraftsList() {
     const excerpt = getNotePreviewText(note, 120);
     const updatedAt = escapeHtml(formatDate(note.updated_at || note.created_at));
     return `
-      <article class="card note-draft-card" data-testid="note-draft-card" data-note-id="${noteId}">
+      <article class="card note-draft-card" data-testid="draft-card" data-note-id="${noteId}">
         <div class="note-draft-card-top">
           <h3>${escapeHtml(title)}</h3>
-          <button class="secondary-btn note-draft-primary-action" type="button" data-edit-note-draft="${noteId}" data-testid="note-draft-edit">繼續編輯</button>
+          <button class="secondary-btn note-draft-primary-action" type="button" data-edit-note-draft="${noteId}" data-testid="draft-continue-edit">繼續編輯</button>
         </div>
         <div class="caption note-draft-updated">最近更新：${updatedAt}</div>
         <div class="note-draft-excerpt">${escapeHtml(excerpt || '尚無內容預覽')}</div>
@@ -9323,7 +9331,7 @@ function renderNotePrayerBlock(prayer = '') {
   `;
 }
 
-function renderNoteReaderCard(note, { testId = 'note-reader-card' } = {}) {
+function renderNoteReaderCard(note, { testId = 'note-reader-recent-card' } = {}) {
   const noteId = String(note.id || '');
   const title = getNoteDisplayTitle(note);
   const scripture = sanitizeDisplayText(note.scripture_reference, '未填經文');
@@ -9333,7 +9341,7 @@ function renderNoteReaderCard(note, { testId = 'note-reader-card' } = {}) {
       <a class="note-reader-card-link" href="#note-reader-${escapeHtml(noteId)}" data-note-reader-open="${escapeHtml(noteId)}" aria-label="閱讀 ${escapeHtml(title)}">
         <div class="note-reader-note-main">
           <h3>${escapeHtml(title)}</h3>
-          <span class="secondary-btn note-reader-read-btn" data-testid="note-reader-open-note">閱讀</span>
+          <span class="secondary-btn note-reader-read-btn" data-testid="note-reader-read-button">閱讀</span>
         </div>
         <p class="note-reader-scripture">${escapeHtml(scripture)}</p>
         ${renderNoteReaderMeta(note, { includeScripture: false })}

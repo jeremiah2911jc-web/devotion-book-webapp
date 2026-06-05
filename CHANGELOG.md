@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.1.3 - 2026/06/05
+
+正式站：https://www.devotionbook.com.tw
+
+Production commit hash：尚未部署 production；本版先整理本地查驗環境、selector 與 QA 規範。
+
+### 主要更新
+
+- QA 文件：新增固定查驗前置清單與測試模式規範，明確區分 mock UI、localStorage seed、真 Supabase 測試帳號與 production read-only。
+- 測試穩定性：補上前台重要區塊的穩定 `data-testid`，降低同名按鈕、不可見元素與 class selector 誤判。
+- Smoke test：改用可見元素與穩定 testid 驗收 Auth modal、手機底部導覽、札記閱讀 modal、寫札記工具列、操作手冊與版本資訊。
+- 版本制度：前台版本升為 v1.1.3，並同步 `package.json`、`version.json`、`APP_VERSION`、靜態資源 cache query 與前台可見版本資訊。
+
 ## v1.1.2 - 2026/06/05
 
 正式站：https://www.devotionbook.com.tw

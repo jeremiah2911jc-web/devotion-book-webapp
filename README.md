@@ -4,7 +4,7 @@ Devotion 是可部署到 Vercel 的前台靈修札記網站，協助使用者記
 
 ## 目前版本
 
-- 版本：v1.1.2
+- 版本：v1.1.3
 - 更新：2026/06/05
 - 正式站：https://www.devotionbook.com.tw
 - 版本紀錄：請見 `CHANGELOG.md`
@@ -37,6 +37,8 @@ npm run verify
 ```
 
 `verify` 會執行語法檢查、讀經計畫驗證與 smoke test。
+
+查驗前請先依 `QA_PREFLIGHT_CHECKLIST.md` 確認 repo、版本、資料來源與允許修改範圍；測試模式、selector、RWD 與 production read-only 規範請見 `QA_TESTING_GUIDELINES.md`。
 
 ## 部署
 

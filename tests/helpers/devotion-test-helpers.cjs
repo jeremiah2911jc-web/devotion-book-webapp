@@ -333,27 +333,48 @@ async function assertNoHorizontalScroll(page, { maxOverflow = 2, label = 'page' 
   return overflow;
 }
 
+function toVisibleSelector(selector = '') {
+  return String(selector)
+    .split(',')
+    .map(part => part.trim())
+    .filter(Boolean)
+    .map(part => part.includes(':visible') ? part : `${part}:visible`)
+    .join(', ');
+}
+
+function visibleLocator(page, selector) {
+  return page.locator(toVisibleSelector(selector)).first();
+}
+
+async function waitForVisibleSelector(page, selector, { timeout = 10000 } = {}) {
+  const locator = visibleLocator(page, selector);
+  await locator.waitFor({ state: 'visible', timeout });
+  return locator;
+}
+
+async function clickVisible(page, selector, { timeout = 10000 } = {}) {
+  const locator = await waitForVisibleSelector(page, selector, { timeout });
+  await locator.click({ timeout });
+  return locator;
+}
+
 async function openReader(page, triggerSelector = '[data-testid="library-open-reader"]') {
-  const trigger = page.locator(triggerSelector).first();
-  await trigger.waitFor({ state: 'visible', timeout: 10000 });
-  await trigger.click();
-  await page.locator('[data-testid="reader-view"].active, #view-reader.active').waitFor({ state: 'visible', timeout: 15000 });
-  await page.locator('[data-testid="reader-close"]').waitFor({ state: 'visible', timeout: 10000 });
+  await clickVisible(page, triggerSelector);
+  await waitForVisibleSelector(page, '[data-testid="reader-view"].active, #view-reader.active', { timeout: 15000 });
+  await waitForVisibleSelector(page, '[data-testid="reader-close"]');
 }
 
 async function closeReader(page) {
-  const closeButton = page.locator('[data-testid="reader-close"]');
-  await closeButton.waitFor({ state: 'visible', timeout: 10000 });
+  const closeButton = await waitForVisibleSelector(page, '[data-testid="reader-close"]');
   await closeButton.evaluate((button) => button.scrollIntoView({ block: 'center', inline: 'center' }));
   await closeButton.click({ force: false, timeout: 10000 });
   await page.locator('[data-testid="reader-view"].active, #view-reader.active').waitFor({ state: 'hidden', timeout: 10000 }).catch(async () => {
-    await page.locator('[data-testid="library-view"].active, #view-library.active').waitFor({ state: 'visible', timeout: 10000 });
+    await waitForVisibleSelector(page, '[data-testid="library-view"].active, #view-library.active');
   });
 }
 
 async function exportEpubAndCaptureDownload(page, buttonSelector = '[data-testid="download-exported-book"]') {
-  const button = page.locator(buttonSelector).first();
-  await button.waitFor({ state: 'visible', timeout: 10000 });
+  const button = await waitForVisibleSelector(page, buttonSelector);
   const downloadPromise = page.waitForEvent('download', { timeout: 15000 });
   await button.click();
   const download = await downloadPromise;
@@ -382,6 +403,10 @@ module.exports = {
   attachConsoleErrorCollector,
   assertNoConsoleErrors,
   assertNoHorizontalScroll,
+  toVisibleSelector,
+  visibleLocator,
+  waitForVisibleSelector,
+  clickVisible,
   openReader,
   closeReader,
   exportEpubAndCaptureDownload,

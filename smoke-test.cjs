@@ -6,9 +6,13 @@ const { chromium } = require('playwright');
 const {
   STORAGE_KEYS,
   seedLocalUserState,
+  installLocalUserState,
   attachConsoleErrorCollector,
   assertNoConsoleErrors,
   assertNoHorizontalScroll,
+  toVisibleSelector,
+  waitForVisibleSelector,
+  clickVisible,
   openReader,
   closeReader,
 } = require('./tests/helpers/devotion-test-helpers.cjs');
@@ -183,12 +187,7 @@ async function captureNamedScreenshots(page) {
 }
 
 async function expectVisible(page, selector, label) {
-  await page.waitForFunction((targetSelector) => {
-    const element = document.querySelector(targetSelector);
-    if (!element) return false;
-    const style = window.getComputedStyle(element);
-    return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
-  }, selector, { timeout: 10000 });
+  await waitForVisibleSelector(page, selector);
   return label;
 }
 
@@ -208,19 +207,16 @@ async function expectNoVisibleLocator(locator, label) {
 }
 
 async function expectButtonText(page, selector, expectedText, label) {
-  await page.waitForFunction(([targetSelector, expected]) => {
-    const element = document.querySelector(targetSelector);
-    return !!element && element.textContent.trim() === expected;
-  }, [selector, expectedText], { timeout: 10000 });
+  await page.locator(toVisibleSelector(selector)).first().waitFor({ state: 'visible', timeout: 10000 });
+  const actualText = (await page.locator(toVisibleSelector(selector)).first().textContent())?.trim();
+  if (actualText !== expectedText) {
+    throw new Error(`${label}：預期 ${expectedText}，實際 ${actualText}`);
+  }
   return label;
 }
 
 async function clickElement(page, selector) {
-  await page.waitForFunction((targetSelector) => !!document.querySelector(targetSelector), selector, { timeout: 10000 });
-  await page.evaluate((targetSelector) => {
-    const element = document.querySelector(targetSelector);
-    if (element) element.click();
-  }, selector);
+  await clickVisible(page, selector);
 }
 
 function checkLocalServer(url) {
@@ -305,25 +301,31 @@ async function verifyWelcomeScreen(page, results) {
 
 async function verifyAuthModal(page, triggerSelector, expectedTitle, expectedSubmitText, results, options = {}) {
   const { expectResetPassword = true, expectedGoogleText = '使用 Google 登入' } = options;
+  const submitSelector = expectedTitle === '建立帳戶'
+    ? '[data-testid="auth-register-submit"]'
+    : '[data-testid="auth-login-submit"]';
+  const googleSelector = expectedGoogleText.includes('建立帳戶')
+    ? '[data-testid="auth-google-register"]'
+    : '[data-testid="auth-google-login"]';
   await clickElement(page, triggerSelector);
-  await expectVisible(page, '#auth-inline-panel', `${expectedTitle} modal 已開啟`);
+  await expectVisible(page, '[data-testid="auth-modal"]', `${expectedTitle} modal 已開啟`);
   await expectButtonText(page, '#auth-inline-title', expectedTitle, `${expectedTitle} modal 標題正確`);
   await expectVisible(page, '#gate-auth-email', `${expectedTitle} modal 顯示 Email 欄位`);
   await expectVisible(page, '#gate-auth-password', `${expectedTitle} modal 顯示 Password 欄位`);
-  await expectVisible(page, '#gate-submit-btn', `${expectedTitle} modal 顯示主按鈕`);
-  await expectButtonText(page, '#gate-submit-btn', expectedSubmitText, `${expectedTitle} modal 主按鈕文字正確`);
+  await expectVisible(page, submitSelector, `${expectedTitle} modal 顯示主按鈕`);
+  await expectButtonText(page, submitSelector, expectedSubmitText, `${expectedTitle} modal 主按鈕文字正確`);
   if (expectResetPassword) {
-    await expectVisible(page, '#gate-reset-password-btn', `${expectedTitle} modal 顯示忘記密碼 / 重設密碼`);
+    await expectVisible(page, '[data-testid="auth-forgot-password"]', `${expectedTitle} modal 顯示忘記密碼 / 重設密碼`);
   } else {
-    await expectNoVisibleLocator(page.locator('#gate-reset-password-btn'), `${expectedTitle} modal 不應顯示忘記密碼`);
+    await expectNoVisibleLocator(page.locator('[data-testid="auth-forgot-password"]'), `${expectedTitle} modal 不應顯示忘記密碼`);
   }
-  await expectVisible(page, '#gate-google-login-btn', `${expectedTitle} modal 顯示 Google 登入按鈕`);
-  const googleButtonText = await page.locator('#gate-google-login-btn span:last-child').textContent();
+  await expectVisible(page, googleSelector, `${expectedTitle} modal 顯示 Google 登入按鈕`);
+  const googleButtonText = await page.locator(`${googleSelector} span:last-child`).textContent();
   if (googleButtonText?.trim() !== expectedGoogleText) {
     throw new Error(`${expectedTitle} modal Google 按鈕文案錯誤：${googleButtonText}`);
   }
   await expectNoVisibleLocator(page.locator('#auth-pending-verification-reminder'), `${expectedTitle} modal 預設不應顯示 pending verification 輕提醒`);
-  await expectNoVisibleLocator(page.locator('#gate-resend-verification-btn'), `${expectedTitle} modal 預設不應顯示重新寄送驗證信`);
+  await expectNoVisibleLocator(page.locator('[data-testid="auth-resend-verification"]'), `${expectedTitle} modal 預設不應顯示重新寄送驗證信`);
   await expectNoVisibleLocator(page.locator('#auth-verification-panel'), `${expectedTitle} modal 預設不應顯示完整信箱驗證提醒`);
   await expectNoVisibleLocator(page.locator('#auth-inline-panel').getByText('還沒收到驗證信？'), `${expectedTitle} modal 預設不應顯示驗證信說明`);
   await expectNoVisibleLocator(page.locator('#auth-inline-panel').getByText('你也可以使用 Google 帳號快速登入，不需要另外記一組密碼。'), `${expectedTitle} modal 不應顯示 Google 輔助說明`);
@@ -352,11 +354,11 @@ async function verifyAuthModal(page, triggerSelector, expectedTitle, expectedSub
   if (!actionLayout.googleBelowActions) {
     throw new Error(`${expectedTitle} modal Google 登入位置錯誤：${JSON.stringify(actionLayout)}`);
   }
-  await expectVisible(page, '#close-auth-inline-btn', `${expectedTitle} modal 顯示關閉按鈕`);
+  await expectVisible(page, '[data-testid="auth-inline-close"]', `${expectedTitle} modal 顯示關閉按鈕`);
   await expectNoVisibleLocator(page.locator('#auth-inline-panel').getByText('Magic Link'), `${expectedTitle} modal 不應顯示 Magic Link`);
   await expectNoVisibleLocator(page.locator('#magic-link-btn'), 'hidden 舊 auth card 的 Magic Link 按鈕不應可見');
   await expectNoVisibleLocator(page.locator('#auth-card'), 'hidden 舊 auth card 不應可見');
-  await clickElement(page, '#close-auth-inline-btn');
+  await clickElement(page, '[data-testid="auth-inline-close"]');
   await page.waitForFunction(() => document.querySelector('#auth-inline-panel')?.classList.contains('hidden'), { timeout: 10000 });
   results.push(`${expectedTitle} modal 已驗證 Email / Password / 主按鈕 / ${expectResetPassword ? '重設密碼入口' : '無重設密碼入口'} / Google 文案 / 關閉按鈕，且無 Magic Link`);
 }
@@ -370,36 +372,36 @@ async function verifyPendingVerificationReminder(page, results) {
   }, STORAGE_KEYS.pendingEmailVerification);
   await clickElement(page, '[data-testid="auth-open-login"]');
   await expectVisible(page, '#auth-pending-verification-reminder', '同裝置 pending verification 輕提醒已顯示');
-  await expectVisible(page, '#gate-resend-verification-btn', '同裝置 pending verification 可重新寄送驗證信');
+  await expectVisible(page, '[data-testid="auth-resend-verification"]', '同裝置 pending verification 可重新寄送驗證信');
   const reminderText = await page.locator('#auth-pending-verification-reminder').textContent();
   if (!reminderText || !reminderText.includes('你剛建立的帳號還需要完成信箱驗證') || !reminderText.includes('【Devotion 靈修札記】請完成信箱驗證')) {
     throw new Error(`同裝置 pending verification 輕提醒文案錯誤：${reminderText}`);
   }
   await expectNoVisibleLocator(page.locator('#auth-verification-panel'), '同裝置 pending verification 不應直接顯示完整提醒面板');
-  await clickElement(page, '#close-auth-inline-btn');
+  await clickElement(page, '[data-testid="auth-inline-close"]');
   await page.waitForFunction(() => document.querySelector('#auth-inline-panel')?.classList.contains('hidden'), { timeout: 10000 });
   await page.evaluate((key) => localStorage.removeItem(key), STORAGE_KEYS.pendingEmailVerification);
   results.push('同裝置剛註冊 pending verification 只在登入模式顯示輕提醒');
 }
 
 async function verifyNoteReaderWorkspace(page, results) {
-  await clickElement(page, '.mobile-bottom-link[data-view="note-reader"]');
+  await clickElement(page, '[data-testid="mobile-nav-note-reader"]');
   await expectVisible(page, '#view-note-reader.view.active', '札記閱讀頁已開啟');
-  await expectVisible(page, '.mobile-bottom-link[data-view="note-reader"].active', '札記閱讀底部導覽 active 狀態正確');
-  await expectVisible(page, '#note-reader-search-title', '札記閱讀搜尋卡片已顯示');
+  await expectVisible(page, '[data-testid="mobile-nav-note-reader"].active', '札記閱讀底部導覽 active 狀態正確');
+  await expectVisible(page, '[data-testid="note-reader-search-card"]', '札記閱讀搜尋卡片已顯示');
   await expectVisible(page, '#note-reader-recent-title', '最近編輯區已顯示');
   await expectNoVisibleLocator(page.locator('#note-reader-detail'), '札記閱讀頁不應存在固定右側預覽區');
   await expectNoVisibleLocator(page.locator('text=請先從列表選擇一篇札記。'), '札記閱讀頁不應顯示舊版空白預覽文案');
 
-  const recentCards = page.locator('[data-testid="note-reader-card"]');
-  await page.waitForFunction(() => document.querySelectorAll('[data-testid="note-reader-card"]').length === 5, { timeout: 10000 });
+  const recentCards = page.locator('[data-testid="note-reader-recent-card"]');
+  await page.waitForFunction(() => document.querySelectorAll('[data-testid="note-reader-recent-card"]').length === 5, { timeout: 10000 });
   const firstRecentText = await recentCards.first().textContent();
   if (!firstRecentText || !firstRecentText.includes('Smoke newest note')) {
     throw new Error(`最近編輯排序錯誤：${firstRecentText}`);
   }
   await assertNoHorizontalScroll(page, { label: 'smoke note reader entry mobile' });
 
-  await clickElement(page, '[data-testid="note-reader-card"]');
+  await clickElement(page, '[data-testid="note-reader-recent-card"]');
   await expectVisible(page, '[data-testid="note-reader-reading-modal"]:not(.hidden)', '最近札記整張卡片可開啟閱讀 modal');
   let readingText = await page.locator('[data-testid="note-reader-reading-content"]').textContent();
   if (!readingText || !readingText.includes('Smoke newest note') || !readingText.includes('Newest note content')) {
@@ -407,7 +409,7 @@ async function verifyNoteReaderWorkspace(page, results) {
   }
   await clickElement(page, '[data-testid="note-reader-reading-close"]');
   await page.waitForFunction(() => document.querySelector('[data-testid="note-reader-reading-modal"]')?.classList.contains('hidden'), { timeout: 10000 });
-  await clickElement(page, '[data-testid="note-reader-card"] [data-testid="note-reader-open-note"]');
+  await clickElement(page, '[data-testid="note-reader-recent-card"] [data-testid="note-reader-read-button"]');
   await expectVisible(page, '[data-testid="note-reader-reading-modal"]:not(.hidden)', '最近札記右上角閱讀按鈕可開啟閱讀 modal');
   await clickElement(page, '[data-testid="note-reader-reading-close"]');
   await page.waitForFunction(() => document.querySelector('[data-testid="note-reader-reading-modal"]')?.classList.contains('hidden'), { timeout: 10000 });
@@ -431,7 +433,7 @@ async function verifyNoteReaderWorkspace(page, results) {
   await page.waitForFunction(() => document.querySelector('[data-testid="note-reader-reading-modal"]')?.classList.contains('hidden'), { timeout: 10000 });
   await clickElement(page, '[data-testid="note-reader-search-submit"]');
   await expectVisible(page, '[data-testid="note-reader-search-modal"]:not(.hidden)', '搜尋結果 modal 可再次開啟');
-  await clickElement(page, '[data-testid="note-reader-search-result"] [data-testid="note-reader-open-note"]');
+  await clickElement(page, '[data-testid="note-reader-search-result"] [data-testid="note-reader-read-button"]');
   await page.waitForFunction(() => document.querySelector('[data-testid="note-reader-search-modal"]')?.classList.contains('hidden'), { timeout: 10000 });
   await expectVisible(page, '[data-testid="note-reader-reading-modal"]:not(.hidden)', '搜尋結果右上角閱讀按鈕可切換到閱讀 modal');
   readingText = await page.locator('[data-testid="note-reader-reading-content"]').textContent();
@@ -446,6 +448,93 @@ async function verifyNoteReaderWorkspace(page, results) {
   }
   await assertNoHorizontalScroll(page, { label: 'smoke note reader modal mobile' });
   results.push('札記閱讀頁最近 5 篇、搜尋 modal、閱讀 modal、編輯流程正常');
+}
+
+async function verifyNoteEditorToolbar(page, results) {
+  await expectVisible(page, '[data-testid="note-editor-section"]', '寫札記編輯區已顯示');
+  await expectVisible(page, '[data-testid="note-editor-toolbar"]', '寫札記工具列已顯示');
+  await expectVisible(page, '[data-testid="note-editor-content"]', '札記內容欄位已顯示');
+
+  const toolbarChecks = [
+    ['note-format-heading', '## 小標題'],
+    ['note-format-bold', '**文字**'],
+    ['note-format-quote', '> 引用內容'],
+    ['note-format-scripture', '> 經文內容'],
+    ['note-format-list', '- 項目'],
+    ['note-format-divider', '---'],
+    ['note-format-red', '{red}紅色重點{/red}'],
+    ['note-format-blue', '{blue}藍色重點{/blue}'],
+    ['note-format-gold', '{gold}金色重點{/gold}'],
+    ['note-format-purple', '{purple}紫色重點{/purple}'],
+  ];
+
+  for (const [testId, expectedValue] of toolbarChecks) {
+    await page.fill('[data-testid="note-editor-content"]', '');
+    await clickElement(page, `[data-testid="${testId}"]`);
+    const actualValue = await page.inputValue('[data-testid="note-editor-content"]');
+    if (!actualValue.includes(expectedValue)) {
+      throw new Error(`寫札記工具列 ${testId} 輸出錯誤：${actualValue}`);
+    }
+  }
+
+  await page.fill('[data-testid="note-editor-content"]', '');
+  results.push('寫札記工具列已用 data-testid 驗證小標題、粗體、引用、經文、清單、分隔線與四色文字');
+}
+
+async function clickPrimaryViewNav(page, viewName, mobileTestId = '') {
+  const selector = mobileTestId
+    ? `[data-testid="${mobileTestId}"], button[data-view="${viewName}"]`
+    : `button[data-view="${viewName}"]`;
+  await clickElement(page, selector);
+}
+
+async function verifyResponsiveViewport(browser, { width, height, label }, results) {
+  const context = await browser.newContext({
+    viewport: { width, height },
+    userAgent: width <= 430
+      ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
+      : undefined,
+    deviceScaleFactor: width <= 430 ? 2 : 1,
+    isMobile: width <= 430,
+    hasTouch: width <= 768,
+  });
+  await installLocalUserState(context, { user: seedUser, notes: seedNotes, books: seedBooks, snapshots: seedSnapshots });
+  const page = await context.newPage();
+  const consoleCollector = attachConsoleErrorCollector(page);
+
+  try {
+    await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 20000 });
+    await expectVisible(page, '#view-dashboard.view.active', `${label} dashboard 已顯示`);
+    await assertNoHorizontalScroll(page, { label: `RWD ${label} dashboard` });
+
+    await clickPrimaryViewNav(page, 'note-reader', 'mobile-nav-note-reader');
+    await expectVisible(page, '#view-note-reader.view.active', `${label} 札記閱讀頁已顯示`);
+    await expectVisible(page, 'button[data-view="note-reader"].active', `${label} 札記閱讀 active 狀態正確`);
+    await expectVisible(page, '[data-testid="note-reader-search-card"]', `${label} 搜尋卡片已顯示`);
+    await clickElement(page, '[data-testid="note-reader-recent-card"]');
+    await expectVisible(page, '[data-testid="note-reader-reading-modal"]:not(.hidden)', `${label} 閱讀 modal 已開啟`);
+    await clickElement(page, '[data-testid="note-reader-reading-close"]');
+    await page.waitForFunction(() => document.querySelector('[data-testid="note-reader-reading-modal"]')?.classList.contains('hidden'), { timeout: 10000 });
+    await assertNoHorizontalScroll(page, { label: `RWD ${label} note reader` });
+    assertNoConsoleErrors(consoleCollector);
+    results.push(`RWD ${label} 通過：console error 0、無水平爆版、導覽 active 正確、閱讀 modal 可開可關`);
+  } finally {
+    await context.close();
+  }
+}
+
+async function verifyResponsiveViewports(browser, results) {
+  const viewports = [
+    { width: 390, height: 844, label: '390px' },
+    { width: 430, height: 932, label: '430px' },
+    { width: 768, height: 900, label: '768px 平板' },
+    { width: 1024, height: 900, label: '1024px' },
+    { width: 1280, height: 900, label: '1280px' },
+  ];
+
+  for (const viewport of viewports) {
+    await verifyResponsiveViewport(browser, viewport, results);
+  }
 }
 
 async function launchSmokeBrowser() {
@@ -556,7 +645,7 @@ async function run() {
       const text = body?.textContent || '';
       return text.length > 50 && !body?.classList.contains('error-text') && !text.includes('正在抓取');
     }, null, { timeout: 20000 });
-    await clickElement(page, '#today-reading-dialog [data-today-reading-close]');
+    await clickElement(page, '#today-reading-dialog button[data-today-reading-close]');
     await page.waitForFunction(() => document.querySelector('#today-reading-dialog')?.classList.contains('hidden'), { timeout: 10000 });
     await clickElement(page, '#today-reading-note-btn');
     await expectVisible(page, '#view-notes.view.active', '今日讀經可帶入寫札記頁');
@@ -574,12 +663,12 @@ async function run() {
     await page.waitForFunction(() => document.querySelector('#scripture-fetch-status')?.textContent.includes('已帶出 4 處'), { timeout: 20000 });
     await expectVisible(page, '#scripture-preview:not(.hidden)', '今日讀經帶入後可抓取四段全文');
     await page.fill('#note-scripture', '');
-    await page.fill('#note-content', '');
-    await clickElement(page, '.mobile-bottom-link[data-view="dashboard"]');
+    await page.fill('[data-testid="note-editor-content"]', '');
+    await clickElement(page, '[data-testid="mobile-nav-overview"]');
     await expectVisible(page, '#view-dashboard.view.active', '今日讀經驗證後已返回 dashboard');
     results.push(`今日讀經顯示 4 段、可切換日期、可開閱讀視窗並帶入經文欄：${todayReadingRefs.join(' / ')}`);
 
-    const navTexts = await page.locator('.bottom-nav .nav-link span:last-child').allTextContents();
+    const navTexts = await page.locator('[data-testid="mobile-bottom-nav"] .nav-link span:last-child').allTextContents();
     results.push(`底部導覽文字：${navTexts.join(' / ')}`);
     const dashboardIndex = navTexts.indexOf('總覽');
     const prayerIndex = navTexts.indexOf('禱告');
@@ -600,7 +689,7 @@ async function run() {
       throw new Error(`底部導覽順序錯誤：${navTexts.join(' / ')}`);
     }
 
-    await clickElement(page, '[data-testid="nav-prayer"]');
+    await clickElement(page, '[data-testid="mobile-nav-prayer"]');
     await expectVisible(page, '[data-testid="view-prayer"].view.active', '已由底部導覽進入禱告頁');
     await expectVisible(page, '#prayer-cloud-notice:not(.hidden)', '未同步內容顯示禱告雲端同步提示');
     await expectVisible(page, '[data-testid="prayer-create-button"]', '禱告新增按鈕已顯示');
@@ -609,9 +698,10 @@ async function run() {
     await assertNoHorizontalScroll(page, { label: 'smoke prayer mobile' });
     results.push('禱告頁入口與未同步內容提示正常');
 
-    await clickElement(page, '.mobile-bottom-link[data-view="notes"]');
+    await clickElement(page, '[data-testid="mobile-nav-write-note"]');
     await expectVisible(page, '#view-notes.view.active', '已由底部導覽進入札記頁');
     await assertNoHorizontalScroll(page, { label: 'smoke notes mobile' });
+    await verifyNoteEditorToolbar(page, results);
     await page.fill('#note-scripture', '哥林多前書');
     await clickElement(page, '#fetch-scripture-btn');
     await expectVisible(page, '#scripture-fetch-status.error-text', '經文格式錯誤提示已顯示');
@@ -622,10 +712,10 @@ async function run() {
     await page.fill('#note-scripture', '');
     results.push('已由底部導覽進入札記頁');
 
-    await clickElement(page, '.mobile-bottom-link[data-view="dashboard"]');
+    await clickElement(page, '[data-testid="mobile-nav-overview"]');
     await expectVisible(page, '#view-dashboard.view.active', '已返回 dashboard');
 
-    await clickElement(page, '.mobile-bottom-link[data-view="books"]');
+    await clickElement(page, '[data-testid="mobile-nav-book-planner"]');
     await expectVisible(page, '#view-books.view.active', '已由底部導覽進入書籍頁');
     await assertNoHorizontalScroll(page, { label: 'smoke books mobile' });
     results.push('已切換到書籍頁');
@@ -673,28 +763,34 @@ async function run() {
     const exportBtnExists = await page.locator('#export-epub-btn').count();
     if (exportBtnExists) results.push('書籍頁可見 EPUB 匯出按鈕');
 
-    await clickElement(page, '.mobile-bottom-link[data-view="dashboard"]');
+    await clickElement(page, '[data-testid="mobile-nav-overview"]');
     await expectVisible(page, '.home-recent-panel #recent-notes .card', '最近編輯已顯示內容');
-    await clickElement(page, '.mobile-bottom-link[data-view="notes"]');
+    await clickElement(page, '[data-testid="mobile-nav-write-note"]');
     await expectVisible(page, '#view-notes.view.active', '已切換到札記頁');
-    const editNoteCount = await page.locator('[data-edit-note]').count();
+    const editNoteSelector = '[data-testid="note-library-edit"], [data-testid="draft-continue-edit"]';
+    const editNoteCount = await page.locator(toVisibleSelector(editNoteSelector)).count();
     if (editNoteCount) {
-      await clickElement(page, '[data-edit-note]');
+      await clickElement(page, editNoteSelector);
       const noteTitle = await page.inputValue('#note-title');
       if (noteTitle === seedNotes[0].title) results.push('札記編輯按鈕可帶入既有內容');
     } else {
       results.push('札記列表目前沒有編輯按鈕，略過表單帶入檢查');
     }
-    await clickElement(page, '.mobile-bottom-link[data-view="dashboard"]');
+    await clickElement(page, '[data-testid="mobile-nav-overview"]');
     await expectVisible(page, '#view-dashboard.view.active', '已返回 dashboard');
     await verifyNoteReaderWorkspace(page, results);
-    await clickElement(page, '.mobile-bottom-link[data-view="dashboard"]');
+    await clickElement(page, '[data-testid="mobile-nav-overview"]');
     await expectVisible(page, '#view-dashboard.view.active', '札記閱讀驗證後已返回 dashboard');
-    await clickElement(page, '.account-summary-settings-btn');
-    await expectVisible(page, '#account-settings-modal:not(.hidden)', '帳號設定已開啟');
+    await clickElement(page, '[data-open-account-settings]');
+    await expectVisible(page, '[data-testid="account-settings-page"]:not(.hidden)', '帳號設定已開啟');
     await expectVisible(page, '[data-testid="account-settings-sync-status"]', '帳號設定同步狀態已顯示');
     await expectVisible(page, '[data-testid="account-settings-sync-button"]', '帳號設定同步按鈕已顯示');
     await expectVisible(page, '[data-testid="account-install-guide-link"]', '帳號設定安裝教學入口已顯示');
+    await expectVisible(page, '#account-settings-modal [data-testid="version-display"]', '帳號設定版本資訊已顯示');
+    const accountVersionText = await page.locator('#account-settings-modal [data-testid="version-display"]').textContent();
+    if (!accountVersionText || !accountVersionText.includes('v1.1.3')) {
+      throw new Error(`帳號設定版本資訊錯誤：${accountVersionText}`);
+    }
     const syncDisabledObserved = await page.evaluate(() => new Promise((resolve) => {
       const button = document.querySelector('[data-testid="account-settings-sync-button"]');
       if (!button) return resolve(false);
@@ -713,10 +809,12 @@ async function run() {
     await expectVisible(page, '#toast:not(.hidden)', '同步提示已出現');
     results.push('帳號設定同步按鈕可用，且同步中會停用');
     await clickElement(page, '[data-testid="account-install-guide-link"]');
-    await expectVisible(page, '#view-manual.view.active', '帳號設定安裝教學入口可進入操作手冊');
+    await expectVisible(page, '[data-testid="operation-manual-page"].view.active', '帳號設定安裝教學入口可進入操作手冊');
     await expectVisible(page, '[data-testid="manual-install-app-section"]', '操作手冊安裝 App 章節已顯示');
-    results.push('帳號設定安裝教學入口與操作手冊章節正常');
-    await clickElement(page, '[data-view="dashboard"]');
+    await expectVisible(page, '[data-testid="manual-writing-note-section"]', '操作手冊寫札記章節可穩定定位');
+    await expectVisible(page, '[data-testid="version-display"]', '操作手冊版本資訊可穩定定位');
+    results.push('帳號設定安裝教學入口、操作手冊章節與版本資訊正常');
+    await clickElement(page, '[data-testid="mobile-nav-overview"]');
 
     const accountUiExists = await Promise.all([
       page.locator('#account-settings-modal').count(),
@@ -728,11 +826,11 @@ async function run() {
     ]);
     if (accountUiExists.every(Boolean)) results.push('帳號設定相關 DOM 已存在');
 
-    await clickElement(page, '[data-view="notes"]');
+    await clickElement(page, '[data-testid="mobile-nav-write-note"]');
     await expectVisible(page, '#view-notes.view.active', '已從導覽切換到札記頁');
-    await clickElement(page, '[data-view="books"]');
+    await clickElement(page, '[data-testid="mobile-nav-book-planner"]');
     await expectVisible(page, '#view-books.view.active', '已從導覽切換到書籍頁');
-    await clickElement(page, '[data-view="library"]');
+    await clickElement(page, '[data-testid="mobile-nav-bookshelf"]');
     await expectVisible(page, '#view-library.view.active', '已從導覽切換到書櫃頁');
     await assertNoHorizontalScroll(page, { label: 'smoke library mobile' });
     await page.screenshot({ path: path.join(artifactsDir, 'library-mobile.png'), fullPage: true });
@@ -747,7 +845,8 @@ async function run() {
       results.push('目前沒有書櫃作品可直接閱讀，略過閱讀器檢查');
     }
 
-    await clickElement(page, '[data-view="dashboard"]');
+    await clickElement(page, '[data-testid="mobile-nav-overview"]');
+    await verifyResponsiveViewports(browser, results);
     assertNoConsoleErrors(consoleCollector);
   } catch (error) {
     results.push(`驗證失敗：${error.message}`);

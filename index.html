@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-title" content="DEVOTION" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>DEVOTION｜與神更親近的每一天</title>
-  <link rel="stylesheet" href="./styles.css?v=1.1.2" />
+  <link rel="stylesheet" href="./styles.css?v=1.1.3" />
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png" />
@@ -46,7 +46,7 @@
 
         <div id="auth-inline-panel" class="modal auth-input-modal hidden" aria-hidden="true" aria-live="polite" data-testid="auth-inline-panel">
           <div id="auth-inline-backdrop" class="modal-backdrop" data-testid="auth-inline-backdrop"></div>
-          <div class="modal-card auth-input-modal-card">
+          <div class="modal-card auth-input-modal-card" data-testid="auth-modal">
             <div class="panel-header auth-modal-header">
               <h3 id="auth-inline-title" data-testid="auth-inline-title">建立帳戶</h3>
               <button id="close-auth-inline-btn" class="ghost-btn small" type="button" data-testid="auth-inline-close">關閉</button>
@@ -54,7 +54,7 @@
             <p id="auth-inline-intro" class="modal-intro">輸入 Email 與密碼後即可建立帳戶或登入。</p>
             <section id="auth-pending-verification-reminder" class="auth-pending-verification-reminder hidden" aria-live="polite" data-testid="auth-pending-verification-reminder">
               <p id="gate-resend-verification-hint" class="caption auth-verification-hint">你剛建立的帳號還需要完成信箱驗證。請到信箱尋找「【Devotion 靈修札記】請完成信箱驗證」。</p>
-              <button id="gate-resend-verification-btn" class="ghost-btn subtle-action small" type="button" data-testid="auth-pending-verification-resend">重新寄送驗證信</button>
+              <button id="gate-resend-verification-btn" class="ghost-btn subtle-action small" type="button" data-testid="auth-resend-verification">重新寄送驗證信</button>
             </section>
             <form id="auth-inline-form" class="form-stack">
               <label>Email
@@ -67,13 +67,13 @@
                 <input id="gate-auth-password-confirm" type="password" placeholder="再次輸入新密碼" autocomplete="new-password" data-testid="auth-password-confirm-input" />
               </label>
               <div class="auth-modal-actions">
-                <button id="gate-submit-btn" class="primary-btn" type="submit" data-testid="auth-submit">建立帳戶</button>
-                <button id="gate-reset-password-btn" class="ghost-btn subtle-action hidden" type="button" data-testid="auth-reset-password">忘記密碼</button>
+                <button id="gate-submit-btn" class="primary-btn" type="submit" data-testid="auth-register-submit">建立帳戶</button>
+                <button id="gate-reset-password-btn" class="ghost-btn subtle-action hidden" type="button" data-testid="auth-forgot-password">忘記密碼</button>
               </div>
             </form>
             <div id="auth-google-section" class="auth-google-section" data-testid="auth-google-section">
               <div class="auth-divider" aria-hidden="true"><span>或</span></div>
-              <button id="gate-google-login-btn" class="google-login-btn" type="button" data-testid="auth-google-login">
+              <button id="gate-google-login-btn" class="google-login-btn" type="button" data-testid="auth-google-register">
                 <span class="google-login-mark" aria-hidden="true">G</span>
                 <span>使用 Google 建立帳戶</span>
               </button>
@@ -485,9 +485,9 @@
         </section>
       </section>
 
-      <section id="view-note-reader" class="view note-reader-view" data-testid="note-reader-view">
+      <section id="view-note-reader" class="view note-reader-view" data-testid="note-reader-page">
         <div class="note-reader-shell">
-          <section class="panel note-reader-search-panel" aria-labelledby="note-reader-search-title">
+          <section class="panel note-reader-search-panel" aria-labelledby="note-reader-search-title" data-testid="note-reader-search-card">
             <div class="panel-header note-reader-header">
               <div>
                 <h2 id="note-reader-search-title">搜尋札記</h2>
@@ -609,26 +609,26 @@
                   <div id="scripture-preview" class="scripture-preview hidden"></div>
                 </section>
 
-                <section id="note-editor-section" class="note-section note-content-section" aria-labelledby="note-content-section-title">
+                <section id="note-editor-section" class="note-section note-content-section" aria-labelledby="note-content-section-title" data-testid="note-editor-section">
                   <div class="note-section-heading">
                     <h3 id="note-content-section-title">我的札記</h3>
                   </div>
-                  <div class="markdown-toolbar" role="toolbar" aria-label="札記 Markdown 工具列">
-                    <button type="button" id="markdown-heading-btn" class="ghost-btn small markdown-toolbar-btn">小標題</button>
-                    <button type="button" id="markdown-bold-btn" class="ghost-btn small markdown-toolbar-btn">粗體</button>
-                    <button type="button" id="markdown-quote-btn" class="ghost-btn small markdown-toolbar-btn">引用</button>
-                    <button type="button" id="markdown-scripture-btn" class="ghost-btn small markdown-toolbar-btn">經文</button>
-                    <button type="button" id="markdown-list-btn" class="ghost-btn small markdown-toolbar-btn">清單</button>
-                    <button type="button" id="markdown-divider-btn" class="ghost-btn small markdown-toolbar-btn">分隔線</button>
-                    <button type="button" id="markdown-red-btn" class="ghost-btn small markdown-toolbar-btn">紅字</button>
-                    <button type="button" id="markdown-blue-btn" class="ghost-btn small markdown-toolbar-btn">藍字</button>
-                    <button type="button" id="markdown-gold-btn" class="ghost-btn small markdown-toolbar-btn">金字</button>
-                    <button type="button" id="markdown-purple-btn" class="ghost-btn small markdown-toolbar-btn">紫字</button>
+                  <div class="markdown-toolbar" role="toolbar" aria-label="札記 Markdown 工具列" data-testid="note-editor-toolbar">
+                    <button type="button" id="markdown-heading-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-heading">小標題</button>
+                    <button type="button" id="markdown-bold-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-bold">粗體</button>
+                    <button type="button" id="markdown-quote-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-quote">引用</button>
+                    <button type="button" id="markdown-scripture-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-scripture">經文</button>
+                    <button type="button" id="markdown-list-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-list">清單</button>
+                    <button type="button" id="markdown-divider-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-divider">分隔線</button>
+                    <button type="button" id="markdown-red-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-red">紅字</button>
+                    <button type="button" id="markdown-blue-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-blue">藍字</button>
+                    <button type="button" id="markdown-gold-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-gold">金字</button>
+                    <button type="button" id="markdown-purple-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-purple">紫字</button>
                   </div>
                   <p id="markdown-syntax-hint" class="caption markdown-syntax-hint hidden" aria-live="polite"></p>
                   <label class="note-content-field">
                     <span class="visually-hidden">內容</span>
-                    <textarea id="note-content" rows="20" placeholder="在這裡寫下今天的札記..." data-testid="note-content"></textarea>
+                    <textarea id="note-content" rows="20" placeholder="在這裡寫下今天的札記..." data-testid="note-editor-content"></textarea>
                   </label>
                 </section>
               </section>
@@ -640,7 +640,7 @@
                 <div class="note-save-actions">
                   <button id="new-note-btn" class="ghost-btn" type="button">清空重填</button>
                   <button type="button" id="save-note-draft-btn" class="ghost-btn" data-testid="note-save-draft">儲存草稿</button>
-                  <button type="button" id="publish-note-btn" class="primary-btn" data-testid="note-publish">儲存為正式札記</button>
+                  <button type="button" id="publish-note-btn" class="primary-btn" data-testid="note-save-published">儲存為正式札記</button>
                   <button type="button" id="note-preview-btn" class="ghost-btn" data-testid="note-preview-open">預覽文章</button>
                   <button type="button" id="delete-note-btn" class="danger-btn hidden">刪除札記</button>
                 </div>
@@ -885,36 +885,36 @@
         <p class="footer-copyright">© 2026 <a href="https://sanzepm.com.tw" target="_blank" rel="noopener noreferrer">三策專案管理顧問有限公司</a>. All rights reserved.</p>
       </footer>
 
-      <nav class="nav-links bottom-nav" aria-label="主要導覽">
-        <button class="nav-link mobile-bottom-link active" data-view="dashboard" type="button">
+      <nav class="nav-links bottom-nav" aria-label="主要導覽" data-testid="mobile-bottom-nav">
+        <button class="nav-link mobile-bottom-link active" data-view="dashboard" type="button" data-testid="mobile-nav-overview">
           <span class="nav-icon asset-icon asset-sprite-system icon-home" aria-hidden="true"></span>
           <span>總覽</span>
         </button>
-        <button class="nav-link mobile-bottom-link" data-view="prayer" type="button" data-testid="nav-prayer">
+        <button class="nav-link mobile-bottom-link" data-view="prayer" type="button" data-testid="mobile-nav-prayer">
           <span class="nav-icon asset-icon asset-sprite-system icon-prayer" aria-hidden="true"></span>
           <span>禱告</span>
         </button>
-        <button class="nav-link mobile-bottom-link" data-view="notes" type="button">
+        <button class="nav-link mobile-bottom-link" data-view="notes" type="button" data-testid="mobile-nav-write-note">
           <span class="nav-icon asset-icon asset-sprite-system icon-note" aria-hidden="true"></span>
           <span>寫札記</span>
         </button>
-        <button class="nav-link mobile-bottom-link" data-view="note-reader" type="button" data-testid="nav-note-reader">
+        <button class="nav-link mobile-bottom-link" data-view="note-reader" type="button" data-testid="mobile-nav-note-reader">
           <span class="nav-icon asset-icon asset-sprite-system icon-note" aria-hidden="true"></span>
           <span>札記閱讀</span>
         </button>
-        <button class="nav-link mobile-bottom-link" data-view="content-library" type="button">
+        <button class="nav-link mobile-bottom-link" data-view="content-library" type="button" data-testid="mobile-nav-note-library">
           <span class="nav-icon asset-icon asset-sprite-system icon-note" aria-hidden="true"></span>
           <span>札記庫</span>
         </button>
-        <button class="nav-link mobile-bottom-link" data-view="books" type="button">
+        <button class="nav-link mobile-bottom-link" data-view="books" type="button" data-testid="mobile-nav-book-planner">
           <span class="nav-icon asset-icon asset-sprite-system icon-book" aria-hidden="true"></span>
           <span>選稿編排</span>
         </button>
-        <button class="nav-link mobile-bottom-link" data-view="library" type="button">
+        <button class="nav-link mobile-bottom-link" data-view="library" type="button" data-testid="mobile-nav-bookshelf">
           <span class="nav-icon asset-icon asset-sprite-system icon-library" aria-hidden="true"></span>
           <span>書櫃</span>
         </button>
-        <button class="nav-link mobile-bottom-link" data-view="manual" type="button">
+        <button class="nav-link mobile-bottom-link" data-view="manual" type="button" data-testid="mobile-nav-operation-manual">
           <span class="nav-icon asset-icon asset-sprite-system icon-book" aria-hidden="true"></span>
           <span>操作手冊</span>
         </button>
@@ -922,7 +922,7 @@
     </main>
   </div>
 
-  <div id="account-settings-modal" class="modal hidden" aria-hidden="true">
+  <div id="account-settings-modal" class="modal hidden" aria-hidden="true" data-testid="account-settings-page">
     <div id="account-settings-backdrop" class="modal-backdrop"></div>
     <div class="modal-card account-settings-card" role="dialog" aria-modal="true" aria-labelledby="account-settings-title">
       <div class="panel-header">
@@ -1000,7 +1000,7 @@
         </div>
         <div class="account-settings-section account-version-section">
           <span class="account-settings-label">版本資訊</span>
-          <p class="caption account-settings-version-text" data-app-version-label>版本：v1.1.2｜更新：2026/06/05</p>
+          <p class="caption account-settings-version-text" data-app-version-label data-testid="version-display">版本：v1.1.3｜更新：2026/06/05</p>
         </div>
         <div class="account-settings-section account-settings-signout-section">
           <span class="account-settings-label">登出</span>
@@ -1039,7 +1039,7 @@
       <div id="note-reader-search-results" class="note-reader-search-results" data-testid="note-reader-search-results"></div>
       <div class="note-reader-modal-actions">
         <button id="note-reader-search-modal-clear" class="ghost-btn" type="button" data-testid="note-reader-search-modal-clear">清除搜尋</button>
-        <button id="note-reader-search-modal-close-bottom" class="secondary-btn" type="button">關閉</button>
+        <button id="note-reader-search-modal-close-bottom" class="secondary-btn" type="button" data-testid="note-reader-search-modal-close-bottom">關閉</button>
       </div>
     </div>
   </div>
@@ -1121,6 +1121,6 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./app.js?v=1.1.2"></script>
+  <script type="module" src="./app.js?v=1.1.3"></script>
 </body>
 </html>
