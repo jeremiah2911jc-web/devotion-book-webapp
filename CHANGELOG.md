@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.1.2 - 2026/06/05
+
+正式站：https://www.devotionbook.com.tw
+
+Production commit hash：完成 production deployment 後記錄於 `OPERATION_MANUAL_LANGUAGE_AUDIT_20260605.md` 與完成回報。
+
+### 主要更新
+
+- 操作手冊：補充寫札記小工具使用說明，涵蓋小標題、粗體、引用、經文、清單、分隔線、紅字、藍字、金字與紫字。
+- 操作手冊：補充小標題與字體顏色搭配使用說明，說明先套小標題、再選取標題文字加顏色的順序。
+- 操作手冊：新增小工具搭配範例，讓使用者能照著整理經文觀察、反思、清單與禱告段落。
+- 操作手冊：維持一般使用者語氣，不加入後台管理內容，不修改資料設定或登入流程。
+- 版本制度：前台版本升為 v1.1.2，並同步 `package.json`、`version.json`、`APP_VERSION`、靜態資源 cache query 與前台可見版本資訊。
+
 ## v1.1.1 - 2026/06/05
 
 正式站：https://www.devotionbook.com.tw
