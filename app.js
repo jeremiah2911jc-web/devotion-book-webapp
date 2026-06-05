@@ -20,8 +20,8 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.1.0';
-const APP_RELEASE_DATE = '2026/06/04';
+const APP_VERSION = '1.1.1';
+const APP_RELEASE_DATE = '2026/06/05';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
 const DEFAULT_BIBLE_ASSET_VERSION = '2026.05.13-reflow-3c43edc7';
@@ -2305,6 +2305,385 @@ function ensureContentLibraryUi() {
   }
 }
 
+function getOperationManualHtml() {
+  return `
+      <section class="panel manual-panel">
+        <section class="manual-hero">
+          <p class="manual-kicker">操作手冊</p>
+          <h1>照著做，就能開始記錄靈修札記。</h1>
+          <div class="manual-value-lines">
+            <p>這份手冊用簡單步驟說明建立帳戶、寫札記、閱讀、整理成書與保存資料。</p>
+            <p>不需要懂技術，只要跟著畫面上的按鈕一步一步操作。</p>
+          </div>
+          <p class="manual-flow-line">建立帳戶 → 寫札記 → 閱讀札記 → 整理成書 → 回到書櫃閱讀</p>
+        </section>
+
+        <section class="manual-toc" aria-labelledby="manual-toc-title">
+          <h3 id="manual-toc-title">目錄</h3>
+          <ul>
+            <li><a href="#manual-start">一、開始使用</a></li>
+            <li><a href="#manual-account-login">二、建立帳戶與登入</a></li>
+            <li><a href="#manual-email-verification">三、信箱驗證</a></li>
+            <li><a href="#manual-google-login">四、使用 Google 帳號登入</a></li>
+            <li><a href="#manual-password-reset">五、忘記密碼</a></li>
+            <li><a href="#manual-dashboard">六、總覽</a></li>
+            <li><a href="#manual-prayer">七、禱告</a></li>
+            <li><a href="#manual-writing-note">八、寫札記</a></li>
+            <li><a href="#manual-drafts">九、草稿與繼續編輯</a></li>
+            <li><a href="#manual-note-reader">十、札記閱讀</a></li>
+            <li><a href="#manual-content-library">十一、札記庫</a></li>
+            <li><a href="#manual-selection-workbench">十二、選稿編排</a></li>
+            <li><a href="#manual-bookshelf">十三、書櫃與成書</a></li>
+            <li><a href="#manual-account-settings">十四、帳號設定</a></li>
+            <li><a href="#manual-save-sync">十五、資料保存與同步</a></li>
+            <li><a href="#manual-faq">十六、常見問題</a></li>
+            <li><a href="#manual-version">十七、版本資訊</a></li>
+          </ul>
+        </section>
+
+        <article class="manual-article">
+          <section id="manual-start" class="manual-section">
+            <h2>一、開始使用</h2>
+            <p>Devotion 靈修札記是用來記錄靈修、禱告、經文、講道筆記與生命回顧的網站。你可以每天寫一點，之後再回來閱讀、搜尋、整理成一本書。</p>
+            <div class="manual-card-grid">
+              <div class="manual-card">
+                <h3>這個功能是做什麼</h3>
+                <p>幫你把平常寫下的領受、禱告與重點整理保留下來，不只是零散文字，而是可以慢慢回顧的信仰紀錄。</p>
+              </div>
+              <div class="manual-card">
+                <h3>什麼時候會用到</h3>
+                <p>每日靈修後、主日信息後、小組查經後，或想回顧一段時間神如何帶領你時，都可以使用。</p>
+              </div>
+            </div>
+            <h3>操作步驟</h3>
+            <ol>
+              <li>第一次使用時，先建立帳戶，讓內容保存到你的帳號裡。</li>
+              <li>已經有帳戶時，直接登入。</li>
+              <li>也可以選擇「使用 Google 登入」或「使用 Google 建立帳戶」。</li>
+              <li>登入後，先到「寫札記」記下今天的內容。</li>
+              <li>完成後可以到「札記閱讀」重讀，或到「選稿編排」整理成書。</li>
+            </ol>
+            <div class="manual-callout">
+              <strong>常見提醒</strong>
+              <p>如果只是還沒寫完，請先儲存草稿；如果已經整理完成，請儲存為正式札記。正式札記才會出現在札記閱讀、札記庫與成書流程中。</p>
+            </div>
+          </section>
+
+          <section id="manual-account-login" class="manual-section">
+            <h2>二、建立帳戶與登入</h2>
+            <p>建立帳戶可以讓札記、禱告與整理好的內容保存到你的帳號中。已經有帳戶的人，使用同一組 Email 與密碼登入即可。</p>
+            <div class="manual-card-grid">
+              <div class="manual-card">
+                <h3>建立帳戶</h3>
+                <ol>
+                  <li>點「開始寫我的第一篇靈修」。</li>
+                  <li>輸入 Email 與密碼。</li>
+                  <li>點「建立帳戶」。</li>
+                  <li>到信箱完成驗證後，再回來登入。</li>
+                </ol>
+              </div>
+              <div class="manual-card">
+                <h3>登入</h3>
+                <ol>
+                  <li>點「我已經有帳戶了」。</li>
+                  <li>輸入註冊時使用的 Email 與密碼。</li>
+                  <li>點「登入」。</li>
+                </ol>
+              </div>
+            </div>
+            <h3>常見提醒</h3>
+            <ul>
+              <li>建立帳戶畫面主要是用來註冊新帳戶，所以不會顯示忘記密碼。</li>
+              <li>登入畫面才會顯示「忘記密碼」。</li>
+              <li>如果畫面提示信箱尚未驗證，請先完成信箱驗證再登入。</li>
+            </ul>
+          </section>
+
+          <section id="manual-email-verification" class="manual-section">
+            <h2>三、信箱驗證</h2>
+            <p>建立帳戶後，網站會寄出一封驗證信，確認這個 Email 是你本人可以使用的信箱。完成驗證後，就可以登入使用。</p>
+            <h3>操作步驟</h3>
+            <ol>
+              <li>建立帳戶後，打開你的 Email 信箱。</li>
+              <li>尋找信件主旨：「【Devotion 靈修札記】請完成信箱驗證」。</li>
+              <li>打開信件，點選信中的驗證連結。</li>
+              <li>完成後回到 Devotion 靈修札記登入。</li>
+            </ol>
+            <h3>如果找不到驗證信</h3>
+            <ul>
+              <li>請檢查垃圾郵件、促銷內容或垃圾信箱。</li>
+              <li>回到建立帳戶後的提醒畫面，點「重新寄送驗證信」。</li>
+              <li>如果仍然找不到，可以聯絡管理員協助。</li>
+            </ul>
+          </section>
+
+          <section id="manual-google-login" class="manual-section">
+            <h2>四、使用 Google 帳號登入</h2>
+            <p>如果你習慣使用 Google 帳號，可以用 Google 快速登入，不需要另外記一組新的密碼。</p>
+            <h3>操作步驟</h3>
+            <ol>
+              <li>在建立帳戶畫面點「使用 Google 建立帳戶」，或在登入畫面點「使用 Google 登入」。</li>
+              <li>畫面會跳到 Google 的登入確認頁。</li>
+              <li>選擇你要使用的 Google 帳號，並依畫面完成確認。</li>
+              <li>完成後會回到 Devotion 靈修札記。</li>
+            </ol>
+            <h3>常見提醒</h3>
+            <p>登入過程中有時會看到一段登入服務網址，這只是協助完成登入確認。你不需要在那裡輸入新的 Devotion 密碼。</p>
+            <p>如果你原本就用同一個 Email 建立過帳戶，請盡量使用同一個 Email 登入，避免自己以為資料分散在不同帳號中。</p>
+          </section>
+
+          <section id="manual-password-reset" class="manual-section">
+            <h2>五、忘記密碼</h2>
+            <p>忘記密碼時，可以透過信箱重新設定。這個入口只會在登入畫面出現。</p>
+            <h3>操作步驟</h3>
+            <ol>
+              <li>點「我已經有帳戶了」。</li>
+              <li>在登入視窗點「忘記密碼」。</li>
+              <li>輸入註冊時使用的 Email。</li>
+              <li>到信箱收信，依照信中的連結設定新密碼。</li>
+              <li>設定完成後，再用新密碼登入。</li>
+            </ol>
+            <p>如果收不到重設密碼信，也請先檢查垃圾郵件、促銷內容或垃圾信箱。</p>
+          </section>
+
+          <section id="manual-dashboard" class="manual-section">
+            <h2>六、總覽</h2>
+            <p>「總覽」是登入後快速看見近況的地方。你可以在這裡看到最近內容、主要入口與今日讀經。</p>
+            <h3>什麼時候會用到</h3>
+            <p>剛登入時，先看總覽可以快速決定今天要寫札記、繼續整理書稿，或回到書櫃閱讀。</p>
+            <h3>可以做什麼</h3>
+            <ul>
+              <li>點「札記」進入札記閱讀。</li>
+              <li>點「書稿」進入選稿編排。</li>
+              <li>點「書櫃」閱讀已整理好的書。</li>
+              <li>查看最近編輯的內容與今日讀經。</li>
+            </ul>
+            <p>手機版使用底部導覽切換頁面；桌面版使用左側導覽。</p>
+          </section>
+
+          <section id="manual-prayer" class="manual-section">
+            <h2>七、禱告</h2>
+            <p>「禱告」用來記錄你想持續向神禱告與回顧的事。它適合放長期代禱、感恩、等候與後續回顧。</p>
+            <h3>操作步驟</h3>
+            <ol>
+              <li>點「禱告」。</li>
+              <li>點「新增禱告」。</li>
+              <li>寫下禱告標題與內容。</li>
+              <li>選擇目前狀態，例如持續禱告中、回顧中或已蒙應允。</li>
+              <li>需要時，可以補上後續回顧與看見的恩典。</li>
+            </ol>
+            <h3>常見提醒</h3>
+            <p>每篇札記也有「今日禱告」欄位，用來寫那一篇札記最後的回應禱告；「禱告」頁則比較適合長期追蹤與回顧。</p>
+          </section>
+
+          <section id="manual-writing-note" class="manual-section">
+            <h2>八、寫札記</h2>
+            <p>「寫札記」是記錄今天靈修領受、經文、禱告與整理重點的地方。還沒完成可以先放草稿，完成後再儲存為正式札記。</p>
+            <h3>操作步驟</h3>
+            <ol>
+              <li>點「寫札記」。</li>
+              <li>輸入標題。草稿可以先沒有標題，正式札記建議補上清楚主題。</li>
+              <li>在「經文」輸入經文範圍，需要時點「抓取經文」。</li>
+              <li>選擇分類，並用標籤補充主題。</li>
+              <li>在「我的札記」中寫下今天的內容。</li>
+              <li>需要時使用工具列加入小標題、粗體、引用、清單、分隔線或重點色。</li>
+              <li>點「預覽文章」確認閱讀效果。</li>
+              <li>還沒寫完點「儲存草稿」；完成後點「儲存為正式札記」。</li>
+            </ol>
+            <h3>草稿和正式札記差在哪裡</h3>
+            <ul>
+              <li>草稿：還沒整理完成，只會留在寫札記頁的「我的草稿」。</li>
+              <li>正式札記：已完成並儲存，會出現在札記閱讀、札記庫與選稿編排中。</li>
+            </ul>
+            <p>如果抓取經文失敗，請先確認書卷名稱、章節格式與網路狀況，再重新操作。</p>
+          </section>
+
+          <section id="manual-drafts" class="manual-section">
+            <h2>九、草稿與繼續編輯</h2>
+            <p>草稿是還沒正式完成的內容。你可以先保存，等有時間再回來補上標題、經文、摘要或完整內容。</p>
+            <h3>操作步驟</h3>
+            <ol>
+              <li>在寫札記頁點「儲存草稿」。</li>
+              <li>之後回到「寫札記」。</li>
+              <li>找到「我的草稿」。</li>
+              <li>點草稿上的「繼續編輯」。</li>
+              <li>網站會把內容帶回編輯區，你可以接著寫。</li>
+            </ol>
+            <h3>常見提醒</h3>
+            <p>草稿不會出現在札記閱讀、札記庫或成書內容中。等你點「儲存為正式札記」後，才會進入後續閱讀與整理流程。</p>
+          </section>
+
+          <section id="manual-note-reader" class="manual-section">
+            <h2>十、札記閱讀</h2>
+            <p>「札記閱讀」是用來安靜閱讀已完成札記的地方。這裡不會顯示草稿。</p>
+            <h3>可以做什麼</h3>
+            <ul>
+              <li>查看最近編輯的 5 篇札記。</li>
+              <li>用標題、經文、內容、分類或標籤搜尋札記。</li>
+              <li>依分類、標籤與排序縮小範圍。</li>
+              <li>點札記卡片或右上角「閱讀」按鈕，打開完整內容。</li>
+              <li>在閱讀視窗中點「編輯這篇札記」，回到寫札記頁修改。</li>
+            </ul>
+            <h3>操作步驟</h3>
+            <ol>
+              <li>點「札記閱讀」。</li>
+              <li>右側或下方會看到最近編輯的札記。</li>
+              <li>想搜尋時，在搜尋卡片輸入關鍵字並按「搜尋」。</li>
+              <li>搜尋結果會用跳出的視窗顯示，不會取代最近編輯列表。</li>
+              <li>點卡片或「閱讀」按鈕，就能閱讀完整內容。</li>
+            </ol>
+            <p>如果找不到札記，請先清除搜尋條件，或確認那篇內容是否仍在草稿中。</p>
+          </section>
+
+          <section id="manual-content-library" class="manual-section">
+            <h2>十一、札記庫</h2>
+            <p>「札記庫」是管理所有已儲存札記的地方，適合搜尋、篩選、編輯，以及挑選要加入書稿的內容。</p>
+            <h3>札記閱讀和札記庫有什麼不同</h3>
+            <ul>
+              <li>札記閱讀：偏向單純閱讀與回顧。</li>
+              <li>札記庫：偏向管理、整理、勾選與加入選稿編排。</li>
+            </ul>
+            <h3>操作步驟</h3>
+            <ol>
+              <li>點「札記庫」。</li>
+              <li>用搜尋、分類、標籤或日期找到札記。</li>
+              <li>需要修改時，點卡片上的「編輯」。</li>
+              <li>要整理成書時，先到「選稿編排」建立或選擇書稿，再回札記庫勾選札記加入。</li>
+            </ol>
+            <p>如果加入按鈕不能按，通常是還沒有選擇正在整理的書稿，或目前沒有勾選任何札記。</p>
+          </section>
+
+          <section id="manual-selection-workbench" class="manual-section">
+            <h2>十二、選稿編排</h2>
+            <p>「選稿編排」是把已寫好的札記挑選出來，整理成一本書的地方。你可以建立書稿、加入札記、調整順序，最後匯出成電子書檔案。</p>
+            <h3>操作步驟</h3>
+            <ol>
+              <li>點「選稿編排」。</li>
+              <li>建立一份新的書稿，填寫書名與簡介。</li>
+              <li>到「札記庫」勾選要收錄的札記，加入目前整理中的書稿。</li>
+              <li>回到「選稿編排」，點「整理章節」。</li>
+              <li>調整章節順序與章節標題。</li>
+              <li>儲存編排後，再依畫面提示匯出成書。</li>
+            </ol>
+            <h3>常見提醒</h3>
+            <p>選稿編排只會收錄正式札記。草稿還沒完成，因此不會出現在可以加入書稿的清單中。</p>
+          </section>
+
+          <section id="manual-bookshelf" class="manual-section">
+            <h2>十三、書櫃與成書</h2>
+            <p>「書櫃」用來查看整理好的書卷與成書成果。從選稿編排匯出的書會放到書櫃中，方便你之後閱讀或下載保存。</p>
+            <h3>成書操作</h3>
+            <ol>
+              <li>先在「選稿編排」整理好書稿與章節順序。</li>
+              <li>確認書名、作者、簡介與封面。</li>
+              <li>點「匯出 EPUB」或「儲存並匯出 EPUB」。</li>
+              <li>完成後到「書櫃」閱讀。</li>
+            </ol>
+            <h3>書櫃可以做什麼</h3>
+            <ul>
+              <li>開啟已整理好的書。</li>
+              <li>下載電子書檔案（EPUB）。</li>
+              <li>匯入你自己保存的 EPUB 檔案。</li>
+              <li>刪除不需要的書籍。刪除前畫面會再次確認。</li>
+            </ul>
+            <p>如果外部匯入的 EPUB 無法開啟，請確認檔案格式正確、檔案沒有損壞，也沒有受到其他閱讀軟體限制。</p>
+          </section>
+
+          <section id="manual-account-settings" class="manual-section">
+            <h2>十四、帳號設定</h2>
+            <p>「帳號設定」用來查看目前登入的帳號、資料保存情況、頭像、密碼與版本資訊，也可以從這裡登出。</p>
+            <h3>常用操作</h3>
+            <ul>
+              <li>查看目前帳號 Email。</li>
+              <li>查看資料是否已經保存到帳號。</li>
+              <li>上傳或移除頭像。</li>
+              <li>修改密碼。</li>
+              <li>查看目前裝置中還沒有保存到帳號的內容。</li>
+              <li>查看版本資訊。</li>
+              <li>登出。</li>
+            </ul>
+            <section id="manual-install-app-section" class="manual-subsection" data-testid="manual-install-app-section">
+              <h3>把網站加入手機主畫面</h3>
+              <p>如果你常用手機或平板，可以把 Devotion 靈修札記加入主畫面。這只是多一個快速開啟入口，不會改變帳號，也不會刪除資料。</p>
+              <div class="manual-install-grid">
+                <article class="manual-install-card">
+                  <h3>iPhone / iPad</h3>
+                  <ol>
+                    <li>用 Safari 開啟網站。</li>
+                    <li>點分享按鈕。</li>
+                    <li>選擇「加入主畫面」。</li>
+                    <li>之後可從主畫面直接開啟。</li>
+                  </ol>
+                </article>
+                <article class="manual-install-card">
+                  <h3>Android</h3>
+                  <ol>
+                    <li>用 Chrome 開啟網站。</li>
+                    <li>點「安裝應用程式」或「加入主畫面」。</li>
+                    <li>完成後可從主畫面開啟。</li>
+                  </ol>
+                </article>
+                <article class="manual-install-card">
+                  <h3>Windows / Mac</h3>
+                  <ol>
+                    <li>用 Chrome、Edge 或 Safari 開啟網站。</li>
+                    <li>依瀏覽器畫面選擇安裝或加入 Dock。</li>
+                    <li>之後可從桌面、開始選單、Dock 或應用程式列表開啟。</li>
+                  </ol>
+                </article>
+              </div>
+            </section>
+          </section>
+
+          <section id="manual-save-sync" class="manual-section">
+            <h2>十五、資料保存與同步</h2>
+            <p>如果你已登入帳號，札記、禱告與整理內容會保存到你的帳號中。這樣你在手機與電腦使用同一個帳號時，就能接續查看與編輯。</p>
+            <h3>怎麼判斷資料是否保存好了</h3>
+            <ul>
+              <li>如果畫面顯示「已同步」，代表目前內容已保存到帳號。</li>
+              <li>如果看到尚未保存的提醒，請先不要關閉頁面，可以再按一次保存，或重新整理後確認內容是否仍在。</li>
+              <li>如果網路不穩，請等網路恢復後再重新確認。</li>
+            </ul>
+            <h3>管理目前裝置中尚未保存到帳號的內容</h3>
+            <p>帳號設定中若出現「管理未同步內容」，意思是這台裝置裡有一些內容還沒有保存到帳號。若你不確定該怎麼處理，請先不要刪除，可以聯絡管理員協助。</p>
+            <p>離開頁面前，建議先確認畫面有出現成功提示，尤其是在寫札記、整理章節或修改書籍資料之後。</p>
+          </section>
+
+          <section id="manual-faq" class="manual-section">
+            <h2>十六、常見問題</h2>
+            <div class="manual-faq-list">
+              <div class="manual-faq-item"><h3>我收不到驗證信怎麼辦？</h3><p>請先檢查垃圾郵件、促銷內容或垃圾信箱。若仍找不到，回到畫面點「重新寄送驗證信」，或聯絡管理員協助。</p></div>
+              <div class="manual-faq-item"><h3>我忘記密碼怎麼辦？</h3><p>在登入視窗點「忘記密碼」，輸入註冊 Email，接著到信箱依照信件連結設定新密碼。</p></div>
+              <div class="manual-faq-item"><h3>我用 Google 登入，原本資料會不見嗎？</h3><p>請使用同一個 Email 登入。只要登入的是同一個帳號，原本保存到帳號中的內容就會留在同一處。</p></div>
+              <div class="manual-faq-item"><h3>我寫到一半還沒完成怎麼辦？</h3><p>請先點「儲存草稿」。之後回到寫札記頁，在「我的草稿」點「繼續編輯」。</p></div>
+              <div class="manual-faq-item"><h3>草稿和正式札記有什麼不同？</h3><p>草稿是還沒完成的內容；正式札記是已完成並儲存的內容，會出現在札記閱讀、札記庫與成書流程中。</p></div>
+              <div class="manual-faq-item"><h3>為什麼我看不到某篇札記？</h3><p>請先清除搜尋或篩選條件，再確認那篇內容是不是還在草稿中。草稿不會出現在札記閱讀與札記庫。</p></div>
+              <div class="manual-faq-item"><h3>手機版底部導覽在哪裡？</h3><p>手機畫面底部有主要入口：總覽、禱告、寫札記、札記閱讀、札記庫、選稿編排與書櫃。若項目很多，可以左右滑動底部導覽列。</p></div>
+              <div class="manual-faq-item"><h3>資料有沒有保存？</h3><p>請看畫面上的保存提示或帳號設定中的資料保存狀態。如果看到尚未保存提醒，請先不要關閉頁面。</p></div>
+              <div class="manual-faq-item"><h3>札記閱讀和札記庫要用哪一個？</h3><p>想安靜重讀一篇札記，請用札記閱讀。想管理、編輯、勾選並加入書稿，請用札記庫。</p></div>
+              <div class="manual-faq-item"><h3>如何申請支持款項收款證明？</h3><p>頁面下方有「支持平台／支持事工」入口。完成支持後，可在那裡點「申請收款證明」並填寫資料。收款證明是支持款項紀錄，不作為稅務扣抵憑證。</p></div>
+              <div class="manual-faq-item"><h3>需要刪除資料時會提醒嗎？</h3><p>會。刪除札記、書稿、書櫃書籍或頭像前，畫面會先詢問確認。若不確定，請先取消。</p></div>
+            </div>
+          </section>
+
+          <section id="manual-version" class="manual-section manual-closing">
+            <h2>十七、版本資訊</h2>
+            <p class="manual-app-version" data-app-version-label>${getAppVersionLabel()}</p>
+            <h3>本次主要更新</h3>
+            <ul>
+              <li>操作手冊改成更白話、可照著做的說明。</li>
+              <li>補上建立帳戶、信箱驗證、Google 登入與忘記密碼流程。</li>
+              <li>補上札記閱讀、札記庫、選稿編排、書櫃與資料保存說明。</li>
+              <li>明確把版本資訊放在不干擾寫作的位置。</li>
+            </ul>
+            <p>如果你在使用時遇到問題，歡迎來信：</p>
+            <p class="manual-feedback-email"><button class="footer-email-copy" type="button" data-copy-support-email>${SUPPORT_EMAIL}</button></p>
+          </section>
+        </article>
+      </section>
+    `;
+}
+
 function ensureOperationManualUi() {
   const siteFooter = document.querySelector('.site-footer');
   if (siteFooter && !document.getElementById('footer-support-contact')) {
@@ -2341,447 +2720,7 @@ function ensureOperationManualUi() {
     section.id = 'view-manual';
     section.className = 'view manual-view';
     section.dataset.testid = 'manual-view';
-    section.innerHTML = `
-      <section class="panel manual-panel">
-        <section class="manual-hero">
-          <p class="manual-kicker">給每一天的靈修留下路徑</p>
-          <h1>讓你的靈修，不再只是零散筆記。</h1>
-          <div class="manual-value-lines">
-            <p>每天的領受與記錄，慢慢整理成一本屬於你的書。</p>
-            <p>留下你與神同行的軌跡，也成為日後回顧的恩典記號。</p>
-          </div>
-          <p>這套系統幫助你把每天與神同行的領受、禱告、感恩、悔改、講道筆記與查經心得，整理成可以閱讀、可以下載、可以長期保存的電子書。</p>
-          <p class="manual-flow-line">總覽 → 寫札記 → 札記閱讀 / 札記庫 → 選稿編排 → 章節整理 → 匯出成書 → 書櫃閱讀</p>
-        </section>
-
-        <section class="manual-toc" aria-labelledby="manual-toc-title">
-          <h3 id="manual-toc-title">目錄</h3>
-          <ul>
-            <li><a href="#manual-purpose">一、靈修札記成書系統是什麼</a></li>
-            <li><a href="#manual-flow">二、快速開始</a></li>
-            <li><a href="#manual-dashboard">三、總覽</a></li>
-            <li><a href="#manual-writing-note">四、寫札記</a></li>
-            <li><a href="#manual-prayer-review">五、禱告與回顧</a></li>
-            <li><a href="#manual-note-reader">六、札記閱讀</a></li>
-            <li><a href="#manual-content-library">七、札記庫</a></li>
-            <li><a href="#manual-selection-workbench">八、選稿編排</a></li>
-            <li><a href="#manual-chapter-arrangement">九、整理章節</a></li>
-            <li><a href="#manual-export">十、匯出 EPUB</a></li>
-            <li><a href="#manual-library">十一、書櫃</a></li>
-            <li><a href="#manual-reader">十二、閱讀器</a></li>
-            <li><a href="#manual-today-reading">十三、今日讀經</a></li>
-            <li><a href="#manual-mobile">十四、手機 / 平板使用方式</a></li>
-            <li><a href="#manual-install-app-section">十五、把靈修札記安裝成 App</a></li>
-            <li><a href="#manual-account-data">十六、帳號設定與資料</a></li>
-            <li><a href="#manual-support-receipt">十七、支持平台與收款證明</a></li>
-            <li><a href="#manual-faq">十八、常見問題</a></li>
-            <li><a href="#manual-feedback">十九、使用問題與意見回饋</a></li>
-            <li><a href="#manual-closing-note">二十、補充說明</a></li>
-          </ul>
-        </section>
-
-        <article class="manual-article">
-          <section id="manual-purpose" class="manual-section">
-            <h2>一、靈修札記成書系統是什麼</h2>
-            <p>靈修札記成書系統是一個陪你長期整理信仰文字的工具。你可以把每日靈修、主日信息、小組查經、講道筆記、禱告、感恩、悔改、生命經歷與個人回顧寫下來，日後再慢慢整理、搜尋、分類與編排。</p>
-            <p>它不只是保存單篇札記，也幫助你看見一段時間裡神如何帶領、提醒與安慰你。當札記累積起來，你可以依日期、分類、標籤與關鍵字回顧，也可以挑選合適內容整理章節、匯出 EPUB，並在書櫃中安靜閱讀。</p>
-            <p>這套系統適合每日靈修、主日信息整理、小組查經、個人生命回顧，也適合把一段時間的禱告、感恩與操練整理成一本可保存的書。</p>
-            <div class="manual-callout">
-              <strong>核心流程</strong>
-              <p>總覽 → 寫札記 → 札記閱讀 / 札記庫 → 選稿編排 → 章節整理 → 匯出成書 → 書櫃閱讀</p>
-            </div>
-          </section>
-
-          <section id="manual-flow" class="manual-section">
-            <h2>二、快速開始</h2>
-            <p>登入後可以先看「總覽」。總覽會把最近的正式札記、選稿編排、書櫃與今日讀經集中在同一頁，適合快速判斷今天要繼續寫、閱讀，或整理成書。</p>
-            <p>總覽上方的三張統計卡可以直接點擊：</p>
-            <ul>
-              <li>札記：進入「札記閱讀」，安靜重讀自己寫過的札記。</li>
-              <li>書稿：進入「選稿編排」，整理正在成書的內容。</li>
-              <li>書櫃：進入「書櫃」，閱讀已匯出的書或 EPUB。</li>
-            </ul>
-            <p>常用流程可以這樣走：</p>
-            <ol>
-              <li>進入「寫札記」，可以先儲存草稿，完成後再儲存為正式札記。正式札記需要主題，草稿可以先沒有主題並顯示為「未命名草稿」。</li>
-              <li>想單純閱讀時，進入「札記閱讀」搜尋、篩選或重讀單篇札記。</li>
-              <li>想整理成書時，先進入「選稿編排」建立或選擇一份正在編排的書稿。</li>
-              <li>到「札記庫」勾選正式札記，加入目前正在編排的書稿。</li>
-              <li>回到「選稿編排」，點「整理章節」，依流程提示完成章節排序與儲存。</li>
-              <li>查看出版狀態：若提示尚未儲存、缺少內容或建議補齊，先依下一步整理。</li>
-              <li>點選「書籍資料」整理書名、作者、簡介與封面；確認後再點「匯出 EPUB」。</li>
-              <li>點「儲存並匯出 EPUB」。完成後系統會把書加入書櫃，並帶你前往書櫃查看。</li>
-            </ol>
-            <p>只有正式札記會進入札記閱讀、札記庫、選稿編排與 EPUB。草稿會留在「寫札記」的「我的草稿」，方便之後回來補完。</p>
-            <p>「目前正在編排」是整個成書流程的工作狀態。札記庫的加入按鈕會把勾選文章加入這一份選稿編排。</p>
-          </section>
-
-          <section id="manual-dashboard" class="manual-section">
-            <h2>三、總覽</h2>
-            <p>「總覽」是登入後的起點。這裡會顯示正式札記、書稿與書櫃統計，也會整理最近編輯的正式札記、最近編輯書冊、書櫃預覽與今日讀經。尚未完成的草稿不會混入正式札記統計。</p>
-            <p>三張統計卡本身就是快速入口：</p>
-            <ul>
-              <li>「札記」卡：進入「札記閱讀」，適合回顧和查找自己已寫下的內容。</li>
-              <li>「書稿」卡：進入「選稿編排」，繼續整理目前正在編排的內容。</li>
-              <li>「書櫃」卡：進入「書櫃」，開啟已完成或已匯入的電子書。</li>
-            </ul>
-            <p>今日讀經卡片會依本地日期顯示麥琴讀經進度的四段經文。你可以切換前一天、後一天或回到今天，點單段經文開啟小型閱讀視窗，也可以把當日四段經文引用帶入寫札記頁的經文欄；系統不會自動抓全文、建立札記或儲存草稿。</p>
-            <p>手機版主要使用底部導覽切換總覽、禱告、寫札記、札記閱讀、札記庫、選稿編排、書櫃與操作手冊；桌機版使用左側側欄，並在側欄底部帳號卡查看簡潔同步狀態與手動同步。總覽已不再放舊版同步長條或大型快捷卡。</p>
-          </section>
-
-          <section id="manual-writing-note" class="manual-section">
-            <h2>四、寫札記</h2>
-            <p>「寫札記」是整套系統的起點。新版工作區把「我的札記」放在主要書寫區，右側保留今日禱告、工具與草稿等輔助卡片；手機版會改成單欄，格式工具列是可橫向滑動的小工具帶。還沒寫完時可先按「儲存草稿」，完成後按「儲存為正式札記」。</p>
-
-            <div class="manual-card-grid manual-card-grid-three">
-              <div class="manual-card">
-                <h3>不只可以寫每日靈修</h3>
-                <ul>
-                  <li>每日靈修、講道筆記、小組查經整理。</li>
-                  <li>禱告內容、需要持續記念的人事物、感恩記錄、悔改反思。</li>
-                  <li>生命見證、讀書心得、主題文章、信仰操練紀錄。</li>
-                </ul>
-              </div>
-              <div class="manual-card">
-                <h3>分類可以怎麼用？</h3>
-                <p>分類適合放大方向，讓札記庫日後容易篩選。</p>
-                <p class="manual-chip-line">靈修、講道、查經、見證、禱告、感恩、悔改、操練</p>
-              </div>
-              <div class="manual-card">
-                <h3>標籤可以怎麼用？</h3>
-                <p>標籤適合補充主題、對象或狀態。</p>
-                <p class="manual-chip-line">信心、禱告、悔改、盼望、家庭、工作、服事、教會、福音對象、持續記念、已蒙應允</p>
-              </div>
-            </div>
-
-            <h3>欄位怎麼填</h3>
-            <div class="manual-card-grid">
-              <div class="manual-card"><h3>標題</h3><p>草稿可以先空著，畫面會以「未命名草稿」顯示。正式札記需要主題，方便日後閱讀、搜尋與編排。例：在等待中學習信靠。</p></div>
-              <div class="manual-card"><h3>經文</h3><p>可以輸入經文範圍，也可以按「抓取經文」帶入內容。多處經文用分號分隔；抓取後可選擇同步放入全文，經文區會顯示已帶出幾處。手機上會用「同步全文」、「已帶出 1 處」、「多處用分號」等短句顯示。格式錯誤、找不到經文、網路不穩或資料暫時無法取得時，畫面會顯示中文提示。</p></div>
-              <div class="manual-card"><h3>分類</h3><p>選一個主要方向，例如靈修、講道、查經、禱告或感恩。</p></div>
-              <div class="manual-card"><h3>標籤</h3><p>用逗號分隔多個標籤，幫助日後搜尋同一個主題、對象或禱告狀態。</p></div>
-              <div class="manual-card"><h3>摘要</h3><p>用二到四句整理重點。勾選「閱讀與成書時顯示摘要」時，札記閱讀與 EPUB 才會顯示；取消勾選不會清空摘要文字。</p></div>
-              <div class="manual-card"><h3>內容</h3><p>完整寫下觀察、默想、禱告、回應與操練。內容編輯區是寫札記頁的主角，可輸入長文，也可使用上方工具列加入小標題、引用、清單、經文區塊與重點色。</p></div>
-              <div class="manual-card"><h3>今日禱告</h3><p>另外寫下這篇札記最後想向神禱告的回應。若內容較私人，可以取消「閱讀與成書時顯示禱告」，文字仍會保存在札記中。</p></div>
-            </div>
-
-            <section id="manual-toolbar-guide" class="manual-subsection">
-              <h3>工具列怎麼用</h3>
-              <p>內容欄上方的工具列會幫你插入常用格式。手機版會以單行小工具帶顯示，可以左右滑動找到需要的按鈕。</p>
-              <div class="manual-toolbar-grid">
-                <div class="manual-tool-card"><strong>小標題</strong><p>插入 <code>## 小標題</code>。適合建立文章架構，例如經文觀察、默想反思、今日禱告、感恩記錄、回應與操練。</p></div>
-                <div class="manual-tool-card"><strong>粗體</strong><p>適合強調一句核心提醒、重要結論或需要再次思想的短句。</p></div>
-                <div class="manual-tool-card"><strong>引用</strong><p>適合放講道中的一句話、書摘、短句提醒或別人分享的內容。</p></div>
-                <div class="manual-tool-card"><strong>經文</strong><p>適合放完整經文段落。經文較長時，建議分成幾段，讓閱讀時不會太擠。</p></div>
-                <div class="manual-tool-card"><strong>清單</strong><p>適合整理觀察重點、禱告事項、今日回應或下一步行動。</p></div>
-                <div class="manual-tool-card"><strong>分隔線</strong><p>適合分開不同段落，例如默想結束後進入禱告，或把感恩與回顧分開。</p></div>
-                <div class="manual-tool-card"><strong>紅字</strong><p>適合標記今天特別扎心、需要立刻回應或需要警醒的提醒。</p></div>
-                <div class="manual-tool-card"><strong>藍字</strong><p>適合標記安慰、應許、盼望或讓心安定下來的句子。</p></div>
-                <div class="manual-tool-card"><strong>金字</strong><p>適合標記感恩、恩典、已蒙應允或值得紀念的內容。</p></div>
-                <div class="manual-tool-card"><strong>紫字</strong><p>適合標記敬拜、尊榮、奉獻、呼召或生命方向的提醒。</p></div>
-              </div>
-            </section>
-
-            <section id="manual-format-markers" class="manual-subsection">
-              <h3>為什麼編輯區會出現 ##、{red}、{/red} 這些符號？</h3>
-              <p>這些符號是格式標記，是系統用來產生預覽與成書樣式的記號。在編輯區會先看到文字形式的標記，按下「預覽文章」後，系統會把它們轉成比較接近閱讀時的樣式。</p>
-              <div class="manual-card-grid">
-                <div class="manual-card"><h3><code>##</code></h3><p>代表小標題。小標題建議單獨一行使用，而且 <code>##</code> 必須放在那一行最前面，才會正常顯示成小標題。</p></div>
-                <div class="manual-card"><h3><code>{red}文字{/red}</code></h3><p>代表紅色重點字。</p></div>
-                <div class="manual-card"><h3><code>{blue}文字{/blue}</code></h3><p>代表藍色重點字。</p></div>
-                <div class="manual-card"><h3><code>{gold}文字{/gold}</code></h3><p>代表金色重點字。</p></div>
-                <div class="manual-card"><h3><code>{purple}文字{/purple}</code></h3><p>代表紫色重點字。</p></div>
-              </div>
-            </section>
-
-            <section id="manual-heading-color" class="manual-subsection manual-warning">
-              <h3>小標題與重點色怎麼搭配</h3>
-              <p>小標題是用來整理文章架構。重點色是用來強調正文短句。兩者建議分開使用。</p>
-              <div class="manual-example-grid">
-                <div class="manual-example good"><strong>正確小標題</strong><code>## 重點整理</code></div>
-                <div class="manual-example good"><strong>正確重點色</strong><code>{red}這一句是今天特別提醒我的重點。{/red}</code></div>
-                <div class="manual-example good"><strong>建議搭配方式</strong><code>## 重點整理<br><br>{red}這一句是今天特別提醒我的重點。{/red}</code></div>
-              </div>
-              <div class="manual-example-grid">
-                <div class="manual-example bad"><strong>請避免</strong><code>{red}##重點{/red}</code><p>這樣會把 <code>##</code> 包進顏色標記裡，系統可能無法正常判斷成小標題。預覽或成書時，可能只會顯示成一般文字，或樣式不如預期。</p></div>
-                <div class="manual-example bad"><strong>也不建議</strong><code>## {red}重點{/red}</code><p>即使某些情況看起來可以顯示，仍容易讓格式不穩定，之後預覽、成書或手機閱讀時，可能出現標題大小、顏色或間距不如預期的情況。</p></div>
-              </div>
-              <p><strong>簡單記法：</strong>如果要做段落標題，就讓小標題單獨一行。如果要標記一句重要提醒，就另起一行使用重點色。</p>
-            </section>
-
-              <p>可用「預覽文章」查看小標題、重點色、經文區塊、今日禱告和段落間距。草稿按「儲存草稿」會保持草稿，按「儲存為正式札記」會成為正式札記。今日禱告會跟著草稿與正式札記保存，是否出現在閱讀與成書中由勾選狀態決定。</p>
-          </section>
-
-          <section id="manual-prayer-review" class="manual-section">
-            <h2>五、禱告與回顧</h2>
-            <p>「禱告」是獨立於單篇札記之外的長期禱告紀錄。手機底部導覽與桌機側欄都可進入「禱告」，頁面名稱是「禱告與回顧」。頁面上方只保留標題與一句說明，功能區會直接從「新增禱告」、統計與「禱告紀錄」開始。</p>
-            <p>預設不會展開表單，點「新增禱告」後才開始填寫。</p>
-            <p>它適合記錄個人的禱告，也可以記錄需要持續記念的人事物；之後再補上後續回顧，並整理「回顧神的恩典與帶領」。</p>
-            <div class="manual-card-grid">
-              <div class="manual-card"><h3>禱告內容</h3><p>可以寫下禱告標題與較長的禱告內容，主要欄位有較大的書寫空間，適合完整記錄需要持續記念的事。</p></div>
-              <div class="manual-card"><h3>狀態追蹤</h3><p>每筆紀錄可標示為持續禱告中、回顧中或已蒙應允，也可以用狀態篩選快速查看。</p></div>
-              <div class="manual-card"><h3>後續回顧</h3><p>點「回顧」會先開啟完整禱告內容，閱讀整筆禱告後，再按「編輯禱告」補充後續回顧與整理。</p></div>
-              <div class="manual-card"><h3>關聯札記</h3><p>若某筆禱告與一篇正式札記有關，可以選擇關聯該札記。草稿不會出現在關聯選項中。</p></div>
-            </div>
-            <p>欄位包含「禱告標題」、「禱告內容」、「狀態」、「關聯札記」、「後續回顧」與「回顧神的恩典與帶領」。</p>
-            <ul>
-              <li>持續禱告中：仍在持續禱告與等候。</li>
-              <li>回顧中：正在整理後續經歷與回顧。</li>
-              <li>已蒙應允：已記錄這項禱告的回應與感恩。</li>
-            </ul>
-            <p>禱告詳情會完整顯示禱告內容、後續回顧，以及「回顧神的恩典與帶領」。若某個欄位尚未填寫，系統不會顯示空白區塊；需要補充時再進入編輯即可。</p>
-            <p>「今日禱告」屬於單篇札記最後的回應禱告；「禱告與回顧」則適合長期追蹤需要持續記念的內容。禱告資料會跟著雲端帳號同步，若尚未登入雲端帳號，畫面會提示登入後才能同步；手機與桌機登入同一個帳號後，手動同步或重新整理即可看到同一份資料。</p>
-          </section>
-
-          <section id="manual-note-reader" class="manual-section">
-            <h2>六、札記閱讀</h2>
-            <p>「札記閱讀」是專門用來重讀與查找正式札記的閱讀頁，不是編輯器。草稿不會出現在這裡；若要繼續未完成的內容，請回到「寫札記」的「我的草稿」。</p>
-            <p>札記閱讀支援這些方式找到內容：</p>
-            <ul>
-              <li>搜尋：可搜尋標題、經文、分類、標籤、摘要與內容。</li>
-              <li>經文搜尋：在搜尋框輸入經文卷名、章節或關鍵字，就能一起比對經文欄位。</li>
-              <li>分類篩選：只看某一類札記。</li>
-              <li>標籤篩選：只看帶有特定標籤的札記。</li>
-              <li>排序：可依最近更新、最早建立或標題順序檢視。</li>
-              <li>結果數：畫面會顯示目前符合條件與全部札記的篇數。</li>
-            </ul>
-            <p>若沒有符合條件的札記，畫面會出現無結果提示，可調整搜尋字、分類、標籤，或使用「重設篩選」回到完整列表。</p>
-            <p>主畫面左側是搜尋與篩選卡片，右側顯示最近編輯的 5 篇正式札記。搜尋結果會以視窗顯示，單篇閱讀也會用閱讀視窗呈現，不會在主畫面保留大型空白預覽區。</p>
-            <p>點最近編輯卡片、搜尋結果卡片，或卡片右上角「閱讀」按鈕，都會開啟同一個閱讀視窗。閱讀視窗中可以點「編輯這篇札記」回到寫札記頁修改內容；前往編輯只會載入該篇札記，仍需按「儲存草稿」或「儲存為正式札記」才會更新資料。若札記勾選「閱讀與成書時顯示禱告」且有今日禱告內容，閱讀視窗會在正文後顯示今日禱告。</p>
-            <p>手機版與平板版會依螢幕寬度調整成單欄或穩定兩欄，搜尋結果與閱讀內容都以接近全螢幕的視窗呈現，方便長文閱讀。</p>
-            <p>若只是想閱讀與查找，建議使用「札記閱讀」。若要批次挑選文章加入選稿編排，請使用「札記庫」。</p>
-          </section>
-
-          <section id="manual-content-library" class="manual-section">
-            <h2>七、札記庫</h2>
-            <p>「札記庫」保存可加入選稿編排的正式札記，也是管理、搜尋、編輯與挑選成書素材的地方。草稿不會出現在札記庫候選中；尚未完成的內容請先在「寫札記」的「我的草稿」繼續整理。</p>
-            <p>你可以用以下方式找到文章：</p>
-            <ul>
-              <li>搜尋：搜尋標題、摘要、內容與經文。</li>
-              <li>日期篩選：依建立或更新日期縮小範圍。</li>
-              <li>分類篩選：只看某一類札記。</li>
-              <li>標籤篩選：只看帶有特定標籤的札記。</li>
-              <li>清除篩選：回到完整列表。</li>
-            </ul>
-            <p>每張札記卡片可勾選，也可點「編輯」回到寫札記修改。若卡片顯示「已在書中」，代表這篇札記已被收錄在目前正在編排的選稿編排中，系統會避免重複加入。</p>
-            <p>札記庫上方會顯示目前狀態：</p>
-            <ul>
-              <li>沒有目前正在編排：按鈕顯示「請先選擇編排」，可點「前往選稿編排」。</li>
-              <li>已選 0 篇：提示先勾選札記，按鈕顯示「先勾選札記」。</li>
-              <li>已選 1 篇以上：按鈕顯示「加入「{title}」（已選 {count} 篇）」。</li>
-            </ul>
-            <p>加入成功後，系統會清除勾選狀態並更新目前正在編排的章節數。多篇一起加入時，會依勾選加入順序接在既有章節後方；若有重複札記，系統會略過並提示略過數量。</p>
-            <p>草稿完成為正式札記後，才會出現在札記庫，也才可以被加入目前正在編排的書稿。</p>
-          </section>
-
-          <section id="manual-selection-workbench" class="manual-section">
-            <h2>八、選稿編排</h2>
-            <p>「選稿編排」用來把正式札記整理成一本書。建議照著畫面流程走：填寫書籍資料、加入札記、拖曳排序、儲存編排、查看出版狀態，最後匯出 EPUB。</p>
-            <h3>目前正在編排</h3>
-            <p>這是目前會接收札記庫文章的編排。卡片會顯示「正在編排」、已收錄幾篇札記、更新時間、日期範圍、分類、標籤與整理說明。</p>
-            <p>目前正在編排的卡片代表札記庫接下來會加入哪一份書稿。若還沒有書稿，先建立一份選稿編排；若已有書稿，可點「整理章節」進入主要工作區。</p>
-            <h3>其他選稿編排</h3>
-            <p>這裡顯示目前沒有被選為工作狀態的編排。每張卡片可點「開始編這本」切換成目前正在編排，也可點「整理章節」、「加入札記」、「書籍資料」或「刪除」。</p>
-            <p>點選「開始編這本」後，該卡片會移到「目前正在編排」，原本的目前編排會回到其他選稿編排。畫面會立即更新並顯示切換提示。</p>
-            <p>若建立選稿編排後，想修改書名、副標、作者、書籍簡介、日期範圍、分類、標籤、封面、模板或結語，可以在選稿編排卡片上點「書籍資料」。「書籍資料」整理的是這本書本身的基本資料，不會直接改動已收錄的札記內容，也不會改變章節排序。若要調整章節順序或章節標題，請使用「整理章節」。</p>
-            <p>選稿編排只接收正式札記。草稿不會出現在可加入候選，也不會被加入章節。摘要是否出現在閱讀與成書中，會依照每篇札記的「閱讀與成書時顯示摘要」設定處理；今日禱告只有在有內容且勾選「閱讀與成書時顯示禱告」時才會輸出。</p>
-            <p>「整理章節」會在工作區上方顯示目前進度與下一步。例如尚未加入札記、章節順序尚未儲存、可以匯出或建議補齊。出版狀態不是錯誤清單，而是幫你判斷下一步要整理什麼。</p>
-            <h3>新增選稿編排</h3>
-            <p>新的編排只需要先填「書名」與「書籍簡介」。若目前沒有正在編排，新建立的編排會直接成為目前正在編排。若已經有目前編排，新編排會先放在其他選稿編排中。</p>
-          </section>
-
-          <section id="manual-chapter-arrangement" class="manual-section">
-            <h2>九、整理章節</h2>
-            <p>點「整理章節」會開啟章節整理視窗。若整理的是目前正在編排，標題會顯示「目前選稿編排：{title}」。若整理的是其他編排，標題會顯示「整理章節：{title}」，視窗內也會提供「開始編這本」。</p>
-            <p>章節整理視窗會用一條小型流程提示提醒目前進度與下一步。通常流程是：書籍資料 → 加入札記 → 編排順序 → 出版檢查 → 匯出 EPUB。</p>
-            <ol>
-              <li>確認這份編排已經收錄想放進書裡的正式札記。</li>
-              <li>加入札記後會依加入順序排列。可拖曳章節卡片上的「排序」把手調整閱讀順序；章節很多時，拖到列表上緣或下緣會協助捲動。若使用手機或不方便拖曳，也可用小型上移、下移輔助操作。</li>
-              <li>必要時可修改章節標題，或取消「列入目錄」。</li>
-              <li>調整後若畫面提示「章節順序已調整，尚未儲存」，請點「儲存編排」保存章節調整。</li>
-              <li>確認出版狀態的下一步，再點「匯出 EPUB」做最後確認。</li>
-            </ol>
-            <p>章節上方的工具列會集中放置「儲存編排」、「加入札記」與「匯出 EPUB」。整理書稿時，不需要在視窗上下來回尋找主要操作。</p>
-            <p>出版狀態會用「已就緒」、「建議補齊」或「需要處理」提示目前書稿狀態，並指出能否匯出、卡在哪裡，以及哪幾篇札記建議補經文、摘要或今日禱告。</p>
-            <p>第一版不提供把已儲存的正式札記改回草稿，以避免已加入章節後狀態變得複雜。</p>
-          </section>
-
-          <section id="manual-export" class="manual-section">
-            <h2>十、匯出 EPUB</h2>
-            <p>成書匯出從「選稿編排」進入。先在章節整理視窗確認流程提示與出版狀態；若章節順序尚未儲存，請先點「儲存編排」。狀態清楚後，再點「匯出 EPUB」做最後確認。</p>
-            <p>「書籍資料」用來整理這本書的基本資料，包含：</p>
-            <ul>
-              <li>書名與副標。</li>
-              <li>作者。</li>
-              <li>模板。</li>
-              <li>書籍簡介。</li>
-              <li>封面圖片。</li>
-              <li>結語。</li>
-            </ul>
-            <p>「成書匯出設定」是最後確認視窗，不取代前面的書籍整理流程。它會顯示簡短出版狀態，讓你在匯出前確認是否可以輸出，以及主要卡點是什麼。完整整理建議留在章節整理工作區。</p>
-            <p>匯出的 EPUB 會先有簡潔書名頁，顯示書名、副標、作者、整理日期與 Devotion 來源；若有填寫書籍簡介或書前補充，才會接著產生「書前說明」並放完整內容。書名頁不會重複放完整簡介；札記章節順序仍完全以成書中心的編排為準；若有結語，會放在書末。沒有書籍簡介、書前補充或結語時，系統不會產生空白頁。</p>
-            <p>若只想先保存書名、作者、封面、書前補充與結語，可以點「儲存成書設定」。若要直接產生電子書，請點「儲存並匯出 EPUB」。匯出只會使用已加入編排的正式札記，草稿不會進入 EPUB。若書稿勾選「成書時顯示章節摘要」，且單篇札記也勾選「閱讀與成書時顯示摘要」，EPUB 會在章節開頭顯示摘要；今日禱告則只有在有內容且勾選顯示時才會跟著該篇章節匯出。匯出完成後，系統會將書加入書櫃並帶你前往書櫃查看，可在書櫃中立即閱讀或下載 EPUB。</p>
-            <p>下載 EPUB 時，畫面會確認「下載 EPUB？」並說明系統會下載這本書的 EPUB 檔案，完成後可以在你的裝置上閱讀或保存。</p>
-            <p>下載後的 EPUB 可用 iOS「書籍」、Android「Google Play 圖書」或其他 EPUB 閱讀器開啟。</p>
-          </section>
-
-          <section id="manual-library" class="manual-section">
-            <h2>十一、書櫃</h2>
-            <p>「書櫃」放的是已完成或已匯入的電子書。選稿編排是成書前的工作區，書櫃是成書後的閱讀與管理區。</p>
-            <p>書櫃目前可看到預設聖經、系統匯出的書籍，以及外部匯入的 EPUB。書籍卡片會顯示封面、書名、來源、閱讀進度與操作按鈕。</p>
-            <p>常用操作包含：</p>
-            <ul>
-              <li>開啟閱讀：進入內建 Reader 閱讀。</li>
-              <li>下載 EPUB：下載可另外保存的 EPUB 檔案。</li>
-              <li>匯入 EPUB：選擇安全、正常的 EPUB 檔加入書櫃。</li>
-              <li>刪除書籍：移除不需要的書籍。</li>
-              <li>排序：依最近閱讀、最近建立或書名檢視。</li>
-            </ul>
-            <p>外部匯入 EPUB 通常保存在目前裝置與瀏覽器中。重要檔案建議另外保留原始 EPUB。</p>
-          </section>
-
-          <section id="manual-reader" class="manual-section">
-            <h2>十二、閱讀器</h2>
-            <p>從書櫃點「開啟閱讀」會進入 Reader。Reader 會顯示書名、章節內容、目前閱讀進度與頁碼。</p>
-            <p>可以用以下方式操作：</p>
-            <ul>
-              <li>翻頁：使用上一頁、下一頁按鈕；桌機也可用左右方向鍵；手機可左右滑動翻頁。</li>
-              <li>功能選單：點閱讀畫面可顯示或收合右上關閉按鈕與右下功能按鈕。</li>
-              <li>目錄：從目錄快速跳到指定章節。</li>
-              <li>搜尋：輸入中文關鍵字搜尋書內內容，點結果可跳到對應位置。</li>
-              <li>閱讀設定：調整字級、行距與背景主題。</li>
-              <li>目前閱讀位置：系統會記住最後閱讀位置，方便下次回來接續閱讀。</li>
-              <li>手動書籤：可將目前位置加入書籤，之後從書籤列表快速跳回。</li>
-            </ul>
-            <p>閱讀完成或想回到書籍列表時，可使用「返回書櫃」或右上方的關閉按鈕。手機版閱讀時，畫面會盡量保留閱讀空間，底部導覽不會遮住主要閱讀內容。若看不到目錄、搜尋或書籤按鈕，先點一下閱讀畫面讓功能按鈕顯示。</p>
-            <p>若已安裝成 App，系統更新後會自動刷新預設聖經的閱讀快取。若仍看到舊排版，可先關閉 App 後重新開啟，或在出現更新提示時點「立即更新」。</p>
-          </section>
-
-          <section id="manual-today-reading" class="manual-section">
-            <h2>十三、今日讀經</h2>
-            <p>「今日讀經」會在總覽中顯示麥琴年度讀經計畫。系統依你裝置的本地日期對應一年 365 天進度，每天顯示四段經文引用；閏年 2 月 29 日會安全對應到可用進度，不會中斷。</p>
-            <p>卡片上的「前一天」、「回到今天」與「後一天」可以循環切換讀經日。點任一段經文引用，會開啟小型閱讀視窗並使用現有抓取經文能力顯示經文全文；若資料來源暫時無法取得，畫面會顯示中文提示。</p>
-            <p>點「帶入寫札記」會切換到寫札記頁，將當日四段經文引用用分號放入經文欄。若欄位已有內容，系統會追加在後面；這個動作不會自動抓全文、不會建立札記，也不會儲存草稿。閱讀視窗裡也可以用「帶入這段」只帶入單段經文。</p>
-          </section>
-
-          <section id="manual-mobile" class="manual-section">
-            <h2>十四、手機 / 平板使用方式</h2>
-            <p>手機與平板主要使用底部導覽切換頁面，常見項目包含總覽、禱告、寫札記、札記閱讀、札記庫、選稿編排、書櫃與操作手冊。若項目較多，可以在底部導覽列左右滑動尋找。桌機版主要使用左側側欄。</p>
-            <p>札記閱讀在手機上會先顯示搜尋卡片與最近編輯札記。搜尋結果與單篇閱讀都會以視窗開啟，閱讀時保留足夠的文字寬度與關閉按鈕。</p>
-            <p>書櫃與 Reader 在手機上也可以正常閱讀。Reader 會把控制項收得比較精簡，讓閱讀內容不被底部導覽遮住。若沒有看到功能按鈕，可以先點一下閱讀畫面。</p>
-            <p>在手機上編輯札記、整理章節或書籍資料時，儲存成功後再離開頁面較穩妥。若畫面沒有更新，可重新整理後再查看。</p>
-          </section>
-
-          <section id="manual-install-app-section" class="manual-section" data-testid="manual-install-app-section">
-            <h2>十五、把靈修札記安裝成 App</h2>
-            <p>靈修札記成書系統可以像 App 一樣放在手機主畫面或電腦桌面。這只是建立一個方便開啟的入口，不會改變你的帳號，也不會刪除或搬移資料。</p>
-            <div class="manual-install-grid">
-              <article class="manual-install-card">
-                <h3>iPhone / iPad</h3>
-                <ol>
-                  <li>請用 Safari 開啟網站。</li>
-                  <li>點畫面下方或上方的分享按鈕。</li>
-                  <li>選擇「加入主畫面」。</li>
-                  <li>之後可從主畫面直接開啟。</li>
-                </ol>
-              </article>
-              <article class="manual-install-card">
-                <h3>Android</h3>
-                <ol>
-                  <li>用 Chrome 開啟網站。</li>
-                  <li>點「安裝應用程式」或「加入主畫面」。</li>
-                  <li>完成後可像 App 一樣開啟。</li>
-                </ol>
-              </article>
-              <article class="manual-install-card">
-                <h3>Windows</h3>
-                <ol>
-                  <li>用 Chrome 或 Edge 開啟網站。</li>
-                  <li>點網址列右側的安裝圖示。</li>
-                  <li>或從瀏覽器選單選擇「安裝此網站為應用程式」。</li>
-                  <li>之後可從桌面或開始選單開啟。</li>
-                </ol>
-              </article>
-              <article class="manual-install-card">
-                <h3>Mac</h3>
-                <ol>
-                  <li>Safari 可將網站加入 Dock。</li>
-                  <li>Chrome 可從網址列或選單安裝成應用程式。</li>
-                  <li>之後可從 Dock、Launchpad 或應用程式列表開啟。</li>
-                </ol>
-              </article>
-            </div>
-            <p class="manual-install-note">安裝提醒最多會自動出現三次；第三次後不再自動提醒。若點「不再提醒」，之後也不會再自動跳出。已安裝或以 standalone 模式開啟時，系統不會顯示安裝提示。</p>
-            <p class="manual-install-note">如果網站圖示已更新，但桌面或主畫面仍顯示舊圖，通常是瀏覽器或系統快取。這不代表資料不見，也不代表帳號壞掉。可以先關閉後重新開啟；若仍是舊圖示，可移除舊捷徑後重新加入主畫面或重新安裝 PWA。重新安裝不會刪除帳號資料，雲端資料仍會跟帳號同步。</p>
-            <p class="manual-install-note">若安裝版 Reader 的預設聖經看起來仍是舊排版，通常關閉後重新開啟，或點「立即更新」即可套用新版快取，不需要刪除自己的札記或重新建立帳號。</p>
-          </section>
-
-          <section id="manual-account-data" class="manual-section">
-            <h2>十六、帳號設定與資料</h2>
-            <p>登入後，畫面會顯示帳號資訊與同步狀態。桌機可從側邊欄帳號卡查看簡潔同步狀態、按「同步」，也可進入「帳號設定」或「登出」；手機可在總覽中的帳號區塊進入「帳號設定」，並在帳號設定裡查看同步狀態與手動同步。</p>
-            <p>「帳號設定」可以查看目前帳號、查看安裝成 App / 加入主畫面教學、上傳或移除頭像、修改密碼、管理未同步內容、下載雲端備份，也可以登出。手動同步執行中時，同步按鈕會暫時不可重複點擊，完成後會更新同步狀態。</p>
-            <p>若目前使用雲端登入，札記、禱告、選稿編排與書櫃資料會依同步狀態與網路狀況保存。若尚未登入雲端帳號，禱告同步、雲端備份與跨裝置同步會受到限制；未同步內容、離線期間新增的內容，或某些外部匯入資料，可能只保存在你正在使用的裝置與瀏覽器中。</p>
-            <p>閱讀位置、外部 EPUB 與部分使用偏好會依目前裝置保存。重要資料可保留備份或下載檔案。</p>
-          </section>
-
-          <section id="manual-support-receipt" class="manual-section">
-            <h2>十七、支持平台與收款證明</h2>
-            <p>頁面下方有「支持平台／支持事工」入口。點開後可以查看支持資訊，也可以使用「申請收款證明」填寫申請表。</p>
-            <p>收款證明申請表會請你填寫姓名或收據抬頭、Email、支持金額、轉帳日期、匯款帳號後五碼與備註。送出後，平台會依你填寫的 Email 聯繫與處理。</p>
-            <p>收款證明是支持款項收款紀錄，不作為稅務扣抵憑證。送出前請確認金額、日期與 Email 正確。</p>
-          </section>
-
-          <section id="manual-faq" class="manual-section">
-            <h2>十八、常見問題</h2>
-            <div class="manual-faq-list">
-              <div class="manual-faq-item"><h3>網站更新後需要重新安裝嗎？</h3><p>不需要。若系統更新，畫面會出現「系統已有新版本」提示，點「立即更新」即可套用新版。iPhone、Android、Mac、Windows 都適用。</p></div>
-              <div class="manual-faq-item"><h3>安裝成 App 後，資料會另外存一份嗎？</h3><p>不會。安裝只是多一個開啟入口，資料仍跟著你的帳號與目前同步狀態保存。重新安裝 PWA 或重新加入主畫面，不會刪除雲端帳號資料。</p></div>
-              <div class="manual-faq-item"><h3>桌面或主畫面圖示沒有更新怎麼辦？</h3><p>通常是系統或瀏覽器快取。可以先關閉後重新開啟；若仍顯示舊圖示，可移除舊捷徑後重新加入主畫面，或重新安裝 PWA。</p></div>
-              <div class="manual-faq-item"><h3>找不到剛寫的札記怎麼辦？</h3><p>如果剛剛按的是「儲存草稿」，請回到「寫札記」的「我的草稿」查看。若已儲存為正式札記，請到「札記閱讀」或「札記庫」確認。若有使用搜尋或篩選，請點「重設篩選」或「清除篩選」。</p></div>
-              <div class="manual-faq-item"><h3>草稿可以沒有標題嗎？</h3><p>可以。草稿可以先沒有主題，畫面會以「未命名草稿」顯示。儲存為正式札記時再補上主題即可。</p></div>
-              <div class="manual-faq-item"><h3>草稿會出現在札記閱讀、選稿或成書裡嗎？</h3><p>不會。草稿只會保存在「寫札記」的草稿區，不會進入札記閱讀，不會出現在選稿編排候選，也不會匯出到 EPUB。完成後儲存為正式札記，才會進入這些流程。</p></div>
-              <div class="manual-faq-item"><h3>札記閱讀和札記庫有什麼差別？</h3><p>札記閱讀適合單純重讀、搜尋和查看單篇札記；札記庫適合管理札記、回到編輯器修改，或勾選文章加入目前正在編排。</p></div>
-              <div class="manual-faq-item"><h3>抓取經文失敗怎麼辦？</h3><p>常見原因包含經文格式不完整、書卷名稱或章節不存在、網路不穩，或經文資料暫時無法取得。可確認格式，例如：哥林多前書2:1 或 哥林多前書2:1-5，再重新按「抓取經文」。</p></div>
-              <div class="manual-faq-item"><h3>禱告或長期記念的事要寫在哪裡？</h3><p>每篇札記可以在「今日禱告」欄位另外寫下最後的禱告回應。若是需要長期追蹤的禱告、關心的人或持續記念的事，請使用「禱告」功能，可設定狀態、補上後續回顧，並記錄「回顧神的恩典與帶領」。</p></div>
-              <div class="manual-faq-item"><h3>今日禱告一定會出現在閱讀或成書裡嗎？</h3><p>不一定。只有勾選「閱讀與成書時顯示禱告」且今日禱告有內容時，札記閱讀與 EPUB 才會顯示。取消勾選時，禱告文字仍會保存在札記中，但不會出現在閱讀與成書裡。</p></div>
-              <div class="manual-faq-item"><h3>沒有登入雲端帳號可以使用嗎？</h3><p>可以先使用部分功能，但禱告同步、雲端備份與跨裝置同步會受到限制。若要讓手機與桌機看到同一份資料，請登入同一個雲端帳號後再手動同步或重新整理。</p></div>
-              <div class="manual-faq-item"><h3>如何申請支持款項收款證明？</h3><p>完成轉帳後，可在「支持平台／支持事工」中點選「申請收款證明」，填寫姓名或抬頭、Email、支持金額、轉帳日期與匯款帳號後五碼。平台確認後會依你填寫的 Email 聯繫。本證明為支持款項收款紀錄，不作為稅務扣抵憑證。</p></div>
-              <div class="manual-faq-item"><h3>為什麼編輯區會出現 ##、{red}、{/red} 這些符號？</h3><p>這些是格式標記，用來讓系統在預覽與成書時轉成小標題或重點色。寫作時會先看到標記，點「預覽文章」後可以確認實際效果。</p></div>
-              <div class="manual-faq-item"><h3>為什麼 {red}##重點{/red} 沒有正常變成小標題？</h3><p>小標題的 <code>##</code> 需要放在一行最前面，不能被顏色標記包住。如果想使用小標題，請寫成「## 重點整理」。如果想標記紅字，請另起一行寫「{red}這一句是重點。{/red}」。</p></div>
-              <div class="manual-faq-item"><h3>小標題和重點色可以一起用嗎？</h3><p>可以分開使用。小標題整理文章結構，重點色強調正文短句。</p></div>
-              <div class="manual-faq-item"><h3>為什麼預覽排版和我想像的不一樣？</h3><p>常見原因是空白行較多、段落較長，或小標題與重點色放在同一行。可用「預覽文章」查看效果。</p></div>
-              <div class="manual-faq-item"><h3>經文很長時要怎麼放？</h3><p>可以使用經文區塊，但長經文建議分段，讓手機閱讀更舒服。</p></div>
-              <div class="manual-faq-item"><h3>什麼時候用引用，什麼時候用經文區塊？</h3><p>引用適合短句或摘錄。經文區塊適合放完整經文段落。</p></div>
-              <div class="manual-faq-item"><h3>為什麼加入按鈕不能按？</h3><p>可能尚未選擇目前正在編排，或目前已選 0 篇。請先到「選稿編排」建立或選擇一份編排，再回到札記庫勾選札記。</p></div>
-              <div class="manual-faq-item"><h3>文章加入到哪一份編排？</h3><p>札記庫會加入目前正在編排的那一份選稿編排。狀態列會顯示「目前正在編排：{title}」。</p></div>
-              <div class="manual-faq-item"><h3>如何切換目前正在編排？</h3><p>到「選稿編排」的「其他選稿編排」區塊，點想整理的卡片上的「開始編這本」。切換後該卡片會移到「目前正在編排」。</p></div>
-              <div class="manual-faq-item"><h3>建立選稿編排後，可以修改書籍資料嗎？</h3><p>可以。到「選稿編排」頁，在該卡片點「書籍資料」，即可修改書名、副標、作者、書籍簡介、日期範圍、分類、標籤、封面、模板與結語。儲存後，卡片會立即更新。</p></div>
-              <div class="manual-faq-item"><h3>刪除資料前會再確認嗎？</h3><p>會。刪除札記、選稿編排、書櫃書籍、移除頭像或執行較危險的還原操作前，會先顯示確認提示。</p></div>
-              <div class="manual-faq-item"><h3>如果還沒儲存就關掉頁面，內容會不見嗎？</h3><p>正在編輯的札記草稿會盡量暫存。若瀏覽器重新整理、意外關閉或儲存失敗，回到「寫札記」頁時，會提示是否恢復尚未儲存的草稿。</p></div>
-              <div class="manual-faq-item"><h3>書櫃跟選稿編排有什麼差別？</h3><p>選稿編排用來整理成書前的章節與設定。書櫃用來閱讀、下載與管理已完成或已匯入的電子書。</p></div>
-              <div class="manual-faq-item"><h3>為什麼手機底部選單可以左右滑動？</h3><p>手機螢幕較窄，底部導覽包含多個功能。可以左右滑動底部導覽列，找到書櫃或操作手冊等項目。桌機版則使用左側側欄。</p></div>
-              <div class="manual-faq-item"><h3>EPUB 下載後怎麼打開？</h3><p>iPhone / iPad 可用「書籍」App。Android 可用「Google Play 圖書」或其他支援 EPUB 的閱讀器。桌機可用支援 EPUB 的閱讀軟體或瀏覽器擴充功能。</p></div>
-              <div class="manual-faq-item"><h3>外部 EPUB 匯入失敗怎麼辦？</h3><p>請確認檔案是 EPUB、大小未超過限制，且沒有 DRM 保護。若檔案結構特殊或已損壞，系統可能無法解析。</p></div>
-            </div>
-          </section>
-
-          <section id="manual-feedback" class="manual-section">
-            <h2>十九、使用問題與意見回饋</h2>
-            <p>如果你在使用靈修札記成書系統時遇到問題，或有功能建議，歡迎來信：</p>
-            <p class="manual-feedback-email"><button class="footer-email-copy" type="button" data-copy-support-email>${SUPPORT_EMAIL}</button></p>
-            <p>來信時可以簡單附上使用裝置、遇到的頁面、問題描述。若方便，也可以附上截圖，方便我們判斷問題。</p>
-          </section>
-
-          <section id="manual-closing-note" class="manual-section manual-closing">
-            <h2>二十、補充說明</h2>
-            <p>這套系統的目的，是幫助你把平常寫下的內容好好保存下來。</p>
-            <p>不用一開始就想著要完成一本很完整的書。可以先從一篇札記開始，慢慢累積，慢慢整理。</p>
-            <p>當那些日子裡的領受、禱告、眼淚、感恩與提醒被留下來，它們有一天可能就會成為一本值得回頭閱讀的書。</p>
-            <p class="manual-app-version" data-app-version-label>${getAppVersionLabel()}</p>
-          </section>
-        </article>
-      </section>
-    `;
+    section.innerHTML = getOperationManualHtml();
     libraryView?.insertAdjacentElement('beforebegin', section);
   }
 

@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.1.1 - 2026/06/05
+
+正式站：https://www.devotionbook.com.tw
+
+Production commit hash：完成 production deployment 後記錄於 `OPERATION_MANUAL_LANGUAGE_AUDIT_20260605.md` 與完成回報。
+
+### 主要更新
+
+- 操作手冊：改寫為一般使用者能理解、可照著做的使用說明。
+- 操作手冊：補上開始使用、建立帳戶與登入、信箱驗證、Google 登入、忘記密碼、資料保存與版本資訊等章節。
+- 操作手冊：以使用者語言說明札記閱讀、札記庫、選稿編排、書櫃與成書流程。
+- 操作手冊：明確排除後台管理內容，不新增假功能，不修改資料設定。
+- 版本制度：前台版本升為 v1.1.1，並同步 `package.json`、`version.json`、`APP_VERSION`、靜態資源 cache query 與前台可見版本資訊。
+
 ## v1.1.0 - 2026/06/04
 
 正式站：https://www.devotionbook.com.tw
