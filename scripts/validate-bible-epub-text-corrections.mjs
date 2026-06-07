@@ -146,7 +146,7 @@ const allText = BOOKS.map(book => run('unzip', ['-p', BIBLE_EPUB_PATH, book.entr
 });
 
 if (!allText.includes('妝飾')) fail('bible.epub should preserve confirmed CUV traditional text 妝飾');
-if (!allText.includes('糢糊不清')) fail('bible.epub should preserve pending manual-confirmation text 糢糊不清');
+if (allText.includes('糢糊')) fail('bible.epub should not contain second-phase corrected text 糢糊');
 
 HIGH_CONFIDENCE_EXPECTATIONS.forEach(([reference, required, forbidden]) => {
   expectVerse(verseIndex, reference, required, forbidden);
@@ -160,6 +160,7 @@ PASSOVER_REFS.forEach(reference => {
   ['哥林多前書 3:2', '奶餵你們', '餧'],
   ['哥林多前書 3:2', '飯餵你們', '餧'],
   ['哥林多前書 12:10', '翻方言', '繙方言'],
+  ['哥林多前書 13:12', '模糊不清', '糢糊'],
 ].forEach(([reference, required, forbidden]) => {
   expectVerse(verseIndex, reference, required, forbidden);
 });

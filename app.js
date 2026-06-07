@@ -20,11 +20,11 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.1.6';
+const APP_VERSION = '1.1.7';
 const APP_RELEASE_DATE = '2026/06/07';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
-const DEFAULT_BIBLE_ASSET_VERSION = '2026.06.07-full-bible-text-v1.1.6';
+const DEFAULT_BIBLE_ASSET_VERSION = '2026.06.07-word-policy-v1.1.7';
 const DEFAULT_BIBLE_ASSET_VERSION_KEY = 'devotion-default-bible-asset-version';
 const DEFAULT_BIBLE_EPUB_PATH = `/assets/default-books/bible.epub?v=${DEFAULT_BIBLE_ASSET_VERSION}`;
 const SCRIPTURE_FETCH_MESSAGES = Object.freeze({

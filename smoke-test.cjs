@@ -916,7 +916,7 @@ async function run() {
     await expectVisible(page, '[data-testid="account-install-guide-link"]', '帳號設定安裝教學入口已顯示');
     await expectVisible(page, '#account-settings-modal [data-testid="version-display"]', '帳號設定版本資訊已顯示');
     const accountVersionText = await page.locator('#account-settings-modal [data-testid="version-display"]').textContent();
-    if (!accountVersionText || !accountVersionText.includes('v1.1.6')) {
+    if (!accountVersionText || !accountVersionText.includes('v1.1.7')) {
       throw new Error(`帳號設定版本資訊錯誤：${accountVersionText}`);
     }
     const syncDisabledObserved = await page.evaluate(() => new Promise((resolve) => {
