@@ -1,7 +1,7 @@
 {
   "name": "devotion-book-webapp",
   "private": true,
-  "version": "1.1.7",
+  "version": "1.1.8",
   "type": "module",
   "scripts": {
     "start": "npm run serve:local",
@@ -12,7 +12,8 @@
     "validate:mcheyne": "node scripts/validate-mcheyne-reading-plan.mjs",
     "validate:bible-epub": "node scripts/validate-bible-epub-1-corinthians.mjs",
     "validate:bible-text-corrections": "node scripts/validate-bible-epub-text-corrections.mjs",
-    "verify": "npm run check && npm run validate:scripture && npm run validate:mcheyne && npm run validate:bible-epub && npm run validate:bible-text-corrections && npm run smoke"
+    "validate:bible-punctuation-corrections": "node scripts/validate-bible-epub-punctuation-corrections.mjs",
+    "verify": "npm run check && npm run validate:scripture && npm run validate:mcheyne && npm run validate:bible-epub && npm run validate:bible-text-corrections && npm run validate:bible-punctuation-corrections && npm run smoke"
   },
   "devDependencies": {
     "playwright": "^1.59.1"

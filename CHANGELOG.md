@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.1.8 - 2026/06/07
+
+正式站：https://www.devotionbook.com.tw
+
+Production commit hash：完成 production deployment 後回報。
+
+### 主要更新
+
+- 內建聖經標點校對第一階段。
+- 重新用 v1.1.7 `assets/default-books/bible.epub` 掃描同一節內明顯連續標點錯置。
+- 修正 9 筆明顯連續標點錯置，只刪除或調整多餘標點，不改經文字、不改註記內容、不改章節結構。
+- 本輪未處理跨節引號、半形括號註記、註記格式政策或字形政策項目。
+- 補強內建聖經 EPUB 標點修正驗證，避免連續標點錯置與 v1.1.7 既有聖經修正回歸。
+- 版本制度：前台版本升為 v1.1.8，並同步 `package.json`、`version.json`、`APP_VERSION`、靜態資源 cache query 與前台可見版本資訊。
+
 ## v1.1.7 - 2026/06/07
 
 正式站：https://www.devotionbook.com.tw
