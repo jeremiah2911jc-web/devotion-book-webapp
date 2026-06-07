@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.1.6 - 2026/06/07
+
+正式站：https://www.devotionbook.com.tw
+
+Production commit hash：完成 production deployment 後回報。
+
+### 主要更新
+
+- 內建聖經全文校對第一階段。
+- 修正高信心錯字：`繙` 改為 `翻`、`餧` 改為 `餵`。
+- 逐條比對中信心項目，修正多個可信來源一致支持的 `踰越節` 為 `逾越節`。
+- 保留來源支持的 `妝飾` 用字不修正，避免把和合本傳統用字誤改為現代字形偏好。
+- 將來源不一致或涉及字形政策的 `糢糊 / 模糊` 列為待人工確認。
+- 補強內建聖經 EPUB 全卷結構與本輪文字修正驗證。
+- 版本制度：前台版本升為 v1.1.6，並同步 `package.json`、`version.json`、`APP_VERSION`、靜態資源 cache query 與前台可見版本資訊。
+
 ## v1.1.5 - 2026/06/07
 
 正式站：https://www.devotionbook.com.tw
