@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.1.9 - 2026/06/07
+
+正式站：https://www.devotionbook.com.tw
+
+Production commit hash：完成 production deployment 後回報。
+
+### 主要更新
+
+- 簡化操作手冊版本資訊。
+- 移除一般使用者畫面中的本次主要更新條列。
+- 版本制度：前台版本升為 v1.1.9，並同步 `package.json`、`version.json`、`APP_VERSION`、靜態資源 cache query 與前台可見版本資訊。
+
 ## v1.1.8 - 2026/06/07
 
 正式站：https://www.devotionbook.com.tw

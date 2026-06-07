@@ -20,7 +20,7 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.1.8';
+const APP_VERSION = '1.1.9';
 const APP_RELEASE_DATE = '2026/06/07';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
@@ -2718,13 +2718,6 @@ function getOperationManualHtml() {
           <section id="manual-version" class="manual-section manual-closing">
             <h2>十七、版本資訊</h2>
             <p class="manual-app-version" data-app-version-label data-testid="version-display">${getAppVersionLabel()}</p>
-            <h3>本次主要更新</h3>
-            <ul>
-              <li>操作手冊改成更白話、可照著做的說明。</li>
-              <li>補上建立帳戶、信箱驗證、Google 登入與忘記密碼流程。</li>
-              <li>補上札記閱讀、札記庫、選稿編排、書櫃與資料保存說明。</li>
-              <li>明確把版本資訊放在不干擾寫作的位置。</li>
-            </ul>
             <p>如果你在使用時遇到問題，歡迎來信：</p>
             <p class="manual-feedback-email"><button class="footer-email-copy" type="button" data-copy-support-email>${SUPPORT_EMAIL}</button></p>
           </section>
