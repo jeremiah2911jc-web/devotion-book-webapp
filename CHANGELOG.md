@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.1.5 - 2026/06/07
+
+正式站：https://www.devotionbook.com.tw
+
+Production commit hash：完成 production deployment 後回報。
+
+### 主要更新
+
+- 修正內建聖經哥林多前書錯別字。
+- 修正哥林多前書 3:2「餧」為「餵」。
+- 修正哥林多前書 12:10「繙方言」為「翻方言」，並同步修正哥林多前書同類「繙」用字。
+- 補強哥林多前書逐節比對與抓取測試，確認 1–16 章仍完整、全卷仍為 437 節。
+- 版本制度：前台版本升為 v1.1.5，並同步 `package.json`、`version.json`、`APP_VERSION`、靜態資源 cache query 與前台可見版本資訊。
+
 ## v1.1.4 - 2026/06/07
 
 正式站：https://www.devotionbook.com.tw
