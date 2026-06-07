@@ -481,6 +481,123 @@ async function verifyNoteEditorToolbar(page, results) {
   results.push('寫札記工具列已用 data-testid 驗證小標題、粗體、引用、經文、清單、分隔線與四色文字');
 }
 
+function assertTextIncludesAll(text, requiredParts, label) {
+  const missing = requiredParts.filter(part => !String(text || '').includes(part));
+  if (missing.length) {
+    throw new Error(`${label} 缺少：${missing.join(' / ')}；目前內容：${String(text || '').slice(0, 500)}`);
+  }
+}
+
+async function waitForScriptureFetchCount(page, expectedCount) {
+  await page.waitForFunction((count) => {
+    const status = document.querySelector('#scripture-fetch-status')?.textContent || '';
+    return status.includes(`已帶出 ${count} 處`);
+  }, expectedCount, { timeout: 20000 });
+}
+
+async function fetchScripturesIntoNote(page, references, expectedCount) {
+  await page.fill('#note-scripture', references);
+  await clickElement(page, '#fetch-scripture-btn');
+  await waitForScriptureFetchCount(page, expectedCount);
+  await expectVisible(page, '#scripture-preview:not(.hidden)', `已抓取 ${expectedCount} 段經文`);
+  const cardTitles = (await page.locator('#scripture-preview .scripture-card h4').allTextContents()).map(text => text.trim());
+  if (cardTitles.length !== expectedCount) {
+    throw new Error(`經文卡片數量錯誤：${cardTitles.join(' / ')}`);
+  }
+  return {
+    cardTitles,
+    content: await page.inputValue('[data-testid="note-editor-content"]'),
+  };
+}
+
+async function getSavedNoteByTitle(page, title) {
+  return page.evaluate(({ notesKey, noteTitle }) => {
+    const notes = JSON.parse(localStorage.getItem(notesKey) || '[]');
+    return notes.find(note => note.title === noteTitle) || null;
+  }, { notesKey: STORAGE_KEYS.notes, noteTitle: title });
+}
+
+async function verifyScriptureFetchAppendFlow(page, results) {
+  await expectVisible(page, '#view-notes.view.active', '寫札記頁已顯示，可驗證抓取經文追加流程');
+  await clickElement(page, '#new-note-btn');
+  const scriptureToggleText = await page.locator('.note-scripture-toggle').textContent();
+  if (!scriptureToggleText || !scriptureToggleText.includes('抓取後加入札記內容')) {
+    throw new Error(`抓取經文 checkbox 文案錯誤：${scriptureToggleText}`);
+  }
+  const scriptureHelperText = await page.locator('.note-scripture-helper').textContent();
+  if (!scriptureHelperText || !scriptureHelperText.includes('不會覆蓋原本內容')) {
+    throw new Error(`抓取經文 helper 文案錯誤：${scriptureHelperText}`);
+  }
+
+  await page.fill('#note-title', '五段經文抓取測試');
+  await page.fill('#note-scripture', '');
+  await page.fill('[data-testid="note-editor-content"]', '');
+  const fiveReferenceInput = '希伯來4:11；詩篇106:32-33；希伯來4:1；創世記2:1；詩篇90篇9-10';
+  const fiveFetch = await fetchScripturesIntoNote(page, fiveReferenceInput, 5);
+  assertTextIncludesAll(fiveFetch.cardTitles.join('\n'), ['希伯來4:11', '詩篇106:32-33', '希伯來4:1', '創世記2:1', '詩篇90篇9-10'], '五段經文預覽');
+  assertTextIncludesAll(fiveFetch.content, ['希伯來4:11', '詩篇106:32-33', '希伯來4:1', '創世記2:1', '詩篇90篇9-10'], '五段經文內容');
+
+  const englishSemicolonFetch = await fetchScripturesIntoNote(page, '創2章1;希伯來書4章11', 2);
+  assertTextIncludesAll(englishSemicolonFetch.content, ['希伯來4:11', '詩篇90篇9-10', '創2章1', '希伯來書4章11'], '英文分號追加後內容');
+
+  await page.fill('#note-scripture', '');
+  await page.fill('[data-testid="note-editor-content"]', '');
+  const threeFetch = await fetchScripturesIntoNote(page, '希伯來4:11；詩篇106:32-33；希伯來4:1', 3);
+  assertTextIncludesAll(threeFetch.content, ['希伯來4:11', '詩篇106:32-33', '希伯來4:1'], '三段經文內容');
+  const afterGenesisFetch = await fetchScripturesIntoNote(page, '創世記2:1', 1);
+  assertTextIncludesAll(afterGenesisFetch.content, ['希伯來4:11', '詩篇106:32-33', '希伯來4:1', '創世記2:1'], '再次抓取追加內容');
+
+  await page.fill('#note-scripture', '');
+  await page.fill('[data-testid="note-editor-content"]', '今天我默想這段經文。');
+  const handwrittenFetch = await fetchScripturesIntoNote(page, '詩篇90章9-10', 1);
+  assertTextIncludesAll(handwrittenFetch.content, ['今天我默想這段經文。', '詩篇90章9-10'], '手寫內容保護');
+
+  const draftTitle = '經文抓取追加草稿';
+  await page.fill('#note-title', draftTitle);
+  await page.fill('#note-scripture', '詩篇90篇9-10');
+  await clickElement(page, '#save-note-draft-btn');
+  await page.waitForFunction(() => document.querySelector('#toast')?.textContent.includes('草稿已儲存'), undefined, { timeout: 10000 });
+  const savedDraft = await getSavedNoteByTitle(page, draftTitle);
+  if (!savedDraft) throw new Error('找不到已儲存的經文抓取追加草稿');
+  assertTextIncludesAll(savedDraft.content, ['今天我默想這段經文。', '詩篇90章9-10'], '草稿儲存內容');
+
+  const publishedTitle = '經文抓取追加正式札記';
+  await page.fill('#note-title', publishedTitle);
+  await page.fill('#note-scripture', '希伯來4:11；創世記2篇1');
+  await page.fill('#note-category', '靈修');
+  await page.fill('#note-tags', '抓取經文,追加');
+  await page.fill('#note-summary', '抓取經文追加後的摘要');
+  await page.fill('[data-testid="note-editor-content"]', '正式札記手寫內容');
+  const publishedFetch = await fetchScripturesIntoNote(page, '希伯來4:11；創世記2篇1', 2);
+  assertTextIncludesAll(publishedFetch.content, ['正式札記手寫內容', '希伯來4:11', '創世記2篇1'], '正式札記送出前內容');
+  await clickElement(page, '#publish-note-btn');
+  await page.waitForFunction(() => document.querySelector('#toast')?.textContent.includes('札記已儲存'), undefined, { timeout: 10000 });
+  const savedPublished = await getSavedNoteByTitle(page, publishedTitle);
+  if (!savedPublished) throw new Error('找不到已儲存的經文抓取追加正式札記');
+  assertTextIncludesAll(savedPublished.content, ['正式札記手寫內容', '希伯來4:11', '創世記2篇1'], '正式札記儲存內容');
+
+  await clickPrimaryViewNav(page, 'note-reader', 'mobile-nav-note-reader');
+  await page.fill('[data-testid="note-reader-search"]', publishedTitle);
+  await clickElement(page, '[data-testid="note-reader-search-submit"]');
+  await expectVisible(page, '[data-testid="note-reader-search-modal"]:not(.hidden)', '追加後札記可在札記閱讀搜尋');
+  await clickElement(page, '[data-testid="note-reader-search-result"]');
+  await expectVisible(page, '[data-testid="note-reader-reading-modal"]:not(.hidden)', '追加後札記可開啟閱讀');
+  const readingText = await page.locator('[data-testid="note-reader-reading-content"]').textContent();
+  assertTextIncludesAll(readingText, [publishedTitle, '正式札記手寫內容', '希伯來4:11', '創世記2篇1'], '札記閱讀內容');
+  await clickElement(page, '[data-testid="note-reader-reading-close"]');
+  await page.waitForFunction(() => document.querySelector('[data-testid="note-reader-reading-modal"]')?.classList.contains('hidden'), { timeout: 10000 });
+
+  await clickPrimaryViewNav(page, 'content-library', 'mobile-nav-note-library');
+  await page.fill('[data-testid="content-library-search"]', publishedTitle);
+  await expectVisible(page, '[data-testid="content-library-card"]', '追加後札記可在札記庫顯示');
+  const libraryCardText = await page.locator('[data-testid="content-library-card"]').textContent();
+  assertTextIncludesAll(libraryCardText, [publishedTitle, '抓取經文追加後的摘要', '希伯來4:11；創世記2篇1'], '札記庫摘要');
+
+  await clickPrimaryViewNav(page, 'notes', 'mobile-nav-write-note');
+  await expectVisible(page, '#view-notes.view.active', '抓取經文驗證後已回到寫札記頁');
+  results.push('抓取經文支援 5 段、篇/章格式、中英文分號、安全追加、手寫內容保護、草稿/正式儲存、閱讀與札記庫顯示');
+}
+
 async function clickPrimaryViewNav(page, viewName, mobileTestId = '') {
   const selector = mobileTestId
     ? `[data-testid="${mobileTestId}"], button[data-view="${viewName}"]`
@@ -516,8 +633,14 @@ async function verifyResponsiveViewport(browser, { width, height, label }, resul
     await clickElement(page, '[data-testid="note-reader-reading-close"]');
     await page.waitForFunction(() => document.querySelector('[data-testid="note-reader-reading-modal"]')?.classList.contains('hidden'), { timeout: 10000 });
     await assertNoHorizontalScroll(page, { label: `RWD ${label} note reader` });
+    await clickPrimaryViewNav(page, 'notes', 'mobile-nav-write-note');
+    await expectVisible(page, '#view-notes.view.active', `${label} 寫札記頁已顯示`);
+    await expectVisible(page, '#note-scripture', `${label} 經文欄位已顯示`);
+    await expectVisible(page, '#fetch-scripture-btn', `${label} 抓取經文按鈕已顯示`);
+    await expectVisible(page, '[data-testid="note-editor-content"]', `${label} 札記內容可編輯`);
+    await assertNoHorizontalScroll(page, { label: `RWD ${label} scripture note editor` });
     assertNoConsoleErrors(consoleCollector);
-    results.push(`RWD ${label} 通過：console error 0、無水平爆版、導覽 active 正確、閱讀 modal 可開可關`);
+    results.push(`RWD ${label} 通過：console error 0、無水平爆版、導覽 active 正確、閱讀 modal 可開可關、經文欄與札記內容可用`);
   } finally {
     await context.close();
   }
@@ -781,6 +904,11 @@ async function run() {
     await verifyNoteReaderWorkspace(page, results);
     await clickElement(page, '[data-testid="mobile-nav-overview"]');
     await expectVisible(page, '#view-dashboard.view.active', '札記閱讀驗證後已返回 dashboard');
+    await clickElement(page, '[data-testid="mobile-nav-write-note"]');
+    await expectVisible(page, '#view-notes.view.active', '已切換到札記頁驗證抓取經文');
+    await verifyScriptureFetchAppendFlow(page, results);
+    await clickElement(page, '[data-testid="mobile-nav-overview"]');
+    await expectVisible(page, '#view-dashboard.view.active', '抓取經文驗證後已返回 dashboard');
     await clickElement(page, '[data-open-account-settings]');
     await expectVisible(page, '[data-testid="account-settings-page"]:not(.hidden)', '帳號設定已開啟');
     await expectVisible(page, '[data-testid="account-settings-sync-status"]', '帳號設定同步狀態已顯示');
@@ -788,7 +916,7 @@ async function run() {
     await expectVisible(page, '[data-testid="account-install-guide-link"]', '帳號設定安裝教學入口已顯示');
     await expectVisible(page, '#account-settings-modal [data-testid="version-display"]', '帳號設定版本資訊已顯示');
     const accountVersionText = await page.locator('#account-settings-modal [data-testid="version-display"]').textContent();
-    if (!accountVersionText || !accountVersionText.includes('v1.1.3')) {
+    if (!accountVersionText || !accountVersionText.includes('v1.1.4')) {
       throw new Error(`帳號設定版本資訊錯誤：${accountVersionText}`);
     }
     const syncDisabledObserved = await page.evaluate(() => new Promise((resolve) => {

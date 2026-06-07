@@ -1,15 +1,16 @@
 {
   "name": "devotion-book-webapp",
   "private": true,
-  "version": "1.1.3",
+  "version": "1.1.4",
   "type": "module",
   "scripts": {
     "start": "npm run serve:local",
     "check": "node --check assets/js/scripture-reference-utils.js && node --check app.js && node --check api/admin-usage.js && node --check api/system-backup.js && node --check api/support-receipt-request.js",
     "serve:local": "node static-server.cjs",
     "smoke": "node smoke-test.cjs",
+    "validate:scripture": "node scripts/validate-scripture-reference-utils.mjs",
     "validate:mcheyne": "node scripts/validate-mcheyne-reading-plan.mjs",
-    "verify": "npm run check && npm run validate:mcheyne && npm run smoke"
+    "verify": "npm run check && npm run validate:scripture && npm run validate:mcheyne && npm run smoke"
   },
   "devDependencies": {
     "playwright": "^1.59.1"

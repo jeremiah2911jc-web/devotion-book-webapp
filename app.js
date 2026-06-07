@@ -20,8 +20,8 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.1.3';
-const APP_RELEASE_DATE = '2026/06/05';
+const APP_VERSION = '1.1.4';
+const APP_RELEASE_DATE = '2026/06/07';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
 const DEFAULT_BIBLE_ASSET_VERSION = '2026.05.13-reflow-3c43edc7';
@@ -1193,8 +1193,7 @@ const state = {
   scriptureBibleEntriesPromise: null,
   scriptureFetchTimer: null,
   scriptureAbortController: null,
-  scriptureLastAppliedBlock: '',
-  scriptureAppliedBlocks: [],
+  noteContentLastSelection: null,
   authInlineMode: 'register',
   authInlineSubmitting: false,
   authVerificationMode: '',
@@ -2490,6 +2489,13 @@ function getOperationManualHtml() {
               <li>點「預覽文章」確認閱讀效果。</li>
               <li>還沒寫完點「儲存草稿」；完成後點「儲存為正式札記」。</li>
             </ol>
+            <h3>抓取經文怎麼填</h3>
+            <ul>
+              <li>多處經文請用分號分隔，例如「希伯來4:11；詩篇106:32-33」。</li>
+              <li>章節可以寫成「詩篇90:9-10」，也可以寫成「詩篇90篇9-10」或「詩篇90章9-10」。</li>
+              <li>點「抓取經文」後，經文會加入目前札記內容，不會覆蓋原本已經寫好的內容。</li>
+              <li>如果想把經文移到別的位置，可以在「我的札記」中手動剪下、貼上或調整段落順序。</li>
+            </ul>
             <h3>小工具怎麼使用</h3>
             <p>小工具可以幫助你整理札記段落，讓重點、經文、禱告和分段更清楚。</p>
             <ol>
@@ -5475,6 +5481,9 @@ function bindEvents() {
   els.deleteBookBtn.addEventListener('click', () => deleteBook().catch(handleError));
   els.noteSearch.addEventListener('input', () => { state.noteSearch = els.noteSearch.value.trim().toLowerCase(); renderNotes(); });
   els.noteScripture.addEventListener('input', handleScriptureInput);
+  ['focus', 'click', 'keyup', 'select', 'input'].forEach(eventName => {
+    els.noteContent.addEventListener(eventName, rememberNoteContentSelection);
+  });
   els.fetchScriptureBtn.addEventListener('click', () => {
     clearTimeout(state.scriptureFetchTimer);
     fetchAndRenderScriptures({ force: true, syncToContent: true }).catch(handleError);
@@ -8768,6 +8777,13 @@ function normalizeScriptureReferences(raw = '') {
   return splitScriptureReferences(raw);
 }
 
+function rememberNoteContentSelection() {
+  if (!els.noteContent) return;
+  const start = Number.isInteger(els.noteContent.selectionStart) ? els.noteContent.selectionStart : els.noteContent.value.length;
+  const end = Number.isInteger(els.noteContent.selectionEnd) ? els.noteContent.selectionEnd : start;
+  state.noteContentLastSelection = { start, end };
+}
+
 function handleScriptureInput() {
   clearTimeout(state.scriptureFetchTimer);
   const refs = normalizeScriptureReferences(els.noteScripture.value);
@@ -8797,8 +8813,7 @@ function resetScripturePreview({ clearApplied = false } = {}) {
     state.scriptureAbortController.abort();
     state.scriptureAbortController = null;
   }
-  state.scriptureLastAppliedBlock = '';
-  if (clearApplied) state.scriptureAppliedBlocks = [];
+  if (clearApplied) state.noteContentLastSelection = null;
   els.scripturePreview.innerHTML = '';
   els.scripturePreview.classList.add('hidden');
   delete els.scripturePreview.dataset.serialized;
@@ -8911,7 +8926,12 @@ async function fetchScriptureReference(reference, signal) {
   if (!parsed) throw createScriptureFetchError('invalidReference', reference);
   const queryReference = parsed.normalized;
   const cacheKey = queryReference;
-  if (state.scriptureCache.has(cacheKey)) return state.scriptureCache.get(cacheKey);
+  if (state.scriptureCache.has(cacheKey)) {
+    return {
+      ...state.scriptureCache.get(cacheKey),
+      query: reference,
+    };
+  }
   throwIfScriptureFetchAborted(signal);
   const entries = await loadScriptureBibleEntries(reference);
   throwIfScriptureFetchAborted(signal);
@@ -8988,55 +9008,45 @@ function buildScriptureBlock(items) {
   return items.map(item => `${item.query}\n${item.text}`).join('\n\n');
 }
 
-function removeKnownScriptureBlocksFromTop(content = '') {
-  let next = String(content || '').trimStart();
-  const knownBlocks = [...new Set([
-    ...(Array.isArray(state.scriptureAppliedBlocks) ? state.scriptureAppliedBlocks : []),
-    state.scriptureLastAppliedBlock,
-  ].filter(Boolean))].sort((a, b) => b.length - a.length);
+function getScriptureInsertionIndex(contentLength = 0) {
+  const selection = state.noteContentLastSelection;
+  if (!selection || !Number.isInteger(selection.start)) return contentLength;
+  return Math.max(0, Math.min(contentLength, selection.start));
+}
 
-  let removed = false;
-  do {
-    removed = false;
-    for (const block of knownBlocks) {
-      const withSpacing = `${block}\n\n`;
-      if (next.startsWith(withSpacing)) {
-        next = next.slice(withSpacing.length).trimStart();
-        removed = true;
-        break;
-      }
-      if (next === block) {
-        next = '';
-        removed = true;
-        break;
-      }
-    }
-  } while (removed);
+function insertScriptureBlockIntoContent(content = '', scriptureBlock = '', index = 0) {
+  const source = String(content || '');
+  const block = String(scriptureBlock || '').trim();
+  if (!block) return { value: source, cursor: source.length };
+  if (!source.trim()) return { value: block, cursor: block.length };
 
-  return next;
+  const safeIndex = Math.max(0, Math.min(source.length, index));
+  const before = source.slice(0, safeIndex);
+  const after = source.slice(safeIndex);
+  const prefix = before
+    ? (before.endsWith('\n\n') ? '' : (before.endsWith('\n') ? '\n' : '\n\n'))
+    : '';
+  const suffix = after
+    ? (after.startsWith('\n\n') ? '' : (after.startsWith('\n') ? '\n' : '\n\n'))
+    : '';
+  const cursor = before.length + prefix.length + block.length;
+  return {
+    value: `${before}${prefix}${block}${suffix}${after}`,
+    cursor,
+  };
 }
 
 function applyScriptureBlockToNoteContent(items) {
-  let content = stripScriptureMarkers(els.noteContent.value || '');
   const scriptureBlock = buildScriptureBlock(items);
-  const oldMarkedBlockPattern = /【經文引用開始】[\s\S]*?【經文引用結束】\n*/;
-  content = content.replace(oldMarkedBlockPattern, '').trimStart();
-  content = removeKnownScriptureBlocksFromTop(content);
-
-  const sameBlockWithSpacing = `${scriptureBlock}\n\n`;
-  if (content.startsWith(sameBlockWithSpacing)) {
-    content = content.slice(sameBlockWithSpacing.length).trimStart();
-  } else if (content === scriptureBlock) {
-    content = '';
+  const content = els.noteContent.value || '';
+  const insertionIndex = getScriptureInsertionIndex(content.length);
+  const next = insertScriptureBlockIntoContent(content, scriptureBlock, insertionIndex);
+  els.noteContent.value = next.value;
+  state.noteContentLastSelection = { start: next.cursor, end: next.cursor };
+  els.noteContent.focus();
+  if (typeof els.noteContent.setSelectionRange === 'function') {
+    els.noteContent.setSelectionRange(next.cursor, next.cursor);
   }
-
-  const next = content ? `${scriptureBlock}\n\n${content}` : scriptureBlock;
-  state.scriptureLastAppliedBlock = scriptureBlock;
-  state.scriptureAppliedBlocks = [
-    scriptureBlock,
-    ...(Array.isArray(state.scriptureAppliedBlocks) ? state.scriptureAppliedBlocks : []).filter(block => block && block !== scriptureBlock),
-  ].slice(0, 12);
-  els.noteContent.value = next;
   renderNotePreview();
   scheduleCurrentNoteDraftSave();
 }
@@ -10058,8 +10068,7 @@ function restoreCurrentNoteDraft() {
     ? draft.prayerVisibilityTouched
     : !!draftPrayerText || getDraftShowPrayer(draft);
   els.noteContent.value = draft.content || '';
-  state.scriptureAppliedBlocks = [];
-  state.scriptureLastAppliedBlock = '';
+  state.noteContentLastSelection = null;
   if (draft.editingNoteId) els.deleteNoteBtn.classList.remove('hidden');
   else els.deleteNoteBtn.classList.add('hidden');
   if (draft.scripture) {
@@ -10115,8 +10124,7 @@ function populateNoteForm(noteId, options = {}) {
   if (els.notePrayer) els.notePrayer.value = prayerText;
   if (els.noteShowPrayer) els.noteShowPrayer.checked = showPrayer;
   state.notePrayerVisibilityTouched = !!prayerText || showPrayer;
-  state.scriptureAppliedBlocks = [];
-  state.scriptureLastAppliedBlock = '';
+  state.noteContentLastSelection = null;
   els.noteContent.value = stripScriptureMarkers(note.content || '');
   els.deleteNoteBtn.classList.remove('hidden');
   if (note.scripture_reference) {

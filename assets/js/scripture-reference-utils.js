@@ -80,6 +80,7 @@ function normalizeReferenceInput(value = '') {
   return normalizeFullwidthDigits(value)
     .replace(/[：]/g, ':')
     .replace(/[–—~～－]/g, '-')
+    .replace(/(\d+)\s*[篇章]\s*(\d+)/g, '$1:$2')
     .replace(/[\u00a0\u3000]/g, ' ')
     .replace(/\s*([:;,\-])\s*/g, '$1')
     .replace(/\s+/g, ' ')
