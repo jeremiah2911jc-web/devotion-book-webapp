@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.1.10 - 2026/06/29
+
+正式站：https://www.devotionbook.com.tw
+
+Production commit hash：完成 production deployment 後回報。
+
+### 主要更新
+
+- 修正手機版帳號資訊卡片在小螢幕或較大字體下，slogan 與「帳號設定 / 登出」按鈕可能重疊的問題。
+- 僅調整 CSS / RWD layout，未變更 Auth、Supabase、資料結構或使用流程。
+
 ## v1.1.9 - 2026/06/07
 
 正式站：https://www.devotionbook.com.tw

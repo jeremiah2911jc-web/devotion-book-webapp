@@ -8799,8 +8799,8 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
 @media (max-width: 720px) {
   .account-summary-card {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-rows: auto auto;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
     align-items: center;
     column-gap: 10px;
     row-gap: 8px;
@@ -8813,7 +8813,7 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
 
   .account-summary-card .account-avatar {
     grid-column: 1;
-    grid-row: 1 / span 2;
+    grid-row: 1 / span 3;
     align-self: start;
     width: 56px;
     height: 56px;
@@ -8821,9 +8821,10 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
   }
 
   .account-summary-copy strong {
-    grid-column: 2 / 4;
+    grid-column: 2;
     grid-row: 1;
     align-self: end;
+    min-width: 0;
   }
 
   .account-summary-copy p {
@@ -8832,13 +8833,15 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
     align-self: center;
     font-size: 11px;
     line-height: 1.2;
-    white-space: nowrap;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .account-summary-actions {
-    grid-column: 3;
-    grid-row: 2;
-    width: auto;
+    grid-column: 2;
+    grid-row: 3;
+    width: 100%;
     justify-content: flex-end;
     align-self: center;
   }
