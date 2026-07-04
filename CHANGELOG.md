@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.1.11 - 2026/07/04
+
+正式站：https://www.devotionbook.com.tw
+
+Production commit hash：完成 production deployment 後回報。
+
+### 主要更新
+
+- 在「目前選稿編排」視窗新增「整理說明」編輯區。
+- 使用者可在編排頁補寫或修改整理說明，並於「儲存編排」時一併保存。
+- 修正新建編排未填整理說明後，進入編排流程無法補寫的使用流程缺口。
+- 未變更 Auth、Supabase schema、EPUB 匯出邏輯、聖經資料或讀經表。
+
 ## v1.1.10 - 2026/06/29
 
 正式站：https://www.devotionbook.com.tw

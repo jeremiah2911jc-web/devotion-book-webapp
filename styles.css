@@ -1238,7 +1238,7 @@ input:focus, textarea:focus, select:focus {
   min-height: 0;
   overflow: hidden;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   align-content: start;
   gap: 12px;
   padding-right: 4px;
@@ -1921,6 +1921,31 @@ input:focus, textarea:focus, select:focus {
   line-height: 1.65;
 }
 .empty-note-preview { color: var(--muted); border-style: dashed; background: rgba(255,255,255,0.45); }
+.book-draft-description-editor {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(191,211,208,0.78);
+  border-radius: 14px;
+  background: rgba(255,255,255,0.72);
+}
+.book-draft-description-label {
+  display: grid;
+  gap: 3px;
+  color: #31545a;
+  font-weight: 800;
+}
+.book-draft-description-label small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+.book-draft-description-editor textarea {
+  min-height: 82px;
+  resize: vertical;
+}
 .toc-preview {
   display: grid;
   gap: 10px;
@@ -8703,6 +8728,10 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
     min-height: 0;
     overflow: visible;
     padding-right: 0;
+  }
+
+  .book-draft-modal-shell.is-open .book-draft-description-editor {
+    margin-bottom: 12px;
   }
 
   .book-draft-modal-shell.is-open .book-draft-chapter-heading {

@@ -20,8 +20,8 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.1.10';
-const APP_RELEASE_DATE = '2026/06/29';
+const APP_VERSION = '1.1.11';
+const APP_RELEASE_DATE = '2026/07/04';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
 const DEFAULT_BIBLE_ASSET_VERSION = '2026.06.07-punctuation-v1.1.8';
@@ -1235,6 +1235,7 @@ const state = {
   bookArrangementDirty: false,
   bookArrangementSaving: false,
   bookArrangementDrafts: {},
+  bookDescriptionDrafts: {},
   bookChapterDrag: null,
   bookProjectDetailIds: new Set(),
   bookProjectDetailPromises: new Map(),
@@ -6051,6 +6052,9 @@ async function loadAllData({ silent = false, syncReason = '', reason = '', minIn
     Object.keys(state.bookArrangementDrafts).forEach(bookId => {
       if (!validBookIds.has(bookId)) delete state.bookArrangementDrafts[bookId];
     });
+    Object.keys(state.bookDescriptionDrafts).forEach(bookId => {
+      if (!validBookIds.has(bookId)) delete state.bookDescriptionDrafts[bookId];
+    });
     syncBookArrangementState(state.selectedBookId || '');
     await refreshProfileAvatar();
     refreshUi();
@@ -10525,8 +10529,21 @@ function hasBookArrangementDraft(bookId = '') {
   return Array.isArray(state.bookArrangementDrafts[bookId]);
 }
 
+function getBookDescriptionDraft(bookId = '') {
+  if (!bookId || !Object.prototype.hasOwnProperty.call(state.bookDescriptionDrafts, bookId)) return null;
+  return String(state.bookDescriptionDrafts[bookId] || '');
+}
+
+function hasBookDescriptionDraft(bookId = '') {
+  return getBookDescriptionDraft(bookId) !== null;
+}
+
+function hasBookDraftUnsavedChanges(bookId = '') {
+  return hasBookArrangementDraft(bookId) || hasBookDescriptionDraft(bookId);
+}
+
 function syncBookArrangementState(bookId = state.selectedBookId) {
-  state.bookArrangementDirty = !!(bookId && hasBookArrangementDraft(bookId));
+  state.bookArrangementDirty = !!(bookId && hasBookDraftUnsavedChanges(bookId));
 }
 
 function getBookDisplayChapters(book) {
@@ -10537,7 +10554,14 @@ function getBookDisplayChapters(book) {
 function getSelectedBookForDisplay() {
   const book = getSelectedBook();
   if (!book) return null;
-  return { ...book, chapters: getBookDisplayChapters(book) };
+  const descriptionDraft = getBookDescriptionDraft(book.id);
+  return {
+    ...book,
+    description: descriptionDraft === null
+      ? book.description
+      : buildBookDraftDescription(descriptionDraft, getBookDraftSettings(book)),
+    chapters: getBookDisplayChapters(book),
+  };
 }
 
 function setBookArrangementDraft(bookId, chapters) {
@@ -10552,9 +10576,37 @@ function clearBookArrangementDraft(bookId) {
   syncBookArrangementState(bookId);
 }
 
+function setBookDescriptionDraft(bookId, description) {
+  if (!bookId) return;
+  const book = state.books.find(item => item.id === bookId);
+  const currentDescription = getBookDraftDescription(book);
+  const nextDescription = String(description || '');
+  if (nextDescription.trim() === currentDescription) {
+    delete state.bookDescriptionDrafts[bookId];
+  } else {
+    state.bookDescriptionDrafts[bookId] = nextDescription;
+  }
+  syncBookArrangementState(bookId);
+}
+
+function clearBookDescriptionDraft(bookId) {
+  if (!bookId) return;
+  delete state.bookDescriptionDrafts[bookId];
+  syncBookArrangementState(bookId);
+}
+
+function getBookArrangementStatusCopy(bookId = getActiveBookDraftId()) {
+  const hasArrangementChanges = hasBookArrangementDraft(bookId);
+  const hasDescriptionChanges = hasBookDescriptionDraft(bookId);
+  if (hasArrangementChanges && hasDescriptionChanges) return '整理說明與章節順序已調整，尚未儲存。';
+  if (hasDescriptionChanges) return '整理說明已調整，尚未儲存。';
+  return '章節順序已調整，尚未儲存。';
+}
+
 function ensureBookArrangementControls() {
   const actionRow = els.exportEpubBtn?.parentElement;
   if (!actionRow || !actionRow.parentElement) return;
+  const activeBookId = getActiveBookDraftId();
   let saveBtn = document.getElementById('save-book-arrangement-btn');
   if (!saveBtn) {
     saveBtn = document.createElement('button');
@@ -10573,7 +10625,7 @@ function ensureBookArrangementControls() {
   }
   saveBtn.disabled = !state.bookArrangementDirty || state.bookArrangementSaving;
   saveBtn.textContent = state.bookArrangementSaving ? '儲存中...' : '儲存編排';
-  statusText.textContent = state.bookArrangementSaving ? '正在儲存章節編排...' : '章節順序已調整，尚未儲存。';
+  statusText.textContent = state.bookArrangementSaving ? '正在儲存編排...' : getBookArrangementStatusCopy(activeBookId);
   statusText.classList.toggle('hidden', !(state.bookArrangementDirty || state.bookArrangementSaving));
   const toolbar = document.getElementById('book-draft-modal-right-footer');
   const toolbarActions = document.getElementById('book-draft-toolbar-actions');
@@ -10581,6 +10633,41 @@ function ensureBookArrangementControls() {
     toolbar.insertBefore(statusText, toolbarActions);
     toolbarActions.prepend(saveBtn);
   }
+}
+
+function renderBookDraftDescriptionEditor(book) {
+  const rightBody = document.getElementById('book-draft-modal-right-body');
+  const chapterHeading = document.querySelector('#view-books .book-draft-chapter-heading');
+  if (!rightBody || !chapterHeading || !book) return;
+  let editor = document.getElementById('book-draft-description-editor');
+  if (!editor) {
+    editor = document.createElement('section');
+    editor.id = 'book-draft-description-editor';
+    editor.className = 'book-draft-description-editor';
+    editor.dataset.testid = 'book-draft-description-editor';
+  }
+  if (editor.parentElement !== rightBody || editor.nextElementSibling !== chapterHeading) {
+    rightBody.insertBefore(editor, chapterHeading);
+  }
+  const pendingDescription = getBookDescriptionDraft(book.id);
+  const editorValue = pendingDescription === null ? getBookDraftDescription(book) : pendingDescription;
+  editor.innerHTML = `
+    <label class="book-draft-description-label" for="book-draft-description-input">
+      <span>整理說明</span>
+      <small>用來說明這次選稿的主題與編排方向。</small>
+    </label>
+    <textarea
+      id="book-draft-description-input"
+      data-testid="book-draft-description-input"
+      rows="3"
+      placeholder="請簡短說明這本書的主題、用途或編排方向。"
+      ${state.bookArrangementSaving ? 'disabled' : ''}
+    >${escapeHtml(editorValue)}</textarea>
+  `;
+  editor.querySelector('#book-draft-description-input')?.addEventListener('input', event => {
+    setBookDescriptionDraft(book.id, event.target.value);
+    ensureBookArrangementControls();
+  });
 }
 
 function renderSelectedBookPanel() {
@@ -10605,7 +10692,7 @@ function renderSelectedBookPanel() {
   );
   document.getElementById('modal-start-current-book-btn')?.classList.toggle('hidden', isCurrentDraft);
   ensureBookArrangementControls();
-  if (els.addChapterBtn) els.addChapterBtn.disabled = state.bookArrangementDirty || state.bookArrangementSaving;
+  if (els.addChapterBtn) els.addChapterBtn.disabled = hasBookArrangementDraft(book.id) || state.bookArrangementSaving;
   updateChapterSourceOptions();
   const notes = getBookDraftSourceNotes(book);
   const draftStatus = state.bookArrangementSaving
@@ -10631,14 +10718,16 @@ function renderSelectedBookPanel() {
   renderPublishingReadinessPanel(book);
   renderPublishingReadinessPanel(book, { targetId: 'publishing-readiness-mobile-panel' });
   renderBookDraftWorkflowGuide(book);
+  renderBookDraftDescriptionEditor(book);
   renderChaptersList(book);
   renderExportSuccessActions(state.latestExportedBook?.sourceBookId === book.id ? state.latestExportedBook : null);
 }
 
 function renderChaptersList(book) {
   const chapters = book.chapters || [];
+  const hasUnsavedArrangement = hasBookArrangementDraft(book.id);
   const actionDisabled = state.bookArrangementSaving ? 'disabled' : '';
-  const fieldDisabled = state.bookArrangementDirty || state.bookArrangementSaving ? 'disabled' : '';
+  const fieldDisabled = hasUnsavedArrangement || state.bookArrangementSaving ? 'disabled' : '';
   if (state.bookProjectDetailPromises.has(book.id)) {
     els.chaptersList.className = 'list-stack book-draft-chapters-list empty-state';
     els.chaptersList.textContent = '正在載入完整章節...';
@@ -10771,14 +10860,30 @@ async function saveBookArrangement() {
   let book = getSelectedBook();
   if (!book) return;
   book = await loadBookProjectDetail(book.id) || book;
-  if (!hasBookArrangementDraft(book.id)) return;
-  const draftChapters = getBookArrangementDraft(book.id) || [];
+  const hasArrangementChanges = hasBookArrangementDraft(book.id);
+  const hasDescriptionChanges = hasBookDescriptionDraft(book.id);
+  if (!hasArrangementChanges && !hasDescriptionChanges) return;
+  const changes = {};
+  if (hasArrangementChanges) {
+    const draftChapters = getBookArrangementDraft(book.id) || [];
+    changes.chapters = normalizeBookChapters(draftChapters);
+  }
+  if (hasDescriptionChanges) {
+    const descriptionDraft = getBookDescriptionDraft(book.id) || '';
+    changes.description = buildBookDraftDescription(descriptionDraft.trim(), getBookDraftSettings(book));
+  }
   state.bookArrangementSaving = true;
   refreshUi();
   try {
-    await persistBookChanges(book.id, { chapters: normalizeBookChapters(draftChapters) });
-    clearBookArrangementDraft(book.id);
-    showToast('章節編排已儲存');
+    await persistBookChanges(book.id, changes);
+    if (hasArrangementChanges) clearBookArrangementDraft(book.id);
+    if (hasDescriptionChanges) clearBookDescriptionDraft(book.id);
+    const savedMessage = hasArrangementChanges && hasDescriptionChanges
+      ? '整理說明與章節編排已儲存'
+      : hasDescriptionChanges
+        ? '整理說明已儲存'
+        : '章節編排已儲存';
+    showToast(savedMessage);
   } finally {
     state.bookArrangementSaving = false;
     refreshUi();
