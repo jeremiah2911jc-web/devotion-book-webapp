@@ -20,7 +20,7 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.1.12';
+const APP_VERSION = '1.1.13';
 const APP_RELEASE_DATE = '2026/07/07';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
@@ -3921,25 +3921,55 @@ const JOURNAL_INLINE_COLOR_MARKS = Object.freeze({
 });
 const JOURNAL_INLINE_COLOR_NAMES = Object.freeze(Object.keys(JOURNAL_INLINE_COLOR_MARKS));
 const JOURNAL_INLINE_COLOR_NAME_PATTERN = JOURNAL_INLINE_COLOR_NAMES.join('|');
-const JOURNAL_INLINE_COLOR_PAIR_RE = new RegExp(`\\{(${JOURNAL_INLINE_COLOR_NAME_PATTERN})\\}([\\s\\S]*?)\\{\\/\\1\\}`, 'g');
-const JOURNAL_INLINE_COLOR_TAG_RE = new RegExp(`\\{\\/?(?:${JOURNAL_INLINE_COLOR_NAME_PATTERN})\\}`, 'g');
+const JOURNAL_INLINE_COLOR_TAG_RE = new RegExp(`\\{(\\/?)(${JOURNAL_INLINE_COLOR_NAME_PATTERN})\\}`, 'g');
+const JOURNAL_INLINE_COLOR_TAG_TEST_RE = new RegExp(`\\{\\/?(?:${JOURNAL_INLINE_COLOR_NAME_PATTERN})\\}`);
+
+function hasJournalInlineMarks(text = '') {
+  return JOURNAL_INLINE_COLOR_TAG_TEST_RE.test(String(text || ''));
+}
 
 function stripJournalInlineMarks(text = '') {
   return String(text || '').replace(JOURNAL_INLINE_COLOR_TAG_RE, '');
 }
 
-function renderEscapedJournalInlineMarks(escapedText = '') {
-  return String(escapedText || '')
-    .replace(JOURNAL_INLINE_COLOR_PAIR_RE, (_, colorName, content) => {
-      const mark = JOURNAL_INLINE_COLOR_MARKS[colorName];
-      if (!mark) return content;
-      return `<span class="journal-inline-color ${mark.colorClass} ${mark.legacyClass}">${content}</span>`;
-    })
-    .replace(JOURNAL_INLINE_COLOR_TAG_RE, '');
+function getActiveJournalInlineColor(colorStack = []) {
+  return colorStack.length ? colorStack[colorStack.length - 1] : '';
 }
 
-function renderJournalContentWithInlineMarks(text = '') {
-  return renderEscapedJournalInlineMarks(escapeHtml(String(text || '')));
+function closeJournalInlineColor(colorStack, colorName = '') {
+  const index = colorStack.lastIndexOf(colorName);
+  if (index >= 0) colorStack.splice(index, 1);
+}
+
+function renderJournalInlineTextSegment(text = '', colorName = '') {
+  if (!text) return '';
+  const mark = JOURNAL_INLINE_COLOR_MARKS[colorName];
+  if (!mark) return text;
+  return `<span class="journal-inline-color ${mark.colorClass} ${mark.legacyClass}">${text}</span>`;
+}
+
+function renderEscapedJournalInlineMarks(escapedText = '', colorStack = []) {
+  const source = String(escapedText || '');
+  const activeColorStack = Array.isArray(colorStack) ? colorStack : [];
+  let output = '';
+  let cursor = 0;
+  JOURNAL_INLINE_COLOR_TAG_RE.lastIndex = 0;
+
+  for (let match = JOURNAL_INLINE_COLOR_TAG_RE.exec(source); match; match = JOURNAL_INLINE_COLOR_TAG_RE.exec(source)) {
+    output += renderJournalInlineTextSegment(source.slice(cursor, match.index), getActiveJournalInlineColor(activeColorStack));
+    const isClosingTag = match[1] === '/';
+    const colorName = match[2];
+    if (isClosingTag) closeJournalInlineColor(activeColorStack, colorName);
+    else activeColorStack.push(colorName);
+    cursor = JOURNAL_INLINE_COLOR_TAG_RE.lastIndex;
+  }
+
+  output += renderJournalInlineTextSegment(source.slice(cursor), getActiveJournalInlineColor(activeColorStack));
+  return output;
+}
+
+function renderJournalContentWithInlineMarks(text = '', colorStack = []) {
+  return renderEscapedJournalInlineMarks(escapeHtml(String(text || '')), colorStack);
 }
 
 function isSafeHtmlUrl(value = '') {
@@ -9637,8 +9667,8 @@ function updateMarkdownSyntaxHint() {
   els.markdownSyntaxHint.classList.toggle('hidden', !message);
 }
 
-function renderMarkdownInline(text = '') {
-  const marked = renderJournalContentWithInlineMarks(text);
+function renderMarkdownInline(text = '', colorStack = []) {
+  const marked = renderJournalContentWithInlineMarks(text, colorStack);
   return marked.replace(/\*\*([^*\n][^*\n]*?)\*\*/g, '<strong>$1</strong>');
 }
 
@@ -9655,6 +9685,7 @@ function renderMarkdownContent(text = '') {
 
   const lines = normalized.split('\n');
   const blocks = [];
+  const inlineColorStack = [];
   let index = 0;
 
   while (index < lines.length) {
@@ -9673,7 +9704,7 @@ function renderMarkdownContent(text = '') {
     }
 
     if (/^##(?!#)\s*/.test(trimmed)) {
-      blocks.push(`<h2>${renderMarkdownInline(trimmed.replace(/^##(?!#)\s*/, '').trim())}</h2>`);
+      blocks.push(`<h2>${renderMarkdownInline(trimmed.replace(/^##(?!#)\s*/, '').trim(), inlineColorStack)}</h2>`);
       index += 1;
       continue;
     }
@@ -9693,7 +9724,7 @@ function renderMarkdownContent(text = '') {
         quoteLines.push(currentTrimmed.replace(/^>\s?/, ''));
         index += 1;
       }
-      blocks.push(`<blockquote>${renderMarkdownInline(quoteLines.join('\n')).replaceAll('\n', '<br/>')}</blockquote>`);
+      blocks.push(`<blockquote>${renderMarkdownInline(quoteLines.join('\n'), inlineColorStack).replaceAll('\n', '<br/>')}</blockquote>`);
       continue;
     }
 
@@ -9703,7 +9734,7 @@ function renderMarkdownContent(text = '') {
         const currentLine = lines[index];
         const currentTrimmed = currentLine.trim();
         if (!currentTrimmed || !/^-\s+/.test(currentTrimmed)) break;
-        items.push(`<li>${renderMarkdownInline(currentTrimmed.replace(/^-\s+/, '').trim())}</li>`);
+        items.push(`<li>${renderMarkdownInline(currentTrimmed.replace(/^-\s+/, '').trim(), inlineColorStack)}</li>`);
         index += 1;
       }
       blocks.push(`<ul>${items.join('')}</ul>`);
@@ -9724,7 +9755,7 @@ function renderMarkdownContent(text = '') {
       paragraphLines.push(currentLine.trimEnd());
       index += 1;
     }
-    blocks.push(`<p>${renderMarkdownInline(paragraphLines.join('\n')).replaceAll('\n', '<br/>')}</p>`);
+    blocks.push(`<p>${renderMarkdownInline(paragraphLines.join('\n'), inlineColorStack).replaceAll('\n', '<br/>')}</p>`);
   }
 
   return blocks.join('');
@@ -9868,7 +9899,9 @@ function applyMarkdownColorTag(colorName, placeholderText) {
   const normalizedColor = String(colorName || '').trim().toLowerCase();
   if (!JOURNAL_INLINE_COLOR_MARKS[normalizedColor]) return;
   const { hasSelection, selectedText } = getNoteContentSelection();
-  const content = hasSelection ? selectedText : placeholderText;
+  const content = hasSelection && hasJournalInlineMarks(selectedText)
+    ? stripJournalInlineMarks(selectedText)
+    : (hasSelection ? selectedText : placeholderText);
   const replacement = `{${normalizedColor}}${content}{/${normalizedColor}}`;
   replaceNoteContentSelection(replacement, hasSelection
     ? {}
