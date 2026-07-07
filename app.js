@@ -20,8 +20,8 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.1.11';
-const APP_RELEASE_DATE = '2026/07/04';
+const APP_VERSION = '1.1.12';
+const APP_RELEASE_DATE = '2026/07/07';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
 const DEFAULT_BIBLE_ASSET_VERSION = '2026.06.07-punctuation-v1.1.8';
@@ -3901,6 +3901,47 @@ function escapeHtml(input = '') {
     .replaceAll("'", '&#39;');
 }
 
+const JOURNAL_INLINE_COLOR_MARKS = Object.freeze({
+  red: {
+    legacyClass: 'text-red',
+    colorClass: 'journal-inline-color-red',
+  },
+  blue: {
+    legacyClass: 'text-blue',
+    colorClass: 'journal-inline-color-blue',
+  },
+  gold: {
+    legacyClass: 'text-gold',
+    colorClass: 'journal-inline-color-gold',
+  },
+  purple: {
+    legacyClass: 'text-purple',
+    colorClass: 'journal-inline-color-purple',
+  },
+});
+const JOURNAL_INLINE_COLOR_NAMES = Object.freeze(Object.keys(JOURNAL_INLINE_COLOR_MARKS));
+const JOURNAL_INLINE_COLOR_NAME_PATTERN = JOURNAL_INLINE_COLOR_NAMES.join('|');
+const JOURNAL_INLINE_COLOR_PAIR_RE = new RegExp(`\\{(${JOURNAL_INLINE_COLOR_NAME_PATTERN})\\}([\\s\\S]*?)\\{\\/\\1\\}`, 'g');
+const JOURNAL_INLINE_COLOR_TAG_RE = new RegExp(`\\{\\/?(?:${JOURNAL_INLINE_COLOR_NAME_PATTERN})\\}`, 'g');
+
+function stripJournalInlineMarks(text = '') {
+  return String(text || '').replace(JOURNAL_INLINE_COLOR_TAG_RE, '');
+}
+
+function renderEscapedJournalInlineMarks(escapedText = '') {
+  return String(escapedText || '')
+    .replace(JOURNAL_INLINE_COLOR_PAIR_RE, (_, colorName, content) => {
+      const mark = JOURNAL_INLINE_COLOR_MARKS[colorName];
+      if (!mark) return content;
+      return `<span class="journal-inline-color ${mark.colorClass} ${mark.legacyClass}">${content}</span>`;
+    })
+    .replace(JOURNAL_INLINE_COLOR_TAG_RE, '');
+}
+
+function renderJournalContentWithInlineMarks(text = '') {
+  return renderEscapedJournalInlineMarks(escapeHtml(String(text || '')));
+}
+
 function isSafeHtmlUrl(value = '') {
   const trimmed = String(value || '').trim();
   if (!trimmed) return false;
@@ -6249,7 +6290,7 @@ function buildNotePersistencePayload(note = {}) {
 
 function getRenderableNoteSummary(note = {}) {
   const normalized = normalizeNoteRecord(note);
-  const summary = sanitizeDisplayText(normalized.summary, '');
+  const summary = sanitizeDisplayText(stripJournalInlineMarks(normalized.summary), '');
   return normalized.show_summary && summary ? summary : '';
 }
 
@@ -6261,7 +6302,7 @@ function getRenderableNotePrayer(note = {}) {
 
 function getNotePreviewText(note = {}, maxLength = 140) {
   const summary = getRenderableNoteSummary(note);
-  const fallback = sanitizeDisplayText(stripScriptureMarkers(note.content || ''), '');
+  const fallback = sanitizeDisplayText(stripJournalInlineMarks(stripScriptureMarkers(note.content || '')), '');
   return (summary || fallback).slice(0, maxLength);
 }
 
@@ -9181,7 +9222,11 @@ function getNoteReaderSearchHaystack(note, scope = state.noteReaderSearchScope) 
   const fields = {
     title: [note.title],
     scripture: [note.scripture_reference],
-    content: [note.summary, stripScriptureMarkers(note.content || ''), resolveNotePrayerText(note)],
+    content: [
+      stripJournalInlineMarks(note.summary),
+      stripJournalInlineMarks(stripScriptureMarkers(note.content || '')),
+      stripJournalInlineMarks(resolveNotePrayerText(note)),
+    ],
     category: [note.category],
     tags: [getNoteTagList(note).join(' ')],
   };
@@ -9398,7 +9443,7 @@ function renderNoteReaderSearchResults() {
 function renderNoteReaderReadingContent(note) {
   if (!els.noteReaderReadingContent) return;
   const title = getNoteDisplayTitle(note);
-  const visibleSummary = sanitizeDisplayText(getNoteVisibleSummary(note), '');
+  const visibleSummary = sanitizeDisplayText(stripJournalInlineMarks(getNoteVisibleSummary(note)), '');
   const prayer = resolveNotePrayerText(note);
   const content = stripScriptureMarkers(note.content || '');
   const contentBlocks = content
@@ -9539,6 +9584,7 @@ function renderNotePreview() {
   const content = els.noteContent?.value.trim();
   const prayer = els.notePrayer?.value.trim();
   const showPrayer = !!els.noteShowPrayer?.checked;
+  const visibleSummary = stripJournalInlineMarks(summary);
 
   const metaItems = [
     `<span>經文｜${escapeHtml(scripture || '尚未填寫經文')}</span>`,
@@ -9546,10 +9592,10 @@ function renderNotePreview() {
     `<span>標籤｜${tags.length ? tags.map(tag => `#${escapeHtml(tag)}`).join(' ') : '尚未設定標籤'}</span>`,
   ];
 
-  const summaryBlock = showSummary && summary ? `
+  const summaryBlock = showSummary && visibleSummary ? `
     <section class="note-preview-summary">
       <span class="note-preview-kicker">摘要</span>
-      <p>${escapeHtml(summary)}</p>
+      <p>${escapeHtml(visibleSummary)}</p>
     </section>
   ` : '';
 
@@ -9592,13 +9638,8 @@ function updateMarkdownSyntaxHint() {
 }
 
 function renderMarkdownInline(text = '') {
-  const escaped = escapeHtml(String(text || ''));
-  const colorized = escaped
-    .replace(/\{red\}([\s\S]*?)\{\/red\}/g, '<span class="text-red">$1</span>')
-    .replace(/\{blue\}([\s\S]*?)\{\/blue\}/g, '<span class="text-blue">$1</span>')
-    .replace(/\{gold\}([\s\S]*?)\{\/gold\}/g, '<span class="text-gold">$1</span>')
-    .replace(/\{purple\}([\s\S]*?)\{\/purple\}/g, '<span class="text-purple">$1</span>');
-  return colorized.replace(/\*\*([^*\n][^*\n]*?)\*\*/g, '<strong>$1</strong>');
+  const marked = renderJournalContentWithInlineMarks(text);
+  return marked.replace(/\*\*([^*\n][^*\n]*?)\*\*/g, '<strong>$1</strong>');
 }
 
 function renderMarkdownSpacer(blankLineCount = 0) {
@@ -9824,14 +9865,16 @@ function applyMarkdownDivider() {
 }
 
 function applyMarkdownColorTag(colorName, placeholderText) {
+  const normalizedColor = String(colorName || '').trim().toLowerCase();
+  if (!JOURNAL_INLINE_COLOR_MARKS[normalizedColor]) return;
   const { hasSelection, selectedText } = getNoteContentSelection();
   const content = hasSelection ? selectedText : placeholderText;
-  const replacement = `{${colorName}}${content}{/${colorName}}`;
+  const replacement = `{${normalizedColor}}${content}{/${normalizedColor}}`;
   replaceNoteContentSelection(replacement, hasSelection
     ? {}
     : {
-        selectionStartOffset: colorName.length + 2,
-        selectionEndOffset: replacement.length - (colorName.length + 3),
+        selectionStartOffset: normalizedColor.length + 2,
+        selectionEndOffset: replacement.length - (normalizedColor.length + 3),
       });
 }
 

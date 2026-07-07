@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.1.12 - 2026/07/07
+
+正式站：https://www.devotionbook.com.tw
+
+Production commit hash：完成 production deployment 後回報。
+
+### 主要更新
+
+- 修正札記閱讀頁與閱讀視窗中，色彩標記可能以 `{purple}` 等原始文字顯示的問題。
+- 閱讀完整內容時，支援編輯器既有色彩標記 red、blue、gold、purple 的安全渲染。
+- 最近編輯、搜尋摘要與預覽文字會移除色彩標記，避免顯示原始標記。
+- 未變更 Auth、Supabase schema、資料結構、聖經資料、讀經表或 EPUB 匯出邏輯。
+
 ## v1.1.11 - 2026/07/04
 
 正式站：https://www.devotionbook.com.tw

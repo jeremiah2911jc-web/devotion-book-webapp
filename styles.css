@@ -3030,28 +3030,48 @@ body.account-settings-open {
   font-weight: 700;
   color: #27494d;
 }
+.note-preview-content .journal-inline-color,
+.note-preview-prayer .journal-inline-color {
+  overflow-wrap: anywhere;
+}
 .note-preview-content .text-red,
 .note-preview-content .text-red strong,
+.note-preview-content .journal-inline-color-red,
+.note-preview-content .journal-inline-color-red strong,
 .note-preview-prayer .text-red,
-.note-preview-prayer .text-red strong {
+.note-preview-prayer .text-red strong,
+.note-preview-prayer .journal-inline-color-red,
+.note-preview-prayer .journal-inline-color-red strong {
   color: #8a3b3b !important;
 }
 .note-preview-content .text-blue,
 .note-preview-content .text-blue strong,
+.note-preview-content .journal-inline-color-blue,
+.note-preview-content .journal-inline-color-blue strong,
 .note-preview-prayer .text-blue,
-.note-preview-prayer .text-blue strong {
+.note-preview-prayer .text-blue strong,
+.note-preview-prayer .journal-inline-color-blue,
+.note-preview-prayer .journal-inline-color-blue strong {
   color: #355d8d !important;
 }
 .note-preview-content .text-gold,
 .note-preview-content .text-gold strong,
+.note-preview-content .journal-inline-color-gold,
+.note-preview-content .journal-inline-color-gold strong,
 .note-preview-prayer .text-gold,
-.note-preview-prayer .text-gold strong {
+.note-preview-prayer .text-gold strong,
+.note-preview-prayer .journal-inline-color-gold,
+.note-preview-prayer .journal-inline-color-gold strong {
   color: #8a6a1f !important;
 }
 .note-preview-content .text-purple,
 .note-preview-content .text-purple strong,
+.note-preview-content .journal-inline-color-purple,
+.note-preview-content .journal-inline-color-purple strong,
 .note-preview-prayer .text-purple,
-.note-preview-prayer .text-purple strong {
+.note-preview-prayer .text-purple strong,
+.note-preview-prayer .journal-inline-color-purple,
+.note-preview-prayer .journal-inline-color-purple strong {
   color: #6a4a82 !important;
 }
 .note-preview-empty,
