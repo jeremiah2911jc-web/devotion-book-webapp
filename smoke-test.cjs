@@ -21,6 +21,13 @@ const smokePort = Number(process.env.SMOKE_PORT || process.env.PORT || 4173);
 const baseUrl = process.env.SMOKE_BASE_URL || `http://127.0.0.1:${smokePort}/index.html`;
 const shouldAutoStartServer = !process.env.SMOKE_BASE_URL && process.env.SMOKE_AUTO_SERVER !== '0';
 const artifactsDir = path.join(process.cwd(), 'artifacts');
+const versionInfo = JSON.parse(fs.readFileSync(path.join(__dirname, 'version.json'), 'utf8').replace(/^\uFEFF/, ''));
+const expectedVersion = String(versionInfo.version || '').trim();
+const expectedReleaseDateMatch = String(versionInfo.releasedAt || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+const expectedReleaseDate = expectedReleaseDateMatch
+  ? `${expectedReleaseDateMatch[1]}/${expectedReleaseDateMatch[2]}/${expectedReleaseDateMatch[3]}`
+  : '';
+const expectedVersionDisplay = `版本：v${expectedVersion}｜更新：${expectedReleaseDate}`;
 fs.mkdirSync(artifactsDir, { recursive: true });
 
 const seedUser = {
@@ -448,6 +455,189 @@ async function verifyNoteReaderWorkspace(page, results) {
   }
   await assertNoHorizontalScroll(page, { label: 'smoke note reader modal mobile' });
   results.push('札記閱讀頁最近 5 篇、搜尋 modal、閱讀 modal、編輯流程正常');
+}
+
+function buildBulkSearchNotes(count) {
+  const baseTime = Date.parse('2026-07-21T00:00:00+08:00');
+  return Array.from({ length: count }, (_, index) => {
+    const noteNumber = index + 1;
+    const suffix = String(noteNumber).padStart(3, '0');
+    const timestamp = new Date(baseTime + (index * 60 * 1000)).toISOString();
+    return {
+      id: `bulk_search_note_${suffix}`,
+      user_id: seedUser.id,
+      title: `21 大量搜尋札記 ${suffix}`,
+      scripture_reference: `詩篇 21:${(noteNumber % 30) + 1}`,
+      category: '大量搜尋 QA',
+      tags: ['21', 'bulk-search'],
+      summary: `第 ${suffix} 篇大量搜尋回歸摘要，用來確認卡片依內容維持自然高度。`,
+      content: `21 大量搜尋回歸內容 ${suffix}。當搜尋結果超過 modal 高度時，結果區應垂直捲動，卡片文字不得被裁切成水平線。`,
+      created_at: timestamp,
+      updated_at: timestamp,
+    };
+  });
+}
+
+async function verifyBulkSearchScenario(browser, { count, width, height, label }) {
+  const notes = buildBulkSearchNotes(count);
+  const context = await browser.newContext({
+    viewport: { width, height },
+    userAgent: width <= 430
+      ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
+      : undefined,
+    deviceScaleFactor: width <= 430 ? 2 : 1,
+    isMobile: width <= 430,
+    hasTouch: width <= 768,
+  });
+  await installLocalUserState(context, { user: seedUser, notes });
+  const page = await context.newPage();
+  const consoleCollector = attachConsoleErrorCollector(page);
+
+  try {
+    await page.goto(baseUrl, { waitUntil: 'networkidle', timeout: 20000 });
+    await clickPrimaryViewNav(page, 'note-reader', 'mobile-nav-note-reader');
+    await expectVisible(page, '#view-note-reader.view.active', `${label} 札記閱讀頁已開啟`);
+    await page.fill('[data-testid="note-reader-search"]', '21');
+    await clickElement(page, '[data-testid="note-reader-search-submit"]');
+    await expectVisible(page, '[data-testid="note-reader-search-modal"]:not(.hidden)', `${label} 搜尋 modal 已開啟`);
+
+    if (count === 0) {
+      await expectVisible(page, '[data-testid="note-reader-search-results"].note-reader-empty-state', `${label} empty state 已顯示`);
+    } else {
+      await page.waitForFunction((expectedCount) => (
+        document.querySelectorAll('[data-testid="note-reader-search-result"]').length === expectedCount
+      ), count, { timeout: 10000 });
+    }
+
+    const geometry = await page.evaluate((expectedCount) => {
+      const modalCard = document.querySelector('.note-reader-search-modal-card');
+      const results = document.querySelector('[data-testid="note-reader-search-results"]');
+      const cards = [...document.querySelectorAll('[data-testid="note-reader-search-result"]')];
+      const cardHeight = (index) => cards[index]?.getBoundingClientRect().height || 0;
+      const cardClipped = (index) => {
+        const card = cards[index];
+        return card ? card.scrollHeight > card.clientHeight + 1 : false;
+      };
+      const middleIndex = cards.length ? Math.floor(cards.length / 2) : 0;
+      const styles = getComputedStyle(results);
+      const firstHeading = cards[0]?.querySelector('h3');
+      const headingStyles = firstHeading ? getComputedStyle(firstHeading) : null;
+      return {
+        expectedCount,
+        cardCount: cards.length,
+        firstHeight: cardHeight(0),
+        middleHeight: cardHeight(middleIndex),
+        lastHeight: cardHeight(cards.length - 1),
+        anyCardClipped: cards.some((_, index) => cardClipped(index)),
+        clientHeight: results.clientHeight,
+        scrollHeight: results.scrollHeight,
+        scrollable: results.scrollHeight > results.clientHeight,
+        resultsHorizontalOverflow: results.scrollWidth > results.clientWidth + 2,
+        modalHorizontalOverflow: modalCard.scrollWidth > modalCard.clientWidth + 2,
+        gridAutoRows: styles.gridAutoRows,
+        alignContent: styles.alignContent,
+        emptyState: results.classList.contains('note-reader-empty-state'),
+        firstTitle: firstHeading?.textContent?.trim() || '',
+        lastTitle: cards[cards.length - 1]?.querySelector('h3')?.textContent?.trim() || '',
+        firstTitleVisible: !!headingStyles
+          && headingStyles.visibility === 'visible'
+          && headingStyles.opacity !== '0'
+          && firstHeading.getBoundingClientRect().height > 0,
+      };
+    }, count);
+
+    if (geometry.cardCount !== count) {
+      throw new Error(`${label} 搜尋卡片數量錯誤：${JSON.stringify(geometry)}`);
+    }
+    if (count === 0) {
+      if (!geometry.emptyState) throw new Error(`${label} 未顯示既有 empty state`);
+    } else {
+      if (geometry.firstHeight < 80 || geometry.middleHeight < 80 || geometry.lastHeight < 80) {
+        throw new Error(`${label} 搜尋卡片高度遭壓縮：${JSON.stringify(geometry)}`);
+      }
+      if (geometry.anyCardClipped || !geometry.firstTitleVisible) {
+        throw new Error(`${label} 搜尋卡片內容遭裁切：${JSON.stringify(geometry)}`);
+      }
+      if (geometry.firstTitle !== `21 大量搜尋札記 ${String(count).padStart(3, '0')}`) {
+        throw new Error(`${label} 最近更新排序錯誤：${JSON.stringify(geometry)}`);
+      }
+      if (geometry.lastTitle !== '21 大量搜尋札記 001') {
+        throw new Error(`${label} 搜尋結果尾筆排序錯誤：${JSON.stringify(geometry)}`);
+      }
+    }
+    if (geometry.gridAutoRows !== 'max-content' || geometry.alignContent !== 'start') {
+      throw new Error(`${label} 搜尋 Grid row 規則未生效：${JSON.stringify(geometry)}`);
+    }
+    if (count >= 30 && !geometry.scrollable) {
+      throw new Error(`${label} 大量搜尋結果區不可捲動：${JSON.stringify(geometry)}`);
+    }
+    if (geometry.resultsHorizontalOverflow || geometry.modalHorizontalOverflow) {
+      throw new Error(`${label} 搜尋 modal 發生水平 overflow：${JSON.stringify(geometry)}`);
+    }
+
+    if (count >= 30) {
+      const scrollTop = await page.locator('[data-testid="note-reader-search-results"]').evaluate((element) => {
+        element.scrollTop = element.scrollHeight;
+        return element.scrollTop;
+      });
+      if (scrollTop <= 0) throw new Error(`${label} 搜尋結果區無法垂直捲動`);
+      await page.locator('[data-testid="note-reader-search-results"]').evaluate((element) => { element.scrollTop = 0; });
+    }
+
+    if (count > 0) {
+      await clickElement(page, '[data-testid="note-reader-search-result"]');
+      await expectVisible(page, '[data-testid="note-reader-reading-modal"]:not(.hidden)', `${label} 搜尋結果可開啟閱讀 modal`);
+      const readingText = await page.locator('[data-testid="note-reader-reading-content"]').textContent();
+      if (!readingText?.includes(geometry.firstTitle)) throw new Error(`${label} 閱讀 modal 未開啟正確札記`);
+      await clickElement(page, '[data-testid="note-reader-reading-close"]');
+      await page.waitForFunction(() => document.querySelector('[data-testid="note-reader-reading-modal"]')?.classList.contains('hidden'), { timeout: 10000 });
+      await clickElement(page, '[data-testid="note-reader-search-submit"]');
+      await expectVisible(page, '[data-testid="note-reader-search-modal"]:not(.hidden)', `${label} 搜尋 modal 可再次開啟`);
+    }
+
+    await clickElement(page, '[data-testid="note-reader-search-modal-clear"]');
+    const clearedValue = await page.inputValue('[data-testid="note-reader-search"]');
+    if (clearedValue !== '') throw new Error(`${label} 清除搜尋後關鍵字未清空`);
+    await clickElement(page, '[data-testid="note-reader-search-modal-close"]');
+    await assertNoHorizontalScroll(page, { label: `${label} note reader` });
+    assertNoConsoleErrors(consoleCollector);
+    if (consoleCollector.warnings.length) {
+      throw new Error(`${label} console warning：${consoleCollector.warnings.join(' | ')}`);
+    }
+    return geometry;
+  } finally {
+    await context.close();
+  }
+}
+
+async function verifyBulkSearchRegressions(browser, results) {
+  const evidence = [];
+  for (const count of [0, 1, 5, 30]) {
+    evidence.push(await verifyBulkSearchScenario(browser, {
+      count,
+      width: 390,
+      height: 844,
+      label: `${count} 筆搜尋結果 390x844`,
+    }));
+  }
+
+  const viewports = [
+    { width: 375, height: 812 },
+    { width: 390, height: 844 },
+    { width: 414, height: 896 },
+    { width: 768, height: 1024 },
+    { width: 1280, height: 720 },
+  ];
+  for (const viewport of viewports) {
+    evidence.push(await verifyBulkSearchScenario(browser, {
+      count: 125,
+      ...viewport,
+      label: `125 筆搜尋結果 ${viewport.width}x${viewport.height}`,
+    }));
+  }
+
+  results.push('大量搜尋結果回歸通過：0 / 1 / 5 / 30 / 125 筆、五種 viewport、自然卡片高度、垂直捲動與閱讀 modal 正常');
+  results.push(`大量搜尋結果幾何證據：${JSON.stringify(evidence)}`);
 }
 
 async function verifyNoteEditorToolbar(page, results) {
@@ -916,7 +1106,7 @@ async function run() {
     await expectVisible(page, '[data-testid="account-install-guide-link"]', '帳號設定安裝教學入口已顯示');
     await expectVisible(page, '#account-settings-modal [data-testid="version-display"]', '帳號設定版本資訊已顯示');
     const accountVersionText = await page.locator('#account-settings-modal [data-testid="version-display"]').textContent();
-    if (!accountVersionText || !accountVersionText.includes('v1.1.9')) {
+    if (!accountVersionText || !accountVersionText.includes(expectedVersionDisplay)) {
       throw new Error(`帳號設定版本資訊錯誤：${accountVersionText}`);
     }
     const syncDisabledObserved = await page.evaluate(() => new Promise((resolve) => {
@@ -941,6 +1131,10 @@ async function run() {
     await expectVisible(page, '[data-testid="manual-install-app-section"]', '操作手冊安裝 App 章節已顯示');
     await expectVisible(page, '[data-testid="manual-writing-note-section"]', '操作手冊寫札記章節可穩定定位');
     await expectVisible(page, '[data-testid="version-display"]', '操作手冊版本資訊可穩定定位');
+    const manualVersionText = await page.locator('[data-testid="operation-manual-page"] [data-testid="version-display"]').textContent();
+    if (!manualVersionText || !manualVersionText.includes(expectedVersionDisplay)) {
+      throw new Error(`操作手冊版本資訊錯誤：${manualVersionText}`);
+    }
     results.push('帳號設定安裝教學入口、操作手冊章節與版本資訊正常');
     await clickElement(page, '[data-testid="mobile-nav-overview"]');
 
@@ -975,6 +1169,7 @@ async function run() {
 
     await clickElement(page, '[data-testid="mobile-nav-overview"]');
     await verifyResponsiveViewports(browser, results);
+    await verifyBulkSearchRegressions(browser, results);
     assertNoConsoleErrors(consoleCollector);
   } catch (error) {
     results.push(`驗證失敗：${error.message}`);

@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.1.14 - 2026/07/21
+
+正式站：https://www.devotionbook.com.tw
+
+Production commit hash：完成 production deployment 後回報。
+
+### 主要更新
+
+- 修正札記搜尋結果數量較多時，卡片被 CSS Grid 壓縮成水平線的問題。
+- 搜尋結果卡片改為依內容維持自然高度，超出視窗時由結果區垂直捲動。
+- 新增大量搜尋結果的回歸驗收，涵蓋手機、平板與桌面。
+- 修正 smoke test 的版本資訊硬編碼，改由目前版本資料動態驗證。
+- 未變更 Auth、Supabase schema、札記資料結構、聖經資料、讀經表或 EPUB 匯出邏輯。
+
 ## v1.1.13 - 2026/07/07
 
 正式站：https://www.devotionbook.com.tw

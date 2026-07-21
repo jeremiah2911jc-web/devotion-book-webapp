@@ -9605,6 +9605,8 @@ body.note-reader-modal-open {
 .note-reader-search-results {
   flex: 1 1 auto;
   min-height: 0;
+  grid-auto-rows: max-content;
+  align-content: start;
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 4px;
