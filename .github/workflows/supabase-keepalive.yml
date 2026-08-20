@@ -1,0 +1,30 @@
+name: Supabase keepalive
+
+on:
+  schedule:
+    # 00:17, 08:17, and 16:17 UTC (08:17, 16:17, and 00:17 in Taipei).
+    - cron: '17 */8 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-keepalive
+  cancel-in-progress: true
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Send read-only database health check
+        run: node scripts/supabase-keepalive.mjs
