@@ -312,3 +312,46 @@ drop policy if exists "library_books_storage_delete_own" on storage.objects;
 create policy "library_books_storage_delete_own" on storage.objects for delete to authenticated using (
   bucket_id = 'library-books' and (storage.foldername(name))[1] = 'users' and (storage.foldername(name))[2] = auth.uid()::text and (storage.foldername(name))[3] = 'books'
 );
+
+-- Prayer journal: keep this rebuild definition aligned with the live table.
+create table if not exists public.devotion_prayers (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null,
+  prayer_request text not null default '',
+  status text not null default 'active'
+    constraint devotion_prayers_status_check check (status in ('active', 'reviewing', 'answered')),
+  related_note_id text,
+  review_text text not null default '',
+  grace_reflection text not null default '',
+  last_reviewed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.devotion_prayers enable row level security;
+
+-- Table grants and row policies are both needed by the authenticated client.
+revoke all on table public.devotion_prayers from public, anon;
+grant select, insert, update, delete on table public.devotion_prayers to authenticated;
+
+drop policy if exists "Users can read own prayers" on public.devotion_prayers;
+create policy "Users can read own prayers"
+on public.devotion_prayers for select
+using (auth.uid() = user_id);
+
+drop policy if exists "Users can insert own prayers" on public.devotion_prayers;
+create policy "Users can insert own prayers"
+on public.devotion_prayers for insert
+with check (auth.uid() = user_id);
+
+drop policy if exists "Users can update own prayers" on public.devotion_prayers;
+create policy "Users can update own prayers"
+on public.devotion_prayers for update
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+drop policy if exists "Users can delete own prayers" on public.devotion_prayers;
+create policy "Users can delete own prayers"
+on public.devotion_prayers for delete
+using (auth.uid() = user_id);
