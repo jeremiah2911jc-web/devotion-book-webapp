@@ -171,7 +171,7 @@ export function createReadingWorkspace(api) {
           </div>
           <figure class="folio-portrait" aria-hidden="true"><img src="./assets/editorial/reading-alcove.png" width="1024" height="1536" alt="" fetchpriority="high" decoding="async"></figure>
 
-          
+
         </div>
       </section>
       <section class="folio-reading" data-editorial-section aria-labelledby="folio-reading-title">
