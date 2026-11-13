@@ -1,9 +1,13 @@
-﻿import {
+import {
   isLikelyScriptureReference,
   normalizeScriptureReferenceForFetch,
   parseScriptureReference,
   splitScriptureReferences,
 } from './assets/js/scripture-reference-utils.js';
+import { createReadingWorkspace, normalizeNoteConnections } from './assets/js/reading-workspace.js';
+import {readOfflineNotes,readPendingNotes,cacheOfflineNotes,queueOfflineNote,mergeOfflineNotes,clearOfflineCache,syncOfflineNotes,forkPendingNote} from './assets/js/offline-notes.js';
+
+let readingWorkspace;
 
 const STORAGE_KEYS = {
   config: 'devotion-app-config',
@@ -20,8 +24,8 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.1.14';
-const APP_RELEASE_DATE = '2026/07/21';
+const APP_VERSION = '1.2.0-preview.3';
+const APP_RELEASE_DATE = '2026/11/13';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
 const DEFAULT_BIBLE_ASSET_VERSION = '2026.06.07-punctuation-v1.1.8';
@@ -387,7 +391,8 @@ function hideAppUpdatePrompt({ dismiss = false } = {}) {
   scheduleInstallPromptCheck(900);
 }
 
-function reloadForAppUpdate() {
+async function reloadForAppUpdate() {
+  persistCurrentNoteDraft({immediate:true});
   const remoteVersion = String(state.appVersion.remote?.version || '').trim();
   if (remoteVersion) state.appVersion.acceptedVersion = remoteVersion;
   if (els.appUpdateNowBtn) {
@@ -395,6 +400,19 @@ function reloadForAppUpdate() {
     els.appUpdateNowBtn.textContent = '正在更新...';
   }
   hideAppUpdatePrompt();
+  try {
+    if('serviceWorker' in navigator){
+      const registration=await navigator.serviceWorker.getRegistration();
+      if(registration){
+        await registration.update();
+        if(registration.installing)await new Promise((resolve,reject)=>{const worker=registration.installing;worker.addEventListener('statechange',()=>{if(worker.state==='installed')resolve();if(worker.state==='redundant')reject(new Error('Update unavailable'));});});
+        if(registration.waiting)await new Promise(resolve=>{navigator.serviceWorker.addEventListener('controllerchange',resolve,{once:true});registration.waiting.postMessage({type:'DEVOTION_ACTIVATE'});});
+      }
+    }
+  }catch(error){
+    if(els.appUpdateNowBtn){els.appUpdateNowBtn.disabled=false;els.appUpdateNowBtn.textContent='立即更新';}
+    showToast('更新尚未完成，草稿已保留，請連線後再試。');return;
+  }
   const reloadStamp = String(Date.now());
   try {
     const url = new URL(window.location.href);
@@ -601,6 +619,7 @@ function shouldAutoShowInstallPrompt() {
 }
 
 function maybeShowInstallAppPrompt({ auto = true } = {}) {
+  if (auto && document.body.classList.contains('reading-workspace')) return false;
   if (auto && !shouldAutoShowInstallPrompt()) return false;
   if (!auto && isRunningInstalledApp()) {
     showToast('目前看起來已經是 App 開啟模式。');
@@ -1002,7 +1021,7 @@ function removeRetiredInterfaceElements() {
 function createResendVerificationHint() {
   const hint = document.createElement('p');
   hint.className = 'caption auth-verification-hint';
-  hint.textContent = '還沒收到驗證信？請先檢查垃圾郵件、促銷內容或垃圾信箱，也可以重新寄送驗證信。';
+  hint.textContent = '未收到驗證信時，請檢查垃圾郵件、促銷內容或垃圾信箱，也可以重新寄送驗證信。';
   return hint;
 }
 function createResendVerificationButton() {
@@ -2315,7 +2334,7 @@ function getOperationManualHtml() {
             <p>這份手冊用簡單步驟說明建立帳戶、寫札記、閱讀、整理成書與保存資料。</p>
             <p>不需要懂技術，只要跟著畫面上的按鈕一步一步操作。</p>
           </div>
-          <p class="manual-flow-line">建立帳戶 → 寫札記 → 閱讀札記 → 整理成書 → 回到書櫃閱讀</p>
+          <p class="manual-flow-line">建立帳戶、寫札記、閱讀札記、整理成書與書櫃閱讀。</p>
         </section>
 
         <section class="manual-toc" aria-labelledby="manual-toc-title">
@@ -2458,7 +2477,7 @@ function getOperationManualHtml() {
               <li>點「書櫃」閱讀已整理好的書。</li>
               <li>查看最近編輯的內容與今日讀經。</li>
             </ul>
-            <p>手機版使用底部導覽切換頁面；桌面版使用左側導覽。</p>
+            <p>頁首可開啟讀經、查找札記與新增札記。其餘功能由「選單」開啟。</p>
           </section>
 
           <section id="manual-prayer" class="manual-section">
@@ -2490,14 +2509,14 @@ function getOperationManualHtml() {
               <li>點「預覽文章」確認閱讀效果。</li>
               <li>還沒寫完點「儲存草稿」；完成後點「儲存為正式札記」。</li>
             </ol>
-            <h3>抓取經文怎麼填</h3>
+            <h3>填寫經文出處</h3>
             <ul>
               <li>多處經文請用分號分隔，例如「希伯來4:11；詩篇106:32-33」。</li>
               <li>章節可以寫成「詩篇90:9-10」，也可以寫成「詩篇90篇9-10」或「詩篇90章9-10」。</li>
               <li>點「抓取經文」後，經文會加入目前札記內容，不會覆蓋原本已經寫好的內容。</li>
               <li>如果想把經文移到別的位置，可以在「我的札記」中手動剪下、貼上或調整段落順序。</li>
             </ul>
-            <h3>小工具怎麼使用</h3>
+            <h3>使用文字工具</h3>
             <p>小工具可以幫助你整理札記段落，讓重點、經文、禱告和分段更清楚。</p>
             <ol>
               <li>先在「我的札記」中輸入文字。</li>
@@ -2508,7 +2527,7 @@ function getOperationManualHtml() {
               <li>你會在編輯區看到網站自動加上的小記號，這是為了記住樣式；在預覽與閱讀時會變成好讀的樣式。</li>
               <li>完成後可以點「預覽文章」，或先儲存草稿，確認顯示效果是否符合預期。</li>
             </ol>
-            <h3>每個小工具適合怎麼用</h3>
+            <h3>文字工具用途</h3>
             <ul>
               <li>小標題：用來標出段落標題，例如「經文觀察」「我的反思」「今日禱告」。建議用在一整行短句，不要只套在半句話上。</li>
               <li>粗體：用來強調重要詞句。適合用在一句話中的重點，不建議整篇都使用粗體。</li>
@@ -2521,7 +2540,7 @@ function getOperationManualHtml() {
               <li>金字：可以用在特別珍貴的提醒、經文亮光或感恩內容。</li>
               <li>紫字：可以用在禱告、默想、敬拜或較深的反思內容。</li>
             </ul>
-            <h3>小標題加顏色怎麼用</h3>
+            <h3>小標題與文字顏色</h3>
             <p>如果你想讓段落標題更清楚，可以先把那一行設成「小標題」，再替標題文字加上顏色。</p>
             <ol>
               <li>先輸入一行標題，例如「我的反思」。</li>
@@ -2542,7 +2561,7 @@ function getOperationManualHtml() {
             </ul>
             <h3>草稿和正式札記差在哪裡</h3>
             <ul>
-              <li>草稿：還沒整理完成，只會留在寫札記頁的「我的草稿」。</li>
+              <li>草稿：還沒整理完成，只會留在寫札記頁的「其他草稿」。</li>
               <li>正式札記：已完成並儲存，會出現在札記閱讀、札記庫與選稿編排中。</li>
             </ul>
             <p>如果抓取經文失敗，請先確認書卷名稱、章節格式與網路狀況，再重新操作。</p>
@@ -2555,9 +2574,9 @@ function getOperationManualHtml() {
             <ol>
               <li>在寫札記頁點「儲存草稿」。</li>
               <li>之後回到「寫札記」。</li>
-              <li>找到「我的草稿」。</li>
+              <li>找到「其他草稿」。</li>
               <li>點草稿上的「繼續編輯」。</li>
-              <li>網站會把內容帶回編輯區，你可以接著寫。</li>
+              <li>網站會把草稿載入編輯區。</li>
             </ol>
             <h3>常見提醒</h3>
             <p>草稿不會出現在札記閱讀、札記庫或成書內容中。等你點「儲存為正式札記」後，才會進入後續閱讀與整理流程。</p>
@@ -2688,31 +2707,31 @@ function getOperationManualHtml() {
           <section id="manual-save-sync" class="manual-section">
             <h2>十五、資料保存與同步</h2>
             <p>如果你已登入帳號，札記、禱告與整理內容會保存到你的帳號中。這樣你在手機與電腦使用同一個帳號時，就能接續查看與編輯。</p>
-            <h3>怎麼判斷資料是否保存好了</h3>
+            <h3>查看保存狀態</h3>
             <ul>
               <li>如果畫面顯示「已同步」，代表目前內容已保存到帳號。</li>
               <li>如果看到尚未保存的提醒，請先不要關閉頁面，可以再按一次保存，或重新整理後確認內容是否仍在。</li>
               <li>如果網路不穩，請等網路恢復後再重新確認。</li>
             </ul>
             <h3>管理目前裝置中尚未保存到帳號的內容</h3>
-            <p>帳號設定中若出現「管理未同步內容」，意思是這台裝置裡有一些內容還沒有保存到帳號。若你不確定該怎麼處理，請先不要刪除，可以聯絡管理員協助。</p>
+            <p>帳號設定中若出現「管理未同步內容」，意思是這台裝置裡有一些內容還沒有保存到帳號。需要協助時，可以聯絡管理員確認保存位置。</p>
             <p>離開頁面前，建議先確認畫面有出現成功提示，尤其是在寫札記、整理章節或修改書籍資料之後。</p>
           </section>
 
           <section id="manual-faq" class="manual-section">
             <h2>十六、常見問題</h2>
             <div class="manual-faq-list">
-              <div class="manual-faq-item"><h3>我收不到驗證信怎麼辦？</h3><p>請先檢查垃圾郵件、促銷內容或垃圾信箱。若仍找不到，回到畫面點「重新寄送驗證信」，或聯絡管理員協助。</p></div>
-              <div class="manual-faq-item"><h3>我忘記密碼怎麼辦？</h3><p>在登入視窗點「忘記密碼」，輸入註冊 Email，接著到信箱依照信件連結設定新密碼。</p></div>
-              <div class="manual-faq-item"><h3>我用 Google 登入，原本資料會不見嗎？</h3><p>請使用同一個 Email 登入。只要登入的是同一個帳號，原本保存到帳號中的內容就會留在同一處。</p></div>
-              <div class="manual-faq-item"><h3>我寫到一半還沒完成怎麼辦？</h3><p>請先點「儲存草稿」。之後回到寫札記頁，在「我的草稿」點「繼續編輯」。</p></div>
-              <div class="manual-faq-item"><h3>草稿和正式札記有什麼不同？</h3><p>草稿是還沒完成的內容；正式札記是已完成並儲存的內容，會出現在札記閱讀、札記庫與成書流程中。</p></div>
-              <div class="manual-faq-item"><h3>為什麼我看不到某篇札記？</h3><p>請先清除搜尋或篩選條件，再確認那篇內容是不是還在草稿中。草稿不會出現在札記閱讀與札記庫。</p></div>
-              <div class="manual-faq-item"><h3>手機版底部導覽在哪裡？</h3><p>手機畫面底部有主要入口：總覽、禱告、寫札記、札記閱讀、札記庫、選稿編排與書櫃。若項目很多，可以左右滑動底部導覽列。</p></div>
-              <div class="manual-faq-item"><h3>資料有沒有保存？</h3><p>請看畫面上的保存提示或帳號設定中的資料保存狀態。如果看到尚未保存提醒，請先不要關閉頁面。</p></div>
-              <div class="manual-faq-item"><h3>札記閱讀和札記庫要用哪一個？</h3><p>想安靜重讀一篇札記，請用札記閱讀。想管理、編輯、勾選並加入書稿，請用札記庫。</p></div>
-              <div class="manual-faq-item"><h3>如何申請支持款項收款證明？</h3><p>頁面下方有「支持平台／支持事工」入口。完成支持後，可在那裡點「申請收款證明」並填寫資料。收款證明是支持款項紀錄，不作為稅務扣抵憑證。</p></div>
-              <div class="manual-faq-item"><h3>需要刪除資料時會提醒嗎？</h3><p>會。刪除札記、書稿、書櫃書籍或頭像前，畫面會先詢問確認。若不確定，請先取消。</p></div>
+              <div class="manual-faq-item"><h3>未收到驗證信</h3><p>請先檢查垃圾郵件、促銷內容或垃圾信箱。若仍找不到，回到畫面點「重新寄送驗證信」，或聯絡管理員協助。</p></div>
+              <div class="manual-faq-item"><h3>重設密碼</h3><p>在登入視窗點「忘記密碼」，輸入註冊 Email，接著到信箱依照信件連結設定新密碼。</p></div>
+              <div class="manual-faq-item"><h3>Google 登入與既有資料</h3><p>請使用同一個 Email 登入。只要登入的是同一個帳號，原本保存到帳號中的內容就會留在同一處。</p></div>
+              <div class="manual-faq-item"><h3>接續未完成的札記</h3><p>請先點「儲存草稿」。之後回到寫札記頁，在「其他草稿」點「繼續編輯」。</p></div>
+              <div class="manual-faq-item"><h3>草稿與正式札記</h3><p>草稿是還沒完成的內容；正式札記是已完成並儲存的內容，會出現在札記閱讀、札記庫與成書流程中。</p></div>
+              <div class="manual-faq-item"><h3>查找未顯示的札記</h3><p>請先清除搜尋或篩選條件，再確認那篇內容是不是還在草稿中。草稿不會出現在札記閱讀與札記庫。</p></div>
+              <div class="manual-faq-item"><h3>常用操作與完整選單</h3><p>頁首提供讀經、找札記與寫一則。選單可開啟禱告紀錄、選稿編排、電子書櫃與操作手冊。</p></div>
+              <div class="manual-faq-item"><h3>查看資料保存狀態</h3><p>請看畫面上的保存提示或帳號設定中的資料保存狀態。如果看到尚未保存提醒，請先不要關閉頁面。</p></div>
+              <div class="manual-faq-item"><h3>閱讀與選稿用途</h3><p>想安靜重讀一篇札記，請用札記閱讀。想管理、編輯、勾選並加入書稿，請用札記庫。</p></div>
+              <div class="manual-faq-item"><h3>申請支持款項收款證明</h3><p>頁面下方有「支持平台／支持事工」入口。完成支持後，可在那裡點「申請收款證明」並填寫資料。收款證明是支持款項紀錄，不作為稅務扣抵憑證。</p></div>
+              <div class="manual-faq-item"><h3>刪除前的確認</h3><p>會。刪除札記、書稿、書櫃書籍或頭像前，畫面會先詢問確認。若不確定，請先取消。</p></div>
             </div>
           </section>
 
@@ -2972,14 +2991,14 @@ async function downloadSystemBackup() {
   if (!state.supabase) throw new Error('系統備份需要 Supabase 雲端模式。');
   const confirmed = await openTwoStepConfirmDialog({
     first: {
-      title: '確定要執行系統備份嗎？',
-      message: '系統備份會下載大量雲端資料，可能增加 Supabase Egress。確定要繼續嗎？',
+      title: '下載系統備份',
+      message: '系統備份將下載雲端資料，並增加資料傳輸用量。',
       confirmText: '繼續備份',
       danger: true,
     },
     second: {
       title: '再次確認系統備份',
-      message: '請再次確認是否執行系統備份。若目前正在處理流量異常，建議暫停備份。',
+      message: '請再次確認是否執行系統備份。若目前有流量異常，請暫停備份。',
       confirmText: '確認執行備份',
       danger: true,
     },
@@ -3640,7 +3659,7 @@ async function requestDangerRestoreConfirmation(backup = {}) {
     ? `\n\n警告：備份使用者 ${String(backup.user || '')} 與目前登入帳號 ${String(state.currentUser?.email || '')} 不一致。`
     : '';
   return openConfirmDialog({
-    title: '確定要執行覆蓋還原嗎？',
+    title: '覆蓋目前資料',
     message: `這可能會覆蓋目前資料。請確認已經備份後再繼續。\n\n備份內容：札記 ${notesCount} 筆、禱告 ${prayersCount} 筆、選稿編排 ${draftsCount} 份、書櫃 ${libraryCount} 本。${mismatchWarning}`,
     confirmText: '確認還原',
     danger: true,
@@ -4060,7 +4079,7 @@ function ensureConfirmDialogUi() {
         <div class="confirm-dialog-header">
           <div>
             <p class="confirm-dialog-kicker">確認</p>
-            <h2 id="confirm-dialog-title">確定要刪除嗎？</h2>
+            <h2 id="confirm-dialog-title">刪除內容</h2>
           </div>
           <button class="ghost-btn small" type="button" data-confirm-cancel aria-label="關閉確認視窗">關閉</button>
         </div>
@@ -4091,7 +4110,7 @@ function ensureConfirmDialogUi() {
 }
 
 function openConfirmDialog({
-  title = '確定要刪除嗎？',
+  title = '刪除內容',
   message = '這個動作無法復原。',
   kickerText = '確認',
   confirmText = '確認刪除',
@@ -4529,7 +4548,7 @@ function syncAuthInlineSubmitButton(isSubmitting = state.authInlineSubmitting) {
       ? 'auth-login-submit'
       : 'auth-password-recovery-submit';
   els.gateSubmitBtn.disabled = !!isSubmitting;
-  els.gateSubmitBtn.textContent = isSubmitting ? '處理中...' : getAuthInlineSubmitLabel();
+  els.gateSubmitBtn.textContent = isSubmitting ? '正在送出…' : getAuthInlineSubmitLabel();
   els.gateSubmitBtn.classList.remove('secondary-btn');
   els.gateSubmitBtn.classList.add('primary-btn');
 }
@@ -4758,6 +4777,15 @@ function handleSupabaseAuthStateChange(event, session) {
     return;
   }
   if (state.passwordRecoveryActive) return;
+  const previousOwner=state.currentUser?.id||'';
+  const nextOwner=session?.user?.id||'';
+  if(previousOwner!==nextOwner){
+    persistCurrentNoteDraft({immediate:true});
+    state.notes=[];state.prayers=[];state.books=[];state.snapshots=[];state.selectedBookId=null;
+    forgetBookProjectDetails();clearCloudLibrary('請先登入雲端帳號。');
+    closeNoteReaderReadingModal();closeNoteReaderSearchModal();
+    if(previousOwner)clearOfflineCache(localStorage,previousOwner);
+  }
   state.currentUser = session?.user || null;
   ensureAdminUi();
   if (state.currentUser) settleMobileViewport();
@@ -4768,7 +4796,7 @@ function handleSupabaseAuthStateChange(event, session) {
     setSyncState({ status: '尚未登入', detail: '已設定雲端，但目前還沒有登入帳號。', at: '' });
   }
   refreshUi();
-  loadAllData({ silent: true, syncReason: session?.user ? '已連線到雲端帳號。' : '已登出雲端帳號。' }).catch(console.error);
+  loadAllData({ silent: true, syncReason: session?.user ? '已連線到雲端帳號。' : '已登出雲端帳號。' }).then(()=>{if(previousOwner!==nextOwner&&state.currentUser?.id===nextOwner)readingWorkspace?.resume();}).catch(console.error);
 }
 function openAuthSettings() {
   syncConfigInputs();
@@ -5141,7 +5169,7 @@ async function handleProfileAvatarSelection(event) {
 async function removeProfileAvatar() {
   if (!(state.supabase && state.currentUser)) throw new Error('頭像同步需要登入雲端帳號。');
   const confirmed = await openConfirmDialog({
-    title: '確定要移除頭像嗎？',
+    title: '移除頭像',
     message: '移除後會恢復為字母頭像。',
     confirmText: '確認移除',
     danger: true,
@@ -5271,6 +5299,28 @@ async function bootstrap() {
   ensureBookDraftWorkspaceUi();
   ensureAppUpdatePromptUi();
   ensureInstallAppPromptUi();
+  ensureWritingWorkspaceUi();
+  readingWorkspace = createReadingWorkspace({state, els, setView, clearNoteForm, populateNoteForm,
+    persistDraft: () => persistCurrentNoteDraft({immediate:true}),
+    getCurrentDraft: loadCurrentNoteDraft, restoreDraft: restoreCurrentNoteDraft,
+    openReading:index=>openTodayReadingDialog(index).catch(handleError),
+    openBook:id=>{setView('books');return openBookDraftModal(id).catch(handleError);},
+    openNote: openNoteReaderNote, getPreview: getNotePreviewText, openAccountSettings: openAccountSettingsModal, onError:handleError,
+    signOut: handleSignOut, pendingNotes:()=>readPendingNotes(localStorage,getUserId()),
+    copyPending:async(id)=>{forkPendingNote(localStorage,getUserId(),id,uid('note'));await loadAllData({silent:true,force:true});showToast('離線版本已另存一則，可重新同步。');}, pendingCount:()=>readPendingNotes(localStorage,getUserId()).length,
+    syncPending: async()=>{
+      if(!state.supabase||!state.currentUser||!navigator.onLine){showToast('連線後可同步離線札記。');return;}
+      try{const result=await syncOfflineNotes(localStorage,state.supabase,getUserId());
+        await loadAllData({silent:true,force:true});
+        showToast(result.conflicts?'部分札記在其他裝置已有變更，離線版本仍保留在此裝置。':'札記已同步。');
+      }catch(error){showToast('同步尚未完成，離線札記已保留。');}
+    },
+    prepareNewNote: async () => {
+      if (!hasUnsavedCurrentNoteDraft()) return true;
+      const accepted = await openConfirmDialog({title:'儲存目前札記',message:'目前有尚未儲存的內容。',confirmText:'儲存並新增',cancelText:'繼續寫'});
+      if (!accepted) return false;
+      try {await saveNote({status:els.noteContent.value.trim()?state.currentNoteStatus:NOTE_STATUS_DRAFT});return true;} catch(error) {handleNoteSaveError(error);return false;}
+    }});
   document.body.dataset.currentView = document.querySelector('.view.active')?.id?.replace('view-', '') || 'dashboard';
   syncConfigInputs();
   initSupabase();
@@ -5319,6 +5369,8 @@ async function bootstrap() {
   if (state.passwordRecoveryActive) openAuthInline('password-recovery');
   renderNotePreview();
   checkAppVersion({ force: true }).catch(() => {});
+  if (!state.passwordRecoveryActive) readingWorkspace.resume();
+  if ('serviceWorker' in navigator && sessionStorage.getItem('devotion-design-preview')!=='1') navigator.serviceWorker.register('/service-worker.js').catch(()=>{});
 }
 
 function bindEvents() {
@@ -5595,6 +5647,8 @@ function bindEvents() {
     if (event.key === 'Escape' && !els.notePreviewModal?.classList.contains('hidden')) closeNotePreview();
     if (event.key === 'Escape' && !els.noteReaderReadingModal?.classList.contains('hidden')) closeNoteReaderReadingModal();
     if (event.key === 'Escape' && !els.noteReaderSearchModal?.classList.contains('hidden')) closeNoteReaderSearchModal();
+    const dailyReadingDialog=document.getElementById('today-reading-dialog');
+    if(event.key==='Escape'&&dailyReadingDialog&&!dailyReadingDialog.classList.contains('hidden'))closeTodayReadingDialog();
     if (event.key === 'Escape' && state.bookDraftModalOpen) closeBookDraftModal();
   });
   document.addEventListener('visibilitychange', () => {
@@ -5932,6 +5986,8 @@ async function handleForgotPassword() {
 }
 
 async function handleSignOut() {
+  persistCurrentNoteDraft({immediate:true});
+  const offlineOwner = getUserId();
   teardownCloudRealtime();
   closeAccountSettingsModal();
   if (state.supabase) {
@@ -5942,6 +5998,7 @@ async function handleSignOut() {
     state.currentUser = null;
   }
   resetProfileAvatarState();
+  clearOfflineCache(localStorage,offlineOwner);
   setSyncState({ status: state.supabase ? '尚未登入' : '尚未同步', detail: state.supabase ? '雲端設定仍在，但目前尚未登入帳號。' : '這些內容目前只儲存在你正在使用的裝置，尚未同步到帳號。', at: '' });
   state.selectedBookId = null;
   await loadAllData({ silent: true });
@@ -6054,6 +6111,13 @@ async function loadAllData({ silent = false, syncReason = '', reason = '', minIn
     egressDebugLog('loadAllData:start', { reason: loadReason, silent });
     if (isCloudLoad) state.lastCloudFullLoadAt = Date.now();
     await refreshImportedLibraryState();
+    if(state.supabase&&state.currentUser&&!navigator.onLine){
+      const userId=getUserId();
+      state.notes=mergeOfflineNotes(readOfflineNotes(localStorage,userId),readPendingNotes(localStorage,userId)).map(normalizeNoteRecord);
+      state.prayers=[];state.books=[];state.snapshots=[];
+      setSyncState({status:'離線',detail:'札記儲存在此裝置，連線後可同步。',at:''});
+      refreshUi();return;
+    }
     if (state.supabase && state.currentUser) {
       const userId = state.currentUser.id;
       setSyncState({ status: '同步中', detail: '正在從雲端讀取資料…' });
@@ -6064,6 +6128,7 @@ async function loadAllData({ silent = false, syncReason = '', reason = '', minIn
         state.supabase.from('book_projects').select(BOOK_PROJECT_METADATA_SELECT).eq('user_id', userId).order('updated_at', { ascending: false }),
         state.supabase.from('book_snapshots').select('id,user_id,book_project_id,book_id:book_project_id,created_at').eq('user_id', userId).order('created_at', { ascending: false }),
       ]);
+      if(getUserId()!==userId)return;
       if (notesRes.error) throw notesRes.error;
       if (prayersRes.error) {
         if (isPrayerPermissionError(prayersRes.error)) {
@@ -6083,7 +6148,8 @@ async function loadAllData({ silent = false, syncReason = '', reason = '', minIn
         books: { count: (booksRes.data || []).length, bytes: estimatePayloadBytes(booksRes.data || []) },
         snapshots: { count: (snapshotsRes.data || []).length, bytes: estimatePayloadBytes(snapshotsRes.data || []) },
       });
-      state.notes = (notesRes.data || []).map(normalizeNoteRecord);
+      try{cacheOfflineNotes(localStorage,userId,notesRes.data||[]);}catch{}
+      state.notes = mergeOfflineNotes(notesRes.data||[],readPendingNotes(localStorage,userId)).map(normalizeNoteRecord);
       state.prayers = state.prayerSyncError
         ? []
         : sortPrayerRecords((prayersRes.data || []).map(item => normalizePrayerRecord(item, userId)));
@@ -6199,6 +6265,7 @@ function splitNoteSummary(summary = '') {
       status: normalizeNoteStatus(decoded.status),
       prayer_text: normalizeNotePrayerText(prayerText),
       show_prayer: showPrayer,
+      ...normalizeNoteConnections(decoded),
     },
   };
 }
@@ -6267,6 +6334,9 @@ function normalizeNoteRecord(note = {}) {
     status: resolveNoteStatus(note),
     prayer_text: resolveNotePrayerText(note),
     show_prayer: resolveNoteShowPrayer(note),
+    ...normalizeNoteConnections({...splitNoteSummary(note.summary || '').settings,
+      ...(Array.isArray(note.related_notes) ? {related_notes:note.related_notes} : {}),
+      ...(Array.isArray(note.sources) ? {sources:note.sources} : {})}),
   };
 }
 
@@ -6276,6 +6346,7 @@ function buildNoteSummaryValue(
   status = NOTE_STATUS_PUBLISHED,
   prayerText = '',
   showPrayer = false,
+  connections = {},
 ) {
   const visible = String(summary || '').trim();
   const show = !!showSummary;
@@ -6283,13 +6354,16 @@ function buildNoteSummaryValue(
   const prayer = normalizeNotePrayerText(prayerText);
   const showPrayerInOutput = !!showPrayer;
   const hasPrayerSettings = !!prayer || showPrayerInOutput;
-  if (normalizedStatus === NOTE_STATUS_PUBLISHED && !visible && !show && !hasPrayerSettings) return '';
-  if (normalizedStatus === NOTE_STATUS_PUBLISHED && visible && show && !hasPrayerSettings) return visible;
+  const normalizedConnections = normalizeNoteConnections(connections);
+  const hasConnections = !!(normalizedConnections.related_notes.length || normalizedConnections.sources.length);
+  if (normalizedStatus === NOTE_STATUS_PUBLISHED && !visible && !show && !hasPrayerSettings && !hasConnections) return '';
+  if (normalizedStatus === NOTE_STATUS_PUBLISHED && visible && show && !hasPrayerSettings && !hasConnections) return visible;
   const encoded = encodeNoteSummarySettings({
     show_summary: show,
     status: normalizedStatus,
     prayer_text: prayer,
     show_prayer: showPrayerInOutput,
+    ...normalizedConnections,
   });
   if (!encoded) return visible;
   const marker = `<!-- devotion-note-summary-settings:${encoded} -->`;
@@ -6306,6 +6380,8 @@ function buildNotePersistencePayload(note = {}) {
   delete rest.prayerText;
   delete rest.show_prayer;
   delete rest.showPrayer;
+  delete rest.related_notes;
+  delete rest.sources;
   return {
     ...rest,
     summary: buildNoteSummaryValue(
@@ -6314,6 +6390,7 @@ function buildNotePersistencePayload(note = {}) {
       normalized.status,
       normalized.prayer_text,
       normalized.show_prayer,
+      normalized,
     ),
   };
 }
@@ -7192,11 +7269,12 @@ function refreshUi() {
   renderReaderSettings();
   syncNoteStatusUi();
   syncCurrentNoteDraftNotice();
-  if (isSignedIn) {
+  if (isSignedIn && !document.body.classList.contains('reading-workspace')) {
     scheduleInstallPromptCheck();
   } else {
     hideInstallAppPrompt();
   }
+  readingWorkspace?.refresh();
 }
 
 function getVisiblePrayerRecords() {
@@ -7899,8 +7977,8 @@ function buildPublishingReadinessCheck(book, options = {}) {
       summary: `目前可以匯出，另有 ${suggestionIssueCount} 項內容可再補強。`,
     },
     needs: {
-      label: '需要處理',
-      summary: `匯出前有 ${requiredIssueCount} 項必要內容需要先處理。`,
+      label: '尚待完成',
+      summary: `匯出前有 ${requiredIssueCount} 項必要內容尚待完成。`,
     },
   }[status];
   return {
@@ -8007,8 +8085,8 @@ function getBookDraftWorkflowState(book) {
   } else if (requiredIssues.length) {
     const firstIssue = getPublishingReadinessCompactIssueCopy(requiredIssues[0]);
     currentKey = 'check';
-    currentLabel = '需要處理';
-    nextAction = firstIssue.body || firstIssue.title || '請先處理出版狀態中的必要項目。';
+    currentLabel = '尚待完成';
+    nextAction = firstIssue.body || firstIssue.title || '請完成出版狀態列出的必要項目。';
   } else if (recommendationIssues.length) {
     const firstSuggestion = recommendationIssues[0];
     currentKey = 'check';
@@ -8471,6 +8549,13 @@ function ensureBookDraftWorkspaceUi() {
   document.getElementById('book-draft-modal-backdrop')?.classList.toggle('hidden', !state.bookDraftModalOpen);
   draftOverviewPanel?.classList.toggle('is-open', !!state.bookDraftModalOpen);
   draftOverviewPanel?.classList.toggle('hidden', !state.bookDraftModalOpen);
+  if(draftOverviewPanel){
+    const heading=draftOverviewPanel.querySelector('.panel-header h2');
+    if(heading)heading.id='book-draft-dialog-heading';
+    if(state.bookDraftModalOpen){draftOverviewPanel.setAttribute('role','dialog');draftOverviewPanel.setAttribute('aria-modal','true');draftOverviewPanel.setAttribute('aria-labelledby','book-draft-dialog-heading');}
+    else {draftOverviewPanel.removeAttribute('role');draftOverviewPanel.removeAttribute('aria-modal');draftOverviewPanel.removeAttribute('aria-labelledby');}
+  }
+
   document.body.classList.toggle('book-draft-modal-open', !!state.bookDraftModalOpen);
 }
 
@@ -8800,14 +8885,15 @@ function closeTodayReadingDialog() {
   state.todayReadingDialogAbortController?.abort();
   state.todayReadingDialogAbortController = null;
   const modal = document.getElementById('today-reading-dialog');
-  modal?.classList.add('hidden');
-  modal?.setAttribute('aria-hidden', 'true');
+  const finish=()=>{modal?.classList.add('hidden');modal?.setAttribute('aria-hidden','true');};
+  if(readingWorkspace)readingWorkspace.closePanel(modal,finish);else finish();
 }
 
 async function openTodayReadingDialog(index = 0) {
   const reading = getTodayReadingByIndex(index);
   if (!reading) return;
   const modal = ensureTodayReadingDialogUi();
+  readingWorkspace?.cancelPanelClose(modal);
   const title = modal.querySelector('#today-reading-dialog-title');
   const kicker = modal.querySelector('#today-reading-dialog-kicker');
   const body = modal.querySelector('#today-reading-dialog-body');
@@ -9493,6 +9579,7 @@ function renderNoteReaderReadingContent(note) {
       ${contentBlocks}
     </section>
     ${renderNotePrayerBlock(prayer)}
+    ${readingWorkspace?.renderConnections(note) || ''}
   `;
 }
 
@@ -9520,6 +9607,7 @@ function closeNoteReaderSearchModal() {
 function openNoteReaderReadingModal(note) {
   if (!note) return;
   state.noteReaderReadingId = String(note.id || '');
+  readingWorkspace?.cancelPanelClose(els.noteReaderReadingModal);
   renderNoteReaderReadingContent(note);
   closeNoteReaderSearchModal();
   els.noteReaderReadingModal?.classList.remove('hidden');
@@ -9530,9 +9618,12 @@ function openNoteReaderReadingModal(note) {
 
 function closeNoteReaderReadingModal() {
   state.noteReaderReadingId = '';
-  els.noteReaderReadingModal?.classList.add('hidden');
-  els.noteReaderReadingModal?.setAttribute('aria-hidden', 'true');
-  syncNoteReaderModalLock();
+  const finish=()=>{
+    els.noteReaderReadingModal?.classList.add('hidden');
+    els.noteReaderReadingModal?.setAttribute('aria-hidden','true');
+    syncNoteReaderModalLock();
+  };
+  if(readingWorkspace)readingWorkspace.closePanel(els.noteReaderReadingModal,finish);else finish();
 }
 
 function getNoteReaderOpenIdFromTarget(target) {
@@ -9982,6 +10073,7 @@ function getCurrentNoteDraftPayload() {
     showSummary: !!els.noteShowSummary?.checked,
     prayerText: els.notePrayer?.value || '',
     showPrayer: !!els.noteShowPrayer?.checked,
+    ...normalizeNoteConnections(readingWorkspace?.getConnections()),
     prayerVisibilityTouched: !!state.notePrayerVisibilityTouched,
     content: els.noteContent?.value || '',
     editingNoteId: els.noteId?.value || '',
@@ -10095,7 +10187,7 @@ function ensureCurrentNoteDraftNotice() {
   notice.className = 'current-note-draft-notice hidden';
   notice.innerHTML = `
     <div class="current-note-draft-copy">
-      <strong>偵測到尚未儲存的札記草稿，是否恢復？</strong>
+      <strong>上次尚未儲存的札記</strong>
       <p>恢復上次未儲存的內容。</p>
     </div>
     <div class="current-note-draft-actions">
@@ -10141,6 +10233,7 @@ function restoreCurrentNoteDraft() {
     ? draft.prayerVisibilityTouched
     : !!draftPrayerText || getDraftShowPrayer(draft);
   els.noteContent.value = draft.content || '';
+  readingWorkspace?.loadConnections(draft);
   state.noteContentLastSelection = null;
   if (draft.editingNoteId) els.deleteNoteBtn.classList.remove('hidden');
   else els.deleteNoteBtn.classList.add('hidden');
@@ -10199,6 +10292,7 @@ function populateNoteForm(noteId, options = {}) {
   state.notePrayerVisibilityTouched = !!prayerText || showPrayer;
   state.noteContentLastSelection = null;
   els.noteContent.value = stripScriptureMarkers(note.content || '');
+  readingWorkspace?.loadConnections(note);
   els.deleteNoteBtn.classList.remove('hidden');
   if (note.scripture_reference) {
     fetchAndRenderScriptures({ force: true, syncToContent: false }).catch(() => setScriptureStatus('經文預覽暫時無法載入。', true));
@@ -10216,6 +10310,7 @@ function populateNoteForm(noteId, options = {}) {
 function clearNoteForm({ clearDraft = false } = {}) {
   els.noteForm.reset();
   els.noteId.value = '';
+  readingWorkspace?.loadConnections({});
   state.currentNoteStatus = NOTE_STATUS_PUBLISHED;
   if (els.noteShowSummary) els.noteShowSummary.checked = false;
   state.noteSummaryVisibilityTouched = false;
@@ -10263,18 +10358,19 @@ async function saveNote({ status = NOTE_STATUS_PUBLISHED } = {}) {
     prayer_text: normalizeNotePrayerText(els.notePrayer?.value || ''),
     show_prayer: !!els.noteShowPrayer?.checked,
     content: stripScriptureMarkers(els.noteContent.value.trim()),
+    ...normalizeNoteConnections(readingWorkspace?.getConnections()),
     status: finalStatus,
     updated_at: nowIso(),
     created_at: els.noteId.value ? (existingNote?.created_at || nowIso()) : nowIso(),
   };
-  if (finalStatus === NOTE_STATUS_PUBLISHED && !payload.title) {
-    throw new Error('請先輸入札記標題。');
-  }
+  if (!payload.title) payload.title = `${new Intl.DateTimeFormat('zh-TW', {year:'numeric',month:'long',day:'numeric'}).format(new Date(payload.created_at))}札記`;
   if (finalStatus === NOTE_STATUS_PUBLISHED && !payload.content) throw new Error('請填入札記內容。');
   persistCurrentNoteDraft({ immediate: true });
   try {
     const persistencePayload = buildNotePersistencePayload(payload);
-    if (state.supabase) {
+    if (state.supabase && (!navigator.onLine || readPendingNotes(localStorage,getUserId()).some(item=>item.note.id===payload.id))) {
+      queueOfflineNote(localStorage,getUserId(),persistencePayload,existingNote?.updated_at);
+    } else if (state.supabase) {
       const { error } = await state.supabase.from('devotion_notes').upsert(persistencePayload);
       if (error) throw error;
     } else {
@@ -10301,7 +10397,7 @@ async function saveNote({ status = NOTE_STATUS_PUBLISHED } = {}) {
   }
   setView('notes');
   clearNoteForm({ clearDraft: true });
-  showToast(finalStatus === NOTE_STATUS_DRAFT ? '草稿已儲存。' : '札記已儲存。');
+  showToast(state.supabase&&readPendingNotes(localStorage,getUserId()).some(item=>item.note.id===payload.id)?'札記已儲存在此裝置，可從選單同步。':finalStatus === NOTE_STATUS_DRAFT ? '草稿已儲存。' : '札記已儲存。');
 }
 
 async function deleteNote() {
@@ -10309,7 +10405,7 @@ async function deleteNote() {
   const noteId = els.noteId.value;
   if (!noteId) return;
   const confirmed = await openConfirmDialog({
-    title: '確定要刪除這篇札記嗎？',
+    title: '刪除這篇札記',
     message: '刪除後將無法復原。',
     confirmText: '確認刪除',
     danger: true,
@@ -10505,7 +10601,7 @@ async function deleteBook(targetBookId = els.bookId.value) {
   const book = state.books.find(item => item.id === bookId);
   const bookTitle = getBookDraftLabel(book);
   const confirmed = await openConfirmDialog({
-    title: '確定要刪除這份選稿編排嗎？',
+    title: '刪除這份選稿編排',
     message: `「${bookTitle}」會被刪除。這會移除這份編排與其中的章節安排，但不會刪除原本的札記。`,
     confirmText: '確認刪除',
     danger: true,
@@ -10837,8 +10933,8 @@ function renderChaptersList(book) {
         <input value="${escapeHtml(chapter.chapter_title || '')}" data-chapter-title="${chapter.id}" ${fieldDisabled} />
         <div class="chapter-controls">
           <div class="chapter-order-fallback" aria-label="輔助排序操作">
-            <button class="ghost-btn small chapter-order-btn" data-move-up="${chapter.id}" aria-label="上移「${escapeHtml(chapter.chapter_title || '未命名章節')}」" ${index === 0 || state.bookArrangementSaving ? 'disabled' : ''}><span aria-hidden="true">↑</span><span class="visually-hidden">上移</span></button>
-            <button class="ghost-btn small chapter-order-btn" data-move-down="${chapter.id}" aria-label="下移「${escapeHtml(chapter.chapter_title || '未命名章節')}」" ${index === chapters.length - 1 || state.bookArrangementSaving ? 'disabled' : ''}><span aria-hidden="true">↓</span><span class="visually-hidden">下移</span></button>
+            <button class="ghost-btn small chapter-order-btn" data-move-up="${chapter.id}" aria-label="上移「${escapeHtml(chapter.chapter_title || '未命名章節')}」" ${index === 0 || state.bookArrangementSaving ? 'disabled' : ''}>上移</button>
+            <button class="ghost-btn small chapter-order-btn" data-move-down="${chapter.id}" aria-label="下移「${escapeHtml(chapter.chapter_title || '未命名章節')}」" ${index === chapters.length - 1 || state.bookArrangementSaving ? 'disabled' : ''}>下移</button>
           </div>
           <button class="danger-btn small" data-remove-chapter="${chapter.id}" ${actionDisabled}>移除</button>
         </div>
@@ -11179,7 +11275,7 @@ async function removeChapter(chapterId) {
   const book = getSelectedBook();
   const chapter = getBookDisplayChapters(book).find(item => item.id === chapterId);
   const confirmed = await openConfirmDialog({
-    title: '確定要移除這個章節嗎？',
+    title: '移除這個章節',
     message: `「${chapter?.chapter_title || '未命名章節'}」只會從目前編排中移除，不會刪除原本的札記。`,
     confirmText: '確認移除',
     danger: true,
@@ -11264,6 +11360,7 @@ function buildBookSnapshot(book) {
         show_summary: note ? resolveNoteShowSummary(note) : false,
         prayer_text: note ? getRenderableNotePrayer(note) : '',
         show_prayer: note ? resolveNoteShowPrayer(note) : false,
+        sources: normalizeNoteConnections(note||{}).sources,
         content: note?.content || '',
       };
     }).filter(Boolean),
@@ -11300,6 +11397,7 @@ function renderSnapshots() {
 }
 
 function setView(viewName) {
+  const previousView=document.body.dataset.currentView;
   if (viewName === 'admin') viewName = 'admin-dashboard';
   if (isAdminView(viewName) && !isAdminUser()) {
     showToast('目前帳號沒有管理後台權限。');
@@ -11316,18 +11414,19 @@ function setView(viewName) {
   const isReaderView = viewName === 'reader';
   const titleMap = {
     dashboard: ['總覽', ''],
-    prayer: ['禱告與回顧', '記錄禱告與回顧，整理神的恩典與帶領。'],
-    'note-reader': ['札記閱讀', '單純閱讀已寫下的札記，不進入編輯器。'],
-    notes: ['寫札記', '記下今天與主同行的片段。'],
+    prayer: ['禱告與回顧', '記錄禱告內容與後續回顧。'],
+    'note-reader': ['札記閱讀', '搜尋並閱讀已儲存的札記。'],
+    notes: ['寫札記', '編輯經文、思想與禱告。'],
     'content-library': ['札記庫', '搜尋、篩選並挑選已寫下的札記，加入目前正在編排的書稿。'],
     books: ['選稿編排', '管理成書前的選稿編排，整理章節順序並進行成書設定。'],
     'admin-dashboard': ['管理後台', '第一階段白名單入口，僅授權管理者可使用。'],
     snapshots: ['快照備份', '查看每次建立的書籍快照。'],
     library: ['書櫃', '收藏已匯出的固定版本作品，直接開啟閱讀。'],
     manual: ['操作手冊', '了解靈修札記成書系統的使用方式與整理流程。'],
-    reader: ['閱讀模式', '安靜閱讀已加入書櫃的 EPUB。'],
+    reader: ['閱讀模式', '閱讀電子書與調整閱讀設定。'],
   };
   document.body.dataset.currentView = viewName;
+  document.querySelectorAll('[data-workspace-view]').forEach(button=>{if(button.dataset.workspaceView===viewName)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');});
   els.viewNavLinks.forEach(link => link.classList.toggle('active', link.dataset.view === viewName));
   els.views.forEach(view => view.classList.toggle('active', view.id === `view-${viewName}`));
   const viewTitle = titleMap[viewName] || titleMap.dashboard;
@@ -11354,7 +11453,8 @@ function setView(viewName) {
     const restoreY = Number(document.body.dataset.readerScrollY || 0);
     document.body.classList.remove('reader-active');
     document.body.style.overflow = '';
-    if (restoreY > 0) window.scrollTo({ top: restoreY, behavior: 'auto' });
+    if(previousView==='reader'){window.scrollTo({top:restoreY,behavior:'auto'});delete document.body.dataset.readerScrollY;}
+    else if(previousView!==viewName||viewName==='dashboard')window.scrollTo({top:0,behavior:'auto'});
   }
   syncCurrentNoteDraftNotice();
 }
@@ -11625,6 +11725,7 @@ function chapterXhtml(chapter, order, book = {}) {
       ${summaryBlock}
       ${renderMarkdownContent(chapter.content || '')}
       ${prayerBlock}
+      ${normalizeNoteConnections(chapter).sources.length?`<section class="chapter-sources"><h2>引用來源</h2>${normalizeNoteConnections(chapter).sources.map(source=>`<p><a href="${escapeHtml(source.url)}">${escapeHtml(source.title||source.url)}</a>${source.position?` · ${escapeHtml(source.position)}`:''}</p>`).join('')}</section>`:''}
     </main>
   `, false, "../styles/book.css", language);
 }
@@ -12514,7 +12615,7 @@ async function deleteLibraryBook(bookId) {
   const book = getLibraryBook(bookId);
   if (!book) return;
   const confirmed = await openConfirmDialog({
-    title: '確定要刪除這本書嗎？',
+    title: '刪除這本書',
     message: `「${book.title || '未命名書籍'}」刪除後會從書櫃移除。若需要保留，請先下載 EPUB。`,
     confirmText: '確認刪除',
     danger: true,
@@ -12537,7 +12638,7 @@ async function deleteImportedLibraryBook(bookId) {
   const book = getImportedBook(bookId);
   if (!book) return;
   const confirmed = await openConfirmDialog({
-    title: '確定要刪除這本書嗎？',
+    title: '刪除這本書',
     message: `「${book.title || '未命名書籍'}」刪除後會從書櫃移除。若需要保留，請先下載 EPUB。`,
     confirmText: '確認刪除',
     danger: true,
@@ -12682,7 +12783,7 @@ async function confirmCloudEpubDownload(book) {
   const bookId = book?.id || '';
   const confirmed = await openConfirmDialog({
     kickerText: '下載確認',
-    title: '下載 EPUB？',
+    title: '下載 EPUB',
     message: '完成後可以在裝置上閱讀或保存。',
     confirmText: '下載 EPUB',
     danger: false,
@@ -13158,7 +13259,7 @@ async function removeCurrentReaderBookmark() {
   const current = getCurrentReaderBookmark();
   if (!current) return;
   const confirmed = await openConfirmDialog({
-    title: '確定要移除這個書籤嗎？',
+    title: '移除這個書籤',
     message: '移除後需要重新加入才能再次快速跳轉。',
     confirmText: '確認移除',
     danger: true,
@@ -13170,7 +13271,7 @@ async function removeCurrentReaderBookmark() {
 
 async function removeReaderBookmark(bookmarkId) {
   const confirmed = await openConfirmDialog({
-    title: '確定要移除這個書籤嗎？',
+    title: '移除這個書籤',
     message: '移除後需要重新加入才能再次快速跳轉。',
     confirmText: '確認移除',
     danger: true,

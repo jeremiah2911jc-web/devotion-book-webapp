@@ -1,0 +1,17 @@
+{
+  "created": "2026-11-13",
+  "tool": "imagegen (built-in)",
+  "usage": "Original illustrative imagery for the Devotion design preview. These scenes do not depict an actual user, property or testimony.",
+  "assets": [
+    {
+      "file": "reading-alcove.png",
+      "source": "Original generated architectural reading scene, 1024 × 1536",
+      "review": "Rear view of one reader; face and book text not presented as identifiable or authoritative content."
+    },
+    {
+      "file": "sea-light.png",
+      "source": "Original generated architectural light study, 1536 × 1024",
+      "review": "Architecture, sunlight and sea detail; no scripture rendered in the image."
+    }
+  ]
+}

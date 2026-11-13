@@ -2,17 +2,18 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0F5C5C" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="DEVOTION" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>DEVOTION｜與神更親近的每一天</title>
-  <link rel="stylesheet" href="./styles.css?v=1.1.14" />
+  <title>DEVOTION｜靈修札記</title>
+  <link rel="stylesheet" href="./styles.css?v=1.2.0-preview.3" />
+  <link rel="stylesheet" href="./assets/css/reading-workspace.css?v=1.2.0-preview.3" />
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./assets/vendor/supabase.js"></script>
 </head>
 <body class="auth-locked">
   <div id="auth-gate" class="auth-gate" aria-hidden="false">
@@ -25,23 +26,28 @@
               <p class="auth-brand-name">DEVOTION</p>
               <p class="auth-brand-tagline">與神更親近的每一天</p>
             </div>
-            <h2 class="auth-gate-title">讓你的靈修<br />不再只是零散筆記</h2>
+            <h2 class="auth-gate-title">靈修札記</h2>
             <div class="auth-gate-divider" aria-hidden="true">
               <span></span>
               <i class="asset-icon auth-divider-icon"></i>
               <span></span>
             </div>
             <div class="auth-gate-copy">
-              <p>每天的領受與記錄，<br />慢慢整理成一本屬於你的書。</p>
-              <p>留下你與神同行的軌跡，<br />也成為日後回顧的恩典記號。</p>
+              <p>記錄經文、個人思想與禱告。</p>
+              <p>依札記選稿、編排章節，匯出 EPUB。</p>
             </div>
             <p class="auth-sync-hint">建立免費帳戶後，可在手機與桌機間同步資料。</p>
           </div>
         </div>
 
+        <aside class="auth-reading-specimen" aria-label="經文閱讀示例">
+          <p class="specimen-label">經文閱讀</p>
+          <blockquote>你的話是我腳前的燈，<br />是我路上的光。</blockquote>
+          <cite>詩篇 119:105</cite>
+        </aside>
         <div class="auth-gate-actions">
-          <button id="open-register-btn" class="auth-cta auth-cta-primary" type="button" data-testid="auth-open-register">開始寫我的第一篇靈修</button>
-          <button id="open-login-btn" class="auth-cta auth-cta-secondary" type="button" data-testid="auth-open-login">我已經有帳戶了</button>
+          <button id="open-register-btn" class="auth-cta auth-cta-primary" type="button" data-testid="auth-open-register">建立帳戶</button>
+          <button id="open-login-btn" class="auth-cta auth-cta-secondary" type="button" data-testid="auth-open-login">登入</button>
         </div>
 
         <div id="auth-inline-panel" class="modal auth-input-modal hidden" aria-hidden="true" aria-live="polite" data-testid="auth-inline-panel">
@@ -628,7 +634,7 @@
                   <p id="markdown-syntax-hint" class="caption markdown-syntax-hint hidden" aria-live="polite"></p>
                   <label class="note-content-field">
                     <span class="visually-hidden">內容</span>
-                    <textarea id="note-content" rows="20" placeholder="在這裡寫下今天的札記..." data-testid="note-editor-content"></textarea>
+                    <textarea id="note-content" rows="6" placeholder="輸入札記內容" data-testid="note-editor-content"></textarea>
                   </label>
                 </section>
               </section>
@@ -1000,7 +1006,7 @@
         </div>
         <div class="account-settings-section account-version-section">
           <span class="account-settings-label">版本資訊</span>
-          <p class="caption account-settings-version-text" data-app-version-label data-testid="version-display">版本：v1.1.14｜更新：2026/07/21</p>
+          <p class="caption account-settings-version-text" data-app-version-label data-testid="version-display">版本：v1.2.0-preview.3｜更新：2026/07/21</p>
         </div>
         <div class="account-settings-section account-settings-signout-section">
           <span class="account-settings-label">登出</span>
@@ -1121,6 +1127,6 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./app.js?v=1.1.14"></script>
+  <script type="module" src="./app.js?v=1.2.0-preview.3"></script>
 </body>
 </html>

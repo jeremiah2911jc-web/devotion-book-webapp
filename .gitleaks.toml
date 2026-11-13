@@ -1,0 +1,16 @@
+title = "Website credential detection"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "resend-api-key"
+description = "Resend API credential, including SDK constructor arguments"
+regex = '''\bre_[A-Za-z0-9_-]{20,}\b'''
+keywords = ["re_"]
+
+[[rules]]
+id = "supabase-secret-key"
+description = "Supabase server secret key, excluding publishable keys"
+regex = '''\bsb_secret_[A-Za-z0-9_-]{20,}\b'''
+keywords = ["sb_secret_"]
