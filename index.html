@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-title" content="DEVOTION" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>DEVOTION｜靈修札記</title>
-  <link rel="stylesheet" href="./styles.css?v=1.2.0-preview.3" />
-  <link rel="stylesheet" href="./assets/css/reading-workspace.css?v=1.2.0-preview.3" />
+  <link rel="stylesheet" href="./styles.css?v=1.2.0-preview.4" />
+  <link rel="stylesheet" href="./assets/css/reading-workspace.css?v=1.2.0-preview.4" />
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png" />
@@ -52,7 +52,7 @@
 
         <div id="auth-inline-panel" class="modal auth-input-modal hidden" aria-hidden="true" aria-live="polite" data-testid="auth-inline-panel">
           <div id="auth-inline-backdrop" class="modal-backdrop" data-testid="auth-inline-backdrop"></div>
-          <div class="modal-card auth-input-modal-card" data-testid="auth-modal">
+          <div class="modal-card auth-input-modal-card" role="dialog" aria-modal="true" aria-labelledby="auth-inline-title" data-testid="auth-modal">
             <div class="panel-header auth-modal-header">
               <h3 id="auth-inline-title" data-testid="auth-inline-title">建立帳戶</h3>
               <button id="close-auth-inline-btn" class="ghost-btn small" type="button" data-testid="auth-inline-close">關閉</button>
@@ -1006,7 +1006,7 @@
         </div>
         <div class="account-settings-section account-version-section">
           <span class="account-settings-label">版本資訊</span>
-          <p class="caption account-settings-version-text" data-app-version-label data-testid="version-display">版本：v1.2.0-preview.3｜更新：2026/07/21</p>
+          <p class="caption account-settings-version-text" data-app-version-label data-testid="version-display">版本：v1.2.0-preview.4｜更新：2026/11/13</p>
         </div>
         <div class="account-settings-section account-settings-signout-section">
           <span class="account-settings-label">登出</span>
@@ -1127,6 +1127,6 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./app.js?v=1.2.0-preview.3"></script>
+  <script type="module" src="./app.js?v=1.2.0-preview.4"></script>
 </body>
 </html>

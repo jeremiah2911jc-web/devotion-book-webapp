@@ -1053,16 +1053,10 @@ async function run() {
     if (!accountVersionText || !accountVersionText.includes(expectedVersionDisplay)) {
       throw new Error(`帳號設定版本資訊錯誤：${accountVersionText}`);
     }
-    const disabledWatch=page.evaluate(()=>new Promise((resolve,reject)=>{
-      const button=document.querySelector('[data-testid="account-settings-sync-button"]');
-      const deadline=setTimeout(()=>{observer.disconnect();reject(new Error('未顯示同步中狀態'));},5000);
-      const observer=new MutationObserver(()=>{if(button.disabled){clearTimeout(deadline);observer.disconnect();resolve(true);}});
-      observer.observe(button,{attributes:true,attributeFilter:['disabled']});
-    }));
-    await clickElement(page,'[data-testid="account-settings-sync-button"]');
-    await disabledWatch;
-    await expectVisible(page, '#toast:not(.hidden)', '同步提示已出現');
-    results.push('帳號設定同步按鈕可用，且同步中會停用');
+    if(!await page.locator('[data-testid="account-settings-sync-button"]').isDisabled())throw new Error('本機模式的雲端同步按鈕應停用');
+    const localSaveStatus=await page.locator('[data-testid="account-settings-sync-status"]').textContent();
+    if(localSaveStatus!=='此裝置保存')throw new Error('本機保存狀態應明示保存位置');
+    results.push('本機保存狀態及停用雲端同步已驗證；真實雲端同步另驗');
     await clickElement(page, '[data-testid="account-install-guide-link"]');
     await expectVisible(page, '[data-testid="operation-manual-page"].view.active', '帳號設定安裝教學入口可進入操作手冊');
     await expectVisible(page, '[data-testid="manual-install-app-section"]', '操作手冊安裝 App 章節已顯示');

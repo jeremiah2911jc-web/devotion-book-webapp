@@ -371,3 +371,30 @@ body.reading-workspace:not(.auth-locked) .app-shell{background:var(--folio-paper
 body.reading-workspace #view-notes .markdown-toolbar{display:flex;flex-wrap:wrap;overflow:visible;gap:0;padding:0;border:0;box-shadow:none}
 body.reading-workspace #view-notes .markdown-toolbar-btn{min-height:44px;min-width:44px;flex:0 0 auto;padding:6px 9px;white-space:nowrap}
 .folio-book-cover strong{text-wrap:balance}.folio-book-copy h3{overflow-wrap:anywhere}
+
+/* Audit corrections: immersive reader and modal controls remain reachable. */
+body.reading-workspace.reader-active .devotion-masthead,body.reading-workspace.reader-active .site-footer{visibility:hidden;pointer-events:none}
+body.reading-workspace:has(.modal:not(.hidden)){overflow:hidden!important}
+.reading-workspace :is(.modal-card,dialog){overscroll-behavior:contain}
+.workspace-page-heading{margin:0 0 24px;padding:0}
+.workspace-page-heading h1{font:600 30px/1.5 -apple-system,BlinkMacSystemFont,"PingFang TC",sans-serif;margin:0;color:var(--folio-ink)}
+.reading-workspace .note-reader-search-row{grid-template-columns:minmax(0,1fr);display:grid;gap:12px}
+.reading-workspace .note-reader-tools{background:none;border:0;border-radius:0;padding:0}
+.reading-workspace .folio-book-object{transform:rotateY(-12deg) rotateZ(-3deg);transition:none}
+.reading-workspace :is(.manual-hero,.manual-toc,.manual-card,.manual-callout,.manual-faq-item){background:none;border:0;border-radius:0;box-shadow:none}
+.reading-workspace .manual-hero{padding:0 0 24px;margin:0}
+.reading-workspace .manual-hero h1{font:600 30px/1.5 -apple-system,BlinkMacSystemFont,"PingFang TC",sans-serif;margin:0 0 12px}
+.reading-workspace .manual-kicker,.reading-workspace .manual-flow-line{display:none}
+.reading-workspace .manual-toc{padding:0 0 24px;margin:0}
+.reading-workspace .manual-toc ul{columns:2;padding-left:20px}
+.reading-workspace .manual-section{padding:24px 0;margin:0;border:0;scroll-margin-top:calc(var(--devotion-header-height) + 20px)}
+.reading-workspace .manual-card-grid{display:block}
+.reading-workspace .manual-card,.reading-workspace .manual-callout,.reading-workspace .manual-faq-item{padding:0;margin:16px 0}
+.reading-workspace .manual-article p,.reading-workspace .manual-article li{font-size:16px;line-height:1.85;color:var(--folio-ink)}
+.reading-workspace .manual-section h2{font-size:25px;line-height:1.5;margin:0 0 16px}
+.reading-workspace .manual-section h3{font-size:18px;line-height:1.6;margin:20px 0 8px}
+@media(max-width:600px){.workspace-page-heading{margin-bottom:18px}.workspace-page-heading h1,.reading-workspace .manual-hero h1{font-size:26px}.reading-workspace .manual-toc ul{columns:1}}
+
+body.reading-workspace #view-reader.reader-controls-hidden .reader-action-button{opacity:1;pointer-events:auto;transform:none}
+body.reading-workspace #view-reader .reader-action-button{background:var(--folio-accent);color:white;box-shadow:none}
+body.reading-workspace #view-reader .reader-close-button{color:var(--folio-ink);box-shadow:none}

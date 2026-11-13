@@ -1309,7 +1309,7 @@ input:focus, textarea:focus, select:focus {
   white-space: nowrap;
 }
 .book-draft-flow-step + .book-draft-flow-step::before {
-  content: "›";
+  content: "";
   margin: 0 5px 0 0;
   color: #b0bfc0;
   font-weight: 900;

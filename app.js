@@ -24,7 +24,7 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.2.0-preview.3';
+const APP_VERSION = '1.2.0-preview.4';
 const APP_RELEASE_DATE = '2026/11/13';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
@@ -1376,7 +1376,7 @@ function formatSyncClock(value) {
 }
 
 function refreshAccountSyncUi({ isSignedIn = false } = {}) {
-  const statusLabel = isSignedIn ? getAccountSyncStatusLabel() : '尚未登入';
+  const statusLabel = isSignedIn ? (state.supabase ? getAccountSyncStatusLabel() : '此裝置保存') : '尚未登入';
   const syncTime = state.lastSyncAt ? formatDate(state.lastSyncAt) : '尚未同步';
   const syncClock = state.lastSyncAt ? formatSyncClock(state.lastSyncAt) : '尚未同步';
   const fallbackDetail = state.supabase
@@ -1392,11 +1392,13 @@ function refreshAccountSyncUi({ isSignedIn = false } = {}) {
   if (els.accountSettingsSyncTime) els.accountSettingsSyncTime.textContent = `最後同步：${syncTime}`;
   if (els.accountSettingsSyncDetail) els.accountSettingsSyncDetail.textContent = detail;
   [els.accountSyncButton, els.accountSettingsSyncButton].forEach(button => {
-    button?.toggleAttribute('disabled', !isSignedIn || isSyncInProgress());
+    button?.toggleAttribute('disabled', !isSignedIn || !state.supabase || !navigator.onLine || isSyncInProgress());
   });
 }
 
 async function handleManualSync() {
+  if (!state.supabase || !state.currentUser) {showToast('目前內容儲存在此裝置，尚未連線雲端。');return;}
+  if (!navigator.onLine) {showToast('目前離線，內容保留在此裝置。');return;}
   if (isSyncInProgress()) return;
   setSyncState({ status: '同步中', detail: '正在同步資料…' });
   refreshUi();
@@ -2329,10 +2331,9 @@ function getOperationManualHtml() {
       <section class="panel manual-panel">
         <section class="manual-hero">
           <p class="manual-kicker">操作手冊</p>
-          <h1>照著做，就能開始記錄靈修札記。</h1>
+          <h1>操作手冊</h1>
           <div class="manual-value-lines">
             <p>這份手冊用簡單步驟說明建立帳戶、寫札記、閱讀、整理成書與保存資料。</p>
-            <p>不需要懂技術，只要跟著畫面上的按鈕一步一步操作。</p>
           </div>
           <p class="manual-flow-line">建立帳戶、寫札記、閱讀札記、整理成書與書櫃閱讀。</p>
         </section>
@@ -2366,11 +2367,11 @@ function getOperationManualHtml() {
             <p>Devotion 靈修札記是用來記錄靈修、禱告、經文、講道筆記與生命回顧的網站。你可以每天寫一點，之後再回來閱讀、搜尋、整理成一本書。</p>
             <div class="manual-card-grid">
               <div class="manual-card">
-                <h3>這個功能是做什麼</h3>
-                <p>幫你把平常寫下的領受、禱告與重點整理保留下來，不只是零散文字，而是可以慢慢回顧的信仰紀錄。</p>
+                <h3>用途</h3>
+                <p>保存札記、經文出處與禱告紀錄，支援搜尋、選稿及匯出。</p>
               </div>
               <div class="manual-card">
-                <h3>什麼時候會用到</h3>
+                <h3>使用情境</h3>
                 <p>每日靈修後、主日信息後、小組查經後，或想回顧一段時間神如何帶領你時，都可以使用。</p>
               </div>
             </div>
@@ -2468,9 +2469,9 @@ function getOperationManualHtml() {
           <section id="manual-dashboard" class="manual-section">
             <h2>六、總覽</h2>
             <p>「總覽」是登入後快速看見近況的地方。你可以在這裡看到最近內容、主要入口與今日讀經。</p>
-            <h3>什麼時候會用到</h3>
+            <h3>使用情境</h3>
             <p>剛登入時，先看總覽可以快速決定今天要寫札記、繼續整理書稿，或回到書櫃閱讀。</p>
-            <h3>可以做什麼</h3>
+            <h3>功能</h3>
             <ul>
               <li>點「札記」進入札記閱讀。</li>
               <li>點「書稿」進入選稿編排。</li>
@@ -2559,7 +2560,7 @@ function getOperationManualHtml() {
               <li>清單：今天可以操練：先安靜讀經、寫下一句觸動我的經文、用禱告回應神。</li>
               <li>分隔線：可以放在「反思」和「禱告」中間，讓文章段落更清楚。</li>
             </ul>
-            <h3>草稿和正式札記差在哪裡</h3>
+            <h3>草稿與正式札記</h3>
             <ul>
               <li>草稿：還沒整理完成，只會留在寫札記頁的「其他草稿」。</li>
               <li>正式札記：已完成並儲存，會出現在札記閱讀、札記庫與選稿編排中。</li>
@@ -2585,7 +2586,7 @@ function getOperationManualHtml() {
           <section id="manual-note-reader" class="manual-section">
             <h2>十、札記閱讀</h2>
             <p>「札記閱讀」是用來安靜閱讀已完成札記的地方。這裡不會顯示草稿。</p>
-            <h3>可以做什麼</h3>
+            <h3>功能</h3>
             <ul>
               <li>查看最近編輯的 5 篇札記。</li>
               <li>用標題、經文、內容、分類或標籤搜尋札記。</li>
@@ -2607,7 +2608,7 @@ function getOperationManualHtml() {
           <section id="manual-content-library" class="manual-section">
             <h2>十一、札記庫</h2>
             <p>「札記庫」是管理所有已儲存札記的地方，適合搜尋、篩選、編輯，以及挑選要加入書稿的內容。</p>
-            <h3>札記閱讀和札記庫有什麼不同</h3>
+            <h3>閱讀與選稿</h3>
             <ul>
               <li>札記閱讀：偏向單純閱讀與回顧。</li>
               <li>札記庫：偏向管理、整理、勾選與加入選稿編排。</li>
@@ -2648,7 +2649,7 @@ function getOperationManualHtml() {
               <li>點「匯出 EPUB」或「儲存並匯出 EPUB」。</li>
               <li>完成後到「書櫃」閱讀。</li>
             </ol>
-            <h3>書櫃可以做什麼</h3>
+            <h3>書櫃功能</h3>
             <ul>
               <li>開啟已整理好的書。</li>
               <li>下載電子書檔案（EPUB）。</li>
@@ -2723,11 +2724,11 @@ function getOperationManualHtml() {
             <div class="manual-faq-list">
               <div class="manual-faq-item"><h3>未收到驗證信</h3><p>請先檢查垃圾郵件、促銷內容或垃圾信箱。若仍找不到，回到畫面點「重新寄送驗證信」，或聯絡管理員協助。</p></div>
               <div class="manual-faq-item"><h3>重設密碼</h3><p>在登入視窗點「忘記密碼」，輸入註冊 Email，接著到信箱依照信件連結設定新密碼。</p></div>
-              <div class="manual-faq-item"><h3>Google 登入與既有資料</h3><p>請使用同一個 Email 登入。只要登入的是同一個帳號，原本保存到帳號中的內容就會留在同一處。</p></div>
+              <div class="manual-faq-item"><h3>Google 登入與既有資料</h3><p>請使用原本的登入方式進入帳號。資料未出現時，請查看帳號設定中的 Email 與同步狀態。</p></div>
               <div class="manual-faq-item"><h3>接續未完成的札記</h3><p>請先點「儲存草稿」。之後回到寫札記頁，在「其他草稿」點「繼續編輯」。</p></div>
               <div class="manual-faq-item"><h3>草稿與正式札記</h3><p>草稿是還沒完成的內容；正式札記是已完成並儲存的內容，會出現在札記閱讀、札記庫與成書流程中。</p></div>
               <div class="manual-faq-item"><h3>查找未顯示的札記</h3><p>請先清除搜尋或篩選條件，再確認那篇內容是不是還在草稿中。草稿不會出現在札記閱讀與札記庫。</p></div>
-              <div class="manual-faq-item"><h3>常用操作與完整選單</h3><p>頁首提供讀經、找札記與寫一則。選單可開啟禱告紀錄、選稿編排、電子書櫃與操作手冊。</p></div>
+              <div class="manual-faq-item"><h3>常用操作與完整選單</h3><p>頁首提供「讀經」「找札記」與「寫札記」。選單可開啟禱告紀錄、選稿編排、電子書櫃與操作手冊。</p></div>
               <div class="manual-faq-item"><h3>查看資料保存狀態</h3><p>請看畫面上的保存提示或帳號設定中的資料保存狀態。如果看到尚未保存提醒，請先不要關閉頁面。</p></div>
               <div class="manual-faq-item"><h3>閱讀與選稿用途</h3><p>想安靜重讀一篇札記，請用札記閱讀。想管理、編輯、勾選並加入書稿，請用札記庫。</p></div>
               <div class="manual-faq-item"><h3>申請支持款項收款證明</h3><p>頁面下方有「支持平台／支持事工」入口。完成支持後，可在那裡點「申請收款證明」並填寫資料。收款證明是支持款項紀錄，不作為稅務扣抵憑證。</p></div>
@@ -6953,7 +6954,7 @@ function renderBookExportCoverPreview(coverDataUrl = '', fallbackTitle = '目前
       <img src="${coverDataUrl}" alt="${escapeHtml(fallbackTitle)}" />
       <div class="book-export-settings-cover-copy">
         <strong>目前封面</strong>
-        <span>已沿用既有封面欄位</span>
+        <span>目前使用的書籍封面</span>
       </div>
     `;
     coverPreview.classList.remove('is-empty');
@@ -6962,7 +6963,7 @@ function renderBookExportCoverPreview(coverDataUrl = '', fallbackTitle = '目前
   coverPreview.innerHTML = `
     <div class="book-export-settings-cover-copy">
       <strong>尚未設定封面</strong>
-      <span>可沿用既有封面欄位，上傳後只更新目前編排設定。</span>
+      <span>選擇圖片作為這本書的封面。</span>
     </div>
   `;
   coverPreview.classList.add('is-empty');
@@ -8759,7 +8760,7 @@ function renderTodayReadingCard() {
         <span class="today-reading-ref-kicker">${index < 2 ? '家庭' : '個人'} ${index + 1}</span>
         <strong>${escapeHtml(reading)}</strong>
       </span>
-      <span class="today-reading-ref-action">閱讀經文 <span aria-hidden="true">›</span></span>
+      <span class="today-reading-ref-action">閱讀經文 </span>
     </button>
   `).join('');
   setElementHtmlIfChanged(els.todayReadingList, readings);
@@ -13548,10 +13549,10 @@ function renderReaderActionMenu() {
   return `
     <button class="reader-panel-backdrop" type="button" data-reader-close-panel aria-label="關閉閱讀功能"></button>
     <div class="reader-action-menu" role="menu" aria-label="閱讀功能">
-      <button class="reader-action-menu-item" type="button" data-reader-open-panel="toc" role="menuitem"><span>目錄</span><span>&gt;</span></button>
-      <button class="reader-action-menu-item" type="button" data-reader-open-panel="search" role="menuitem"><span>搜尋</span><span>&gt;</span></button>
-      <button class="reader-action-menu-item" type="button" data-reader-open-panel="settings" role="menuitem"><span>主題與設定</span><span>&gt;</span></button>
-      <button class="reader-action-menu-item" type="button" data-reader-open-panel="bookmarks" role="menuitem"><span>書籤</span><span>&gt;</span></button>
+      <button class="reader-action-menu-item" type="button" data-reader-open-panel="toc" role="menuitem"><span>目錄</span></button>
+      <button class="reader-action-menu-item" type="button" data-reader-open-panel="search" role="menuitem"><span>搜尋</span></button>
+      <button class="reader-action-menu-item" type="button" data-reader-open-panel="settings" role="menuitem"><span>主題與設定</span></button>
+      <button class="reader-action-menu-item" type="button" data-reader-open-panel="bookmarks" role="menuitem"><span>書籤</span></button>
     </div>
   `;
 }

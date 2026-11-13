@@ -35,6 +35,10 @@ export function createReadingWorkspace(api) {
   masthead.innerHTML = `<button class="devotion-name" type="button" data-workspace-view="dashboard"><span>DEVOTION</span><small>靈修札記</small></button>
     <nav aria-label="常用操作"><button type="button" data-workspace-reading>讀經</button><button type="button" data-workspace-view="note-reader">找札記</button><button type="button" data-workspace-new class="masthead-write">寫札記</button><button type="button" data-workspace-menu aria-expanded="false" aria-controls="workspace-menu">選單</button></nav>`;
   root.prepend(masthead);
+  for(const [view,label] of [['content-library','選取札記'],['books','選稿編排'],['library','電子書櫃']]){
+    const section=document.getElementById(`view-${view}`);if(!section)continue;
+    const heading=document.createElement('header');heading.className='workspace-page-heading';heading.innerHTML=`<h1>${label}</h1>`;section.prepend(heading);
+  }
   const menu = document.createElement('dialog');
   menu.id = 'workspace-menu';
   menu.className = 'workspace-menu';
@@ -260,8 +264,7 @@ function createEditorialMotion(review,header){
     const view=document.body.dataset.currentView;
     if(view!==lastView){
       const section=document.getElementById(`view-${view}`);
-      const writing=view==='notes';
-      animate(section,[{clipPath:writing?'inset(0 0 0 22%)':'inset(0 8% 0 0)',transform:writing?'translateX(48px)':'translateX(-32px)',opacity:.35},{clipPath:'inset(0)',transform:'translateX(0)',opacity:1}]);
+      animate(section,[{opacity:.55},{opacity:1}],{duration:300});
       lastView=view;
     }
     const panels=new Set([...document.querySelectorAll('dialog[open],.modal:not(.hidden),.book-draft-modal-shell.is-open')].filter(el=>el.getClientRects().length));
@@ -269,19 +272,18 @@ function createEditorialMotion(review,header){
       cancelPanelClose(element);
       const panel=panelFor(element);
       const bookPanel=element.classList.contains('book-draft-modal-shell');
-      animate(panel,bookPanel?[{opacity:.25},{opacity:1}]:[{translate:'110px 0',clipPath:'inset(0 0 0 18%)',opacity:.25},{translate:'0 0',clipPath:'inset(0)',opacity:1}],{duration:bookPanel?350:560});
+      animate(panel,[{opacity:.3},{opacity:1}],{duration:bookPanel?350:560});
     }
     visiblePanels=panels;schedule();
   }).observe(document.body,{subtree:true,attributes:true,attributeFilter:['data-current-view','class','open']});
   review.addEventListener('pointermove',event=>{
     if(reduced.matches||event.pointerType!=='mouse')return;
-    const target=event.target.closest('.folio-portrait,.folio-book-stage');if(!target)return;
+    const target=event.target.closest('.folio-portrait');if(!target)return;
     const rect=target.getBoundingClientRect();
     target.style.setProperty('--pointer-x',`${((event.clientX-rect.left)/rect.width-.5)*14}px`);
     target.style.setProperty('--pointer-y',`${((event.clientY-rect.top)/rect.height-.5)*10}px`);
   });
-  review.addEventListener('pointerout',event=>{const target=event.target.closest('.folio-portrait,.folio-book-stage');if(target&&!target.contains(event.relatedTarget)){target.style.setProperty('--pointer-x','0px');target.style.setProperty('--pointer-y','0px');}});
-  document.addEventListener('pointerdown',event=>{const panel=event.target.closest('.modal-card,dialog,.book-draft-modal-shell');if(panel)for(const animation of panel.getAnimations())if(animation.playState==='running')animation.finish();},true);
+  review.addEventListener('pointerout',event=>{const target=event.target.closest('.folio-portrait');if(target&&!target.contains(event.relatedTarget)){target.style.setProperty('--pointer-x','0px');target.style.setProperty('--pointer-y','0px');}});
   document.addEventListener('input',event=>{if(event.target.closest('#view-notes'))for(const animation of document.getElementById('view-notes').getAnimations())animation.cancel();});
   reduced.addEventListener('change',schedule);
   return {refresh:schedule,closePanel,cancelPanelClose};
