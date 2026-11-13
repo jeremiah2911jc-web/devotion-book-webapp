@@ -370,3 +370,4 @@ body.reading-workspace:not(.auth-locked) .app-shell{background:var(--folio-paper
 
 body.reading-workspace #view-notes .markdown-toolbar{display:flex;flex-wrap:wrap;overflow:visible;gap:0;padding:0;border:0;box-shadow:none}
 body.reading-workspace #view-notes .markdown-toolbar-btn{min-height:44px;min-width:44px;flex:0 0 auto;padding:6px 9px;white-space:nowrap}
+.folio-book-cover strong{text-wrap:balance}.folio-book-copy h3{overflow-wrap:anywhere}
