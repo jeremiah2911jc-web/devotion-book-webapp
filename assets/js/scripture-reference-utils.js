@@ -250,6 +250,7 @@ export function getScriptureBookAliasSummary() {
     code: book.code,
     canonical: book.canonical,
     english: book.english,
+    chapters: book.chapters,
     aliases: [...book.aliases],
   }));
 }
