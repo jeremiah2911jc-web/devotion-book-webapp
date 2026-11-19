@@ -1,4 +1,4 @@
-const CACHE='devotion-public-1.2.3';
+const CACHE='devotion-public-1.2.4';
 // The production host redirects /index.html to /. Cache the direct response.
 const HOME='/';
 const CORE=[HOME,'/app.js','/styles.css','/assets/css/reading-workspace.css','/assets/js/reading-workspace.js','/assets/js/offline-notes.js','/assets/js/scripture-reference-utils.js','/assets/vendor/supabase.js','/assets/editorial/coast-study.jpg','/assets/data/mcheyne-reading-plan.json','/manifest.webmanifest','/version.json','/favicon.ico'];

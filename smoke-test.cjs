@@ -1000,13 +1000,8 @@ async function run() {
     const openDraftCount = await page.locator('[data-testid="book-open-draft"]').count();
     if (openDraftCount) {
       await clickElement(page, '[data-testid="book-open-draft"]');
-      const readinessSelector = '#publishing-readiness-panel [data-testid="publishing-readiness-panel"], #publishing-readiness-mobile-panel [data-testid="publishing-readiness-panel"]';
-      await expectVisible(page, readinessSelector, '出版檢查區已顯示');
-      const readinessText = await page.locator(readinessSelector).first().textContent();
-      if (!readinessText || !/出版檢查|出版狀態/.test(readinessText)) {
-        throw new Error(`出版檢查文案未顯示：${readinessText}`);
-      }
-      await assertNoHorizontalScroll(page, { label: 'smoke publishing readiness mobile' });
+      await expectVisible(page, '#book-arrangement-status', '顯示章節儲存狀態');
+      await assertNoHorizontalScroll(page, { label: 'smoke chapter arrangement mobile' });
       const chapterItems = page.locator('#chapters-list [data-chapter-item]');
       const chapterItemCount = await chapterItems.count();
       if (chapterItemCount >= 2) {
@@ -1014,27 +1009,39 @@ async function run() {
         const secondHandleBox = await chapterItems.nth(1).locator('[data-chapter-drag-handle]').boundingBox();
         const firstBox = await chapterItems.nth(0).boundingBox();
         if (!secondHandleBox || !firstBox) throw new Error('拖曳排序目標位置無法取得');
-        await page.mouse.move(secondHandleBox.x + secondHandleBox.width / 2, secondHandleBox.y + secondHandleBox.height / 2);
-        await page.mouse.down();
-        await page.mouse.move(firstBox.x + firstBox.width / 2, firstBox.y + 6, { steps: 10 });
-        await page.mouse.up();
+        const touch = await context.newCDPSession(page);
+        const x = Math.round(secondHandleBox.x + secondHandleBox.width / 2);
+        const startY = secondHandleBox.y + secondHandleBox.height / 2;
+        const dropY = firstBox.y + 8;
+        try {
+          await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y: Math.round(startY) }] });
+          for (let step = 1; step <= 6; step += 1) {
+            const y = Math.round(startY + (dropY - startY) * step / 6);
+            await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y }] });
+          }
+          await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        } finally {
+          await touch.detach();
+        }
         await page.waitForFunction((expectedTitle) => {
           const firstTitleInput = document.querySelector('#chapters-list [data-chapter-item] [data-chapter-title]');
           return firstTitleInput?.value === expectedTitle;
         }, secondTitleBefore, { timeout: 10000 });
         await expectVisible(page, '#book-arrangement-status:not(.hidden)', '拖曳後顯示尚未儲存狀態');
         await clickElement(page, '#save-book-arrangement-btn');
-        await page.waitForFunction(() => document.querySelector('#book-arrangement-status')?.classList.contains('hidden'), undefined, { timeout: 10000 });
+        await page.waitForFunction(() => document.querySelector('#book-arrangement-status')?.textContent === '已儲存', undefined, { timeout: 10000 });
         await clickElement(page, '#close-book-draft-modal-btn');
         await clickElement(page, '[data-testid="book-open-draft"]');
         await page.waitForFunction((expectedTitle) => {
           const firstTitleInput = document.querySelector('#chapters-list [data-chapter-item] [data-chapter-title]');
           return firstTitleInput?.value === expectedTitle;
         }, secondTitleBefore, { timeout: 10000 });
-        results.push('拖曳排序與儲存後順序保留正常');
+        results.push('手機觸控拖曳後，章節順序可儲存並重新讀取');
       }
+      await clickElement(page, '#open-book-export-settings-btn');
+      await expectVisible(page, '#book-export-readiness-panel [data-testid="publishing-readiness-panel"]', '匯出前顯示出版檢查');
+      await page.keyboard.press('Escape');
       await clickElement(page, '#close-book-draft-modal-btn');
-      results.push('出版檢查區在整理章節視窗顯示正常');
     }
 
     const exportBtnExists = await page.locator('#export-epub-btn').count();
