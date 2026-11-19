@@ -177,6 +177,19 @@ async function run(browser, width) {
     await page.goto(`${origin}/index.html`);
     await login(owner);
     await visible('[data-review-book]');
+
+    await click('[data-workspace-menu]');
+    await click('[data-workspace-signout]');
+    await visible('#auth-gate');
+    assert.deepEqual(logoutScopes, ['local']);
+    await login(owner);
+    await visible('[data-review-book]');
+    const homeFocus = await page.evaluate(() => {
+      const active = document.activeElement;
+      return active?.closest('.devotion-masthead') ? active.textContent.trim() : null;
+    });
+    assert.equal(homeFocus, null, 'Sign-in must not move focus to a masthead button');
+
     let finishFirstDetail;
     firstDetailFailure = new Promise(resolve => { finishFirstDetail = resolve; });
     await menu('content-library');
@@ -327,7 +340,7 @@ async function run(browser, width) {
     await click('[data-workspace-menu]');
     await click('[data-workspace-signout]');
     await visible('#auth-gate');
-    assert.deepEqual(logoutScopes, ['local']);
+    assert.deepEqual(logoutScopes, ['local', 'local']);
     await login(otherOwner);
     await click('[data-workspace-new]');
     await input.fill('另一個帳號的原稿');

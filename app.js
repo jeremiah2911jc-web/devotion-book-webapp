@@ -4,7 +4,7 @@ import {
   parseScriptureReference,
   splitScriptureReferences,
 } from './assets/js/scripture-reference-utils.js';
-import { createReadingWorkspace, normalizeNoteConnections } from './assets/js/reading-workspace.js';
+import { createReaderPageCurl, createReadingWorkspace, normalizeNoteConnections } from './assets/js/reading-workspace.js';
 import {readOfflineNotes,readPendingNotes,cacheOfflineNotes,queueOfflineNote,mergeOfflineNotes,clearOfflineCache,syncOfflineNotes,forkPendingNote} from './assets/js/offline-notes.js';
 
 let readingWorkspace;
@@ -24,7 +24,7 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.2.11';
+const APP_VERSION = '1.2.12';
 const APP_RELEASE_DATE = '2026/11/19';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
@@ -11282,6 +11282,7 @@ function setView(viewName, { historyMode = 'push', scrollY } = {}) {
   if (viewName !== 'books' && state.bookDraftSettingsModalOpen) closeBookDraftSettingsModal();
   if (viewName !== 'books' && state.bookExportSettingsModalOpen) closeBookExportSettingsModal();
   const isReaderView = viewName === 'reader';
+  if (!isReaderView && previousView === 'reader') readerPageCurl?.cancel();
   const titleMap = {
     dashboard: ['總覽', ''],
     prayer: ['禱告與回顧', '記錄禱告內容與後續回顧。'],
@@ -12713,6 +12714,8 @@ async function loadEpubForReading(book) {
   return downloadCloudEpubBlob(book, { prompt: true });
 }
 
+let readerPageCurl = null;
+
 function renderReaderShell() {
   const book = cloudLibrary.readerBook;
   if (!book) return;
@@ -12768,6 +12771,13 @@ function ensureReaderViewShell() {
       <div id="reader-panel-root" class="reader-panel-root" aria-live="polite"></div>
     </div>
   `;
+  readerPageCurl = createReaderPageCurl(view.querySelector('.reader-stage'), {
+    canDrag: () => isSinglePageReaderLayout() && view.classList.contains('active')
+      && !cloudLibrary.readerActivePanel && !!cloudLibrary.readerBook,
+    previewPage: getReaderTurnPreview,
+    turnPage: direction => turnReaderPage(direction, { animate: false }).catch(handleError),
+    isControl: isReaderControlEvent,
+  });
 }
 
 function injectReaderViewStyles() {
@@ -13867,6 +13877,7 @@ function restoreReaderPageFromProgress(progress) {
 }
 
 function applyReaderPagePosition() {
+  readerPageCurl?.cancel();
   const viewport = document.querySelector('#reader-page-viewport .reader-page-clip') || document.getElementById('reader-page-viewport');
   const content = document.getElementById('reader-content');
   if (!viewport || !content) return;
@@ -13915,27 +13926,40 @@ function getCurrentReaderProgress() {
   return Math.max(0, Math.min(1, getReaderVisibleEndGlobalPageIndex() / (totalPages - 1)));
 }
 
-async function turnReaderPage(direction) {
-  if (!cloudLibrary.readerBook) return;
+function getReaderTurnTarget(direction) {
   const step = getReaderPagesPerSpread();
   const currentPage = normalizeReaderPageIndex(cloudLibrary.readerPageIndex);
   const nextPage = currentPage + (direction * step);
   if (nextPage >= 0 && nextPage < cloudLibrary.readerPageCount) {
-    cloudLibrary.readerPageIndex = normalizeReaderPageIndex(nextPage);
-    applyReaderPagePosition();
-    readingWorkspace?.turnPage(direction);
-    await persistCurrentReaderProgress();
-    return;
+    return { chapterIndex: cloudLibrary.readerChapterIndex, pageIndex: nextPage };
   }
-  const nextChapter = cloudLibrary.readerChapterIndex + direction;
-  if (nextChapter < 0 || nextChapter >= cloudLibrary.readerChapters.length) return;
-  await openReaderChapter(nextChapter, { pageIndex: direction > 0 ? 0 : Number.MAX_SAFE_INTEGER });
-  if (direction < 0) {
-    cloudLibrary.readerPageIndex = normalizeReaderPageIndex(Math.max(0, cloudLibrary.readerPageCount - 1));
+  const chapterIndex = cloudLibrary.readerChapterIndex + direction;
+  if (chapterIndex < 0 || chapterIndex >= cloudLibrary.readerChapters.length) return null;
+  const count = cloudLibrary.readerChapterPageCounts[chapterIndex] || 1;
+  return { chapterIndex, pageIndex: direction > 0 ? 0 : normalizeReaderPageIndex(count - 1, count) };
+}
+
+function getReaderTurnPreview(direction) {
+  const target = getReaderTurnTarget(direction);
+  if (!target) return null;
+  const page = cloudLibrary.readerChapterPages[target.chapterIndex]?.[target.pageIndex];
+  if (!page) return null;
+  const bodyWidth = Number.parseFloat(document.getElementById('reader-content').style.getPropertyValue('--reader-page-body-width'));
+  return renderReaderPageColumn(getReaderPageHtml(page), page.pageIndex, false, bodyWidth);
+}
+
+async function turnReaderPage(direction, { animate = true } = {}) {
+  if (!cloudLibrary.readerBook) return;
+  const target = getReaderTurnTarget(direction);
+  if (!target || (animate && readerPageCurl?.play(direction))) return;
+  if (target.chapterIndex === cloudLibrary.readerChapterIndex) {
+    cloudLibrary.readerPageIndex = target.pageIndex;
     applyReaderPagePosition();
     await persistCurrentReaderProgress();
+  } else {
+    await openReaderChapter(target.chapterIndex, { pageIndex: target.pageIndex });
   }
-  readingWorkspace?.turnPage(direction);
+  if (animate && !isSinglePageReaderLayout()) readingWorkspace?.turnPage(direction);
 }
 
 async function persistCurrentReaderProgress() {
@@ -14670,7 +14694,7 @@ let readerTouchStartX = 0;
 let readerTouchStartY = 0;
 let readerTouchStartedOnControl = false;
 document.addEventListener('touchstart', event => {
-  if (!document.getElementById('view-reader')?.classList.contains('active')) return;
+  if (isSinglePageReaderLayout() || !document.getElementById('view-reader')?.classList.contains('active')) return;
   readerTouchStartedOnControl = isReaderControlEvent(event);
   if (readerTouchStartedOnControl) return;
   const touch = event.touches[0];
@@ -14679,7 +14703,7 @@ document.addEventListener('touchstart', event => {
 }, { passive: true });
 
 document.addEventListener('touchend', event => {
-  if (!document.getElementById('view-reader')?.classList.contains('active')) return;
+  if (isSinglePageReaderLayout() || !document.getElementById('view-reader')?.classList.contains('active')) return;
   if (readerTouchStartedOnControl || isReaderControlEvent(event)) {
     readerTouchStartedOnControl = false;
     return;

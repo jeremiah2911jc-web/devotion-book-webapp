@@ -239,7 +239,7 @@ export function createReadingWorkspace(api) {
     if(event.target.closest('[data-review-new]'))masthead.querySelector('[data-workspace-new]').click();
   });
   const motion=createEditorialMotion(review,masthead);
-  manageEditorialDialogFocus();
+  manageEditorialDialogFocus(els.authGate);
   const todayObserver=new MutationObserver(()=>renderReadingLinks());
   if(today)todayObserver.observe(today,{subtree:true,childList:true,characterData:true});
 
@@ -637,8 +637,223 @@ function createEditorialMotion(review,header){
   return {refresh:schedule,closePanel,cancelPanelClose,turnPage};
 }
 
+// Clip a sheet against the perpendicular bisector of the grabbed and dragged points.
+function clipReaderSheet(corners, distance, keepPositive) {
+  const result = [];
+  corners.forEach((point, index) => {
+    const next = corners[(index + 1) % corners.length];
+    const start = distance(point), end = distance(next);
+    const inside = keepPositive ? start >= 0 : start <= 0;
+    if (inside) result.push(point);
+    if (inside === (keepPositive ? end >= 0 : end <= 0)) return;
+    const ratio = start / (start - end);
+    result.push([point[0] + (next[0] - point[0]) * ratio, point[1] + (next[1] - point[1]) * ratio]);
+  });
+  return result;
+}
+
+function readerSheetPolygon(points) {
+  return points.length >= 3
+    ? `polygon(${points.map(([x, y]) => `${x.toFixed(2)}px ${y.toFixed(2)}px`).join(',')})`
+    : 'inset(0 100% 0 0)';
+}
+
+export function createReaderPageCurl(stage, { canDrag, previewPage, turnPage, isControl }) {
+  const clip = stage.querySelector('.reader-page-clip');
+  const current = clip.querySelector('.reader-flow');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  let gesture = null;
+  let curl = null;
+  let animation = 0;
+  let suppressClick = false;
+
+  function cancel() {
+    cancelAnimationFrame(animation);
+    animation = 0;
+    gesture = null;
+    if (!curl) return;
+    curl.under.remove();
+    curl.back.remove();
+    current.classList.remove('reader-curl-front');
+    current.style.clipPath = '';
+    current.style.removeProperty('--reader-curl-paper');
+    curl = null;
+  }
+
+  function prepare(nextHtml, direction, grabY) {
+    const { width, height } = clip.getBoundingClientRect();
+    const under = document.createElement('div');
+    const back = document.createElement('div');
+    under.className = 'reader-curl-under';
+    back.className = 'reader-curl-back';
+    const paper = getComputedStyle(clip.parentElement).backgroundColor;
+    current.style.setProperty('--reader-curl-paper', paper);
+    const copies = [under, back].map(layer => {
+      layer.setAttribute('aria-hidden', 'true');
+      layer.inert = true;
+      layer.style.backgroundColor = paper;
+      const page = current.cloneNode(layer === back);
+      page.removeAttribute('id');
+      page.querySelectorAll('[id]').forEach(element => element.removeAttribute('id'));
+      page.style.transition = 'none';
+      layer.append(page);
+      return page;
+    });
+    const [next, reflected] = copies;
+    next.innerHTML = nextHtml;
+    next.querySelectorAll('[id]').forEach(element => element.removeAttribute('id'));
+    const cast = document.createElement('div');
+    const shading = document.createElement('div');
+    cast.className = 'reader-curl-cast';
+    shading.className = 'reader-curl-shading';
+    under.append(cast);
+    back.append(shading);
+    const stripHeight = `${Math.hypot(width, height) * 2}px`;
+    cast.style.height = shading.style.height = stripHeight;
+    clip.append(under, back);
+    current.classList.add('reader-curl-front');
+    curl = { under, back, reflected, cast, shading, direction, width, height,
+      x: direction > 0 ? width : 0, y: grabY, distance: 0, lift: 0,
+      corners: [[0, 0], [width, 0], [width, height], [0, height]] };
+  }
+
+  function draw(distance, lift) {
+    const { direction, x, y, corners, back, reflected, cast, shading } = curl;
+    curl.distance = distance;
+    curl.lift = lift;
+    const dx = Math.max(.01, distance) * direction;
+    const length = Math.hypot(dx, lift);
+    const nx = dx / length, ny = -lift / length;
+    const middleX = x - dx / 2, middleY = y + lift / 2;
+    const crease = middleX * nx + middleY * ny;
+    const fromCrease = ([px, py]) => px * nx + py * ny - crease;
+    current.style.clipPath = readerSheetPolygon(clipReaderSheet(corners, fromCrease, false));
+    const folded = clipReaderSheet(corners, fromCrease, true);
+    back.style.clipPath = readerSheetPolygon(folded.map(point => {
+      const offset = 2 * fromCrease(point);
+      return [point[0] - offset * nx, point[1] - offset * ny];
+    }));
+    // Reflect the current page in the crease so the back shows faint ink through the paper.
+    const cross = -2 * nx * ny;
+    reflected.style.transform = `matrix(${1 - 2 * nx * nx},${cross},${cross},${1 - 2 * ny * ny},${2 * crease * nx},${2 * crease * ny})`;
+    const angle = Math.atan2(ny, nx);
+    for (const [strip, rotation, width] of [
+      [cast, angle, Math.min(64, 8 + length * .19)],
+      [shading, angle + Math.PI, Math.min(114, 12 + length * .38)],
+    ]) {
+      strip.style.left = `${middleX}px`;
+      strip.style.top = `${middleY}px`;
+      strip.style.width = `${width}px`;
+      strip.style.transform = `translateY(-50%) rotate(${rotation}rad)`;
+    }
+  }
+
+  function settle(complete, duration) {
+    const { direction, width, distance, lift } = curl;
+    const endDistance = complete ? 2 * width + 2 : 0;
+    const started = performance.now();
+    const frame = time => {
+      const elapsed = Math.min(1, (time - started) / duration);
+      const eased = 1 - (1 - elapsed) ** 3;
+      draw(distance + (endDistance - distance) * eased, lift * (1 - eased) ** 2);
+      if (elapsed < 1) {
+        animation = requestAnimationFrame(frame);
+      } else {
+        cancel();
+        if (complete) turnPage(direction);
+      }
+    };
+    animation = requestAnimationFrame(frame);
+  }
+
+  stage.addEventListener('pointerdown', event => {
+    if (!event.isPrimary || event.button !== 0) return;
+    suppressClick = false;
+    const onEdge = event.target.closest('.reader-turn-zone');
+    if (!canDrag() || animation || gesture || (isControl(event) && !onEdge)) return;
+    if ((event.pointerType === 'mouse' && !onEdge) || window.getSelection()?.isCollapsed === false) return;
+    const edge = event.pointerType === 'mouse' ? (onEdge.matches('.reader-turn-right') ? 1 : -1) : 0;
+    gesture = {
+      id: event.pointerId, x: event.clientX, y: event.clientY,
+      startedAt: event.timeStamp, edge, direction: 0, dragging: false,
+    };
+  });
+  stage.addEventListener('pointermove', event => {
+    if (gesture?.id !== event.pointerId) return;
+    const dx = event.clientX - gesture.x, dy = event.clientY - gesture.y;
+    if (!gesture.dragging) {
+      if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.25) return;
+      const direction = dx < 0 ? 1 : -1;
+      const html = previewPage(direction);
+      if (html == null || (gesture.edge && direction !== gesture.edge) || window.getSelection()?.isCollapsed === false) {
+        gesture = null;
+        return;
+      }
+      gesture.dragging = true;
+      gesture.direction = direction;
+      stage.setPointerCapture(event.pointerId);
+      if (!reduced.matches) {
+        const box = clip.getBoundingClientRect();
+        prepare(html, direction, Math.max(1, Math.min(box.height - 1, gesture.y - box.top)));
+      }
+    }
+    if (!curl) return;
+    const distance = Math.max(0, Math.min(curl.width * 1.2, -dx * gesture.direction));
+    const liftLimit = Math.min(curl.height * .25, distance * .75);
+    const lift = Math.max(-liftLimit, Math.min(liftLimit, dy));
+    const curlBias = (curl.y > curl.height * .5 ? -1 : 1) * distance * .14;
+    draw(distance, distance ? lift * Math.min(1, distance / 45) + curlBias : 0);
+  });
+  stage.addEventListener('pointerup', event => {
+    if (gesture?.id !== event.pointerId) return;
+    const { direction, dragging, x, startedAt } = gesture;
+    gesture = null;
+    if (!dragging) return;
+    suppressClick = true;
+    const threshold = Math.min(85, clip.clientWidth * .23);
+    const distance = (x - event.clientX) * direction;
+    const complete = distance >= threshold || (distance > 48 && event.timeStamp - startedAt < 220);
+    if (curl) settle(complete, complete ? 440 : 260);
+    else if (complete) turnPage(direction);
+  });
+  const cancelGesture = event => {
+    if (gesture?.id !== event.pointerId) return;
+    gesture = null;
+    if (curl) settle(false, 260);
+  };
+  stage.addEventListener('pointercancel', cancelGesture);
+  stage.addEventListener('lostpointercapture', event => {
+    if (event.target === stage) cancelGesture(event);
+  });
+  stage.addEventListener('pointerleave', event => {
+    if (gesture?.id === event.pointerId && !gesture.dragging) gesture = null;
+  });
+  stage.addEventListener('click', event => {
+    if (!suppressClick || event.detail === 0) return;
+    suppressClick = false;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }, true);
+  reduced.addEventListener('change', cancel);
+
+  return {
+    cancel,
+    play(direction) {
+      if (animation || gesture?.dragging) return true;
+      if (!canDrag() || reduced.matches) return false;
+      const html = previewPage(direction);
+      if (html == null) return false;
+      const box = clip.getBoundingClientRect();
+      prepare(html, direction, box.height - 2);
+      draw(box.width * .16, -box.width * .19);
+      settle(true, 500);
+      return true;
+    },
+  };
+}
+
 // Existing modal views keep keyboard focus inside the active dialog.
-function manageEditorialDialogFocus(){
+function manageEditorialDialogFocus(authGate){
   let lastAction=null;let previous=[];const origins=new WeakMap();
   const visible=element=>element?.isConnected&&!element.closest('[inert]')&&element.getClientRects().length>0;
   document.addEventListener('click',event=>{lastAction=event.target.closest('button,a,input,select,textarea,summary')||lastAction;},true);
@@ -654,6 +869,8 @@ function manageEditorialDialogFocus(){
     for(const dialog of previous)if(!current.includes(dialog)&&(!current.length||writingDialog)){
       const origin=origins.get(dialog);
       if(origin?.view!==view)continue;
+      // A successful sign-in leaves the entire auth gate, including its opener.
+      if(authGate?.contains(dialog)&&!visible(authGate))continue;
       const fallback=writingDialog?.querySelector('#writing-focus-reference:not([hidden]) button')
         || writingDialog?.querySelector('.writing-focus-heading button')
         || document.querySelector('.devotion-masthead [data-workspace-view="note-reader"]');
