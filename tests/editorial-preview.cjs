@@ -17,11 +17,16 @@ async function launchServer(){server=spawn(process.execPath,['static-server.cjs'
 async function checkBiblePageCurl(context) {
  const page = await context.newPage();
  await page.goto(url);
- await page.locator('[data-workspace-menu]').tap();
- await page.locator('#workspace-menu [data-workspace-view="library"]').tap();
- const bible = page.locator('[data-open-library-book="system-bible"]');
- await bible.tap();
+ await home(page);
+ const shelf = page.getByRole('dialog',{name:'讀經',exact:true});
+ const openBible = async () => {
+   await page.getByRole('navigation',{name:'常用操作'}).getByRole('button',{name:'讀經',exact:true}).tap();
+   await shelf.getByRole('button',{name:'麥琴讀經',exact:true}).waitFor();
+   await shelf.getByRole('button',{name:'整本聖經',exact:true}).tap();
+ };
+ await openBible();
  await page.waitForFunction(() => (document.querySelector('#reader-page-text')?.textContent.match(/\/ (\d+) 頁/)?.[1] || 0) > 1000);
+ await shelf.waitFor({state:'hidden'});
  const viewport = await page.locator('#reader-page-viewport').boundingBox();
  const x = Math.round(viewport.x + viewport.width - 12);
  const y = Math.round(viewport.y + viewport.height * .77);
@@ -49,9 +54,29 @@ async function checkBiblePageCurl(context) {
  await touch('touchEnd');
  await page.waitForFunction(previous => document.querySelector('#reader-page-text').textContent !== previous, startPage);
  const flippedPage = await page.locator('#reader-page-text').textContent();
+ const markPage = page.getByRole('button',{name:'標記目前頁面',exact:true});
+ await markPage.tap();
+ assert.equal(await markPage.getAttribute('aria-pressed'),'true');
+ await page.locator('.reader-footer [data-reader-next-page]').tap();
+ await page.waitForFunction(previous => document.querySelector('#reader-page-text').textContent !== previous, flippedPage);
+ assert.equal(await markPage.getAttribute('aria-pressed'),'false');
+ await page.getByRole('button',{name:'書籤',exact:true}).tap();
+ const bookmarks = page.getByRole('dialog',{name:'書籤',exact:true});
+ const savedPage = bookmarks.locator('[data-reader-bookmark-jump]');
+ assert((await savedPage.textContent()).includes(flippedPage));
+ await savedPage.tap();
+ await bookmarks.waitFor({state:'hidden'});
+ assert.equal(await page.locator('#reader-page-text').textContent(),flippedPage);
  await page.getByTestId('reader-close').tap();
- await bible.tap();
+ await page.locator('.folio-opening h1').waitFor();
+ await openBible();
  await page.waitForFunction(expected => document.querySelector('#reader-page-text').textContent === expected, flippedPage);
+ assert.equal(await markPage.getAttribute('aria-pressed'),'true');
+ await markPage.tap();
+ const removeBookmark = page.getByRole('dialog',{name:'移除這個書籤',exact:true});
+ await removeBookmark.getByRole('button',{name:'確認移除',exact:true}).tap();
+ await removeBookmark.waitFor({state:'hidden'});
+ assert.equal(await markPage.getAttribute('aria-pressed'),'false');
  await page.close();
 }
 
@@ -218,6 +243,11 @@ async function checkBiblePageCurl(context) {
    const openReadingShelf = writing.getByRole('navigation',{name:'常用操作'}).getByRole('button',{name:'讀經',exact:true});
    await openReadingShelf.tap();
    const readingShelf = writing.getByRole('dialog',{name:'讀經',exact:true});
+   const plan = readingShelf.getByRole('button',{name:'麥琴讀經',exact:true});
+   await plan.tap();
+   await readingShelf.getByRole('button',{name:'讀經選項',exact:true}).tap();
+   await readingShelf.getByRole('button',{name:'整本聖經',exact:true}).waitFor();
+   await plan.tap();
    const readingRefs = readingShelf.locator('.today-reading-ref strong');
    await readingRefs.last().waitFor();
    const references = await readingRefs.allTextContents();
@@ -230,6 +260,7 @@ async function checkBiblePageCurl(context) {
    await writing.locator('#today-reading-dialog').waitFor({state:'hidden'});
    assert.equal(await secondRow.evaluate(row=>getComputedStyle(row).backgroundColor),'rgba(0, 0, 0, 0)');
    await openReadingShelf.tap();
+   await plan.tap();
    await readingShelf.getByRole('button',{name:'帶入寫札記',exact:true}).tap();
    await readingShelf.waitFor({state:'hidden'});
    const scriptureField = writing.locator('#note-scripture');
@@ -242,7 +273,8 @@ async function checkBiblePageCurl(context) {
  results.push('手機搜尋可展開、保留及重設篩選，從閱讀轉入編輯時焦點進入寫札記。');
  results.push('讀經面板可帶入四段經文並將焦點交給札記的經文出處。');
  results.push('首頁、讀經面板、閱讀視窗與帶入札記皆使用完整經卷名稱，觸碰讀經列後無白底殘留。');
- results.push('手機聖經可以拖動紙頁，半途放手會回到原頁，翻頁完成後重開保留位置。');
+ results.push('讀經入口可選麥琴讀經或整本聖經。整本聖經直接進入閱讀器，短拖會回彈，翻頁後關閉會回首頁並保留頁碼。');
+ results.push('聖經可直接標記目前頁面，翻頁後可從書籤跳回，重開仍可讀取及移除書籤。');
  const longTitle='詩篇一一九篇閱讀筆記：經文出處、前後段落，以及尚待補寫的觀察與閱讀紀錄';await seedLocalUserState(page,{...data,notes:[{...draft,title:longTitle},published]});await page.reload();await page.locator('.devotion-masthead').waitFor();await home(page);await assertNoHorizontalScroll(page,{label:'long title'});const layout=await page.evaluate(()=>({title:document.querySelector('.folio-opening h1').getBoundingClientRect().top,action:document.querySelector('[data-resume-note]').getBoundingClientRect().bottom}));assert(layout.action<=layout.title);results.push('手機顯示完整長題名，右上方的繼續編輯按鈕與標題分開。');
  const reduced=await browser.newContext({viewport:{width:1280,height:900},reducedMotion:'reduce'});await installLocalUserState(reduced,data);const reducedPage=await reduced.newPage();await reducedPage.goto(url);await reducedPage.locator('.folio-opening h1').waitFor();await reducedPage.mouse.wheel(0,125);assert.equal(await reducedPage.locator('.folio-portrait').evaluate(el=>getComputedStyle(el).transform),'none');await reduced.close();results.push('減少動態偏好會停止影像縮放、位移與進場動畫。');
  assert.deepEqual(errors,[]);fs.writeFileSync('artifacts/editorial-preview-results.json',JSON.stringify({passed:true,results},null,2));console.log(results.join('\n'));

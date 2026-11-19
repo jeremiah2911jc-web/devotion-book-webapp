@@ -24,7 +24,7 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.2.12';
+const APP_VERSION = '1.2.13';
 const APP_RELEASE_DATE = '2026/11/19';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
@@ -5316,6 +5316,7 @@ async function bootstrap() {
   readingWorkspace = createReadingWorkspace({state, els, setView, clearNoteForm, populateNoteForm,
     persistDraft: () => persistCurrentNoteDraft({immediate:true}),
     openReading:index=>openTodayReadingDialog(index).catch(handleError),
+    openBible: navigation => openSystemLibraryBook(systemLibrary.bible.id, navigation),
     openBook:id=>{setView('books');return openBookDraftModal(id).catch(handleError);},
     openNote: openNoteFromWorkspace, getPreview: getNotePreviewText, openAccountSettings: openAccountSettingsModal, onError:handleError,
     signOut: handleSignOut, pendingNotes:()=>readPendingNotes(localStorage,getUserId()),
@@ -11222,6 +11223,7 @@ function saveWorkspaceHistory(overrides = {}, mode = 'replace') {
     bookId: state.bookDraftModalOpen ? state.bookDraftModalBookId : null,
     selectedBookId: state.selectedBookId,
     readerBookId: document.body.dataset.currentView === 'reader' ? cloudLibrary.readerBook?.id : null,
+    readerReturnView: document.body.dataset.currentView === 'reader' ? cloudLibrary.readerReturnView : null,
     ...overrides,
   };
   const method = mode === 'push' ? 'pushState' : 'replaceState';
@@ -11240,7 +11242,7 @@ function restoreWorkspace(entry = history.state?.devotionWorkspace, historyMode 
     if (book) {
       const isCurrent = () => document.body.dataset.currentView === 'library'
         && history.state?.devotionWorkspace?.readerBookId === book.id;
-      openLibraryBookBySource(book.id, getReaderBookSource(book), { historyMode, isCurrent }).catch(error => {
+      openLibraryBookBySource(book.id, getReaderBookSource(book), { historyMode, isCurrent, returnView: entry.readerReturnView }).catch(error => {
         if (isCurrent()) handleError(error);
       });
     }
@@ -11252,6 +11254,7 @@ function restoreWorkspace(entry = history.state?.devotionWorkspace, historyMode 
   setView(view, {
     historyMode,
     scrollY: allowed && view === entry.view ? entry.scrollY : 0,
+    returnView: view === 'reader' ? entry.readerReturnView : null,
   });
   if (view === 'notes' && draft && isCurrentNoteFormEmpty()) restoreCurrentNoteDraft();
   if (view === 'books' && allowed && entry.bookId && state.books.some(book => book.id === entry.bookId)) {
@@ -11259,7 +11262,7 @@ function restoreWorkspace(entry = history.state?.devotionWorkspace, historyMode 
   }
 }
 
-function setView(viewName, { historyMode = 'push', scrollY } = {}) {
+function setView(viewName, { historyMode = 'push', scrollY, returnView } = {}) {
   const previousView = document.body.dataset.currentView;
   if (viewName === 'admin') viewName = 'admin-dashboard';
   if (isAdminView(viewName) && !isAdminUser()) {
@@ -11320,6 +11323,9 @@ function setView(viewName, { historyMode = 'push', scrollY } = {}) {
     renderContentLibrary();
   }
   if (isReaderView) {
+    cloudLibrary.readerReturnView = returnView !== 'reader' && els.views.some(view => view.id === `view-${returnView}`)
+      ? returnView
+      : 'library';
     document.body.dataset.readerScrollY = String(window.scrollY || 0);
     document.body.classList.add('reader-active');
     document.body.style.overflow = 'hidden';
@@ -11788,6 +11794,7 @@ const cloudLibrary = {
   error: '',
   selectedBookId: '',
   readerBook: null,
+  readerReturnView: 'library',
   readerChapters: [],
   readerChapterIndex: 0,
   readerPageIndex: 0,
@@ -11849,6 +11856,7 @@ function clearCloudLibrary(message = '') {
   cloudLibrary.error = message;
   cloudLibrary.selectedBookId = '';
   cloudLibrary.readerBook = null;
+  cloudLibrary.readerReturnView = 'library';
   cloudLibrary.readerChapters = [];
   cloudLibrary.readerChapterIndex = 0;
   cloudLibrary.readerPageIndex = 0;
@@ -12603,6 +12611,7 @@ async function openSystemLibraryBook(bookId, navigation) {
   };
   const preparedChapters = await readEpubChapters(epubBlob, chapters, { source: 'system' });
   if (generation !== state.workspaceOwnerGeneration || navigation?.isCurrent?.() === false) return;
+  navigation?.beforeOpen?.();
   resetReaderPaginationCache();
   cloudLibrary.selectedBookId = book.id;
   cloudLibrary.readerBook = readerBook;
@@ -12737,6 +12746,13 @@ function ensureReaderViewShell() {
   view.dataset.readerShell = 'paged';
   view.innerHTML = `
     <div class="reader-app-shell">
+      <div class="reader-bookmark-toolbar" role="group" aria-label="頁面書籤" hidden>
+        <button type="button" data-reader-bookmark-toggle aria-label="標記目前頁面" aria-pressed="false">
+          <span class="reader-bookmark-ribbon" aria-hidden="true"></span>
+          <span data-reader-bookmark-label aria-hidden="true">標記</span>
+        </button>
+        <button type="button" data-reader-open-panel="bookmarks" aria-haspopup="dialog">書籤</button>
+      </div>
       <button id="reader-close-button" class="reader-close-button" type="button" data-reader-close data-testid="reader-close" aria-label="關閉閱讀器">關閉</button>
       <div class="reader-hidden-controls" aria-hidden="true">
         <button id="reader-back-library" class="ghost-btn" type="button">返回書櫃</button>
@@ -12997,6 +13013,7 @@ function isReaderPanel(panel) {
 
 function openReaderPanel(panel) {
   if (!isReaderPanel(panel)) return;
+  if (panel === 'bookmarks') readerPageCurl?.cancel();
   cloudLibrary.readerActivePanel = panel;
   renderReaderPanels();
   if (panel === 'search') focusReaderSearchField();
@@ -13117,6 +13134,18 @@ function getCurrentReaderBookmark() {
 
 function isCurrentReaderPositionBookmarked() {
   return !!getCurrentReaderBookmark();
+}
+
+function syncReaderBookmarkToolbar() {
+  const toolbar = document.querySelector('#view-reader .reader-bookmark-toolbar');
+  if (!toolbar) return;
+  toolbar.hidden = getReaderBookKey() !== systemLibrary.bible.id || !cloudLibrary.readerChapterPageCounts.length;
+  if (toolbar.hidden) return;
+  const marked = isCurrentReaderPositionBookmarked();
+  toolbar.querySelector('[data-reader-bookmark-toggle]').setAttribute('aria-pressed', String(marked));
+  const label = toolbar.querySelector('[data-reader-bookmark-label]');
+  const text = marked ? '已標記' : '標記';
+  if (label.textContent !== text) label.textContent = text;
 }
 
 function buildCurrentReaderBookmark() {
@@ -13427,6 +13456,7 @@ function renderReaderPanels() {
   const root = document.getElementById('reader-panel-root');
   const view = document.getElementById('view-reader');
   if (!root || !view) return;
+  syncReaderBookmarkToolbar();
   const panel = cloudLibrary.readerActivePanel;
   view.classList.toggle('reader-panel-open', Boolean(panel));
   if (panel) view.dataset.readerPanel = panel;
@@ -13459,7 +13489,7 @@ function renderReaderPanel(panel) {
     toc: '目錄',
     search: '搜尋書籍',
     settings: '主題與設定',
-    bookmarks: '閱讀位置與書籤',
+    bookmarks: '書籤',
   };
   const body = panel === 'toc'
     ? renderReaderTocPanel()
@@ -13537,7 +13567,6 @@ function renderReaderSettingsPanel() {
 }
 
 function renderReaderBookmarksPanel() {
-  const book = cloudLibrary.readerBook;
   const currentBookmark = getCurrentReaderBookmark();
   const bookmarks = getCurrentBookBookmarks();
   const bookmarkItems = bookmarks.map(bookmark => `
@@ -13552,26 +13581,21 @@ function renderReaderBookmarksPanel() {
   return `
     <section class="reader-panel-section" aria-labelledby="reader-progress-section-title">
       <h4 id="reader-progress-section-title" class="reader-panel-section-title">目前閱讀位置</h4>
-      <p class="reader-panel-book-title">${escapeHtml(book?.title || '閱讀模式')}</p>
       <div class="reader-bookmark-summary">
-        <span>目前章節與頁碼</span>
         <strong>${escapeHtml(getReaderCurrentChapterTitle())}｜${escapeHtml(getReaderCurrentPageLabel())}</strong>
       </div>
-      <p class="reader-panel-muted">會記住最後閱讀位置，下次可接續閱讀。</p>
-      <p class="reader-panel-muted">尚未同步到帳號時，會保留在目前閱讀環境中。</p>
-    </section>
-    <section class="reader-panel-section" aria-labelledby="reader-manual-bookmarks-title">
-      <h4 id="reader-manual-bookmarks-title" class="reader-panel-section-title">手動書籤</h4>
-      <p class="reader-panel-muted">手動書籤可用來標記重要頁面，之後可從列表快速跳回。</p>
       <div class="reader-bookmark-actions">
         <button class="reader-bookmark-action${currentBookmark ? ' is-remove' : ''}" type="button" data-reader-bookmark-toggle>
           ${currentBookmark ? '移除目前位置書籤' : '加入目前位置書籤'}
         </button>
       </div>
-      <p class="reader-panel-muted">手動書籤尚未同步到帳號時，會保留在目前閱讀環境中。</p>
-      <div class="reader-bookmark-list" aria-label="手動書籤列表">
-        ${bookmarkItems || '<p class="reader-panel-muted">這本書目前沒有手動書籤。</p>'}
+    </section>
+    <section class="reader-panel-section" aria-labelledby="reader-manual-bookmarks-title">
+      <h4 id="reader-manual-bookmarks-title" class="reader-panel-section-title">已標記的頁面</h4>
+      <div class="reader-bookmark-list" aria-label="書籤列表">
+        ${bookmarkItems || '<p class="reader-panel-muted">這本書還沒有書籤。</p>'}
       </div>
+      <p class="reader-panel-muted">書籤儲存在此瀏覽器。</p>
     </section>
   `;
 }
@@ -13911,6 +13935,7 @@ function updateReaderProgressUi() {
   if (progressBar) progressBar.style.width = `${percent}%`;
   updateReaderTurnButtons();
   if (cloudLibrary.readerActivePanel && cloudLibrary.readerActivePanel !== 'settings') renderReaderPanels();
+  else syncReaderBookmarkToolbar();
 }
 
 function updateReaderTurnButtons() {
@@ -14528,7 +14553,9 @@ document.addEventListener('click', event => {
   if (event.target.id === 'reader-back-library' || event.target.closest('[data-reader-close]')) {
     persistCurrentReaderProgress().catch(console.error);
     closeReaderPanel();
-    setView('library');
+    const returnView = cloudLibrary.readerReturnView;
+    setView(returnView);
+    if (returnView === 'notes' && isCurrentNoteFormEmpty()) restoreCurrentNoteDraft();
     return;
   }
   const panelToggle = event.target.closest('[data-reader-toggle-panel]');
@@ -14577,8 +14604,15 @@ document.addEventListener('click', event => {
   if (event.target.closest('[data-reader-bookmark-toggle]')) {
     event.preventDefault();
     event.stopPropagation();
+    readerPageCurl?.cancel();
     if (isCurrentReaderPositionBookmarked()) removeCurrentReaderBookmark().catch(handleError);
-    else addCurrentReaderBookmark();
+    else {
+      try {
+        addCurrentReaderBookmark();
+      } catch (error) {
+        handleError(error);
+      }
+    }
     return;
   }
   const searchResult = event.target.closest('[data-reader-search-chapter-index]');
@@ -14673,6 +14707,7 @@ document.addEventListener('compositionend', event => {
 
 document.addEventListener('keydown', event => {
   if (document.getElementById('view-reader')?.classList.contains('active')) {
+    if (document.body.classList.contains('confirm-dialog-open')) return;
     if (event.key === 'Escape' && cloudLibrary.readerActivePanel) {
       event.preventDefault();
       closeReaderPanel();

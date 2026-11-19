@@ -12,13 +12,13 @@ async function navigate(page,name){await page.getByRole('button',{name:'選單',
 (async()=>{const server=spawn(process.execPath,['static-server.cjs'],{env:{...process.env,PORT:port,DEVOTION_ISOLATED_PREVIEW:'1',DEVOTION_SERVE_DIST:'1'},stdio:['ignore','pipe','pipe']});await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Server timeout')),10000);server.stdout.on('data',chunk=>{if(String(chunk).includes('static server running')){clearTimeout(timer);resolve()}});server.on('exit',code=>reject(new Error(`Server exited ${code}`)))});const browser=await chromium.launch({headless:true});try{const context=await browser.newContext({viewport:{width:1280,height:800}});const page=await context.newPage();await page.goto(url);await seedLocalUserState(page,data);await page.reload();await page.locator('.devotion-masthead').waitFor();
  await navigate(page,'電子書櫃');await page.getByTestId('library-open-reader').click();const close=page.getByTestId('reader-close');await close.waitFor();await page.waitForFunction(()=>document.querySelector('#view-reader')?.textContent.includes('聖經'));const hit=await close.evaluate(el=>{const rect=el.getBoundingClientRect();const top=document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2);return top===el||el.contains(top)});checks.push({id:'reader-close-hit',passed:hit,description:'閱讀器關閉按鈕在初始位置沒有被其他元件遮住'});
  if(hit){
-   for(const [label,name] of [['目錄','目錄'],['搜尋','搜尋書籍'],['主題與設定','主題與設定'],['書籤','閱讀位置與書籤']]){
+   for(const [label,name] of [['目錄','目錄'],['搜尋','搜尋書籍'],['主題與設定','主題與設定'],['書籤','書籤']]){
      await page.getByRole('button',{name:'閱讀功能',exact:true}).click();
      const items=page.locator('#reader-panel-root [role="menuitem"]');assert(!/[>›»]/u.test(await items.allTextContents().then(text=>text.join(''))));
      await page.getByRole('menuitem',{name:label,exact:true}).click();
      await page.getByRole('dialog',{name,exact:true}).waitFor();
      if(label==='搜尋'){await page.locator('#reader-search-field').fill('起初');await page.locator('[data-reader-search-chapter-index]').first().waitFor({timeout:15000});}
-     if(label==='書籤'){await page.locator('[data-reader-bookmark-toggle]').click();await page.getByRole('button',{name:'移除目前位置書籤',exact:true}).waitFor();}
+     if(label==='書籤'){await page.getByRole('button',{name:'加入目前位置書籤',exact:true}).click();await page.getByRole('button',{name:'移除目前位置書籤',exact:true}).waitFor();}
      await capture(page,`reader-${label}`);checks.push({id:`reader-panel-${label}`,passed:true,description:`閱讀器${label}入口與操作可用`});
      await page.keyboard.press('Escape');await page.getByRole('dialog',{name,exact:true}).waitFor({state:'hidden'});
    }
