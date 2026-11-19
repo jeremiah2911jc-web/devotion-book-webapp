@@ -24,7 +24,7 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.2.8';
+const APP_VERSION = '1.2.9';
 const APP_RELEASE_DATE = '2026/11/19';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
@@ -810,6 +810,7 @@ const els = {
   noteReaderResultCount: document.getElementById('note-reader-result-count'),
   noteReaderResetFilters: document.getElementById('note-reader-reset-filters'),
   noteReaderSearchBtn: document.getElementById('note-reader-search-btn'),
+  noteReaderFiltersToggle: document.getElementById('note-reader-filters-toggle'),
   noteReaderList: document.getElementById('note-reader-list'),
   noteReaderWriteBtn: document.getElementById('note-reader-write-btn'),
   noteReaderSearchModal: document.getElementById('note-reader-search-modal'),
@@ -5508,9 +5509,13 @@ function bindEvents() {
     syncNoteReaderControls();
   });
   els.noteReaderSearch?.addEventListener('keydown', event => {
-    if (event.key !== 'Enter') return;
+    if (event.key !== 'Enter' || event.isComposing) return;
     event.preventDefault();
     openNoteReaderSearchModal(els.noteReaderSearch);
+  });
+  els.noteReaderFiltersToggle?.addEventListener('click', event => {
+    const button = event.currentTarget;
+    button.setAttribute('aria-expanded', String(button.getAttribute('aria-expanded') !== 'true'));
   });
   els.noteReaderSearchScope?.addEventListener('change', event => {
     state.noteReaderSearchScope = String(event.target.value || 'all');
@@ -5549,7 +5554,13 @@ function bindEvents() {
   els.noteReaderReadingEdit?.addEventListener('click', () => {
     const noteId = state.noteReaderReadingId;
     closeNoteReaderReadingModal();
-    if (noteId) populateNoteForm(noteId);
+    if (!noteId) return;
+    populateNoteForm(noteId);
+    const heading = document.querySelector('#view-notes.active .workspace-page-heading h1');
+    if (heading) {
+      heading.tabIndex = -1;
+      heading.focus({ preventScroll: true });
+    }
   });
   els.noteReaderCategory?.addEventListener('change', event => {
     state.noteReaderCategory = String(event.target.value || '');
@@ -9274,6 +9285,11 @@ function syncNoteReaderControls() {
     els.noteReaderTag.value = state.noteReaderTag;
   }
   if (els.noteReaderSort) els.noteReaderSort.value = state.noteReaderSort;
+  if (els.noteReaderFiltersToggle) {
+    const count = [state.noteReaderSearchScope !== 'all', state.noteReaderCategory,
+      state.noteReaderTag, state.noteReaderSort !== 'updated-desc'].filter(Boolean).length;
+    els.noteReaderFiltersToggle.textContent = count ? `篩選（${count}）` : '篩選';
+  }
   if (els.noteReaderResultCount) {
     const totalCount = getPublishedNotes().length;
     els.noteReaderResultCount.textContent = `共 ${totalCount} 篇正式札記`;

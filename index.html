@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-title" content="DEVOTION" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>DEVOTION｜靈修札記</title>
-  <link rel="stylesheet" href="./styles.css?v=1.2.8" />
-  <link rel="stylesheet" href="./assets/css/reading-workspace.css?v=1.2.8" />
+  <link rel="stylesheet" href="./styles.css?v=1.2.9" />
+  <link rel="stylesheet" href="./assets/css/reading-workspace.css?v=1.2.9" />
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png" />
@@ -495,44 +495,47 @@
                   <span class="caption">關鍵字</span>
                   <input id="note-reader-search" class="search" type="search" placeholder="輸入關鍵字" autocomplete="off" data-testid="note-reader-search" />
                 </label>
-                <label class="compact-control note-reader-filter-control">
-                  <span class="caption">搜尋範圍</span>
-                  <select id="note-reader-search-scope" data-testid="note-reader-search-scope">
-                    <option value="all">全部範圍</option>
-                    <option value="title">標題</option>
-                    <option value="scripture">經文</option>
-                    <option value="content">內容</option>
-                    <option value="category">分類</option>
-                    <option value="tags">標籤</option>
-                  </select>
-                </label>
-              </div>
-              <div class="note-reader-filter-grid">
-                <label class="compact-control note-reader-filter-control">
-                  <span class="caption">分類</span>
-                  <select id="note-reader-category"></select>
-                </label>
-                <label class="compact-control note-reader-filter-control">
-                  <span class="caption">標籤</span>
-                  <select id="note-reader-tag"></select>
-                </label>
-                <label class="compact-control note-reader-filter-control">
-                  <span class="caption">排序</span>
-                  <select id="note-reader-sort">
-                    <option value="updated-desc">最近更新優先</option>
-                    <option value="created-asc">最早建立優先</option>
-                    <option value="title-asc">標題 A-Z</option>
-                  </select>
-                </label>
-              </div>
-              <div class="note-reader-result-row">
                 <button id="note-reader-search-btn" class="primary-btn" type="button" data-testid="note-reader-search-submit">搜尋</button>
+              </div>
+              <div class="note-reader-filter-bar">
+                <p id="note-reader-result-count" class="caption note-reader-filter-status">共 0 篇正式札記</p>
+                <button id="note-reader-filters-toggle" class="ghost-btn small" type="button" aria-controls="note-reader-extra-filters" aria-expanded="false">篩選</button>
+              </div>
+              <div id="note-reader-extra-filters" class="note-reader-extra-filters">
+                <div class="note-reader-filter-grid">
+                  <label class="compact-control note-reader-filter-control">
+                    <span class="caption">搜尋範圍</span>
+                    <select id="note-reader-search-scope" data-testid="note-reader-search-scope">
+                      <option value="all">全部範圍</option>
+                      <option value="title">標題</option>
+                      <option value="scripture">經文</option>
+                      <option value="content">內容</option>
+                      <option value="category">分類</option>
+                      <option value="tags">標籤</option>
+                    </select>
+                  </label>
+                  <label class="compact-control note-reader-filter-control">
+                    <span class="caption">分類</span>
+                    <select id="note-reader-category"></select>
+                  </label>
+                  <label class="compact-control note-reader-filter-control">
+                    <span class="caption">標籤</span>
+                    <select id="note-reader-tag"></select>
+                  </label>
+                  <label class="compact-control note-reader-filter-control">
+                    <span class="caption">排序</span>
+                    <select id="note-reader-sort">
+                      <option value="updated-desc">最近更新優先</option>
+                      <option value="created-asc">最早建立優先</option>
+                      <option value="title-asc">標題 A-Z</option>
+                    </select>
+                  </label>
+                </div>
                 <div class="note-reader-filter-actions">
                   <button id="note-reader-clear-search" class="ghost-btn small" type="button" data-testid="note-reader-clear-search">清除搜尋</button>
                   <button id="note-reader-reset-filters" class="ghost-btn small" type="button">重設篩選</button>
                 </div>
               </div>
-              <p id="note-reader-result-count" class="caption note-reader-filter-status">共 0 篇正式札記</p>
             </div>
           </section>
 
@@ -1014,7 +1017,7 @@
         </div>
         <div class="account-settings-section account-version-section">
           <span class="account-settings-label">版本資訊</span>
-          <p class="caption account-settings-version-text" data-app-version-label data-testid="version-display">版本：v1.2.8｜更新：2026/11/19</p>
+          <p class="caption account-settings-version-text" data-app-version-label data-testid="version-display">版本：v1.2.9｜更新：2026/11/19</p>
         </div>
         <div class="account-settings-section account-settings-signout-section">
           <span class="account-settings-label">登出</span>
@@ -1071,6 +1074,6 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./app.js?v=1.2.8"></script>
+  <script type="module" src="./app.js?v=1.2.9"></script>
 </body>
 </html>

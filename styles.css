@@ -8990,16 +8990,6 @@ body:not(.auth-locked)[data-current-view="notes"] .topbar {
   width: 100%;
 }
 
-.note-reader-result-row {
-  display: grid;
-  gap: 10px;
-  color: #315b60;
-}
-
-.note-reader-result-row .primary-btn {
-  width: 100%;
-}
-
 .note-reader-filter-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
