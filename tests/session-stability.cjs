@@ -46,6 +46,7 @@ async function run(browser, width) {
     let refreshMode = 'normal';
     let refreshCalls = 0;
     let detailReads = 0;
+    let firstDetailFailure;
     let metadataReads = 0;
     let chapterRows = chapters;
     let bookRow = book;
@@ -79,8 +80,22 @@ async function run(browser, width) {
       if (url.pathname === '/auth/v1/user') return json(signedIn);
       if (url.pathname === '/rest/v1/devotion_notes') return json(signedIn === owner ? notes : []);
       if (url.pathname === '/rest/v1/book_projects') {
+        if (request.method() === 'POST') {
+          const { chapters: savedChapters, ...savedBook } = request.postDataJSON();
+          assert.equal(savedBook.id, book.id);
+          assert.equal(savedBook.user_id, owner.id);
+          chapterRows = JSON.parse(savedChapters);
+          bookRow = savedBook;
+          return route.fulfill({ status: 201, body: '' });
+        }
         if (url.searchParams.has('id')) {
           detailReads++;
+          if (firstDetailFailure) {
+            const failure = firstDetailFailure;
+            firstDetailFailure = null;
+            await failure;
+            return json({ code: 'PGRST116', message: 'Fixture detail unavailable' }, 406);
+          }
           return json({ ...bookRow, chapters: chapterRows });
         }
         metadataReads++;
@@ -162,6 +177,27 @@ async function run(browser, width) {
     await page.goto(`${origin}/index.html`);
     await login(owner);
     await visible('[data-review-book]');
+    let finishFirstDetail;
+    firstDetailFailure = new Promise(resolve => { finishFirstDetail = resolve; });
+    await menu('content-library');
+    const bookHint = page.locator('#content-library-book-hint');
+    try {
+      await page.getByText('載入章節中…',{exact:true}).waitFor({timeout:4000});
+      assert.equal(await bookHint.textContent(),book.title);
+      assert(await page.getByTestId('content-library-add-selected').isDisabled());
+    } finally {
+      finishFirstDetail();
+    }
+    const retry = page.getByRole('button',{name:'重試載入',exact:true});
+    await retry.waitFor({timeout:4000});
+    assert.equal(detailReads,1);
+    await retry.click();
+    await wait(() => document.getElementById('content-library-book-hint')?.textContent.endsWith('31 章'));
+    assert.equal(detailReads,2);
+    assert.equal(await availableNotes(),1);
+    await page.getByRole('button',{name:'已收錄',exact:true}).click();
+    assert.equal(await availableNotes(),31);
+    await page.getByRole('button',{name:'可加入',exact:true}).click();
     await click('[data-workspace-menu]');
     await page.keyboard.press('Escape');
     await wait(() => !document.getElementById('workspace-menu').open);
@@ -266,6 +302,28 @@ async function run(browser, width) {
     await showView('notes');
     await wait(() => document.querySelector('#note-content').value === '登入更新時的原稿');
 
+    await menu('content-library');
+    const uncollected = page.getByTestId('content-library-note-checkbox');
+    await uncollected.check();
+    await page.getByTestId('content-library-add-selected').click();
+    await showView('books');
+    await wait(() => document.querySelectorAll('#chapters-list [data-chapter-item]').length === 32);
+    assert.equal(await page.locator('#book-arrangement-count').textContent(), '章節編排 · 32 章');
+    const newChapter = page.locator('#chapters-list [data-chapter-item]').last();
+    const addedChapterId = await newChapter.getAttribute('data-chapter-item');
+    assert.equal(await newChapter.locator('[data-chapter-edit]').textContent(), notes[31].title);
+    await newChapter.locator('[data-move-up]').click();
+    await click('#save-book-arrangement-btn');
+    await wait(() => document.getElementById('book-arrangement-status')?.textContent === '已儲存');
+    assert.equal(chapterRows[30].id, addedChapterId);
+    await click('#close-book-draft-modal-btn');
+    await page.reload();
+    await showView('books');
+    await click('[data-testid="book-open-draft"]');
+    await wait(() => document.querySelectorAll('#chapters-list [data-chapter-item]').length === 32);
+    assert.equal(await page.locator('#chapters-list [data-chapter-item]').nth(30).getAttribute('data-chapter-item'), addedChapterId);
+    await click('#close-book-draft-modal-btn');
+
     await click('[data-workspace-menu]');
     await click('[data-workspace-signout]');
     await visible('#auth-gate');
@@ -278,7 +336,7 @@ async function run(browser, width) {
     assert.equal((await storedDraft(otherDraftKey)).content, '另一個帳號的原稿');
     assert.equal((await storedDraft(draftStorage)).content, '登入更新時的原稿');
     assert.deepEqual(errors, []);
-    console.log(`WebKit ${width}px 通過登入更新、原稿保留、章節同步、選稿、上一頁及本裝置登出。`);
+    console.log(`WebKit ${width}px 通過登入更新、原稿保留、選稿載入重試、加入同一份書稿、章節儲存重開、上一頁及本裝置登出。`);
   } finally {
     await context.close();
   }

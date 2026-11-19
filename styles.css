@@ -3164,7 +3164,6 @@ body.account-settings-open {
 
   #content-library-book-hint {
     grid-column: 1 / -1;
-    order: 2;
   }
 
   #content-library-add-selected {
