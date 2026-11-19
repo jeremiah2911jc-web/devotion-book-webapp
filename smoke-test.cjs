@@ -416,8 +416,7 @@ async function verifyNoteReaderWorkspace(page, results) {
   }
   await clickElement(page, '[data-testid="note-reader-reading-close"]');
   await page.waitForFunction(() => document.querySelector('[data-testid="note-reader-reading-modal"]')?.classList.contains('hidden'), { timeout: 10000 });
-  await clickElement(page, '[data-testid="note-reader-search-submit"]');
-  await expectVisible(page, '[data-testid="note-reader-search-modal"]:not(.hidden)', '搜尋結果 modal 可再次開啟');
+  await expectVisible(page, '[data-testid="note-reader-search-modal"]:not(.hidden)', '關閉札記後回到搜尋結果');
   await clickElement(page, '[data-testid="note-reader-search-result"] [data-testid="note-reader-read-button"]');
   await page.waitForFunction(() => document.querySelector('[data-testid="note-reader-search-modal"]')?.classList.contains('hidden'), { timeout: 10000 });
   await expectVisible(page, '[data-testid="note-reader-reading-modal"]:not(.hidden)', '搜尋結果右上角閱讀按鈕可切換到閱讀 modal');
@@ -563,14 +562,22 @@ async function verifyBulkSearchScenario(browser, { count, width, height, label }
     }
 
     if (count > 0) {
-      await clickElement(page, '[data-testid="note-reader-search-result"]');
+      const scrollResults = page.getByTestId('note-reader-search-results');
+      const result = scrollResults.getByTestId('note-reader-search-result').nth(count >= 30 ? 8 : 0);
+      await result.scrollIntoViewIfNeeded();
+      const originalPosition = await scrollResults.evaluate(el => el.scrollTop);
+      if (count >= 30 && originalPosition <= 0) throw new Error(`${label} 搜尋結果需從捲動後的位置開啟`);
+      await result.click();
       await expectVisible(page, '[data-testid="note-reader-reading-modal"]:not(.hidden)', `${label} 搜尋結果可開啟閱讀 modal`);
       const readingText = await page.locator('[data-testid="note-reader-reading-content"]').textContent();
-      if (!readingText?.includes(geometry.firstTitle)) throw new Error(`${label} 閱讀 modal 未開啟正確札記`);
+      if (!readingText?.includes(await result.locator('h3').textContent())) throw new Error(`${label} 閱讀 modal 未開啟正確札記`);
       await clickElement(page, '[data-testid="note-reader-reading-close"]');
       await page.waitForFunction(() => document.querySelector('[data-testid="note-reader-reading-modal"]')?.classList.contains('hidden'), { timeout: 10000 });
-      await clickElement(page, '[data-testid="note-reader-search-submit"]');
-      await expectVisible(page, '[data-testid="note-reader-search-modal"]:not(.hidden)', `${label} 搜尋 modal 可再次開啟`);
+      await expectVisible(page, '[data-testid="note-reader-search-modal"]:not(.hidden)', `${label} 關閉札記後回到搜尋結果`);
+      const restoredPosition = await scrollResults.evaluate(el => el.scrollTop);
+      if (Math.abs(restoredPosition-originalPosition)>1 || !await result.evaluate(el=>el.contains(document.activeElement))) {
+        throw new Error(`${label} 搜尋結果未保留原捲動位置或焦點`);
+      }
     }
 
     await clickElement(page, '[data-testid="note-reader-search-modal-clear"]');
@@ -754,6 +761,7 @@ async function verifyScriptureFetchAppendFlow(page, results) {
   await clickElement(page, '[data-testid="note-reader-reading-close"]');
   await page.waitForFunction(() => document.querySelector('[data-testid="note-reader-reading-modal"]')?.classList.contains('hidden'), { timeout: 10000 });
 
+  await page.getByTestId('note-reader-search-modal-close').click();
   await clickPrimaryViewNav(page, 'content-library', 'mobile-nav-note-library');
   await page.fill('[data-testid="content-library-search"]', publishedTitle);
   await expectVisible(page, '[data-testid="content-library-card"]', '追加後札記可在札記庫顯示');

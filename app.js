@@ -24,7 +24,7 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.2.0-preview.5';
+const APP_VERSION = '1.2.0-preview.6';
 const APP_RELEASE_DATE = '2026/11/19';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
@@ -1192,6 +1192,8 @@ const state = {
   noteReaderTag: '',
   noteReaderSort: 'updated-desc',
   noteReaderReadingId: '',
+  noteReaderSearchOrigin: null,
+  noteReaderSearchReturn: null,
   noteReaderDate: '',
   noteReaderWeekDate: '',
   noteReaderListScrollTop: 0,
@@ -1226,6 +1228,8 @@ const state = {
   realtimeChannel: null,
   noteDraftSaveTimer: null,
   noteDraftDirty: false,
+  noteSaving: false,
+  noteEditorGeneration: 0,
   noteSummaryVisibilityTouched: false,
   notePrayerVisibilityTouched: false,
   currentNoteStatus: NOTE_STATUS_PUBLISHED,
@@ -5317,10 +5321,17 @@ async function bootstrap() {
       }catch(error){showToast('同步尚未完成，離線札記已保留。');}
     },
     prepareNewNote: async () => {
+      if (state.noteSaving) {
+        showToast('札記儲存中，請稍候。');
+        return false;
+      }
       if (!hasUnsavedCurrentNoteDraft()) return true;
       const accepted = await openConfirmDialog({title:'儲存目前札記',message:'目前有尚未儲存的內容。',confirmText:'儲存並新增',cancelText:'繼續寫'});
       if (!accepted) return false;
-      try {await saveNote({status:els.noteContent.value.trim()?state.currentNoteStatus:NOTE_STATUS_DRAFT});return true;} catch(error) {handleNoteSaveError(error);return false;}
+      try {
+        await saveNote({status:els.noteContent.value.trim()?state.currentNoteStatus:NOTE_STATUS_DRAFT});
+        return !hasUnsavedCurrentNoteDraft();
+      } catch(error) {handleNoteSaveError(error);return false;}
     }});
   document.body.dataset.currentView = document.querySelector('.view.active')?.id?.replace('view-', '') || 'dashboard';
   syncConfigInputs();
@@ -5489,7 +5500,7 @@ function bindEvents() {
   els.noteReaderSearch?.addEventListener('keydown', event => {
     if (event.key !== 'Enter') return;
     event.preventDefault();
-    openNoteReaderSearchModal();
+    openNoteReaderSearchModal(els.noteReaderSearch);
   });
   els.noteReaderSearchScope?.addEventListener('change', event => {
     state.noteReaderSearchScope = String(event.target.value || 'all');
@@ -5501,7 +5512,7 @@ function bindEvents() {
     if (!els.noteReaderSearchModal?.classList.contains('hidden')) renderNoteReaderSearchResults();
     els.noteReaderSearch?.focus();
   });
-  els.noteReaderSearchBtn?.addEventListener('click', () => openNoteReaderSearchModal());
+  els.noteReaderSearchBtn?.addEventListener('click', () => openNoteReaderSearchModal(els.noteReaderSearchBtn));
   els.noteReaderSearchModalClose?.addEventListener('click', closeNoteReaderSearchModal);
   els.noteReaderSearchModalCloseBottom?.addEventListener('click', closeNoteReaderSearchModal);
   els.noteReaderSearchBackdrop?.addEventListener('click', closeNoteReaderSearchModal);
@@ -5523,8 +5534,8 @@ function bindEvents() {
     }
   });
   els.noteReaderSearchResults?.addEventListener('keydown', handleNoteReaderOpenKeydown);
-  els.noteReaderReadingClose?.addEventListener('click', closeNoteReaderReadingModal);
-  els.noteReaderReadingBackdrop?.addEventListener('click', closeNoteReaderReadingModal);
+  els.noteReaderReadingClose?.addEventListener('click', () => closeNoteReaderReadingModal({ restoreSearch: true }));
+  els.noteReaderReadingBackdrop?.addEventListener('click', () => closeNoteReaderReadingModal({ restoreSearch: true }));
   els.noteReaderReadingEdit?.addEventListener('click', () => {
     const noteId = state.noteReaderReadingId;
     closeNoteReaderReadingModal();
@@ -5646,7 +5657,10 @@ function bindEvents() {
     if (event.key === 'Escape' && !els.authInlinePanel?.classList.contains('hidden')) closeAuthInline();
     if (event.key === 'Escape' && !els.accountSettingsModal?.classList.contains('hidden')) closeAccountSettingsModal();
     if (event.key === 'Escape' && !els.notePreviewModal?.classList.contains('hidden')) closeNotePreview();
-    if (event.key === 'Escape' && !els.noteReaderReadingModal?.classList.contains('hidden')) closeNoteReaderReadingModal();
+    if (!els.noteReaderReadingModal?.classList.contains('hidden')) {
+      closeNoteReaderReadingModal({ restoreSearch: true });
+      return;
+    }
     if (event.key === 'Escape' && !els.noteReaderSearchModal?.classList.contains('hidden')) closeNoteReaderSearchModal();
     const dailyReadingDialog=document.getElementById('today-reading-dialog');
     if(event.key==='Escape'&&dailyReadingDialog&&!dailyReadingDialog.classList.contains('hidden'))closeTodayReadingDialog();
@@ -9588,39 +9602,64 @@ function getPublishedNoteById(noteId = '') {
   return getPublishedNotes().find(note => String(note.id || '') === id) || null;
 }
 
-function openNoteReaderSearchModal() {
+function openNoteReaderSearchModal(origin = els.noteReaderSearchBtn) {
+  state.noteReaderSearchOrigin = origin;
+  state.noteReaderSearchReturn = null;
   syncNoteReaderControls();
   renderNoteReaderSearchResults();
   closeNoteReaderReadingModal();
   els.noteReaderSearchModal?.classList.remove('hidden');
   els.noteReaderSearchModal?.setAttribute('aria-hidden', 'false');
+  if (els.noteReaderSearchResults) els.noteReaderSearchResults.scrollTop = 0;
   syncNoteReaderModalLock();
-  requestAnimationFrame(() => els.noteReaderSearchModalClose?.focus());
+  requestAnimationFrame(() => els.noteReaderSearchModalClose?.focus({ preventScroll: true }));
 }
 
-function closeNoteReaderSearchModal() {
+function closeNoteReaderSearchModal({ forReading = false } = {}) {
+  const wasOpen = els.noteReaderSearchModal && !els.noteReaderSearchModal.classList.contains('hidden');
   els.noteReaderSearchModal?.classList.add('hidden');
   els.noteReaderSearchModal?.setAttribute('aria-hidden', 'true');
+  if (!forReading) {
+    if (wasOpen && document.body.dataset.currentView === 'note-reader') {
+      state.noteReaderSearchOrigin?.focus({ preventScroll: true });
+    }
+    state.noteReaderSearchOrigin = null;
+    state.noteReaderSearchReturn = null;
+  }
   syncNoteReaderModalLock();
 }
 
-function openNoteReaderReadingModal(note) {
+function openNoteReaderReadingModal(note, trigger = null) {
   if (!note) return;
+  const results = els.noteReaderSearchResults;
+  if (results?.contains(trigger) && !els.noteReaderSearchModal?.classList.contains('hidden')) {
+    state.noteReaderSearchReturn = { trigger, scrollTop: results.scrollTop };
+  }
   state.noteReaderReadingId = String(note.id || '');
   readingWorkspace?.cancelPanelClose(els.noteReaderReadingModal);
   renderNoteReaderReadingContent(note);
-  closeNoteReaderSearchModal();
+  closeNoteReaderSearchModal({ forReading: true });
   els.noteReaderReadingModal?.classList.remove('hidden');
   els.noteReaderReadingModal?.setAttribute('aria-hidden', 'false');
   syncNoteReaderModalLock();
-  requestAnimationFrame(() => els.noteReaderReadingClose?.focus());
+  requestAnimationFrame(() => els.noteReaderReadingClose?.focus({ preventScroll: true }));
 }
 
-function closeNoteReaderReadingModal() {
+function closeNoteReaderReadingModal({ restoreSearch = false } = {}) {
   state.noteReaderReadingId = '';
+  if (!restoreSearch) state.noteReaderSearchReturn = null;
   const finish=()=>{
+    const previousSearch = state.noteReaderSearchReturn;
+    state.noteReaderSearchReturn = null;
     els.noteReaderReadingModal?.classList.add('hidden');
     els.noteReaderReadingModal?.setAttribute('aria-hidden','true');
+    if (restoreSearch && previousSearch && document.body.dataset.currentView === 'note-reader') {
+      els.noteReaderSearchModal?.classList.remove('hidden');
+      els.noteReaderSearchModal?.setAttribute('aria-hidden', 'false');
+      els.noteReaderSearchResults.scrollTop = previousSearch.scrollTop;
+      const target = previousSearch.trigger.isConnected ? previousSearch.trigger : els.noteReaderSearchModalClose;
+      target?.focus({ preventScroll: true });
+    }
     syncNoteReaderModalLock();
   };
   if(readingWorkspace)readingWorkspace.closePanel(els.noteReaderReadingModal,finish);else finish();
@@ -9640,7 +9679,9 @@ function handleNoteReaderOpenClick(event) {
   if (!noteId) return false;
   event.preventDefault();
   event.stopPropagation();
-  openNoteReaderNote(noteId);
+  const target = event.target.closest('[data-note-reader-open]');
+  const trigger = target.matches('a') ? target : target.querySelector('a[data-note-reader-open]');
+  openNoteReaderNote(noteId, trigger);
   return true;
 }
 
@@ -9687,14 +9728,14 @@ function openNoteFromWorkspace(noteId) {
   else showToast('找不到這篇札記。');
 }
 
-function openNoteReaderNote(noteId) {
+function openNoteReaderNote(noteId, trigger = null) {
   const note = getPublishedNoteById(noteId);
   if (document.body.dataset.currentView !== 'note-reader') setView('note-reader');
   if (!note) {
     showToast('找不到這篇正式札記。');
     return;
   }
-  openNoteReaderReadingModal(note);
+  openNoteReaderReadingModal(note, trigger);
 }
 
 function renderNotePreview() {
@@ -10224,6 +10265,7 @@ function syncCurrentNoteDraftNotice() {
 function restoreCurrentNoteDraft() {
   const draft = loadCurrentNoteDraft();
   if (!draft || !isCurrentUserNoteDraft(draft)) return;
+  state.noteEditorGeneration++;
   state.currentNoteStatus = normalizeNoteStatus(draft.status);
   els.noteId.value = draft.editingNoteId || '';
   els.noteTitle.value = draft.title || '';
@@ -10281,6 +10323,7 @@ function focusNoteEditorSection() {
 function populateNoteForm(noteId, options = {}) {
   const note = state.notes.find(item => item.id === noteId);
   if (!note) return;
+  state.noteEditorGeneration++;
   const { focusEditor = false, showDraftLoadedToast = false } = options;
   setView('notes');
   state.currentNoteStatus = resolveNoteStatus(note);
@@ -10315,6 +10358,7 @@ function populateNoteForm(noteId, options = {}) {
 }
 
 function clearNoteForm({ clearDraft = false } = {}) {
+  state.noteEditorGeneration++;
   els.noteForm.reset();
   els.noteId.value = '';
   readingWorkspace?.loadConnections({});
@@ -10348,8 +10392,27 @@ function syncNoteStatusUi() {
   }
 }
 
-async function saveNote({ status = NOTE_STATUS_PUBLISHED } = {}) {
+async function saveNote(options) {
+  if (state.noteSaving) return;
+  state.noteSaving = true;
+  readingWorkspace?.refreshEditorStatus();
+  try {
+    await saveCurrentNote(options);
+  } finally {
+    state.noteSaving = false;
+    readingWorkspace?.refreshEditorStatus();
+  }
+}
+
+function getNoteEditorSnapshot() {
+  const { updatedAt, ...fields } = getCurrentNoteDraftPayload();
+  return fields;
+}
+
+async function saveCurrentNote({ status = NOTE_STATUS_PUBLISHED } = {}) {
   requireUser();
+  const editorGeneration = state.noteEditorGeneration;
+  const snapshot = JSON.stringify(getNoteEditorSnapshot());
   const normalizedStatus = normalizeNoteStatus(status);
   const existingNote = els.noteId.value ? state.notes.find(n => n.id === els.noteId.value) : null;
   const finalStatus = existingNote && isPublishedNote(existingNote) ? NOTE_STATUS_PUBLISHED : normalizedStatus;
@@ -10373,10 +10436,12 @@ async function saveNote({ status = NOTE_STATUS_PUBLISHED } = {}) {
   if (!payload.title) payload.title = `${new Intl.DateTimeFormat('zh-TW', {year:'numeric',month:'long',day:'numeric'}).format(new Date(payload.created_at))}札記`;
   if (finalStatus === NOTE_STATUS_PUBLISHED && !payload.content) throw new Error('請填入札記內容。');
   persistCurrentNoteDraft({ immediate: true });
+  let queuedOffline = false;
   try {
     const persistencePayload = buildNotePersistencePayload(payload);
     if (state.supabase && (!navigator.onLine || readPendingNotes(localStorage,getUserId()).some(item=>item.note.id===payload.id))) {
       queueOfflineNote(localStorage,getUserId(),persistencePayload,existingNote?.updated_at);
+      queuedOffline = true;
     } else if (state.supabase) {
       const { error } = await state.supabase.from('devotion_notes').upsert(persistencePayload);
       if (error) throw error;
@@ -10388,23 +10453,36 @@ async function saveNote({ status = NOTE_STATUS_PUBLISHED } = {}) {
     }
   } catch (error) {
     console.warn('note save failed', error);
-    persistCurrentNoteDraft({ immediate: true });
+    if (getUserId() === payload.user_id && state.noteEditorGeneration === editorGeneration) {
+      persistCurrentNoteDraft({ immediate: true });
+    }
     throw new Error('札記儲存失敗，內容已保留，請稍後再試。');
   }
 
-  els.noteId.value = payload.id;
-  state.currentNoteStatus = finalStatus;
+  if (getUserId() !== payload.user_id) return;
+  state.notes = [normalizeNoteRecord(payload), ...state.notes.filter(note => note.id !== payload.id)];
+  if (state.noteEditorGeneration === editorGeneration) {
+    const current = getNoteEditorSnapshot();
+    const editedWhileSaving = JSON.stringify(current) !== snapshot;
+    els.noteId.value = payload.id;
+    state.currentNoteStatus = finalStatus;
+    if (!editedWhileSaving && !els.noteTitle.value.trim()) els.noteTitle.value = payload.title;
+    readingWorkspace?.loadConnections(current);
+    els.deleteNoteBtn?.classList.remove('hidden');
+    syncNoteStatusUi();
+    if (editedWhileSaving) persistCurrentNoteDraft({ immediate: true });
+    else clearCurrentNoteDraft();
+  }
   try {
-    await loadAllData({ silent: true, syncReason: state.supabase ? '札記已同步到雲端。' : '' });
+    await loadAllData({ silent: true, syncReason: state.supabase && !queuedOffline ? '札記已同步到雲端。' : '' });
   } catch (error) {
     console.warn('note saved but refresh failed', error);
-    persistCurrentNoteDraft({ immediate: true });
-    showToast('札記已儲存，但畫面刷新暫時失敗，內容已保留。');
+    if (getUserId() === payload.user_id) showToast('札記已儲存，清單暫時無法更新。');
     return;
   }
-  setView('notes');
-  clearNoteForm({ clearDraft: true });
-  showToast(state.supabase&&readPendingNotes(localStorage,getUserId()).some(item=>item.note.id===payload.id)?'札記已儲存在此裝置，可從選單同步。':finalStatus === NOTE_STATUS_DRAFT ? '草稿已儲存。' : '札記已儲存。');
+  if (getUserId() !== payload.user_id) return;
+  showToast(queuedOffline ? '札記已儲存在此裝置，可從選單同步。'
+    : finalStatus === NOTE_STATUS_DRAFT ? '草稿已儲存。' : '札記已儲存。');
 }
 
 async function deleteNote() {

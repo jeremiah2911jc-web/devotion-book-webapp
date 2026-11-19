@@ -538,6 +538,13 @@ body.reading-workspace .prayer-workspace { max-width: 1050px; margin-inline: aut
 /* Audit corrections: immersive reader and modal controls remain reachable. */
 body.reading-workspace.reader-active .devotion-masthead,body.reading-workspace.reader-active .site-footer{visibility:hidden;pointer-events:none}
 body.reading-workspace:has(.modal:not(.hidden)){overflow:hidden!important}
+/* Lock the viewport so the sticky masthead keeps the same scroll container. */
+html:has(body.reading-workspace){scrollbar-gutter:stable}
+html:has(body.reading-workspace :is(#workspace-reading-shelf[open],#today-reading-dialog:not(.hidden),#note-reader-search-modal:not(.hidden),#note-reader-reading-modal:not(.hidden))){overflow:hidden}
+body.reading-workspace:has(:is(#workspace-reading-shelf[open],#today-reading-dialog:not(.hidden),#note-reader-search-modal:not(.hidden),#note-reader-reading-modal:not(.hidden))){
+  overflow-x:clip!important;
+  overflow-y:visible!important;
+}
 .reading-workspace :is(.modal-card,dialog){overscroll-behavior:contain}
 .workspace-page-heading{margin:0 0 24px;padding:0}
 .workspace-page-heading h1{font:600 30px/1.5 -apple-system,BlinkMacSystemFont,"PingFang TC",sans-serif;margin:0;color:var(--folio-ink)}

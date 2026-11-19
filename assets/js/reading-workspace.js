@@ -169,9 +169,13 @@ export function createReadingWorkspace(api) {
     const date = document.getElementById('workspace-writing-date');
     const status = document.getElementById('workspace-writing-status');
     date.textContent = dateLabel(current?.created_at);
-    const nextStatus = state.noteDraftDirty ? '尚未手動儲存'
-      : current?.status === 'draft' ? '草稿'
-        : current ? '已儲存札記' : '';
+    const pending = current && !state.noteDraftDirty && state.supabase
+      && api.pendingNotes().some(item => item.note.id === current.id);
+    const nextStatus = state.noteSaving ? '儲存中'
+      : state.noteDraftDirty ? '尚未手動儲存'
+        : pending ? '已儲存於此裝置，待同步'
+          : current?.status === 'draft' ? '草稿已儲存'
+            : current ? '札記已儲存' : '';
     if (status.textContent !== nextStatus) status.textContent = nextStatus;
   }
   function renderEditorConnections() {
