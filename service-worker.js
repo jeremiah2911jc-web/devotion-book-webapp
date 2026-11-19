@@ -1,7 +1,7 @@
-const CACHE='devotion-public-1.2.9';
+const CACHE='devotion-public-1.2.10';
 // The production host redirects /index.html to /. Cache the direct response.
 const HOME='/';
-const CORE=[HOME,'/app.js','/styles.css','/assets/css/reading-workspace.css','/assets/js/reading-workspace.js','/assets/js/offline-notes.js','/assets/js/scripture-reference-utils.js','/assets/vendor/supabase.js','/assets/editorial/rocky-surf.jpg','/assets/editorial/open-journal.jpg','/assets/editorial/journal-linework.png','/assets/data/mcheyne-reading-plan.json','/manifest.webmanifest','/version.json','/favicon.ico'];
+const CORE=[HOME,'/app.js','/styles.css','/assets/css/reading-workspace.css','/assets/js/reading-workspace.js','/assets/js/offline-notes.js','/assets/js/scripture-reference-utils.js','/assets/vendor/supabase.js','/assets/editorial/rocky-surf.jpg','/assets/editorial/open-journal.jpg','/assets/editorial/journal-linework.png','/assets/editorial/mountain-dawn.jpg','/assets/data/mcheyne-reading-plan.json','/manifest.webmanifest','/version.json','/favicon.ico'];
 self.addEventListener('install',event=>{
   // A page blocked by the old worker cannot ask the replacement to activate.
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting()));

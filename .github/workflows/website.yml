@@ -8,6 +8,13 @@ permissions:
 jobs:
   website:
     runs-on: ubuntu-24.04
+    # Match the locked Playwright version and use its preinstalled browsers and Linux dependencies.
+    container:
+      image: mcr.microsoft.com/playwright:v1.59.1-noble@sha256:b0ab6f3cb99aa7803adbc14d9027ec1785fc6e433b97e134e0f8fe61683b6b53
+      options: --ipc=host
+      volumes:
+        # Both images use Ubuntu 24.04. EPUB checks use the runner's unzip binary.
+        - /usr/bin/unzip:/usr/local/bin/unzip:ro
     timeout-minutes: 20
     env:
       DEVOTION_ISOLATED_PREVIEW: '1'
@@ -22,7 +29,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm audit --audit-level=high
-      - run: npx playwright install --with-deps chromium
       - run: npm run test:workspace
       - run: npm run build
       - run: npm run verify

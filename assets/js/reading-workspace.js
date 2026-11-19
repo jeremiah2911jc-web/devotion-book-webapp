@@ -80,13 +80,22 @@ export function createReadingWorkspace(api) {
   const shelf = document.createElement('dialog');
   shelf.className = 'workspace-reading-shelf';
   shelf.id = 'workspace-reading-shelf';
-  shelf.setAttribute('aria-label', '讀經');
-  shelf.innerHTML = `<div class="workspace-dialog-heading"><h2>讀經</h2><button type="button" data-shelf-close>關閉</button></div>`;
+  shelf.setAttribute('aria-labelledby', 'workspace-reading-title');
+  shelf.innerHTML = `<header class="workspace-reading-hero">
+    <div class="workspace-reading-art" aria-hidden="true"></div>
+    <div class="workspace-dialog-heading">
+      <h2 id="workspace-reading-title" tabindex="-1" autofocus>讀經</h2>
+      <button type="button" data-shelf-close>關閉</button>
+    </div>
+  </header>`;
   const openShelf = () => {
     if (!shelf.open) shelf.showModal();
   };
   const today = document.querySelector('.home-today-reading-card');
-  if (today) shelf.append(today);
+  if (today) {
+    shelf.querySelector('.workspace-reading-hero').append(today.querySelector('.today-reading-header'));
+    shelf.append(today);
+  }
   document.body.append(shelf);
   const menuTrigger = masthead.querySelector('[data-workspace-menu]');
   menuTrigger.addEventListener('click', () => {
@@ -112,7 +121,9 @@ export function createReadingWorkspace(api) {
   masthead.querySelector('[data-workspace-new]').addEventListener('click',async()=>{if(!await api.prepareNewNote())return;api.clearNoteForm({clearDraft:true});api.setView('notes');els.noteContent.focus();});
   masthead.querySelector('[data-workspace-reading]').addEventListener('click', openShelf);
   shelf.querySelector('[data-shelf-close]').addEventListener('click',()=>shelf.close());
-  shelf.addEventListener('click',event=>{if(event.target.closest('[data-today-reading-index], #today-reading-note-btn'))shelf.close();});
+  shelf.addEventListener('click', event => {
+    if (event.target.closest('[data-today-reading-index], #today-reading-note-btn')) shelf.close();
+  }, { capture: true });
   menu.addEventListener('click', event => { if (event.target === menu) closeMenu(); });
   shelf.addEventListener('click', event => { if (event.target === shelf) shelf.close(); });
 
@@ -634,15 +645,20 @@ function manageEditorialDialogFocus(){
   const dialogs=()=>[...document.querySelectorAll('[role="dialog"][aria-modal="true"]')].filter(visible);
   new MutationObserver(()=>{
     const current=dialogs();
-    for(const dialog of current)if(!previous.includes(dialog)){origins.set(dialog,lastAction||document.activeElement);if(!dialog.contains(document.activeElement))dialog.querySelector('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled])')?.focus();}
+    const view=document.body.dataset.currentView;
+    for(const dialog of current)if(!previous.includes(dialog)){
+      origins.set(dialog,{trigger:lastAction||document.activeElement,view});
+      if(!dialog.contains(document.activeElement))dialog.querySelector('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled])')?.focus();
+    }
     const writingDialog = current.at(-1)?.matches('.note-main-writing') ? current.at(-1) : null;
     for(const dialog of previous)if(!current.includes(dialog)&&(!current.length||writingDialog)){
       const origin=origins.get(dialog);
+      if(origin?.view!==view)continue;
       const fallback=writingDialog?.querySelector('#writing-focus-reference:not([hidden]) button')
         || writingDialog?.querySelector('.writing-focus-heading button')
         || document.querySelector('.devotion-masthead [data-workspace-view="note-reader"]');
       if(!document.querySelector('dialog[open]')&&(dialog.contains(document.activeElement)||document.activeElement===document.body||!visible(document.activeElement))){
-        if(visible(origin))origin.focus({preventScroll:true});else if(visible(fallback))fallback.focus({preventScroll:true});
+        if(visible(origin?.trigger))origin.trigger.focus({preventScroll:true});else if(visible(fallback))fallback.focus({preventScroll:true});
       }
     }
     previous=current;

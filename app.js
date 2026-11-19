@@ -24,7 +24,7 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.2.9';
+const APP_VERSION = '1.2.10';
 const APP_RELEASE_DATE = '2026/11/19';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
@@ -5553,7 +5553,7 @@ function bindEvents() {
   els.noteReaderReadingBackdrop?.addEventListener('click', () => closeNoteReaderReadingModal({ restoreSearch: true }));
   els.noteReaderReadingEdit?.addEventListener('click', () => {
     const noteId = state.noteReaderReadingId;
-    closeNoteReaderReadingModal();
+    closeNoteReaderReadingModal({ immediate: true });
     if (!noteId) return;
     populateNoteForm(noteId);
     const heading = document.querySelector('#view-notes.active .workspace-page-heading h1');
@@ -8590,15 +8590,19 @@ function renderTodayReadingCard() {
   }
   if (els.todayReadingDay) els.todayReadingDay.textContent = `第 ${selectedIndex + 1} 日`;
   els.todayReadingList.classList.remove('is-loading');
-  const readings = entry.readings.map((reading, index) => `
-    <button class="today-reading-ref" type="button" data-today-reading-index="${index}">
-      <span class="today-reading-ref-main">
-        <span class="today-reading-ref-kicker">${index < 2 ? '家庭' : '個人'} ${index + 1}</span>
+  const readings = ['家庭讀經', '個人讀經'].map((label, group) => {
+    const start = group * 2;
+    const rows = entry.readings.slice(start, start + 2).map((reading, offset) => `
+      <button class="today-reading-ref" type="button" data-today-reading-index="${start + offset}">
         <strong>${escapeHtml(reading)}</strong>
-      </span>
-      <span class="today-reading-ref-action">閱讀經文 </span>
-    </button>
-  `).join('');
+        <span class="today-reading-ref-action">閱讀經文</span>
+      </button>
+    `).join('');
+    return `<section class="today-reading-group" aria-labelledby="today-reading-group-${group}">
+      <h3 id="today-reading-group-${group}">${label}</h3>
+      ${rows}
+    </section>`;
+  }).join('');
   setElementHtmlIfChanged(els.todayReadingList, readings);
   if (state.mcheynePlanStatus === 'idle') ensureMcheynePlanLoaded();
 }
@@ -9473,14 +9477,15 @@ function openNoteReaderReadingModal(note, trigger = null) {
   els.noteReaderReadingClose?.focus({ preventScroll: true });
 }
 
-function closeNoteReaderReadingModal({ restoreSearch = false } = {}) {
+function closeNoteReaderReadingModal({ restoreSearch = false, immediate = false } = {}) {
+  const modal = els.noteReaderReadingModal;
   state.noteReaderReadingId = '';
   if (!restoreSearch) state.noteReaderSearchReturn = null;
   const finish=()=>{
     const previousSearch = state.noteReaderSearchReturn;
     state.noteReaderSearchReturn = null;
-    els.noteReaderReadingModal?.classList.add('hidden');
-    els.noteReaderReadingModal?.setAttribute('aria-hidden','true');
+    modal?.classList.add('hidden');
+    modal?.setAttribute('aria-hidden','true');
     if (restoreSearch && previousSearch && document.body.dataset.currentView === 'note-reader') {
       els.noteReaderSearchModal?.classList.remove('hidden');
       els.noteReaderSearchModal?.setAttribute('aria-hidden', 'false');
@@ -9490,7 +9495,12 @@ function closeNoteReaderReadingModal({ restoreSearch = false } = {}) {
     }
     syncNoteReaderModalLock();
   };
-  if(readingWorkspace)readingWorkspace.closePanel(els.noteReaderReadingModal,finish);else finish();
+  if (readingWorkspace && !immediate) {
+    readingWorkspace.closePanel(modal, finish);
+    return;
+  }
+  readingWorkspace?.cancelPanelClose(modal);
+  finish();
 }
 
 function getNoteReaderOpenIdFromTarget(target) {
@@ -12424,7 +12434,7 @@ function renderLibrary() {
         : '這本書已保存於雲端書櫃，可在登入後跨裝置閱讀。');
     const fallbackCover = book.source === 'imported_epub'
       ? `<div class="library-cover-fallback"><strong>${escapeHtml((book.title || '書').slice(0, 18))}</strong><small>EPUB 匯入書</small></div>`
-      : `<span>${escapeHtml((book.title || '書').slice(0, 2))}</span>`;
+      : `<div class="library-cover-fallback"><strong>${escapeHtml(book.title || '書')}</strong></div>`;
     const detailLabel = book.source === 'imported_epub'
       ? `檔案 ${(book.fileSize / 1024 / 1024 || 0).toFixed(1)} MB`
       : isSystemBook
