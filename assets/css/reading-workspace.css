@@ -820,7 +820,26 @@ body.reading-workspace[data-current-view=notes] .main { padding-top: 26px !impor
 .writing-reference .writing-details > details > summary { font-size: 16px; min-height: 48px; }
 @media (max-width: 800px) {
   .reading-workspace .note-writing-form { grid-template-columns: minmax(0, 1fr); row-gap: 16px; }
-  .reading-workspace #view-notes #note-content { min-height: 190px; }
+  .reading-workspace #view-notes #note-content {
+    min-height: 190px;
+    margin-block-start: 6px;
+    padding-inline: 12px;
+    border: 1px solid var(--folio-line);
+    border-radius: 7px 22px 7px 7px;
+    background-color: #fcfaff;
+  }
+  .reading-workspace #view-notes #note-content:focus {
+    outline: none;
+    border-color: #8d76a6;
+    caret-color: var(--folio-accent);
+    background-image: linear-gradient(var(--folio-accent), var(--folio-accent));
+    background-repeat: no-repeat;
+    background-position: left top 8px;
+    background-size: 2px 18px;
+  }
+  @media (forced-colors: active) {
+    .reading-workspace #view-notes #note-content:focus-visible { outline: 2px solid Highlight; }
+  }
   .reading-workspace .writing-reference { padding-inline: 5px; }
   .reading-workspace .note-main-writing { margin-inline: 0; padding: 15px 14px 16px; border-start-end-radius: 30px; }
   .reading-workspace #view-notes .markdown-toolbar-btn { min-height: 44px; }
