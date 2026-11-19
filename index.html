@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-title" content="DEVOTION" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>DEVOTION｜靈修札記</title>
-  <link rel="stylesheet" href="./styles.css?v=1.2.0-preview.4" />
-  <link rel="stylesheet" href="./assets/css/reading-workspace.css?v=1.2.0-preview.4" />
+  <link rel="stylesheet" href="./styles.css?v=1.2.0-preview.5" />
+  <link rel="stylesheet" href="./assets/css/reading-workspace.css?v=1.2.0-preview.5" />
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png" />
@@ -496,15 +496,14 @@
           <section class="panel note-reader-search-panel" aria-labelledby="note-reader-search-title" data-testid="note-reader-search-card">
             <div class="panel-header note-reader-header">
               <div>
-                <h2 id="note-reader-search-title">搜尋札記</h2>
-                <p class="caption">依標題、經文、分類或標籤找到想閱讀的札記。</p>
+                <h1 id="note-reader-search-title">找札記</h1>
               </div>
             </div>
             <div class="note-reader-tools" aria-label="札記閱讀搜尋與篩選">
               <div class="note-reader-search-row">
                 <label class="note-reader-search-field">
                   <span class="caption">關鍵字</span>
-                  <input id="note-reader-search" class="search" type="search" placeholder="搜尋標題、經文、分類、標籤、摘要、內容" autocomplete="off" data-testid="note-reader-search" />
+                  <input id="note-reader-search" class="search" type="search" placeholder="輸入關鍵字" autocomplete="off" data-testid="note-reader-search" />
                 </label>
                 <label class="compact-control note-reader-filter-control">
                   <span class="caption">搜尋範圍</span>
@@ -551,7 +550,6 @@
             <div class="panel-header note-reader-recent-header">
               <div>
                 <h2 id="note-reader-recent-title">最近編輯</h2>
-                <p class="caption">最近整理過的札記，可以直接點選閱讀。</p>
               </div>
             </div>
             <div id="note-reader-list" class="note-reader-recent-list" data-testid="note-reader-list"></div>
@@ -644,10 +642,10 @@
                   <h3 id="note-actions-title">工具</h3>
                 </div>
                 <div class="note-save-actions">
-                  <button id="new-note-btn" class="ghost-btn" type="button">清空重填</button>
+                  <button id="new-note-btn" class="ghost-btn" type="button">清空內容</button>
                   <button type="button" id="save-note-draft-btn" class="ghost-btn" data-testid="note-save-draft">儲存草稿</button>
-                  <button type="button" id="publish-note-btn" class="primary-btn" data-testid="note-save-published">儲存為正式札記</button>
-                  <button type="button" id="note-preview-btn" class="ghost-btn" data-testid="note-preview-open">預覽文章</button>
+                  <button type="button" id="publish-note-btn" class="primary-btn" data-testid="note-save-published">儲存札記</button>
+                  <button type="button" id="note-preview-btn" class="ghost-btn" data-testid="note-preview-open">預覽札記</button>
                   <button type="button" id="delete-note-btn" class="danger-btn hidden">刪除札記</button>
                 </div>
               </section>
@@ -716,7 +714,7 @@
           <section class="panel">
             <div class="panel-header">
               <h2>書籍編排</h2>
-              <button id="new-book-btn" class="ghost-btn" type="button">清空重填</button>
+              <button id="new-book-btn" class="ghost-btn" type="button">清空內容</button>
             </div>
             <form id="book-form" class="form-stack" data-testid="book-form">
               <input type="hidden" id="book-id" />
@@ -910,7 +908,7 @@
         </button>
         <button class="nav-link mobile-bottom-link" data-view="content-library" type="button" data-testid="mobile-nav-note-library">
           <span class="nav-icon asset-icon asset-sprite-system icon-note" aria-hidden="true"></span>
-          <span>札記庫</span>
+          <span>選取札記</span>
         </button>
         <button class="nav-link mobile-bottom-link" data-view="books" type="button" data-testid="mobile-nav-book-planner">
           <span class="nav-icon asset-icon asset-sprite-system icon-book" aria-hidden="true"></span>
@@ -1006,7 +1004,7 @@
         </div>
         <div class="account-settings-section account-version-section">
           <span class="account-settings-label">版本資訊</span>
-          <p class="caption account-settings-version-text" data-app-version-label data-testid="version-display">版本：v1.2.0-preview.4｜更新：2026/11/13</p>
+          <p class="caption account-settings-version-text" data-app-version-label data-testid="version-display">版本：v1.2.0-preview.5｜更新：2026/11/19</p>
         </div>
         <div class="account-settings-section account-settings-signout-section">
           <span class="account-settings-label">登出</span>
@@ -1127,6 +1125,6 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./app.js?v=1.2.0-preview.4"></script>
+  <script type="module" src="./app.js?v=1.2.0-preview.5"></script>
 </body>
 </html>

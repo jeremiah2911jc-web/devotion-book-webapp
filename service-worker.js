@@ -1,5 +1,5 @@
-const CACHE='devotion-public-1.2.0-preview.4';
-const CORE=['/index.html','/app.js','/styles.css','/assets/css/reading-workspace.css','/assets/js/reading-workspace.js','/assets/js/offline-notes.js','/assets/js/scripture-reference-utils.js','/assets/vendor/supabase.js','/assets/editorial/reading-alcove.png','/assets/editorial/sea-light.png','/assets/data/mcheyne-reading-plan.json','/manifest.webmanifest','/version.json','/favicon.ico'];
+const CACHE='devotion-public-1.2.0-preview.5';
+const CORE=['/index.html','/app.js','/styles.css','/assets/css/reading-workspace.css','/assets/js/reading-workspace.js','/assets/js/offline-notes.js','/assets/js/scripture-reference-utils.js','/assets/vendor/supabase.js','/assets/editorial/coast-study.jpg','/assets/data/mcheyne-reading-plan.json','/manifest.webmanifest','/version.json','/favicon.ico'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE))));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('devotion-public-')&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
 self.addEventListener('message',event=>{if(event.data?.type==='DEVOTION_ACTIVATE')self.skipWaiting();});

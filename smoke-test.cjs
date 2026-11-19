@@ -690,13 +690,9 @@ async function verifyScriptureFetchAppendFlow(page, results) {
   await clickPrimaryViewNav(page, 'notes');
   await clickElement(page, '[data-workspace-new]');
   if(await page.locator('#confirm-dialog:not(.hidden)').count())await clickElement(page,'#confirm-dialog-confirm-btn');
-  const scriptureToggleText = await page.locator('.note-scripture-toggle').textContent();
-  if (!scriptureToggleText || !scriptureToggleText.includes('抓取後加入札記內容')) {
-    throw new Error(`抓取經文 checkbox 文案錯誤：${scriptureToggleText}`);
-  }
-  const scriptureHelperText = await page.locator('.note-scripture-helper').textContent();
-  if (!scriptureHelperText || !scriptureHelperText.includes('不會覆蓋原本內容')) {
-    throw new Error(`抓取經文 helper 文案錯誤：${scriptureHelperText}`);
+  const append = page.getByRole('checkbox', {name:'查詢後將經文加入札記', exact:true});
+  if (!await append.isVisible() || !await append.isChecked()) {
+    throw new Error('經文加入選項應可見並預設勾選');
   }
 
   await page.fill('#note-title', '五段經文抓取測試');
@@ -938,7 +934,7 @@ async function run() {
 
     await clickElement(page,'[data-workspace-menu]');
     const navTexts=await page.locator('#workspace-menu nav button').allTextContents();
-    for(const label of ['札記回顧','接續書寫','搜尋與閱讀','禱告紀錄','選取札記','選稿編排','電子書櫃','操作手冊']) {
+    for(const label of ['首頁','接續書寫','找札記','禱告紀錄','選取札記','選稿編排','電子書櫃','操作手冊']) {
       if(!navTexts.includes(label))throw new Error(`選單缺少 ${label}`);
     }
     await clickElement(page,'[data-workspace-close]');
@@ -947,7 +943,7 @@ async function run() {
     await clickPrimaryViewNav(page, 'prayer');
     await expectVisible(page, '[data-testid="view-prayer"].view.active', '已由底部導覽進入禱告頁');
     await expectVisible(page, '#prayer-cloud-notice:not(.hidden)', '未同步內容顯示禱告雲端同步提示');
-    await expectVisible(page, '[data-testid="prayer-create-button"]', '禱告新增按鈕已顯示');
+    if (await page.getByTestId('prayer-create-button').isVisible()) throw new Error('本機模式應隱藏無法操作的禱告按鈕');
     const prayerCreateDisabled = await page.locator('[data-testid="prayer-create-button"]').isDisabled();
     if (!prayerCreateDisabled) throw new Error('未同步狀態不應允許新增雲端禱告紀錄');
     await assertNoHorizontalScroll(page, { label: 'smoke prayer mobile' });

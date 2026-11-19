@@ -24,8 +24,8 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.2.0-preview.4';
-const APP_RELEASE_DATE = '2026/11/13';
+const APP_VERSION = '1.2.0-preview.5';
+const APP_RELEASE_DATE = '2026/11/19';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
 const DEFAULT_BIBLE_ASSET_VERSION = '2026.06.07-punctuation-v1.1.8';
@@ -2197,7 +2197,7 @@ function ensureContentLibraryUi() {
       button.dataset.view = 'content-library';
       button.innerHTML = `
         <span class="nav-icon asset-icon asset-sprite-system icon-note" aria-hidden="true"></span>
-        <span>札記庫</span>
+        <span>選取札記</span>
       `;
     booksLink?.insertAdjacentElement('beforebegin', button);
   }
@@ -2346,12 +2346,12 @@ function getOperationManualHtml() {
             <li><a href="#manual-email-verification">三、信箱驗證</a></li>
             <li><a href="#manual-google-login">四、使用 Google 帳號登入</a></li>
             <li><a href="#manual-password-reset">五、忘記密碼</a></li>
-            <li><a href="#manual-dashboard">六、總覽</a></li>
+            <li><a href="#manual-dashboard">六、首頁</a></li>
             <li><a href="#manual-prayer">七、禱告</a></li>
             <li><a href="#manual-writing-note">八、寫札記</a></li>
             <li><a href="#manual-drafts">九、草稿與繼續編輯</a></li>
-            <li><a href="#manual-note-reader">十、札記閱讀</a></li>
-            <li><a href="#manual-content-library">十一、札記庫</a></li>
+            <li><a href="#manual-note-reader">十、找札記</a></li>
+            <li><a href="#manual-content-library">十一、選取札記</a></li>
             <li><a href="#manual-selection-workbench">十二、選稿編排</a></li>
             <li><a href="#manual-bookshelf">十三、書櫃與成書</a></li>
             <li><a href="#manual-account-settings">十四、帳號設定</a></li>
@@ -2385,7 +2385,7 @@ function getOperationManualHtml() {
             </ol>
             <div class="manual-callout">
               <strong>常見提醒</strong>
-              <p>如果只是還沒寫完，請先儲存草稿；如果已經整理完成，請儲存為正式札記。正式札記才會出現在札記閱讀、札記庫與成書流程中。</p>
+              <p>未完成時點「儲存草稿」。點「儲存札記」後，可搜尋或加入書稿。</p>
             </div>
           </section>
 
@@ -2467,13 +2467,13 @@ function getOperationManualHtml() {
           </section>
 
           <section id="manual-dashboard" class="manual-section">
-            <h2>六、總覽</h2>
-            <p>「總覽」是登入後快速看見近況的地方。你可以在這裡看到最近內容、主要入口與今日讀經。</p>
+            <h2>六、首頁</h2>
+            <p>首頁顯示當日讀經、最近的札記與書稿。</p>
             <h3>使用情境</h3>
             <p>剛登入時，先看總覽可以快速決定今天要寫札記、繼續整理書稿，或回到書櫃閱讀。</p>
             <h3>功能</h3>
             <ul>
-              <li>點「札記」進入札記閱讀。</li>
+              <li>點「找札記」查找已儲存的札記。</li>
               <li>點「書稿」進入選稿編排。</li>
               <li>點「書櫃」閱讀已整理好的書。</li>
               <li>查看最近編輯的內容與今日讀經。</li>
@@ -2498,23 +2498,23 @@ function getOperationManualHtml() {
 
           <section id="manual-writing-note" class="manual-section" data-testid="manual-writing-note-section">
             <h2>八、寫札記</h2>
-            <p>「寫札記」是記錄今天靈修領受、經文、禱告與整理重點的地方。還沒完成可以先放草稿，完成後再儲存為正式札記。</p>
+            <p>「寫札記」是記錄今天靈修領受、經文、禱告與整理重點的地方。還沒完成可以先放草稿，完成後再儲存札記。</p>
             <h3>操作步驟</h3>
             <ol>
               <li>點「寫札記」。</li>
               <li>輸入標題。草稿可以先沒有標題，正式札記建議補上清楚主題。</li>
-              <li>在「經文」輸入經文範圍，需要時點「抓取經文」。</li>
+              <li>在「經文出處」輸入經文範圍，需要時點「查經文」。</li>
               <li>選擇分類，並用標籤補充主題。</li>
               <li>在「我的札記」中寫下今天的內容。</li>
               <li>需要時使用工具列加入小標題、粗體、引用、清單、分隔線或重點色。</li>
-              <li>點「預覽文章」確認閱讀效果。</li>
-              <li>還沒寫完點「儲存草稿」；完成後點「儲存為正式札記」。</li>
+              <li>點「預覽札記」確認閱讀效果。</li>
+              <li>還沒寫完點「儲存草稿」；完成後點「儲存札記」。</li>
             </ol>
             <h3>填寫經文出處</h3>
             <ul>
               <li>多處經文請用分號分隔，例如「希伯來4:11；詩篇106:32-33」。</li>
               <li>章節可以寫成「詩篇90:9-10」，也可以寫成「詩篇90篇9-10」或「詩篇90章9-10」。</li>
-              <li>點「抓取經文」後，經文會加入目前札記內容，不會覆蓋原本已經寫好的內容。</li>
+              <li>勾選「查詢後將經文加入札記」再點「查經文」，經文會加在原文後面。</li>
               <li>如果想把經文移到別的位置，可以在「我的札記」中手動剪下、貼上或調整段落順序。</li>
             </ul>
             <h3>使用文字工具</h3>
@@ -2526,14 +2526,14 @@ function getOperationManualHtml() {
               <li>有選取文字時，網站會把樣式套用到你選取的內容；沒有選取文字時，多數工具會在游標位置放入範例文字，方便你直接改寫。</li>
               <li>「分隔線」會插入在游標附近，用來分開前後段落。</li>
               <li>你會在編輯區看到網站自動加上的小記號，這是為了記住樣式；在預覽與閱讀時會變成好讀的樣式。</li>
-              <li>完成後可以點「預覽文章」，或先儲存草稿，確認顯示效果是否符合預期。</li>
+              <li>完成後可以點「預覽札記」，或先儲存草稿，確認顯示效果是否符合預期。</li>
             </ol>
             <h3>文字工具用途</h3>
             <ul>
               <li>小標題：用來標出段落標題，例如「經文觀察」「我的反思」「今日禱告」。建議用在一整行短句，不要只套在半句話上。</li>
               <li>粗體：用來強調重要詞句。適合用在一句話中的重點，不建議整篇都使用粗體。</li>
               <li>引用：用來標示經文、書中摘錄或想特別保留的一段話。如果是引用聖經，建議同時寫清楚經文出處。</li>
-              <li>經文：用來標示經文內容或經文段落。如果已經用「抓取經文」帶入全文，可以在札記中引用重要經文時使用。</li>
+              <li>經文：用來標示經文內容或經文段落。如果已經用「查經文」帶入全文，可以在札記中引用重要經文時使用。</li>
               <li>清單：用來整理多個重點，例如今天的提醒、需要禱告的事、可以實踐的行動。</li>
               <li>分隔線：用來分開不同段落，例如在「經文觀察」「我的反思」「禱告」中間加上分隔線。不要連續插入太多分隔線，以免文章變得零碎。</li>
               <li>紅字：用來提醒警醒、悔改、特別重要的地方。不要整篇都用紅字。</li>
@@ -2549,7 +2549,7 @@ function getOperationManualHtml() {
               <li>先點「小標題」。</li>
               <li>接著重新選取標題文字本身。請不要把小標題前面自動加上的開頭記號一起選進去。</li>
               <li>再點想要的顏色，例如「藍字」或「金字」。</li>
-              <li>點「預覽文章」或儲存草稿，確認標題大小與顏色都正確。</li>
+              <li>點「預覽札記」或儲存草稿，確認標題大小與顏色都正確。</li>
             </ol>
             <p>提醒：小標題比較適合用在短句或段落名稱。不要一次選取太長的段落來套小標題。如果預覽時看到開頭記號沒有變成標題，可以重新選取標題文字，再依順序套用一次。</p>
             <h3>小工具搭配範例</h3>
@@ -2563,7 +2563,7 @@ function getOperationManualHtml() {
             <h3>草稿與正式札記</h3>
             <ul>
               <li>草稿：還沒整理完成，只會留在寫札記頁的「其他草稿」。</li>
-              <li>正式札記：已完成並儲存，會出現在札記閱讀、札記庫與選稿編排中。</li>
+              <li>正式札記：已完成並儲存，會出現在札記閱讀、選取札記與選稿編排中。</li>
             </ul>
             <p>如果抓取經文失敗，請先確認書卷名稱、章節格式與網路狀況，再重新操作。</p>
           </section>
@@ -2580,12 +2580,12 @@ function getOperationManualHtml() {
               <li>網站會把草稿載入編輯區。</li>
             </ol>
             <h3>常見提醒</h3>
-            <p>草稿不會出現在札記閱讀、札記庫或成書內容中。等你點「儲存為正式札記」後，才會進入後續閱讀與整理流程。</p>
+            <p>草稿不會出現在札記閱讀、選取札記或成書內容中。等你點「儲存札記」後，才會進入後續閱讀與整理流程。</p>
           </section>
 
           <section id="manual-note-reader" class="manual-section">
-            <h2>十、札記閱讀</h2>
-            <p>「札記閱讀」是用來安靜閱讀已完成札記的地方。這裡不會顯示草稿。</p>
+            <h2>十、找札記</h2>
+            <p>「找札記」可搜尋與開啟已儲存的札記。草稿在「其他草稿」。</p>
             <h3>功能</h3>
             <ul>
               <li>查看最近編輯的 5 篇札記。</li>
@@ -2606,19 +2606,19 @@ function getOperationManualHtml() {
           </section>
 
           <section id="manual-content-library" class="manual-section">
-            <h2>十一、札記庫</h2>
-            <p>「札記庫」是管理所有已儲存札記的地方，適合搜尋、篩選、編輯，以及挑選要加入書稿的內容。</p>
+            <h2>十一、選取札記</h2>
+            <p>「選取札記」是管理所有已儲存札記的地方，適合搜尋、篩選、編輯，以及挑選要加入書稿的內容。</p>
             <h3>閱讀與選稿</h3>
             <ul>
               <li>札記閱讀：偏向單純閱讀與回顧。</li>
-              <li>札記庫：偏向管理、整理、勾選與加入選稿編排。</li>
+              <li>選取札記：偏向管理、整理、勾選與加入選稿編排。</li>
             </ul>
             <h3>操作步驟</h3>
             <ol>
-              <li>點「札記庫」。</li>
+              <li>點「選取札記」。</li>
               <li>用搜尋、分類、標籤或日期找到札記。</li>
               <li>需要修改時，點卡片上的「編輯」。</li>
-              <li>要整理成書時，先到「選稿編排」建立或選擇書稿，再回札記庫勾選札記加入。</li>
+              <li>要整理成書時，先到「選稿編排」建立或選擇書稿，再回選取札記勾選札記加入。</li>
             </ol>
             <p>如果加入按鈕不能按，通常是還沒有選擇正在整理的書稿，或目前沒有勾選任何札記。</p>
           </section>
@@ -2630,7 +2630,7 @@ function getOperationManualHtml() {
             <ol>
               <li>點「選稿編排」。</li>
               <li>建立一份新的書稿，填寫書名與簡介。</li>
-              <li>到「札記庫」勾選要收錄的札記，加入目前整理中的書稿。</li>
+              <li>到「選取札記」勾選要收錄的札記，加入目前整理中的書稿。</li>
               <li>回到「選稿編排」，點「整理章節」。</li>
               <li>調整章節順序與章節標題。</li>
               <li>儲存編排後，再依畫面提示匯出成書。</li>
@@ -2726,11 +2726,11 @@ function getOperationManualHtml() {
               <div class="manual-faq-item"><h3>重設密碼</h3><p>在登入視窗點「忘記密碼」，輸入註冊 Email，接著到信箱依照信件連結設定新密碼。</p></div>
               <div class="manual-faq-item"><h3>Google 登入與既有資料</h3><p>請使用原本的登入方式進入帳號。資料未出現時，請查看帳號設定中的 Email 與同步狀態。</p></div>
               <div class="manual-faq-item"><h3>接續未完成的札記</h3><p>請先點「儲存草稿」。之後回到寫札記頁，在「其他草稿」點「繼續編輯」。</p></div>
-              <div class="manual-faq-item"><h3>草稿與正式札記</h3><p>草稿是還沒完成的內容；正式札記是已完成並儲存的內容，會出現在札記閱讀、札記庫與成書流程中。</p></div>
-              <div class="manual-faq-item"><h3>查找未顯示的札記</h3><p>請先清除搜尋或篩選條件，再確認那篇內容是不是還在草稿中。草稿不會出現在札記閱讀與札記庫。</p></div>
+              <div class="manual-faq-item"><h3>草稿與正式札記</h3><p>草稿是還沒完成的內容；正式札記是已完成並儲存的內容，會出現在札記閱讀、選取札記與成書流程中。</p></div>
+              <div class="manual-faq-item"><h3>查找未顯示的札記</h3><p>請先清除搜尋或篩選條件，再確認那篇內容是不是還在草稿中。草稿不會出現在札記閱讀與選取札記。</p></div>
               <div class="manual-faq-item"><h3>常用操作與完整選單</h3><p>頁首提供「讀經」「找札記」與「寫札記」。選單可開啟禱告紀錄、選稿編排、電子書櫃與操作手冊。</p></div>
               <div class="manual-faq-item"><h3>查看資料保存狀態</h3><p>請看畫面上的保存提示或帳號設定中的資料保存狀態。如果看到尚未保存提醒，請先不要關閉頁面。</p></div>
-              <div class="manual-faq-item"><h3>閱讀與選稿用途</h3><p>想安靜重讀一篇札記，請用札記閱讀。想管理、編輯、勾選並加入書稿，請用札記庫。</p></div>
+              <div class="manual-faq-item"><h3>閱讀與選稿用途</h3><p>用「找札記」搜尋與閱讀。用「選取札記」勾選要加入書稿的篇章。</p></div>
               <div class="manual-faq-item"><h3>申請支持款項收款證明</h3><p>頁面下方有「支持平台／支持事工」入口。完成支持後，可在那裡點「申請收款證明」並填寫資料。收款證明是支持款項紀錄，不作為稅務扣抵憑證。</p></div>
               <div class="manual-faq-item"><h3>刪除前的確認</h3><p>會。刪除札記、書稿、書櫃書籍或頭像前，畫面會先詢問確認。若不確定，請先取消。</p></div>
             </div>
@@ -5306,7 +5306,7 @@ async function bootstrap() {
     getCurrentDraft: loadCurrentNoteDraft, restoreDraft: restoreCurrentNoteDraft,
     openReading:index=>openTodayReadingDialog(index).catch(handleError),
     openBook:id=>{setView('books');return openBookDraftModal(id).catch(handleError);},
-    openNote: openNoteReaderNote, getPreview: getNotePreviewText, openAccountSettings: openAccountSettingsModal, onError:handleError,
+    openNote: openNoteFromWorkspace, getPreview: getNotePreviewText, openAccountSettings: openAccountSettingsModal, onError:handleError,
     signOut: handleSignOut, pendingNotes:()=>readPendingNotes(localStorage,getUserId()),
     copyPending:async(id)=>{forkPendingNote(localStorage,getUserId(),id,uid('note'));await loadAllData({silent:true,force:true});showToast('離線版本已另存一則，可重新同步。');}, pendingCount:()=>readPendingNotes(localStorage,getUserId()).length,
     syncPending: async()=>{
@@ -6618,7 +6618,7 @@ function getPrimaryViewLabel(viewName = '') {
     prayer: '禱告',
     notes: '寫札記',
     'note-reader': '札記閱讀',
-    'content-library': '札記庫',
+    'content-library': '選取札記',
     books: '選稿編排',
     'admin-dashboard': '管理後台',
     library: '書櫃',
@@ -6646,7 +6646,7 @@ function getMobileBottomNavItems() {
     { view: 'prayer', label: '禱告', testid: 'mobile-nav-prayer' },
     { view: 'notes', label: '寫札記', testid: 'mobile-nav-write-note' },
     { view: 'note-reader', label: '札記閱讀', testid: 'mobile-nav-note-reader' },
-    { view: 'content-library', label: '札記庫', testid: 'mobile-nav-note-library' },
+    { view: 'content-library', label: '選取札記', testid: 'mobile-nav-note-library' },
     { view: 'books', label: '選稿編排', testid: 'mobile-nav-book-planner' },
     { view: 'library', label: '書櫃', testid: 'mobile-nav-bookshelf' },
     { view: 'manual', label: '操作手冊', testid: 'mobile-nav-operation-manual' },
@@ -7558,13 +7558,13 @@ function renderPrayerWorkspace() {
   if (els.prayerStatActive) els.prayerStatActive.textContent = String(activeCount);
   if (els.prayerStatReviewing) els.prayerStatReviewing.textContent = String(reviewingCount);
   if (els.prayerStatAnswered) els.prayerStatAnswered.textContent = String(answeredCount);
-  const cloudNoticeText = state.prayerSyncError
-    || '請先登入雲端帳號同步禱告紀錄。';
+  const cloudNoticeText = state.prayerSyncError || '連線並登入後，可新增及查看禱告紀錄。';
   const cloudNoticeParagraph = els.prayerCloudNotice?.querySelector('p');
   if (cloudNoticeParagraph) cloudNoticeParagraph.textContent = cloudNoticeText;
   els.prayerCloudNotice?.classList.toggle('hidden', cloudReady && !state.prayerSyncError);
   const prayerActionsAvailable = cloudReady && !state.prayerSyncError;
   if (!state.prayerFormOpen) els.prayerFormPanel?.classList.add('hidden');
+  document.getElementById('view-prayer')?.toggleAttribute('data-prayer-unavailable', !prayerActionsAvailable);
   els.prayerCreateButton?.toggleAttribute('disabled', !prayerActionsAvailable);
   els.prayerSaveButton?.toggleAttribute('disabled', !prayerActionsAvailable || state.prayerSaving);
   els.prayerFilterButtons.forEach(button => {
@@ -7824,7 +7824,7 @@ function getPublishingReadinessExportDetail({
   hasUnsavedArrangement,
 }) {
   if (!hasTitle) return '請先填寫書名，再進入成書匯出。';
-  if (!selectedNoteCount) return '請先從札記庫加入至少一篇正式札記。';
+  if (!selectedNoteCount) return '請先從選取札記加入至少一篇正式札記。';
   if (hasUnsavedArrangement) return '章節編排尚未儲存，匯出前請先儲存編排。';
   if (missingSourceCount) return `${missingSourceCount} 個章節找不到可輸出的正式札記，請移除或重新加入。`;
   if (emptyContentCount) return `${emptyContentCount} 篇札記目前沒有內容，匯出前請先補上。`;
@@ -7904,7 +7904,7 @@ function buildPublishingReadinessCheck(book, options = {}) {
       '正式札記',
       selectedNoteCount > 0,
       `已收錄 ${selectedNoteCount} 篇正式札記。`,
-      '請先從札記庫加入至少一篇正式札記。',
+      '請先從選取札記加入至少一篇正式札記。',
     ),
     publishingCheckItem(
       'content',
@@ -8034,7 +8034,7 @@ function getPublishingReadinessCompactIssueCopy(item) {
     },
     notes: {
       title: '尚未加入正式札記',
-      body: '請先從札記庫加入至少一篇正式札記。',
+      body: '請先從選取札記加入至少一篇正式札記。',
     },
     content: {
       title: '札記內容需要整理',
@@ -8078,7 +8078,7 @@ function getBookDraftWorkflowState(book) {
   } else if (!hasChapters) {
     currentKey = 'add-notes';
     currentLabel = '等待加入札記';
-    nextAction = '從札記庫加入正式札記，開始形成書稿。';
+    nextAction = '從選取札記加入正式札記，開始形成書稿。';
   } else if (hasUnsavedArrangement) {
     currentKey = 'arrange';
     currentLabel = '編排尚未儲存';
@@ -8322,7 +8322,6 @@ function ensureBookDraftWorkspaceUi() {
       <div class="panel-header">
         <div>
           <h2>目前正在編排</h2>
-          <p class="muted">這份書稿會接收從札記庫加入的文章。</p>
         </div>
       </div>
       <div id="current-book-draft-card" class="empty-state">尚未選擇目前正在編排的書稿</div>
@@ -8398,7 +8397,7 @@ function ensureBookDraftWorkspaceUi() {
     goLibraryBtn.type = 'button';
     goLibraryBtn.className = 'secondary-btn';
     goLibraryBtn.textContent = '加入札記';
-    goLibraryBtn.setAttribute('aria-label', '前往札記庫加入文章');
+    goLibraryBtn.setAttribute('aria-label', '前往選取札記加入文章');
     goLibraryBtn.addEventListener('click', () => goToContentLibraryForBookDraft(getActiveBookDraftId()).catch(handleError));
   }
 
@@ -8512,7 +8511,7 @@ function ensureBookDraftWorkspaceUi() {
       modalStartBtn.id = 'modal-start-current-book-btn';
       modalStartBtn.type = 'button';
       modalStartBtn.className = 'secondary-btn';
-      modalStartBtn.textContent = '開始編這本';
+      modalStartBtn.textContent = '設為目前書稿';
       modalStartBtn.addEventListener('click', () => setCurrentBookDraft(getActiveBookDraftId()));
     }
     toolbarActions.appendChild(modalStartBtn);
@@ -8826,7 +8825,7 @@ function insertTodayReadingIntoNote() {
   setView('notes');
   if (appendReferencesToNoteScripture(entry.readings)) {
     els.noteScripture?.focus();
-    showToast('已帶入今日讀經，可按「抓取經文」帶出全文。');
+    showToast('已帶入今日讀經，可按「查經文」查看全文。');
   }
 }
 
@@ -8834,7 +8833,7 @@ function insertSingleTodayReadingIntoNote(reading = '') {
   setView('notes');
   if (appendReferencesToNoteScripture([reading])) {
     els.noteScripture?.focus();
-    showToast('已帶入今日讀經，可按「抓取經文」帶出全文。');
+    showToast('已帶入今日讀經，可按「查經文」查看全文。');
   }
 }
 
@@ -8867,7 +8866,7 @@ function ensureTodayReadingDialogUi() {
         <button class="ghost-btn small" type="button" data-today-reading-close>關閉</button>
       </div>
       <div id="today-reading-dialog-body" class="today-reading-dialog-body" aria-live="polite"></div>
-      <button id="today-reading-dialog-insert" class="today-reading-inline-action" type="button">帶入這段</button>
+      <div class="today-reading-dialog-actions"><button id="today-reading-dialog-insert" class="primary-btn" type="button">帶入經文出處</button></div>
     </div>
   `;
   document.body.appendChild(modal);
@@ -8903,7 +8902,7 @@ async function openTodayReadingDialog(index = 0) {
   if (kicker) kicker.textContent = `${reading.entry.label}｜麥琴讀經進度`;
   if (body) {
     body.classList.remove('error-text');
-    body.textContent = '正在抓取經文…';
+    body.textContent = '經文載入中…';
   }
   modal.classList.remove('hidden');
   modal.setAttribute('aria-hidden', 'false');
@@ -9130,7 +9129,7 @@ async function fetchAndRenderScriptures({ force = false, syncToContent = false }
   if (state.scriptureAbortController) state.scriptureAbortController.abort();
   const controller = new AbortController();
   state.scriptureAbortController = controller;
-  setScriptureStatus('正在抓取經文…');
+  setScriptureStatus('經文載入中…');
   const fetched = [];
   try {
     for (const reference of references) {
@@ -9682,6 +9681,12 @@ function openNoteReader() {
   scrollNoteReaderIntoView();
 }
 
+function openNoteFromWorkspace(noteId) {
+  const note = getPublishedNoteById(noteId);
+  if (note) openNoteReaderReadingModal(note);
+  else showToast('找不到這篇札記。');
+}
+
 function openNoteReaderNote(noteId) {
   const note = getPublishedNoteById(noteId);
   if (document.body.dataset.currentView !== 'note-reader') setView('note-reader');
@@ -10205,6 +10210,7 @@ function ensureCurrentNoteDraftNotice() {
 
 function syncCurrentNoteDraftNotice() {
   if (!els.noteForm) return;
+  readingWorkspace?.refreshEditorStatus();
   const notice = ensureCurrentNoteDraftNotice();
   const draft = loadCurrentNoteDraft();
   const shouldShow = document.body.dataset.currentView === 'notes'
@@ -10338,7 +10344,7 @@ function syncNoteStatusUi() {
     els.saveNoteDraftBtn.classList.toggle('hidden', status === NOTE_STATUS_PUBLISHED && !!els.noteId?.value);
   }
   if (els.publishNoteBtn) {
-    els.publishNoteBtn.textContent = '儲存為正式札記';
+    els.publishNoteBtn.textContent = '儲存札記';
   }
 }
 
@@ -10428,23 +10434,23 @@ function renderBookDraftCard(book, { current = false } = {}) {
   const detailLoaded = hasBookProjectDetail(book.id);
   const chapterCount = detailLoaded ? getBookDisplayChapters(book).length : 0;
   const isEmptyDraft = detailLoaded && chapterCount === 0;
-  const chapterLabel = detailLoaded ? `已收錄 ${chapterCount} 篇札記` : '章節開啟後載入';
+  const chapterLabel = detailLoaded ? `已收錄 ${chapterCount} 篇札記` : '開啟後查看章節';
   const description = getBookDraftDescription(book).slice(0, 180)
-    || (isEmptyDraft ? '尚未收錄札記。' : '尚未填寫整理說明');
-  const statusLabel = current ? '正在編排' : '待整理';
+    || (isEmptyDraft ? '尚未收錄札記。' : '');
+  const statusLabel = current ? '目前書稿' : '';
   const statusTone = current ? 'is-current' : getBookDraftStatusTone(book);
   return `
     <article class="card book-draft-card ${current ? 'is-current-draft selected' : ''}" data-book-draft-card="${book.id}" data-testid="book-draft-card">
       <div class="book-draft-card-header">
         <h3>${escapeHtml(getBookDraftLabel(book))}</h3>
-        <span class="badge book-draft-status-badge ${statusTone}">${escapeHtml(statusLabel)}</span>
+        ${statusLabel ? `<span class="badge book-draft-status-badge ${statusTone}">${escapeHtml(statusLabel)}</span>` : ''}
       </div>
       <div class="card-meta book-draft-meta-row">
         <span>${escapeHtml(chapterLabel)}</span>
         <span>更新於 ${escapeHtml(formatDate(book.updated_at || book.created_at))}</span>
       </div>
       <div class="book-draft-scope">${escapeHtml(getBookDraftScopeSummary(book))}</div>
-      <div class="caption book-draft-description ${isEmptyDraft ? 'is-empty-hint' : ''}">${escapeHtml(description)}</div>
+      ${description ? `<div class="caption book-draft-description ${isEmptyDraft ? 'is-empty-hint' : ''}">${escapeHtml(description)}</div>` : ''}
       <div class="card-actions book-draft-actions">
         ${current
           ? `
@@ -10454,7 +10460,7 @@ function renderBookDraftCard(book, { current = false } = {}) {
             <button class="ghost-btn" data-open-export-settings="${book.id}" data-testid="book-open-export-settings">匯出 EPUB</button>
           `
           : `
-            <button class="secondary-btn" data-select-book="${book.id}" data-testid="book-select">開始編這本</button>
+            <button class="secondary-btn" data-select-book="${book.id}" data-testid="book-select">設為目前書稿</button>
             <button class="ghost-btn" data-open-book-draft="${book.id}" data-testid="book-open-draft">整理章節</button>
             <button class="ghost-btn" data-go-content-library="${book.id}" data-testid="book-go-content-library">加入札記</button>
             <button class="ghost-btn" data-open-selection-settings="${book.id}" data-testid="book-open-selection-settings">書籍資料</button>
@@ -10625,7 +10631,7 @@ async function deleteBook(targetBookId = els.bookId.value) {
     state.selectedBookId = state.books[0]?.id || null;
   }
   refreshUi();
-  showToast('選稿編排已刪除，原始札記仍保留在札記庫。');
+  showToast('選稿編排已刪除，原始札記仍保留在選取札記。');
 }
 
 function updateChapterSourceOptions() {
@@ -10880,7 +10886,7 @@ function renderSelectedBookPanel() {
       <div class="caption">${isCurrentDraft ? '目前正在編排' : '選稿編排'}</div>
       ${isCurrentDraft ? '<span class="badge book-draft-status-badge is-current">正在編排</span>' : ''}
       <h2>書稿狀態</h2>
-      <div>${escapeHtml(getBookDraftDescription(book) || '尚未填寫整理說明')}</div>
+      <div>${escapeHtml(getBookDraftDescription(book) || '')}</div>
       <div class="caption">已收錄 ${chapterCount} 篇｜${escapeHtml(draftStatus)}｜更新於 ${escapeHtml(formatDate(book.updated_at || book.created_at))}</div>
       <div class="caption">${escapeHtml(getBookDraftScopeSummary(book))}</div>
       ${notes.length ? `<div class="caption">預覽：${escapeHtml(notes.slice(0, 3).map(note => note.title || '未命名札記').join('、'))}</div>` : ''}
@@ -10916,8 +10922,8 @@ function renderChaptersList(book) {
     els.chaptersList.innerHTML = `
         <div class="book-draft-empty-guide">
           <h4>這份選稿編排目前還沒有收錄文章。</h4>
-          <p>請先到札記庫挑選札記，加入目前正在編排的書稿。</p>
-          <button type="button" class="secondary-btn" data-empty-draft-go-library="${book.id}">前往札記庫加入文章</button>
+          <p>請先到選取札記挑選札記，加入目前正在編排的書稿。</p>
+          <button type="button" class="secondary-btn" data-empty-draft-go-library="${book.id}">前往選取札記加入文章</button>
         </div>
     `;
     els.chaptersList.querySelector('[data-empty-draft-go-library]')?.addEventListener('click', () => {
@@ -11418,7 +11424,7 @@ function setView(viewName) {
     prayer: ['禱告與回顧', '記錄禱告內容與後續回顧。'],
     'note-reader': ['札記閱讀', '搜尋並閱讀已儲存的札記。'],
     notes: ['寫札記', '編輯經文、思想與禱告。'],
-    'content-library': ['札記庫', '搜尋、篩選並挑選已寫下的札記，加入目前正在編排的書稿。'],
+    'content-library': ['選取札記', '搜尋、篩選並挑選已寫下的札記，加入目前正在編排的書稿。'],
     books: ['選稿編排', '管理成書前的選稿編排，整理章節順序並進行成書設定。'],
     'admin-dashboard': ['管理後台', '第一階段白名單入口，僅授權管理者可使用。'],
     snapshots: ['快照備份', '查看每次建立的書籍快照。'],
