@@ -645,6 +645,9 @@ async function verifyNoteEditorToolbar(page, results) {
 
   for (const [testId, expectedValue] of toolbarChecks) {
     await page.fill('[data-testid="note-editor-content"]', '');
+    if (!await page.getByTestId(testId).isVisible()) {
+      await page.getByTestId('note-extra-formats-toggle').click();
+    }
     await clickElement(page, `[data-testid="${testId}"]`);
     const actualValue = await page.inputValue('[data-testid="note-editor-content"]');
     if (!actualValue.includes(expectedValue)) {
@@ -728,6 +731,8 @@ async function verifyScriptureFetchAppendFlow(page, results) {
   const draftTitle = '經文抓取追加草稿';
   await page.fill('#note-title', draftTitle);
   await page.fill('#note-scripture', '詩篇90篇9-10');
+  const noteActionsToggle = page.getByTestId('note-extra-actions-toggle');
+  if (await noteActionsToggle.isVisible()) await noteActionsToggle.click();
   await clickElement(page, '#save-note-draft-btn');
   await page.waitForFunction(() => document.querySelector('#toast')?.textContent.includes('草稿已儲存'), undefined, { timeout: 10000 });
   const savedDraft = await getSavedNoteByTitle(page, draftTitle);

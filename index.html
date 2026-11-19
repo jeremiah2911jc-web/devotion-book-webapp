@@ -621,12 +621,17 @@
                     <button type="button" id="markdown-bold-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-bold">粗體</button>
                     <button type="button" id="markdown-quote-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-quote">引用</button>
                     <button type="button" id="markdown-scripture-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-scripture">經文</button>
-                    <button type="button" id="markdown-list-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-list">清單</button>
-                    <button type="button" id="markdown-divider-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-divider">分隔線</button>
-                    <button type="button" id="markdown-red-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-red">紅字</button>
-                    <button type="button" id="markdown-blue-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-blue">藍字</button>
-                    <button type="button" id="markdown-gold-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-gold">金字</button>
-                    <button type="button" id="markdown-purple-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-purple">紫字</button>
+                    <div class="note-editor-menu note-format-menu">
+                      <button type="button" class="ghost-btn small markdown-toolbar-btn note-editor-menu-toggle" aria-controls="note-extra-formats" aria-expanded="false" data-testid="note-extra-formats-toggle">格式</button>
+                      <div id="note-extra-formats" class="note-editor-menu-options" role="group" aria-label="其他札記格式">
+                        <button type="button" id="markdown-list-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-list">清單</button>
+                        <button type="button" id="markdown-divider-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-divider">分隔線</button>
+                        <button type="button" id="markdown-red-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-red">紅字</button>
+                        <button type="button" id="markdown-blue-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-blue">藍字</button>
+                        <button type="button" id="markdown-gold-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-gold">金字</button>
+                        <button type="button" id="markdown-purple-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-purple">紫字</button>
+                      </div>
+                    </div>
                   </div>
                   <p id="markdown-syntax-hint" class="caption markdown-syntax-hint hidden" aria-live="polite"></p>
                   <label class="note-content-field">
@@ -641,11 +646,16 @@
                   <h3 id="note-actions-title">工具</h3>
                 </div>
                 <div class="note-save-actions">
-                  <button id="new-note-btn" class="ghost-btn" type="button">清空內容</button>
-                  <button type="button" id="save-note-draft-btn" class="ghost-btn" data-testid="note-save-draft">儲存草稿</button>
                   <button type="button" id="publish-note-btn" class="primary-btn" data-testid="note-save-published">儲存札記</button>
                   <button type="button" id="note-preview-btn" class="ghost-btn" data-testid="note-preview-open">預覽札記</button>
-                  <button type="button" id="delete-note-btn" class="danger-btn hidden">刪除札記</button>
+                  <div class="note-editor-menu note-actions-menu">
+                    <button type="button" class="ghost-btn note-editor-menu-toggle" aria-controls="note-extra-actions" aria-expanded="false" data-testid="note-extra-actions-toggle">更多</button>
+                    <div id="note-extra-actions" class="note-editor-menu-options" role="group" aria-label="更多札記操作">
+                      <button type="button" id="save-note-draft-btn" class="ghost-btn" data-testid="note-save-draft">儲存草稿</button>
+                      <button id="new-note-btn" class="ghost-btn" type="button">清空內容</button>
+                      <button type="button" id="delete-note-btn" class="danger-btn hidden">刪除札記</button>
+                    </div>
+                  </div>
                 </div>
               </section>
 
