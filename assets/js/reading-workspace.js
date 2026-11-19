@@ -186,6 +186,11 @@ export function createReadingWorkspace(api) {
       event.preventDefault();
     }
   });
+  const writingMode = createMobileWritingMode({
+    surface: writingSurface, textarea: els.noteContent, scriptureInput: els.noteScripture,
+    scripture, tools, saveButton: els.publishNoteBtn, dateline: top,
+    persistDraft: api.persistDraft, closeEditorMenu,
+  });
 
   const connectionDetail=document.createElement('details');
   connectionDetail.className='writing-connections';
@@ -257,7 +262,7 @@ export function createReadingWorkspace(api) {
   }
   function refresh() {
     const owner=state.currentUser?.id||'';
-    if(owner!==activeOwner){activeOwner=owner;api.clearNoteForm({clearDraft:false});loadedNoteId=null;reviewSignature='';}
+    if(owner!==activeOwner){writingMode.close({restoreFocus:false, saveDraft:false});activeOwner=owner;api.clearNoteForm({clearDraft:false});loadedNoteId=null;reviewSignature='';}
     const current=state.notes.find(note=>note.id===els.noteId.value);
     if(loadedNoteId!==(els.noteId.value||''))loadConnections(current||{});
     refreshEditorStatus();
@@ -334,7 +339,7 @@ export function createReadingWorkspace(api) {
     date.textContent = refs.length ? selectedDate : '';
   }
 
-  return {refresh,refreshEditorStatus,closePanel:motion.closePanel,cancelPanelClose:motion.cancelPanelClose,turnPage:motion.turnPage,loadConnections,getConnections:()=>normalizeNoteConnections(editorConnections),renderConnections(note){
+  return {refresh,refreshEditorStatus,closeWritingMode:writingMode.close,closePanel:motion.closePanel,cancelPanelClose:motion.cancelPanelClose,turnPage:motion.turnPage,loadConnections,getConnections:()=>normalizeNoteConnections(editorConnections),renderConnections(note){
     const connections=normalizeNoteConnections(note);
     const backwards=state.notes.filter(item=>item.id!==note.id&&normalizeNoteConnections(item).related_notes.includes(note.id)&&item.status!=='draft');
     const ids=[...new Set([...connections.related_notes,...backwards.map(item=>item.id)])];
@@ -342,6 +347,158 @@ export function createReadingWorkspace(api) {
     const unavailable=connections.related_notes.filter(id=>!related.some(item=>item.id===id));
     return `${related.length||unavailable.length?`<section class="note-connections-reading"><h3>關聯札記</h3>${related.map(item=>`<button type="button" data-open-related-note="${escape(item.id)}">${escape(item.title)}</button>`).join('')}${unavailable.map(id=>{const draft=state.notes.find(item=>item.id===id);return `<p>${draft?`${escape(draft.title||'關聯札記')}仍為草稿。`:'一篇關聯札記已移除。'}</p>`;}).join('')}</section>`:''}${connections.sources.length?`<section class="note-connections-reading"><h3>引用來源</h3>${connections.sources.map(source=>`<p><a href="${escape(source.url)}" target="_blank" rel="noopener noreferrer">${escape(source.title||new URL(source.url).hostname)}</a>${source.position?` · ${escape(source.position)}`:''}</p>`).join('')}</section>`:''}`;
   }};
+}
+
+function createMobileWritingMode({surface, textarea, scriptureInput, scripture, tools, saveButton, dateline, persistDraft, closeEditorMenu}) {
+  const editor = textarea.closest('.note-content-section');
+  const toolbar = editor.querySelector('.markdown-toolbar');
+  const saveActions = saveButton.parentElement;
+  const scriptureHome = scripture.parentElement;
+  const appShell = surface.closest('.app-shell');
+  const status = dateline.querySelector('#workspace-writing-status');
+  const launcher = document.createElement('button');
+  launcher.type = 'button';
+  launcher.className = 'writing-expand-button';
+  launcher.textContent = '全螢幕編輯';
+  launcher.setAttribute('aria-haspopup', 'dialog');
+  dateline.append(launcher);
+
+  const heading = document.createElement('header');
+  heading.className = 'writing-focus-heading';
+  heading.hidden = true;
+  heading.innerHTML = '<button type="button" class="ghost-btn">返回</button><h2 id="writing-focus-title" class="visually-hidden">全螢幕編輯札記</h2>';
+  const backButton = heading.querySelector('button');
+  surface.prepend(heading);
+
+  const referenceButton = document.createElement('button');
+  referenceButton.type = 'button';
+  referenceButton.className = 'ghost-btn writing-focus-lookup';
+  referenceButton.textContent = '查經';
+  referenceButton.hidden = true;
+  referenceButton.setAttribute('aria-controls', 'writing-focus-reference');
+  referenceButton.setAttribute('aria-expanded', 'false');
+  toolbar.append(referenceButton);
+
+  const reference = document.createElement('div');
+  reference.id = 'writing-focus-reference';
+  reference.className = 'writing-focus-reference writing-reference';
+  reference.hidden = true;
+  reference.innerHTML = '<button type="button" class="ghost-btn">返回正文</button>';
+  const returnToText = reference.querySelector('button');
+  editor.append(reference);
+
+  const viewport = window.visualViewport;
+  const background = [];
+  let expanded = false;
+  let frame = 0;
+  let pageScrollY = 0;
+
+  function updateViewport() {
+    frame = 0;
+    const height = viewport?.height ?? window.innerHeight;
+    const top = Math.max(0, viewport?.offsetTop ?? 0);
+    document.body.style.setProperty('--writing-viewport-height', `${height}px`);
+    document.body.style.setProperty('--writing-viewport-top', `${top}px`);
+    surface.classList.toggle('writing-focus-compact', height < 425);
+  }
+
+  function scheduleViewport() {
+    if (expanded && !frame) frame = requestAnimationFrame(updateViewport);
+  }
+
+  function closeReference(restoreFocus = false) {
+    reference.hidden = true;
+    referenceButton.setAttribute('aria-expanded', 'false');
+    if (restoreFocus) textarea.focus({preventScroll:true});
+  }
+
+  function open() {
+    if (expanded) return;
+    closeEditorMenu();
+    const scrollTop = textarea.scrollTop;
+    pageScrollY = window.scrollY;
+    expanded = true;
+    document.body.classList.add('writing-expanded');
+    surface.setAttribute('role', 'dialog');
+    surface.setAttribute('aria-modal', 'true');
+    surface.setAttribute('aria-labelledby', 'writing-focus-title');
+    // Keep the existing form, inputs and save handler. Only their presentation changes.
+    heading.append(status, saveButton);
+    reference.append(scripture);
+    heading.hidden = false;
+    referenceButton.hidden = false;
+    tools.hidden = true;
+    for (let branch = surface; branch !== appShell; branch = branch.parentElement) {
+      for (const sibling of branch.parentElement.children) {
+        if (sibling === branch || sibling.inert) continue;
+        sibling.inert = true;
+        background.push(sibling);
+      }
+    }
+    updateViewport();
+    textarea.scrollTop = scrollTop;
+    backButton.focus({preventScroll:true});
+  }
+
+  function close({restoreFocus = true, saveDraft = true} = {}) {
+    if (!expanded) return;
+    const scrollTop = textarea.scrollTop;
+    if (saveDraft) persistDraft();
+    expanded = false;
+    cancelAnimationFrame(frame);
+    frame = 0;
+    closeEditorMenu();
+    closeReference();
+    heading.hidden = true;
+    referenceButton.hidden = true;
+    tools.hidden = false;
+    saveActions.prepend(saveButton);
+    dateline.insertBefore(status, launcher);
+    scriptureHome.prepend(scripture);
+    for (const element of background.splice(0)) element.inert = false;
+    surface.removeAttribute('role');
+    surface.removeAttribute('aria-modal');
+    surface.setAttribute('aria-labelledby', 'note-content-section-title');
+    surface.classList.remove('writing-focus-compact');
+    document.body.classList.remove('writing-expanded');
+    document.body.style.removeProperty('--writing-viewport-height');
+    document.body.style.removeProperty('--writing-viewport-top');
+    textarea.scrollTop = scrollTop;
+    window.scrollTo({top: pageScrollY, behavior: 'instant'});
+    if (restoreFocus) launcher.focus({preventScroll:true});
+  }
+
+  launcher.addEventListener('click', open);
+  backButton.addEventListener('click', () => close());
+  referenceButton.addEventListener('click', () => {
+    if (!reference.hidden) {
+      closeReference(true);
+      return;
+    }
+    reference.hidden = false;
+    referenceButton.setAttribute('aria-expanded', 'true');
+    returnToText.focus({preventScroll:true});
+  });
+  returnToText.addEventListener('click', () => closeReference(true));
+  scriptureInput.addEventListener('keydown', event => {
+    if (!expanded || event.key !== 'Enter' || event.isComposing) return;
+    event.preventDefault();
+    scripture.querySelector('#fetch-scripture-btn').click();
+  });
+  textarea.addEventListener('focus', () => { if (expanded && !reference.hidden) closeReference(); });
+  document.addEventListener('keydown', event => {
+    if (!expanded || event.key !== 'Escape' || event.isComposing || event.defaultPrevented) return;
+    if (document.querySelector('dialog[open], .modal:not(.hidden)')) return;
+    if (toolbar.querySelector('[aria-expanded="true"]:not(.writing-focus-lookup)')) return;
+    event.preventDefault();
+    if (!reference.hidden) closeReference(true);
+    else close();
+  }, true);
+  viewport?.addEventListener('resize', scheduleViewport);
+  viewport?.addEventListener('scroll', scheduleViewport);
+  window.addEventListener('resize', scheduleViewport);
+
+  return {close};
 }
 
 
@@ -472,15 +629,18 @@ function createEditorialMotion(review,header){
 // Existing modal views keep keyboard focus inside the active dialog.
 function manageEditorialDialogFocus(){
   let lastAction=null;let previous=[];const origins=new WeakMap();
-  const visible=element=>element?.isConnected&&element.getClientRects().length>0;
+  const visible=element=>element?.isConnected&&!element.closest('[inert]')&&element.getClientRects().length>0;
   document.addEventListener('click',event=>{lastAction=event.target.closest('button,a,input,select,textarea,summary')||lastAction;},true);
   const dialogs=()=>[...document.querySelectorAll('[role="dialog"][aria-modal="true"]')].filter(visible);
   new MutationObserver(()=>{
     const current=dialogs();
     for(const dialog of current)if(!previous.includes(dialog)){origins.set(dialog,lastAction||document.activeElement);if(!dialog.contains(document.activeElement))dialog.querySelector('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled])')?.focus();}
-    for(const dialog of previous)if(!current.includes(dialog)&&!current.length){
+    const writingDialog = current.at(-1)?.matches('.note-main-writing') ? current.at(-1) : null;
+    for(const dialog of previous)if(!current.includes(dialog)&&(!current.length||writingDialog)){
       const origin=origins.get(dialog);
-      const fallback=document.querySelector('.devotion-masthead [data-workspace-view="note-reader"]');
+      const fallback=writingDialog?.querySelector('#writing-focus-reference:not([hidden]) button')
+        || writingDialog?.querySelector('.writing-focus-heading button')
+        || document.querySelector('.devotion-masthead [data-workspace-view="note-reader"]');
       if(!document.querySelector('dialog[open]')&&(dialog.contains(document.activeElement)||document.activeElement===document.body||!visible(document.activeElement))){
         if(visible(origin))origin.focus({preventScroll:true});else if(visible(fallback))fallback.focus({preventScroll:true});
       }

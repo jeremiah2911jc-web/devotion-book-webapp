@@ -24,7 +24,7 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.2.7';
+const APP_VERSION = '1.2.8';
 const APP_RELEASE_DATE = '2026/11/19';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
@@ -8641,7 +8641,7 @@ function appendReferencesToNoteScripture(readings = []) {
   const current = els.noteScripture.value.trim();
   const addition = nextReadings.join('; ');
   els.noteScripture.value = current ? `${current}; ${addition}` : addition;
-  resetScripturePreview({ clearApplied: true });
+  resetScripturePreview({ clearApplied: !document.body.classList.contains('writing-expanded') });
   return true;
 }
 
@@ -10144,7 +10144,7 @@ function focusNoteEditorSection() {
     inline: 'nearest',
   });
   window.setTimeout(() => {
-    if (!els.noteContent) return;
+    if (!els.noteContent || document.body.classList.contains('writing-expanded')) return;
     els.noteContent.focus({ preventScroll: true });
     const position = els.noteContent.value.length;
     if (typeof els.noteContent.setSelectionRange === 'function') {
@@ -11211,6 +11211,7 @@ function setView(viewName, { historyMode = 'push', scrollY } = {}) {
     viewName = 'dashboard';
   }
   if (viewName === 'snapshots') viewName = 'dashboard';
+  if (viewName !== 'notes') readingWorkspace?.closeWritingMode({ restoreFocus: false });
   const pushHistory = historyMode === 'push' && !!state.currentUser && viewName !== previousView;
   if (pushHistory) saveWorkspaceHistory();
   if (viewName !== previousView && previousView === 'note-reader') {
