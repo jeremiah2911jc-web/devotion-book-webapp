@@ -21,6 +21,8 @@ async function walk(root,rel=''){
 }
 if(built){
  const files=await walk('dist');
+ const allowedFiles=JSON.parse(await readFile('security/public-files.json','utf8'));
+ assert.deepEqual(files.sort(),allowedFiles.sort(),'Public output must exactly match the public file list');
  for(const required of ['index.html','app.js','styles.css','version.json','manifest.webmanifest','assets/js/reading-workspace.js','assets/js/offline-notes.js','service-worker.js','assets/vendor/supabase.js','assets/css/reading-workspace.css'])assert(files.includes(required),`Missing public asset ${required}`);
  for(const file of files.filter(file=>/\.(?:js|html|css|json|webmanifest)$/.test(file))){
   const text=await readFile(path.join('dist',file),'utf8');
