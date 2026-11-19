@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-title" content="DEVOTION" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>DEVOTION｜靈修札記</title>
-  <link rel="stylesheet" href="./styles.css?v=1.2.15" />
-  <link rel="stylesheet" href="./assets/css/reading-workspace.css?v=1.2.15" />
+  <link rel="stylesheet" href="./styles.css?v=1.2.16" />
+  <link rel="stylesheet" href="./assets/css/reading-workspace.css?v=1.2.16" />
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png" />
@@ -610,14 +610,14 @@
                   <div class="note-section-heading">
                     <h3 id="note-content-section-title">我的札記</h3>
                   </div>
-                  <div class="markdown-toolbar" role="toolbar" aria-label="札記 Markdown 工具列" data-testid="note-editor-toolbar">
+                  <div class="markdown-toolbar" role="toolbar" aria-label="札記格式工具列" data-testid="note-editor-toolbar">
                     <button type="button" id="markdown-heading-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-heading">小標題</button>
                     <button type="button" id="markdown-bold-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-bold">粗體</button>
                     <button type="button" id="markdown-quote-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-quote">引用</button>
-                    <button type="button" id="markdown-scripture-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-scripture">經文</button>
                     <div class="note-editor-menu note-format-menu">
                       <button type="button" class="ghost-btn small markdown-toolbar-btn note-editor-menu-toggle" aria-controls="note-extra-formats" aria-expanded="false" data-testid="note-extra-formats-toggle">格式</button>
                       <div id="note-extra-formats" class="note-editor-menu-options" role="group" aria-label="其他札記格式">
+                        <button type="button" id="markdown-scripture-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-scripture">經文</button>
                         <button type="button" id="markdown-list-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-list">清單</button>
                         <button type="button" id="markdown-divider-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-divider">分隔線</button>
                         <button type="button" id="markdown-red-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-red">紅字</button>
@@ -626,12 +626,14 @@
                         <button type="button" id="markdown-purple-btn" class="ghost-btn small markdown-toolbar-btn" data-testid="note-format-purple">紫字</button>
                       </div>
                     </div>
+                    <div class="note-edit-history" role="group" aria-label="編輯紀錄">
+                      <button type="button" id="note-undo-btn" class="ghost-btn small markdown-toolbar-btn" disabled>復原</button>
+                      <button type="button" id="note-redo-btn" class="ghost-btn small markdown-toolbar-btn" disabled>重做</button>
+                    </div>
                   </div>
                   <p id="markdown-syntax-hint" class="caption markdown-syntax-hint hidden" aria-live="polite"></p>
-                  <label class="note-content-field">
-                    <span class="visually-hidden">內容</span>
-                    <textarea id="note-content" rows="6" placeholder="輸入札記內容" data-testid="note-editor-content"></textarea>
-                  </label>
+                  <div class="note-content-field" id="note-editor-mount"></div>
+                  <textarea id="note-content" hidden></textarea>
                 </section>
               </section>
 
@@ -1017,7 +1019,7 @@
         </div>
         <div class="account-settings-section account-version-section">
           <span class="account-settings-label">版本資訊</span>
-          <p class="caption account-settings-version-text" data-app-version-label data-testid="version-display">版本：v1.2.15｜更新：2026/11/19</p>
+          <p class="caption account-settings-version-text" data-app-version-label data-testid="version-display">版本：v1.2.16｜更新：2026/11/20</p>
         </div>
         <div class="account-settings-section account-settings-signout-section">
           <span class="account-settings-label">登出</span>
@@ -1074,6 +1076,6 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./app.js?v=1.2.15"></script>
+  <script type="module" src="./app.js?v=1.2.16"></script>
 </body>
 </html>

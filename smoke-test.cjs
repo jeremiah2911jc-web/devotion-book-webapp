@@ -5,6 +5,7 @@ const { spawn } = require('child_process');
 const { chromium } = require('playwright');
 const {
   STORAGE_KEYS,
+  selectNoteEditorText,
   seedLocalUserState,
   installLocalUserState,
   attachConsoleErrorCollector,
@@ -630,33 +631,55 @@ async function verifyNoteEditorToolbar(page, results) {
   await expectVisible(page, '[data-testid="note-editor-toolbar"]', '寫札記工具列已顯示');
   await expectVisible(page, '[data-testid="note-editor-content"]', '札記內容欄位已顯示');
 
-  const toolbarChecks = [
-    ['note-format-heading', '## 小標題'],
-    ['note-format-bold', '**文字**'],
-    ['note-format-quote', '> 引用內容'],
-    ['note-format-scripture', '> 經文內容'],
-    ['note-format-list', '- 項目'],
-    ['note-format-divider', '---'],
-    ['note-format-red', '{red}紅色重點{/red}'],
-    ['note-format-blue', '{blue}藍色重點{/blue}'],
-    ['note-format-gold', '{gold}金色重點{/gold}'],
-    ['note-format-purple', '{purple}紫色重點{/purple}'],
-  ];
-
-  for (const [testId, expectedValue] of toolbarChecks) {
-    await page.fill('[data-testid="note-editor-content"]', '');
+  const editor = page.getByTestId('note-editor-content');
+  const textColor = locator => locator.evaluate(el => getComputedStyle(el).color);
+  const applyFormat = async testId => {
     if (!await page.getByTestId(testId).isVisible()) {
       await page.getByTestId('note-extra-formats-toggle').click();
     }
     await clickElement(page, `[data-testid="${testId}"]`);
-    const actualValue = await page.inputValue('[data-testid="note-editor-content"]');
-    if (!actualValue.includes(expectedValue)) {
-      throw new Error(`寫札記工具列 ${testId} 輸出錯誤：${actualValue}`);
+  };
+  const toolbarChecks = [
+    ['note-format-heading', 'h2'],
+    ['note-format-bold', 'strong'],
+    ['note-format-quote', 'blockquote'],
+    ['note-format-scripture', 'blockquote'],
+    ['note-format-list', 'li'],
+    ['note-format-divider', 'hr'],
+    ['note-format-red', '.text-red', 'rgb(138, 59, 59)'],
+    ['note-format-blue', '.text-blue', 'rgb(53, 93, 141)'],
+    ['note-format-gold', '.text-gold', 'rgb(138, 106, 31)'],
+    ['note-format-purple', '.text-purple', 'rgb(106, 74, 130)'],
+  ];
+
+  for (const [testId, expected, color] of toolbarChecks) {
+    await editor.fill('札記文字');
+    await selectNoteEditorText(editor, '札記文字');
+    await applyFormat(testId);
+    const styled = editor.locator(expected);
+    await styled.waitFor({ state: 'visible' });
+    if (color && await textColor(styled) !== color) {
+      throw new Error(`${testId} 應在編輯時顯示指定的文字顏色`);
     }
+    await page.getByRole('button', { name: '復原', exact: true }).click();
+    await styled.waitFor({ state: 'hidden' });
+    if (!(await editor.textContent()).includes('札記文字')) throw new Error('復原格式後原文應保留');
   }
 
-  await page.fill('[data-testid="note-editor-content"]', '');
-  results.push('寫札記工具列已用 data-testid 驗證小標題、粗體、引用、經文、清單、分隔線與四色文字');
+  await selectNoteEditorText(editor, '札記文字');
+  await applyFormat('note-format-heading');
+  await selectNoteEditorText(editor, '札記文字');
+  await applyFormat('note-format-red');
+  await selectNoteEditorText(editor, '札記文字');
+  await applyFormat('note-format-blue');
+  const blueHeading = editor.locator('h2 .text-blue');
+  if (await textColor(blueHeading) !== 'rgb(53, 93, 141)') throw new Error('小標題應能由紅色換成藍色');
+  await page.getByRole('button', { name: '復原', exact: true }).click();
+  const redHeading = editor.locator('h2 .text-red');
+  if (await textColor(redHeading) !== 'rgb(138, 59, 59)') throw new Error('復原換色後應保留小標題原有的紅色');
+
+  await editor.fill('');
+  results.push('札記編輯器會顯示標題、引文、清單及重點格式，復原後原文保留。');
 }
 
 function assertTextIncludesAll(text, requiredParts, label) {
@@ -684,7 +707,7 @@ async function fetchScripturesIntoNote(page, references, expectedCount) {
   }
   return {
     cardTitles,
-    content: await page.inputValue('[data-testid="note-editor-content"]'),
+    content: await page.inputValue('#note-content'),
   };
 }
 
@@ -948,7 +971,7 @@ async function run() {
     const scripturePreviewVisible = await page.locator('#scripture-preview').isVisible();
     if (scripturePreviewVisible) throw new Error('帶入今日讀經不應自動抓取經文全文');
     const todayReadingToast = await page.locator('#toast').textContent();
-    if (!todayReadingToast || !todayReadingToast.includes('已帶入今日讀經')) {
+    if (!todayReadingToast || !todayReadingToast.includes('已填入今日讀經出處')) {
       throw new Error(`今日讀經帶入提示不正確：${todayReadingToast}`);
     }
     await clickElement(page, '#fetch-scripture-btn');

@@ -185,7 +185,7 @@ export function createReadingWorkspace(api) {
   menu.querySelector('[data-workspace-pending]').addEventListener('click',event=>{const button=event.target.closest('[data-pending-copy]');if(button)api.copyPending(button.dataset.pendingCopy).catch(api.onError);});
   menu.querySelector('[data-workspace-signout]').addEventListener('click',()=>{closeMenu();api.signOut().catch(api.onError);});
   document.querySelectorAll('[data-workspace-view]').forEach(button => button.addEventListener('click',()=>{if(menu.open)closeMenu();api.setView(button.dataset.workspaceView);}));
-  masthead.querySelector('[data-workspace-new]').addEventListener('click',async()=>{if(!await api.prepareNewNote())return;api.clearNoteForm({clearDraft:true});api.setView('notes');els.noteContent.focus();});
+  masthead.querySelector('[data-workspace-new]').addEventListener('click',async()=>{if(!await api.prepareNewNote())return;api.clearNoteForm({clearDraft:true});api.setView('notes');api.noteEditor.focus();});
   masthead.querySelector('[data-workspace-reading]').addEventListener('click', () => openReadingShelf('choices'));
   shelf.querySelector('[data-shelf-close]').addEventListener('click',()=>shelf.close());
   shelf.addEventListener('click', event => {
@@ -263,12 +263,12 @@ export function createReadingWorkspace(api) {
     if (event.key === 'Escape' && openEditorMenu) closeEditorMenu();
   });
   form.querySelector('.markdown-toolbar').addEventListener('pointerdown', event => {
-    if (document.activeElement === els.noteContent && event.target instanceof Element && event.target.closest('button')) {
+    if (document.activeElement === api.noteEditor.element && event.target instanceof Element && event.target.closest('button')) {
       event.preventDefault();
     }
   });
   const writingMode = createMobileWritingMode({
-    surface: writingSurface, textarea: els.noteContent, scriptureInput: els.noteScripture,
+    surface: writingSurface, editable: api.noteEditor.element, scriptureInput: els.noteScripture,
     scripture, tools, saveButton: els.publishNoteBtn, dateline: top,
     persistDraft: api.persistDraft, closeEditorMenu,
   });
@@ -298,7 +298,7 @@ export function createReadingWorkspace(api) {
   review.addEventListener('click',async event=>{
     const edit=event.target.closest('[data-resume-note]');
     if(edit){
-      if(els.noteId.value===edit.dataset.resumeNote&&state.noteDraftDirty){api.setView('notes');els.noteContent.focus();return;}
+      if(els.noteId.value===edit.dataset.resumeNote&&state.noteDraftDirty){api.setView('notes');api.noteEditor.focus();return;}
       if(state.noteDraftDirty&&!await api.prepareNewNote())return;
       api.populateNoteForm(edit.dataset.resumeNote,{focusEditor:true});return;
     }
@@ -515,8 +515,8 @@ function addScripturePicker(section, input, listVerseNumbers) {
   });
 }
 
-function createMobileWritingMode({surface, textarea, scriptureInput, scripture, tools, saveButton, dateline, persistDraft, closeEditorMenu}) {
-  const editor = textarea.closest('.note-content-section');
+function createMobileWritingMode({surface, editable, scriptureInput, scripture, tools, saveButton, dateline, persistDraft, closeEditorMenu}) {
+  const editor = editable.closest('.note-content-section');
   const toolbar = editor.querySelector('.markdown-toolbar');
   const saveActions = saveButton.parentElement;
   const scriptureHome = scripture.parentElement;
@@ -575,13 +575,13 @@ function createMobileWritingMode({surface, textarea, scriptureInput, scripture, 
   function closeReference(restoreFocus = false) {
     reference.hidden = true;
     referenceButton.setAttribute('aria-expanded', 'false');
-    if (restoreFocus) textarea.focus({preventScroll:true});
+    if (restoreFocus) editable.focus({preventScroll:true});
   }
 
   function open() {
     if (expanded) return;
     closeEditorMenu();
-    const scrollTop = textarea.scrollTop;
+    const scrollTop = editable.scrollTop;
     pageScrollY = window.scrollY;
     expanded = true;
     document.body.classList.add('writing-expanded');
@@ -602,13 +602,13 @@ function createMobileWritingMode({surface, textarea, scriptureInput, scripture, 
       }
     }
     updateViewport();
-    textarea.scrollTop = scrollTop;
+    editable.scrollTop = scrollTop;
     backButton.focus({preventScroll:true});
   }
 
   function close({restoreFocus = true, saveDraft = true} = {}) {
     if (!expanded) return;
-    const scrollTop = textarea.scrollTop;
+    const scrollTop = editable.scrollTop;
     if (saveDraft) persistDraft();
     expanded = false;
     cancelAnimationFrame(frame);
@@ -629,7 +629,7 @@ function createMobileWritingMode({surface, textarea, scriptureInput, scripture, 
     document.body.classList.remove('writing-expanded');
     document.body.style.removeProperty('--writing-viewport-height');
     document.body.style.removeProperty('--writing-viewport-top');
-    textarea.scrollTop = scrollTop;
+    editable.scrollTop = scrollTop;
     window.scrollTo({top: pageScrollY, behavior: 'instant'});
     if (restoreFocus) launcher.focus({preventScroll:true});
   }
@@ -651,7 +651,7 @@ function createMobileWritingMode({surface, textarea, scriptureInput, scripture, 
     event.preventDefault();
     scripture.querySelector('#fetch-scripture-btn').click();
   });
-  textarea.addEventListener('focus', () => { if (expanded && !reference.hidden) closeReference(); });
+  editable.addEventListener('focus', () => { if (expanded && !reference.hidden) closeReference(); });
   document.addEventListener('keydown', event => {
     if (!expanded || event.key !== 'Escape' || event.isComposing || event.defaultPrevented) return;
     if (document.querySelector('dialog[open], .modal:not(.hidden)')) return;

@@ -131,7 +131,7 @@ async function run(browser, width) {
     const wait = (predicate, arg) => page.waitForFunction(predicate, arg, { timeout: 10_000 });
     const visible = selector => page.locator(selector).waitFor({ state: 'visible', timeout: 10_000 });
     const click = selector => page.locator(selector).click({ timeout: 10_000 });
-    const input = page.locator('#note-content');
+    const input = page.getByTestId('note-editor-content');
     const draftStorage = `${draftKey}:${owner.id}`;
     const storedDraft = key => page.evaluate(storageKey => JSON.parse(localStorage.getItem(storageKey)), key);
     const showView = view => wait(name => document.body.dataset.currentView === name, view);
@@ -160,8 +160,9 @@ async function run(browser, width) {
     const editorPosition = () => input.evaluate(element => ({
       focused: document.activeElement === element,
       scrollY,
-      start: element.selectionStart,
-      end: element.selectionEnd,
+      start: window.getSelection()?.anchorOffset,
+      end: window.getSelection()?.focusOffset,
+      selected: String(window.getSelection()),
     }));
     const chapterCount = () => page.locator('#chapters-list [data-chapter-item]').count();
     const availableNotes = () => page.getByTestId('content-library-card').count();
@@ -220,7 +221,7 @@ async function run(browser, width) {
     await input.fill(draftText);
     await input.evaluate(element => {
       element.focus({ preventScroll: true });
-      element.setSelectionRange(5, 12);
+      window.getSelection().setBaseAndExtent(element.firstChild.firstChild, 5, element.firstChild.firstChild, 12);
       element.scrollIntoView({ block: 'start', behavior: 'instant' });
     });
     const before = await editorPosition();
@@ -291,7 +292,7 @@ async function run(browser, width) {
     await advance(31_000);
     assert.equal(await pausedRefresh, 'AuthRetryableFetchError');
     assert.equal(refreshCalls, refreshesBefore + 1);
-    assert.equal(await input.inputValue(), '登入更新時的原稿');
+    assert.equal(await page.locator('#note-content').inputValue(), '登入更新時的原稿');
     assert.equal(await page.locator('body').evaluate(el => el.classList.contains('auth-locked')), false);
     assert.equal((await storedDraft(draftStorage)).content, '登入更新時的原稿');
     refreshMode = 'normal';
@@ -300,7 +301,7 @@ async function run(browser, width) {
     await wait(() => document.getElementById('account-settings-sync-status')?.textContent === '已同步');
     assert.equal(refreshCalls, refreshesBefore + 2);
     assert.deepEqual(await editorPosition(), positionBeforePause);
-    assert.equal(await input.inputValue(), '登入更新時的原稿');
+    assert.equal(await page.locator('#note-content').inputValue(), '登入更新時的原稿');
 
     refreshMode = 'retry-once';
     assert.equal(await refresh(), null);
@@ -308,7 +309,7 @@ async function run(browser, width) {
     await expire();
     await refresh();
     await visible('#auth-gate');
-    assert.equal(await input.inputValue(), '');
+    assert.equal(await page.locator('#note-content').inputValue(), '');
     assert.equal((await storedDraft(draftStorage)).content, '登入更新時的原稿');
     refreshMode = 'normal';
     await login(owner);

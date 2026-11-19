@@ -51,6 +51,7 @@
   "assets/ui/sync.png",
   "assets/ui/system-icons.png",
   "assets/vendor/manifest.json",
+  "assets/vendor/note-editor.js",
   "assets/vendor/supabase-LICENSE.txt",
   "assets/vendor/supabase.js",
   "favicon.ico",
