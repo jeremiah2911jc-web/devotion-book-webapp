@@ -24,7 +24,7 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.2.4';
+const APP_VERSION = '1.2.5';
 const APP_RELEASE_DATE = '2026/11/19';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
@@ -1238,6 +1238,9 @@ const state = {
   pendingCloudReloadReason: '',
   lastPassiveCloudReloadAt: 0,
   loadAllDataPromise: null,
+  workspaceOwnerGeneration: 0,
+  authRefreshRetryAt: 0,
+  manualSignOut: false,
   lastCloudFullLoadAt: 0,
   mcheynePlan: null,
   mcheynePlanStatus: 'idle',
@@ -1247,7 +1250,7 @@ const state = {
   bookArrangementSaving: false,
   bookArrangementDrafts: {},
   bookChapterDrag: null,
-  bookProjectDetailIds: new Set(),
+  bookProjectDetailVersions: new Map(),
   bookProjectDetailPromises: new Map(),
   bookDraftModalOpen: false,
   bookDraftModalBookId: null,
@@ -1390,6 +1393,7 @@ function refreshAccountSyncUi({ isSignedIn = false } = {}) {
 async function handleManualSync() {
   if (!state.supabase || !state.currentUser) {showToast('目前內容儲存在此裝置，尚未連線雲端。');return;}
   if (!navigator.onLine) {showToast('目前離線，內容保留在此裝置。');return;}
+  if (cloudAuthRefreshPaused()) {showToast('登入更新暫停，稍後可再同步。');return;}
   if (isSyncInProgress()) return;
   setSyncState({ status: '同步中', detail: '正在同步資料…' });
   refreshUi();
@@ -2820,30 +2824,33 @@ function shouldSkipPassiveCloudReload(reason, minIntervalMs = 0) {
   return false;
 }
 function requestCloudReload(reason = '雲端更新', options = {}) {
-  if (!(state.supabase && state.currentUser)) return Promise.resolve();
+  if (!(state.supabase && state.currentUser) || cloudAuthRefreshPaused()) return Promise.resolve();
   if (shouldSkipPassiveCloudReload(reason, options.minIntervalMs || 0)) return Promise.resolve();
   if (state.cloudReloadPromise) {
     egressDebugLog('cloudReload:coalesced', { reason });
     return state.cloudReloadPromise;
   }
   egressDebugLog('cloudReload:start', { reason });
-  state.cloudReloadPromise = loadAllData({
+  const generation = state.workspaceOwnerGeneration;
+  const reload = loadAllData({
     silent: options.silent ?? true,
     syncReason: reason,
     reason,
     minIntervalMs: options.minIntervalMs || 0,
     force: !!options.force,
   }).catch(error => {
+    if (generation !== state.workspaceOwnerGeneration) return;
     if (options.handleError === false) {
       console.error(error);
       return;
     }
     handleError(error);
   }).finally(() => {
-    state.cloudReloadPromise = null;
+    if (state.cloudReloadPromise === reload) state.cloudReloadPromise = null;
     egressDebugLog('cloudReload:end', { reason });
   });
-  return state.cloudReloadPromise;
+  state.cloudReloadPromise = reload;
+  return reload;
 }
 function scheduleCloudReload(reason = '雲端更新', options = {}) {
   state.pendingCloudReloadReason = reason;
@@ -4322,7 +4329,41 @@ function fileToDataUrl(file) {
   });
 }
 
+function cloudAuthRefreshPaused() {
+  return Date.now() < state.authRefreshRetryAt;
+}
+
+function createCloudFetch(supabaseUrl) {
+  const refreshEndpoint = new URL('auth/v1/token', supabaseUrl.replace(/\/?$/, '/')).href;
+  return async (input, options) => {
+    const url = new URL(input instanceof Request ? input.url : input);
+    const method = options?.method || (input instanceof Request ? input.method : 'GET');
+    if (method.toUpperCase() !== 'POST' || url.origin + url.pathname !== refreshEndpoint
+      || url.searchParams.get('grant_type') !== 'refresh_token') return fetch(input, options);
+
+    // GoTrue treats a refresh 429 as terminal. Keep the session for the next scheduled retry.
+    const retryableResponse = () => new Response(null, { status: 503 });
+    if (cloudAuthRefreshPaused()) return retryableResponse();
+    const response = await fetch(input, options);
+    if (response.status !== 429) return response;
+
+    const retryAfter = response.headers.get('Retry-After');
+    const delay = /^\d+$/.test(retryAfter || '')
+      ? Number(retryAfter) * 1000
+      : Date.parse(retryAfter) - Date.now();
+    state.authRefreshRetryAt = Date.now() + Math.max(60_000, Number.isFinite(delay) ? delay : 0);
+    setSyncState({ status: '同步暫停', detail: '登入更新暫停，稍後會重試。' });
+    if (state.currentUser) {
+      persistCurrentNoteDraft({ immediate: true });
+      refreshAccountSyncUi({ isSignedIn: true });
+      showToast('登入更新暫停，仍可繼續編輯。');
+    }
+    return retryableResponse();
+  };
+}
+
 function initSupabase() {
+  state.authRefreshRetryAt = 0;
   const { mode, supabaseUrl, supabaseAnonKey } = state.config;
   if (mode === 'local') {
     state.supabase = null;
@@ -4337,6 +4378,7 @@ function initSupabase() {
   try {
     state.supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey, {
       auth: { persistSession: true, autoRefreshToken: true },
+      global: { fetch: createCloudFetch(supabaseUrl) },
     });
     state.storageMode = 'cloud';
   } catch (error) {
@@ -4459,7 +4501,7 @@ async function completeLocalAuth(user, successMessage) {
   settleMobileViewport();
   await loadAllData();
   refreshUi();
-  setView('dashboard');
+  restoreWorkspace();
   showToast(successMessage);
 }
 function settleMobileViewport() {
@@ -4654,32 +4696,113 @@ function showInvalidPasswordRecoveryLink() {
   openAuthInline('login');
   showToast('重設密碼連結已失效，請重新寄送忘記密碼信');
 }
+function clearWorkspaceForOwnerChange() {
+  if (state.currentUser && state.noteDraftDirty) persistCurrentNoteDraft({ immediate: true });
+  clearTimeout(state.noteDraftSaveTimer);
+  state.noteDraftSaveTimer = null;
+  state.workspaceOwnerGeneration++;
+  state.loadAllDataPromise = null;
+  state.cloudReloadPromise = null;
+  state.lastCloudFullLoadAt = 0;
+  state.lastPassiveCloudReloadAt = 0;
+  state.lastSyncAt = '';
+  clearTimeout(state.syncReloadTimer);
+  state.pendingCloudReloadReason = '';
+  teardownCloudRealtime();
+  state.notes = [];
+  state.prayers = [];
+  state.books = [];
+  state.snapshots = [];
+  state.selectedBookId = null;
+  state.bookArrangementDrafts = {};
+  state.bookDraftModalBookId = null;
+  state.latestExportedBook = null;
+  state.contentLibrarySelectedNoteIds = [];
+  state.contentLibrarySearch = '';
+  state.contentLibraryCategory = '';
+  state.contentLibraryTag = '';
+  state.contentLibraryDateFrom = '';
+  state.contentLibraryDateTo = '';
+  state.contentLibraryScope = 'available';
+  resetNoteReaderFilters();
+  state.noteReaderSelectedId = null;
+  state.prayerSyncError = '';
+  forgetBookProjectDetails();
+  clearCloudLibrary('請先登入雲端帳號。');
+  resetReaderSearchState();
+  resetProfileAvatarState();
+  clearBookForm();
+  els.chaptersList?.replaceChildren();
+  if (els.chaptersList) delete els.chaptersList.dataset.renderedChapters;
+  els.noteReaderSearchResults?.replaceChildren();
+  resetChapterDragState();
+  document.querySelectorAll('#workspace-menu[open], #workspace-reading-shelf[open]').forEach(dialog => dialog.close());
+  document.querySelector('#confirm-dialog:not(.hidden) [data-confirm-cancel]')?.click();
+  closeTodayReadingDialog();
+  closeNotePreview();
+  closeAccountSettingsModal();
+  closeNoteReaderReadingModal();
+  closeNoteReaderSearchModal();
+  els.noteReaderReadingContent?.replaceChildren();
+  document.getElementById('reader-content')?.replaceChildren();
+}
+
 function handleSupabaseAuthStateChange(event, session) {
   if (event === 'PASSWORD_RECOVERY') {
     enterPasswordRecoveryMode();
     return;
   }
   if (state.passwordRecoveryActive) return;
-  const previousOwner=state.currentUser?.id||'';
-  const nextOwner=session?.user?.id||'';
-  if(previousOwner!==nextOwner){
-    persistCurrentNoteDraft({immediate:true});
-    state.notes=[];state.prayers=[];state.books=[];state.snapshots=[];state.selectedBookId=null;
-    forgetBookProjectDetails();clearCloudLibrary('請先登入雲端帳號。');
-    closeNoteReaderReadingModal();closeNoteReaderSearchModal();
-    if(previousOwner)clearOfflineCache(localStorage,previousOwner);
+  const previousOwner = state.currentUser?.id;
+  const nextUser = session?.user || null;
+  const nextOwner = nextUser?.id;
+  if (event === 'INITIAL_SESSION' && !nextUser && cloudAuthRefreshPaused()) return;
+  const refreshWasPaused = event === 'TOKEN_REFRESHED' && state.authRefreshRetryAt > 0;
+  if (event === 'TOKEN_REFRESHED' || (event === 'SIGNED_IN' && previousOwner !== nextOwner) || event === 'SIGNED_OUT') {
+    state.authRefreshRetryAt = 0;
   }
-  state.currentUser = session?.user || null;
+  if (previousOwner === nextOwner) {
+    if (!nextUser) return;
+    state.currentUser = nextUser;
+    if (event === 'USER_UPDATED') {
+      ensureAdminUi();
+      syncAccountSettingsModal();
+    }
+    if (refreshWasPaused) setTimeout(() => {
+      if (state.currentUser?.id === nextOwner) requestCloudReload('登入已更新，雲端資料已同步。', { force: true, handleError: false });
+    }, 0);
+    return;
+  }
+
+  if (previousOwner) {
+    saveWorkspaceHistory(state.manualSignOut ? { view: 'dashboard', scrollY: 0, bookId: null } : {});
+    clearOfflineCache(localStorage, previousOwner);
+  }
+  clearWorkspaceForOwnerChange();
+  state.currentUser = nextUser;
+  clearNoteForm();
+  setView('dashboard', { historyMode: 'none', scrollY: 0 });
+  if (!nextUser) {
+    setSyncState({ status: '尚未登入', detail: '請登入雲端帳號。', at: '' });
+    refreshUi();
+    return;
+  }
+
   ensureAdminUi();
-  if (state.currentUser) settleMobileViewport();
-  teardownCloudRealtime();
-  if (state.currentUser) {
-    setupCloudRealtime();
-  } else if (state.supabase) {
-    setSyncState({ status: '尚未登入', detail: '已設定雲端，但目前還沒有登入帳號。', at: '' });
-  }
+  if (state.authInlineSubmitting) settleMobileViewport();
   refreshUi();
-  loadAllData({ silent: true, syncReason: session?.user ? '已連線到雲端帳號。' : '已登出雲端帳號。' }).then(()=>{if(previousOwner!==nextOwner&&state.currentUser?.id===nextOwner)readingWorkspace?.resume();}).catch(console.error);
+  const generation = state.workspaceOwnerGeneration;
+  // GoTrue waits for auth callbacks. Let it release its session lock before reading cloud data.
+  setTimeout(async () => {
+    if (generation !== state.workspaceOwnerGeneration) return;
+    setupCloudRealtime();
+    try {
+      await loadAllData({ silent: true, syncReason: '已連線到雲端帳號。' });
+    } catch (error) {
+      console.warn('workspace reload failed', error);
+    }
+    if (generation === state.workspaceOwnerGeneration) restoreWorkspace();
+  }, 0);
 }
 function openAuthSettings() {
   syncConfigInputs();
@@ -4916,7 +5039,9 @@ async function refreshProfileAvatar({ updateUi = false } = {}) {
     return;
   }
   egressDebugLog('avatarSignedUrl:miss', { path: metadata.path });
+  const generation = state.workspaceOwnerGeneration;
   const { data, error } = await state.supabase.storage.from(PROFILE_AVATAR_BUCKET).createSignedUrl(metadata.path, SIGNED_URL_CACHE_TTL_SECONDS);
+  if (generation !== state.workspaceOwnerGeneration) return;
   const signedUrl = appendAvatarCacheBust(data?.signedUrl || '', metadata.updatedAt);
   state.profileAvatar = error
     ? { path: metadata.path, url: '', updatedAt: metadata.updatedAt }
@@ -5185,7 +5310,6 @@ async function bootstrap() {
   ensureWritingWorkspaceUi();
   readingWorkspace = createReadingWorkspace({state, els, setView, clearNoteForm, populateNoteForm,
     persistDraft: () => persistCurrentNoteDraft({immediate:true}),
-    getCurrentDraft: loadCurrentNoteDraft, restoreDraft: restoreCurrentNoteDraft,
     openReading:index=>openTodayReadingDialog(index).catch(handleError),
     openBook:id=>{setView('books');return openBookDraftModal(id).catch(handleError);},
     openNote: openNoteFromWorkspace, getPreview: getNotePreviewText, openAccountSettings: openAccountSettingsModal, onError:handleError,
@@ -5193,6 +5317,7 @@ async function bootstrap() {
     copyPending:async(id)=>{forkPendingNote(localStorage,getUserId(),id,uid('note'));await loadAllData({silent:true,force:true});showToast('離線版本已另存一則，可重新同步。');}, pendingCount:()=>readPendingNotes(localStorage,getUserId()).length,
     syncPending: async()=>{
       if(!state.supabase||!state.currentUser||!navigator.onLine){showToast('連線後可同步離線札記。');return;}
+      if (cloudAuthRefreshPaused()) {showToast('登入更新暫停，稍後可再同步。');return;}
       try{const result=await syncOfflineNotes(localStorage,state.supabase,getUserId());
         await loadAllData({silent:true,force:true});
         showToast(result.conflicts?'部分札記在其他裝置已有變更，離線版本仍保留在此裝置。':'札記已同步。');
@@ -5221,9 +5346,6 @@ async function bootstrap() {
     const recoveryUrlState = getPasswordRecoveryUrlState();
     const authRedirectResult = await handleSupabaseAuthRedirect();
     if (recoveryUrlState.isRecovery) state.passwordRecoveryActive = true;
-    state.supabase.auth.onAuthStateChange((event, session) => {
-      handleSupabaseAuthStateChange(event, session);
-    });
     const { data } = await state.supabase.auth.getSession();
     if (recoveryUrlState.isRecovery) {
       if (recoveryUrlState.hasError || !data.session) {
@@ -5248,18 +5370,26 @@ async function bootstrap() {
       }
       showToast(authRedirectResult.message);
     }
+    state.supabase.auth.onAuthStateChange(handleSupabaseAuthStateChange);
   } else {
     state.currentUser = getLocalUser();
     ensureAdminUi();
     setSyncState({ status: '尚未同步', detail: '這些內容目前只儲存在你正在使用的裝置，尚未同步到帳號。', at: '' });
   }
-  if (!state.passwordRecoveryActive) await loadAllData({ silent: true });
+  const generation = state.workspaceOwnerGeneration;
+  if (!state.passwordRecoveryActive) {
+    try {
+      await loadAllData({ silent: true });
+    } catch (error) {
+      console.warn('initial workspace load failed', error);
+    }
+  }
   runAutoBackupCheck();
   refreshUi();
   if (state.passwordRecoveryActive) openAuthInline('password-recovery');
   renderNotePreview();
   checkAppVersion({ force: true }).catch(() => {});
-  if (!state.passwordRecoveryActive) readingWorkspace.resume();
+  if (!state.passwordRecoveryActive && generation === state.workspaceOwnerGeneration) restoreWorkspace();
   if ('serviceWorker' in navigator && sessionStorage.getItem('devotion-design-preview')!=='1') navigator.serviceWorker.register('/service-worker.js').catch(()=>{});
 }
 
@@ -5536,7 +5666,19 @@ function bindEvents() {
     if(event.key==='Escape'&&dailyReadingDialog&&!dailyReadingDialog.classList.contains('hidden'))closeTodayReadingDialog();
     if (event.key === 'Escape' && state.bookDraftModalOpen) closeBookDraftModal();
   });
+  window.addEventListener('popstate', event => {
+    if (state.currentUser && !state.passwordRecoveryActive) restoreWorkspace(event.state?.devotionWorkspace, 'none');
+  });
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  const saveBrowserDraft = () => {
+    if (state.noteDraftDirty) persistCurrentNoteDraft({ immediate: true });
+  };
+  window.addEventListener('pagehide', () => {
+    saveBrowserDraft();
+    if (state.currentUser && !state.passwordRecoveryActive) saveWorkspaceHistory();
+  });
   document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') saveBrowserDraft();
     if (document.visibilityState === 'visible' && state.supabase && state.currentUser) {
       requestCloudReload('已重新連線並同步最新資料。', {
         minIntervalMs: PASSIVE_CLOUD_RELOAD_MIN_INTERVAL_MS,
@@ -5861,25 +6003,25 @@ async function handleForgotPassword() {
 }
 
 async function handleSignOut() {
-  persistCurrentNoteDraft({immediate:true});
-  const offlineOwner = getUserId();
-  teardownCloudRealtime();
-  closeAccountSettingsModal();
-  if (state.supabase) {
-    const { error } = await state.supabase.auth.signOut();
-    if (error) throw createAuthError(error);
-  } else {
-    clearLocalUser();
-    state.currentUser = null;
+  if (state.manualSignOut) return;
+  state.manualSignOut = true;
+  try {
+    if (state.supabase) {
+      const { error } = await state.supabase.auth.signOut({ scope: 'local' });
+      if (error && state.currentUser) throw createAuthError(error);
+    } else {
+      saveWorkspaceHistory({ view: 'dashboard', scrollY: 0, bookId: null });
+      clearWorkspaceForOwnerChange();
+      clearLocalUser();
+      state.currentUser = null;
+      clearNoteForm();
+      setView('dashboard', { historyMode: 'none' });
+      await loadAllData({ silent: true });
+    }
+    showToast('已登出此裝置。');
+  } finally {
+    state.manualSignOut = false;
   }
-  resetProfileAvatarState();
-  clearOfflineCache(localStorage,offlineOwner);
-  setSyncState({ status: state.supabase ? '尚未登入' : '尚未同步', detail: state.supabase ? '雲端設定仍在，但目前尚未登入帳號。' : '這些內容目前只儲存在你正在使用的裝置，尚未同步到帳號。', at: '' });
-  state.selectedBookId = null;
-  await loadAllData({ silent: true });
-  setView('dashboard');
-  refreshUi();
-  showToast('已登出。');
 }
 
 function getUserId() {
@@ -5917,56 +6059,81 @@ function normalizeBookProjectRow(book = {}, { detailLoaded = false } = {}) {
   };
 }
 
-function rememberBookProjectDetail(bookId = '') {
-  if (bookId) state.bookProjectDetailIds.add(bookId);
-}
-
 function forgetBookProjectDetails() {
-  state.bookProjectDetailIds = new Set();
-  state.bookProjectDetailPromises = new Map();
+  state.bookProjectDetailVersions.clear();
+  state.bookProjectDetailPromises.clear();
 }
 
 function hasBookProjectDetail(bookId = '') {
   if (!bookId) return false;
   if (!(state.supabase && state.currentUser)) return true;
-  return state.bookProjectDetailIds.has(bookId);
+  return state.bookProjectDetailVersions.has(bookId);
 }
 
 async function loadBookProjectDetail(bookId = '') {
   const existing = state.books.find(item => item.id === bookId) || null;
-  if (!bookId || !(state.supabase && state.currentUser)) return existing;
-  if (hasBookProjectDetail(bookId)) return existing;
+  if (!existing || !(state.supabase && state.currentUser)) return existing;
+  if (hasBookProjectDetail(bookId) && state.bookProjectDetailVersions.get(bookId) === existing.updated_at) return existing;
+  if (hasBookProjectDetail(bookId) && (!navigator.onLine || cloudAuthRefreshPaused())) return existing;
   const inFlight = state.bookProjectDetailPromises.get(bookId);
-  if (inFlight) {
-    egressGuardInfo('bookProjectDetail:reuse-in-flight', { bookId });
-    return inFlight;
-  }
+  if (inFlight) return inFlight;
+
+  const generation = state.workspaceOwnerGeneration;
+  const userId = getUserId();
   const detailTask = (async () => {
     egressDebugLog('bookProjectDetail:start', { bookId });
     const { data, error } = await state.supabase
       .from('book_projects')
       .select('*')
-      .eq('user_id', getUserId())
+      .eq('user_id', userId)
       .eq('id', bookId)
       .single();
+    if (generation !== state.workspaceOwnerGeneration || state.bookProjectDetailPromises.get(bookId) !== detailTask) return null;
     if (error) throw error;
-    const fullBook = normalizeBookProjectRow(data || {}, { detailLoaded: true });
     const idx = state.books.findIndex(item => item.id === bookId);
-    if (idx >= 0) state.books[idx] = { ...state.books[idx], ...fullBook };
-    else state.books.unshift(fullBook);
-    rememberBookProjectDetail(bookId);
-    egressDebugLog('bookProjectDetail:loaded', { bookId, bytes: estimatePayloadBytes(data || {}) });
-    return state.books.find(item => item.id === bookId) || fullBook;
+    if (idx < 0) return null;
+    const current = state.books[idx];
+    if (Date.parse(data.updated_at) < Date.parse(current.updated_at)) return current;
+    const fullBook = normalizeBookProjectRow(data, { detailLoaded: true });
+    state.books[idx] = fullBook;
+    state.bookProjectDetailVersions.set(bookId, fullBook.updated_at);
+    egressDebugLog('bookProjectDetail:loaded', { bookId, bytes: estimatePayloadBytes(data) });
+    return fullBook;
   })().finally(() => {
-    state.bookProjectDetailPromises.delete(bookId);
+    if (state.bookProjectDetailPromises.get(bookId) === detailTask) state.bookProjectDetailPromises.delete(bookId);
   });
   state.bookProjectDetailPromises.set(bookId, detailTask);
   return detailTask;
 }
 
+async function refreshBookProjects(rows) {
+  const previousBooks = new Map(state.books.map(book => [book.id, book]));
+  const currentIds = new Set(rows.map(book => book.id));
+  for (const bookId of previousBooks.keys()) {
+    if (currentIds.has(bookId)) continue;
+    state.bookProjectDetailVersions.delete(bookId);
+    state.bookProjectDetailPromises.delete(bookId);
+  }
+  state.books = rows.map(book => {
+    const cached = previousBooks.get(book.id);
+    if (cached && Date.parse(cached.updated_at) > Date.parse(book.updated_at)) return cached;
+    if (!cached || !hasBookProjectDetail(book.id)) return normalizeBookProjectRow(book);
+    return { ...cached, ...book, language: resolveBookLanguage(book.language), include_chapter_summary: !!book.include_chapter_summary };
+  });
+
+  const activeBookId = state.bookDraftModalOpen ? state.bookDraftModalBookId
+    : document.body.dataset.currentView === 'content-library' ? state.selectedBookId : null;
+  if (hasBookProjectDetail(activeBookId)) {
+    await loadBookProjectDetail(activeBookId).catch(error => console.warn('book project refresh failed', error));
+  }
+}
+
 async function loadAllData({ silent = false, syncReason = '', reason = '', minIntervalMs = 0, force = false } = {}) {
   const loadReason = resolveLoadReason({ reason, syncReason });
+  const userId = getUserId();
+  const generation = state.workspaceOwnerGeneration;
   const isCloudLoad = !!(state.supabase && state.currentUser);
+  if (isCloudLoad && cloudAuthRefreshPaused()) return false;
   if (isCloudLoad && state.loadAllDataPromise) {
     egressGuardInfo('loadAllData:reuse-in-flight', { reason: loadReason });
     return state.loadAllDataPromise;
@@ -5986,15 +6153,15 @@ async function loadAllData({ silent = false, syncReason = '', reason = '', minIn
     egressDebugLog('loadAllData:start', { reason: loadReason, silent });
     if (isCloudLoad) state.lastCloudFullLoadAt = Date.now();
     await refreshImportedLibraryState();
-    if(state.supabase&&state.currentUser&&!navigator.onLine){
-      const userId=getUserId();
-      state.notes=mergeOfflineNotes(readOfflineNotes(localStorage,userId),readPendingNotes(localStorage,userId)).map(normalizeNoteRecord);
-      state.prayers=[];state.books=[];state.snapshots=[];
-      setSyncState({status:'離線',detail:'札記儲存在此裝置，連線後可同步。',at:''});
-      refreshUi();return;
+    if (generation !== state.workspaceOwnerGeneration) return;
+    if (isCloudLoad && !navigator.onLine) {
+      const notes = state.notes.length ? state.notes : readOfflineNotes(localStorage, userId);
+      state.notes = mergeOfflineNotes(notes, readPendingNotes(localStorage, userId)).map(normalizeNoteRecord);
+      setSyncState({ status: '離線', detail: '札記儲存在此裝置，連線後可同步。', at: '' });
+      refreshUi();
+      return;
     }
-    if (state.supabase && state.currentUser) {
-      const userId = state.currentUser.id;
+    if (isCloudLoad) {
       setSyncState({ status: '同步中', detail: '正在從雲端讀取資料…' });
       if (!silent) refreshUi();
       const [notesRes, prayersRes, booksRes, snapshotsRes] = await Promise.all([
@@ -6003,7 +6170,7 @@ async function loadAllData({ silent = false, syncReason = '', reason = '', minIn
         state.supabase.from('book_projects').select(BOOK_PROJECT_METADATA_SELECT).eq('user_id', userId).order('updated_at', { ascending: false }),
         state.supabase.from('book_snapshots').select('id,user_id,book_project_id,book_id:book_project_id,created_at').eq('user_id', userId).order('created_at', { ascending: false }),
       ]);
-      if(getUserId()!==userId)return;
+      if (generation !== state.workspaceOwnerGeneration || cloudAuthRefreshPaused()) return;
       if (notesRes.error) throw notesRes.error;
       if (prayersRes.error) {
         if (isPrayerPermissionError(prayersRes.error)) {
@@ -6028,18 +6195,19 @@ async function loadAllData({ silent = false, syncReason = '', reason = '', minIn
       state.prayers = state.prayerSyncError
         ? []
         : sortPrayerRecords((prayersRes.data || []).map(item => normalizePrayerRecord(item, userId)));
-      forgetBookProjectDetails();
-      state.books = (booksRes.data || []).map(book => normalizeBookProjectRow(book, { detailLoaded: false }));
       state.snapshots = (snapshotsRes.data || []).map(s => ({ ...s, snapshot_json: parseMaybeJson(s.snapshot_json, null) }));
+      await refreshBookProjects(booksRes.data || []);
+      if (generation !== state.workspaceOwnerGeneration) return;
       await loadCloudLibrary(userId, { reason: loadReason });
+      if (generation !== state.workspaceOwnerGeneration) return;
       await syncPendingReadingProgress();
+      if (generation !== state.workspaceOwnerGeneration || cloudAuthRefreshPaused()) return;
       if (state.prayerSyncError) {
         setSyncState({ status: '部分同步', detail: state.prayerSyncError, at: nowIso() });
       } else {
         markCloudSynced(syncReason || '雲端資料已讀取完成。');
       }
     } else {
-      const userId = getUserId();
       state.notes = loadJson(STORAGE_KEYS.notes, []).filter(item => item.user_id === userId).map(normalizeNoteRecord);
       state.prayers = [];
       state.prayerSyncError = '';
@@ -6048,12 +6216,12 @@ async function loadAllData({ silent = false, syncReason = '', reason = '', minIn
         language: resolveBookLanguage(book.language),
         include_chapter_summary: !!book.include_chapter_summary,
       }));
-      state.bookProjectDetailIds = new Set(state.books.map(book => book.id));
+      forgetBookProjectDetails();
       state.snapshots = loadJson(STORAGE_KEYS.snapshots, []).filter(item => item.user_id === userId);
       clearCloudLibrary('請先登入雲端帳號。');
       setSyncState({
-        status: state.supabase ? '尚未登入' : '尚未同步',
-        detail: state.supabase ? '已設定雲端，但目前還沒有登入帳號。' : '這些內容目前只儲存在你正在使用的裝置，尚未同步到帳號。',
+        status: cloudAuthRefreshPaused() ? '同步暫停' : state.supabase ? '尚未登入' : '尚未同步',
+        detail: cloudAuthRefreshPaused() ? '登入更新暫停，稍後會重試。' : state.supabase ? '已設定雲端，但目前還沒有登入帳號。' : '這些內容目前只儲存在你正在使用的裝置，尚未同步到帳號。',
         at: state.supabase ? state.lastSyncAt : '',
       });
     }
@@ -6065,7 +6233,7 @@ async function loadAllData({ silent = false, syncReason = '', reason = '', minIn
       if (!validBookIds.has(bookId)) delete state.bookArrangementDrafts[bookId];
     });
     await refreshProfileAvatar();
-    refreshUi();
+    if (generation === state.workspaceOwnerGeneration) refreshUi();
   })();
   if (!isCloudLoad) return loadTask;
   const guardedPromise = loadTask.finally(() => {
@@ -7093,8 +7261,9 @@ function refreshUi() {
   els.authGate?.classList.toggle('hidden', isSignedIn);
   els.authGate?.setAttribute('aria-hidden', isSignedIn ? 'true' : 'false');
   if (els.authInlineHint) {
-    els.authInlineHint.textContent = state.supabase
-      ? '請使用信箱與密碼登入，或改用登入連結。'
+    els.authInlineHint.textContent = cloudAuthRefreshPaused()
+      ? '登入更新暫停，稍後會重試。'
+      : state.supabase ? '請使用信箱與密碼登入，或改用登入連結。'
       : '目前可先建立帳戶並管理未同步內容。';
   }
   if (els.authInlineResetHint) {
@@ -7563,6 +7732,12 @@ function renderContentLibrary() {
   updateContentLibrarySelection(selectedBook);
 
   const list = els.contentLibraryList;
+  const waitingForChapters = selectedBook && !hasBookProjectDetail(selectedBook.id);
+  if (waitingForChapters) {
+    list.classList.add('empty-state');
+    list.textContent = state.bookProjectDetailPromises.has(selectedBook.id) ? '載入章節中…' : '請先開啟書稿以讀取章節。';
+    return;
+  }
   list.classList.toggle('empty-state', !visibleNotes.length);
   if (!visibleNotes.length) {
     const hasFilters = activeFilters || state.contentLibrarySearch.trim();
@@ -7572,12 +7747,16 @@ function renderContentLibrary() {
     return;
   }
 
-  list.innerHTML = visibleNotes.map(note => {
+  const openNoteIds = new Set([...list.querySelectorAll('[data-content-library-preview][aria-expanded="true"]')]
+    .map(button => button.closest('[data-note-id]').dataset.noteId));
+  const markup = visibleNotes.map(note => {
     const id = escapeHtml(note.id);
     const title = escapeHtml(getNoteDisplayTitle(note));
     const meta = [note.scripture_reference, note.category, getContentLibraryNoteDateValue(note)].filter(Boolean);
     const tagsText = getNoteTagList(note).join('、');
     const selectable = selectedBook && !showIncluded;
+    const expanded = openNoteIds.has(note.id);
+    const action = expanded ? '收合' : '預覽';
     const checked = selectable && state.contentLibrarySelectedNoteIds.includes(note.id);
     const label = `<strong>${title}</strong><span class="caption">${meta.map(item => escapeHtml(item)).join('　')}</span>`;
     return `
@@ -7589,9 +7768,9 @@ function renderContentLibrary() {
               <span>${label}</span>
             </label>
           ` : `<div class="content-library-note-pick">${label}</div>`}
-          <button class="ghost-btn content-library-note-preview" type="button" data-content-library-preview aria-expanded="false" aria-controls="content-library-note-${id}" aria-label="預覽「${title}」">預覽</button>
+          <button class="ghost-btn content-library-note-preview" type="button" data-content-library-preview aria-expanded="${expanded}" aria-controls="content-library-note-${id}" aria-label="${action}「${title}」">${action}</button>
         </div>
-        <div class="content-library-note-details" id="content-library-note-${id}" hidden>
+        <div class="content-library-note-details" id="content-library-note-${id}" ${expanded ? '' : 'hidden'}>
           <p>${escapeHtml(getNotePreviewText(note, 180) || '沒有摘要。')}</p>
           ${tagsText ? `<p class="caption">${escapeHtml(tagsText)}</p>` : ''}
           <button class="ghost-btn" type="button" data-content-library-edit-note="${id}" data-testid="content-library-edit-note">編輯札記</button>
@@ -7599,13 +7778,16 @@ function renderContentLibrary() {
       </article>
     `;
   }).join('');
+  if (list.dataset.renderedNotes === markup && list.firstElementChild) return;
+  list.dataset.renderedNotes = markup;
+  list.innerHTML = markup;
 
   list.querySelectorAll('[data-content-library-note]').forEach(input => input.addEventListener('change', () => {
     const next = new Set(state.contentLibrarySelectedNoteIds);
     if (input.checked) next.add(input.dataset.contentLibraryNote);
     else next.delete(input.dataset.contentLibraryNote);
     state.contentLibrarySelectedNoteIds = [...next];
-    updateContentLibrarySelection(selectedBook);
+    updateContentLibrarySelection(getSelectedBook());
   }));
   list.querySelectorAll('[data-content-library-preview]').forEach(button => button.addEventListener('click', () => {
     const details = document.getElementById(button.getAttribute('aria-controls'));
@@ -9766,17 +9948,13 @@ function hasCurrentNoteDraftContent(draft) {
 }
 
 function isCurrentUserNoteDraft(draft) {
-  return !draft?.userId || draft.userId === getUserId();
+  return !!state.currentUser?.id && draft?.userId === state.currentUser.id;
 }
 
-function readCurrentNoteDraftFromStorage(storage) {
-  if (!storage) return null;
+function readCurrentNoteDraftFromStorage(storage, key) {
   try {
-    const raw = storage.getItem(CURRENT_NOTE_DRAFT_KEY);
-    if (!raw) return null;
-    const draft = JSON.parse(raw);
-    if (!draft || typeof draft !== 'object' || !isCurrentUserNoteDraft(draft)) return null;
-    return draft;
+    const draft = JSON.parse(storage.getItem(key));
+    return isCurrentUserNoteDraft(draft) ? draft : null;
   } catch (error) {
     console.warn('note draft read skipped', error);
     return null;
@@ -9784,44 +9962,69 @@ function readCurrentNoteDraftFromStorage(storage) {
 }
 
 function loadCurrentNoteDraft() {
-  return readCurrentNoteDraftFromStorage(localStorage) || readCurrentNoteDraftFromStorage(sessionStorage);
+  if (!state.currentUser) return null;
+  const key = getUserScopedStorageKey(CURRENT_NOTE_DRAFT_KEY);
+  return [localStorage, sessionStorage]
+    .flatMap(storage => [key, CURRENT_NOTE_DRAFT_KEY].map(draftKey => readCurrentNoteDraftFromStorage(storage, draftKey)))
+    .filter(Boolean)
+    .sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')))[0] || null;
+}
+
+function clearStoredNoteDraft(storage, key = CURRENT_NOTE_DRAFT_KEY) {
+  try {
+    if (readCurrentNoteDraftFromStorage(storage, key)) storage.removeItem(key);
+  } catch (error) {
+    console.warn('note draft clear skipped', error);
+  }
 }
 
 function writeCurrentNoteDraftToStorage(draft) {
+  const key = getUserScopedStorageKey(CURRENT_NOTE_DRAFT_KEY);
+  const value = JSON.stringify(draft);
+  let writtenToLocal = false;
   try {
-    localStorage.setItem(CURRENT_NOTE_DRAFT_KEY, JSON.stringify(draft));
-    try { sessionStorage.removeItem(CURRENT_NOTE_DRAFT_KEY); } catch (_) {}
-    return true;
+    localStorage.setItem(key, value);
+    writtenToLocal = true;
   } catch (error) {
-    console.warn('note draft localStorage write skipped', error);
     try {
       localStorage.removeItem(STORAGE_KEYS.autoBackups);
-      localStorage.setItem(CURRENT_NOTE_DRAFT_KEY, JSON.stringify(draft));
-      try { sessionStorage.removeItem(CURRENT_NOTE_DRAFT_KEY); } catch (_) {}
-      return true;
+      localStorage.setItem(key, value);
+      writtenToLocal = true;
     } catch (retryError) {
-      console.warn('note draft localStorage retry skipped', retryError);
+      console.warn('note draft localStorage write skipped', retryError);
     }
+  }
+  if (writtenToLocal) clearStoredNoteDraft(sessionStorage, key);
+  else {
     try {
-      sessionStorage.setItem(CURRENT_NOTE_DRAFT_KEY, JSON.stringify(draft));
-      return true;
-    } catch (sessionError) {
-      console.warn('note draft sessionStorage write skipped', sessionError);
+      sessionStorage.setItem(key, value);
+    } catch (error) {
+      console.warn('note draft sessionStorage write skipped', error);
       return false;
     }
   }
+  // Remove the old copy only after a successful write, and only for its owner.
+  clearStoredNoteDraft(writtenToLocal ? localStorage : sessionStorage);
+  if (writtenToLocal) clearStoredNoteDraft(sessionStorage);
+  return true;
 }
 
 function clearCurrentNoteDraft() {
   clearTimeout(state.noteDraftSaveTimer);
   state.noteDraftSaveTimer = null;
   state.noteDraftDirty = false;
-  try { localStorage.removeItem(CURRENT_NOTE_DRAFT_KEY); } catch (error) { console.warn('note draft localStorage clear skipped', error); }
-  try { sessionStorage.removeItem(CURRENT_NOTE_DRAFT_KEY); } catch (error) { console.warn('note draft sessionStorage clear skipped', error); }
+  if (state.currentUser) {
+    const key = getUserScopedStorageKey(CURRENT_NOTE_DRAFT_KEY);
+    for (const storage of [localStorage, sessionStorage]) {
+      clearStoredNoteDraft(storage, key);
+      clearStoredNoteDraft(storage);
+    }
+  }
   syncCurrentNoteDraftNotice();
 }
 
 function persistCurrentNoteDraft({ immediate = false } = {}) {
+  if (!state.currentUser || !state.noteDraftDirty) return false;
   const draft = getCurrentNoteDraftPayload();
   const hasContent = hasCurrentNoteDraftContent(draft);
   if (!hasContent && !draft.editingNoteId) {
@@ -10068,7 +10271,8 @@ async function saveCurrentNote({ status = NOTE_STATUS_PUBLISHED } = {}) {
   let queuedOffline = false;
   try {
     const persistencePayload = buildNotePersistencePayload(payload);
-    if (state.supabase && (!navigator.onLine || readPendingNotes(localStorage,getUserId()).some(item=>item.note.id===payload.id))) {
+    if (state.supabase && (!navigator.onLine || cloudAuthRefreshPaused()
+      || readPendingNotes(localStorage, payload.user_id).some(item => item.note.id === payload.id))) {
       queueOfflineNote(localStorage,getUserId(),persistencePayload,existingNote?.updated_at);
       queuedOffline = true;
     } else if (state.supabase) {
@@ -10099,7 +10303,10 @@ async function saveCurrentNote({ status = NOTE_STATUS_PUBLISHED } = {}) {
     readingWorkspace?.loadConnections(current);
     els.deleteNoteBtn?.classList.remove('hidden');
     syncNoteStatusUi();
-    if (editedWhileSaving) persistCurrentNoteDraft({ immediate: true });
+    if (editedWhileSaving) {
+      state.noteDraftDirty = true;
+      persistCurrentNoteDraft({ immediate: true });
+    }
     else clearCurrentNoteDraft();
   }
   try {
@@ -10326,7 +10533,7 @@ async function deleteBook(targetBookId = els.bookId.value) {
   }
   const nextSelectedBookId = state.books.find(item => item.id !== bookId)?.id || null;
   clearBookForm();
-  state.bookProjectDetailIds.delete(bookId);
+  state.bookProjectDetailVersions.delete(bookId);
   state.bookProjectDetailPromises.delete(bookId);
   if (state.selectedBookId === bookId) state.selectedBookId = nextSelectedBookId;
   await loadAllData({ silent: true, syncReason: state.supabase ? '選稿編排已從雲端刪除。' : '' });
@@ -10415,7 +10622,7 @@ function setBookArrangementDraft(book, chapters) {
 function renderBookArrangementStatus(bookId) {
   const dirty = hasBookArrangementDraft(bookId);
   const saving = state.bookArrangementSaving;
-  const loading = state.bookProjectDetailPromises.has(bookId);
+  const loading = state.bookProjectDetailPromises.has(bookId) && !hasBookProjectDetail(bookId);
   const saveBtn = document.getElementById('save-book-arrangement-btn');
   const status = document.getElementById('book-arrangement-status');
   saveBtn.disabled = !dirty || saving || loading;
@@ -10456,16 +10663,25 @@ function renderChaptersList(book, chapters) {
   const focusedItem = focused?.closest('[data-chapter-item]');
   const focusKey = focusedItem && ['moveUp', 'moveDown', 'chapterEdit', 'chapterTitle', 'chapterToc'].find(key => key in focused.dataset);
   const expandedItem = list.querySelector('[data-chapter-edit][aria-expanded="true"]');
-  const loading = state.bookProjectDetailPromises.has(book.id);
+  const loading = state.bookProjectDetailPromises.has(book.id) && !hasBookProjectDetail(book.id);
   const saving = state.bookArrangementSaving;
   const disabled = saving ? 'disabled' : '';
   const empty = loading || !chapters.length;
   list.classList.toggle('empty-state', empty);
   if (empty) {
-    list.textContent = loading ? '載入章節中…' : '尚未收錄札記。';
+    delete list.dataset.renderedChapters;
+    const message = loading ? '載入章節中…' : '尚未收錄札記。';
+    if (list.textContent !== message) list.textContent = message;
     return;
   }
   if (state.bookChapterDrag) return;
+  const signature = JSON.stringify(chapters.map(chapter => [
+    chapter.id, chapter.chapter_title, chapter.include_in_toc, getNoteById(getChapterSourceNoteId(chapter))?.title,
+  ]));
+  const renderKey = JSON.stringify([book.id, saving, signature]);
+  if (list.dataset.renderedChapters === renderKey) return;
+  list.dataset.renderedChapters = renderKey;
+  const selection = focusKey === 'chapterTitle' ? [focused.selectionStart, focused.selectionEnd, focused.selectionDirection] : null;
   list.innerHTML = chapters.map((chapter, index) => {
     const id = escapeHtml(chapter.id);
     const title = escapeHtml(chapter.chapter_title || '未命名章節');
@@ -10529,6 +10745,7 @@ function renderChaptersList(book, chapters) {
     const row = getChapterItemElement(focusedItem.dataset.chapterItem);
     const next = row && [...row.querySelectorAll('button,input')].find(control => focusKey in control.dataset && !control.disabled);
     (next || row?.querySelector('[data-chapter-edit]'))?.focus({ preventScroll: true });
+    if (selection && next?.value === focused.value) next.setSelectionRange(...selection);
   }
 }
 
@@ -10822,12 +11039,19 @@ async function removeChapter(chapterId) {
 }
 
 async function persistBookChanges(bookId, changes) {
+  const generation = state.workspaceOwnerGeneration;
   const book = await loadBookProjectDetail(bookId) || state.books.find(item => item.id === bookId);
-  if (!book) return;
+  if (!book || generation !== state.workspaceOwnerGeneration) return;
   const payload = { ...book, ...changes, updated_at: nowIso() };
   if (state.supabase) {
     const { error } = await state.supabase.from('book_projects').upsert({ ...payload, chapters: JSON.stringify(payload.chapters) });
     if (error) throw error;
+    if (generation !== state.workspaceOwnerGeneration) return;
+    const index = state.books.findIndex(item => item.id === bookId);
+    if (index !== -1) {
+      state.books[index] = payload;
+      state.bookProjectDetailVersions.set(bookId, payload.updated_at);
+    }
   } else {
     const books = loadJson(STORAGE_KEYS.books, []);
     const idx = books.findIndex(item => item.id === bookId && item.user_id === getUserId());
@@ -10930,14 +11154,68 @@ function renderSnapshots() {
   }).join('');
 }
 
-function setView(viewName) {
-  const previousView=document.body.dataset.currentView;
+function saveWorkspaceHistory(overrides = {}, mode = 'replace') {
+  if (!state.currentUser) return;
+  const entry = {
+    owner: getUserId(),
+    view: document.body.dataset.currentView,
+    scrollY: window.scrollY,
+    bookId: state.bookDraftModalOpen ? state.bookDraftModalBookId : null,
+    selectedBookId: state.selectedBookId,
+    readerBookId: document.body.dataset.currentView === 'reader' ? cloudLibrary.readerBook?.id : null,
+    ...overrides,
+  };
+  const method = mode === 'push' ? 'pushState' : 'replaceState';
+  history[method]({ ...history.state, devotionWorkspace: entry }, '');
+}
+
+function restoreWorkspace(entry = history.state?.devotionWorkspace, historyMode = 'replace') {
+  if (!state.currentUser) return;
+  const allowed = entry?.owner === getUserId() && els.views.some(view => view.id === `view-${entry.view}`);
+  const draft = loadCurrentNoteDraft();
+  let view = allowed ? entry.view : 'dashboard';
+  if (historyMode === 'replace' && draft && view === 'dashboard') view = 'notes';
+  if (view === 'reader' && (!cloudLibrary.readerBook || cloudLibrary.readerBook.id !== entry.readerBookId)) {
+    const book = getAllLibraryBooksForView().find(item => item.id === entry.readerBookId);
+    setView('library', { historyMode: book ? 'none' : historyMode, scrollY: 0 });
+    if (book) {
+      const isCurrent = () => document.body.dataset.currentView === 'library'
+        && history.state?.devotionWorkspace?.readerBookId === book.id;
+      openLibraryBookBySource(book.id, getReaderBookSource(book), { historyMode, isCurrent }).catch(error => {
+        if (isCurrent()) handleError(error);
+      });
+    }
+    return;
+  }
+  if (view === 'content-library') {
+    if (allowed && state.books.some(book => book.id === entry.selectedBookId)) state.selectedBookId = entry.selectedBookId;
+    const book = getSelectedBook();
+    if (book && !hasBookProjectDetail(book.id)) loadBookProjectDetail(book.id).then(refreshUi).catch(console.warn);
+  }
+  setView(view, {
+    historyMode,
+    scrollY: allowed && view === entry.view ? entry.scrollY : 0,
+  });
+  if (view === 'notes' && draft && isCurrentNoteFormEmpty()) restoreCurrentNoteDraft();
+  if (view === 'books' && allowed && entry.bookId && state.books.some(book => book.id === entry.bookId)) {
+    openBookDraftModal(entry.bookId).catch(handleError);
+  }
+}
+
+function setView(viewName, { historyMode = 'push', scrollY } = {}) {
+  const previousView = document.body.dataset.currentView;
   if (viewName === 'admin') viewName = 'admin-dashboard';
   if (isAdminView(viewName) && !isAdminUser()) {
     showToast('目前帳號沒有管理後台權限。');
     viewName = 'dashboard';
   }
   if (viewName === 'snapshots') viewName = 'dashboard';
+  const pushHistory = historyMode === 'push' && !!state.currentUser && viewName !== previousView;
+  if (pushHistory) saveWorkspaceHistory();
+  if (viewName !== previousView && previousView === 'note-reader') {
+    closeNoteReaderReadingModal();
+    closeNoteReaderSearchModal();
+  }
   if (viewName !== 'prayer') {
     if (state.prayerFormOpen) closePrayerForm();
     if (state.prayerDetailId) closePrayerDetail();
@@ -10990,6 +11268,9 @@ function setView(viewName) {
     if(previousView==='reader'){window.scrollTo({top:restoreY,behavior:'auto'});delete document.body.dataset.readerScrollY;}
     else if(previousView!==viewName||viewName==='dashboard')window.scrollTo({top:0,behavior:'auto'});
   }
+  if (Number.isFinite(scrollY) && !isReaderView) window.scrollTo({ top: scrollY, behavior: 'instant' });
+  if (pushHistory) saveWorkspaceHistory({}, 'push');
+  else if (historyMode === 'replace') saveWorkspaceHistory();
   syncCurrentNoteDraftNotice();
 }
 
@@ -11867,6 +12148,7 @@ function normalizeLibraryChapters(chapters = []) {
 }
 
 async function loadCloudLibrary(userId, { reason = '' } = {}) {
+  const generation = state.workspaceOwnerGeneration;
   const { data, error } = await state.supabase
     .from('library_books')
     .select('id,user_id,title,author,description,cover_image_path,epub_file_path,created_at,updated_at,last_read_at,reading_progress,total_chapters,current_chapter,source_project_id,source_compilation_id,version,is_archived')
@@ -11874,8 +12156,9 @@ async function loadCloudLibrary(userId, { reason = '' } = {}) {
     .eq('is_archived', false)
     .order('last_read_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false });
+  if (generation !== state.workspaceOwnerGeneration || cloudAuthRefreshPaused()) return;
   if (error) {
-    clearCloudLibrary(buildLibrarySetupError(error));
+    if (!cloudLibrary.books.length && !cloudLibrary.readerBook) clearCloudLibrary(buildLibrarySetupError(error));
     return;
   }
   cloudLibrary.error = '';
@@ -12192,18 +12475,21 @@ async function deleteImportedLibraryBook(bookId) {
   showToast('外部 EPUB 已從書櫃移除。');
 }
 
-async function openLibraryBook(bookId) {
+async function openLibraryBook(bookId, navigation) {
+  const generation = state.workspaceOwnerGeneration;
   requireCloudLibrary();
   const book = getLibraryBook(bookId);
   if (!book) throw new Error('找不到這本書。');
   const chapters = await loadLibraryBookChapters(book.id);
   if (!chapters.length) throw new Error('找不到章節 metadata，請重新匯出 EPUB。');
   const epubBlob = await loadEpubForReading(book);
+  const preparedChapters = await readEpubChapters(epubBlob, chapters);
+  if (generation !== state.workspaceOwnerGeneration || navigation?.isCurrent?.() === false) return;
   resetReaderPaginationCache();
   cloudLibrary.selectedBookId = book.id;
   cloudLibrary.readerBook = book;
-  cloudLibrary.readerChapters = await readEpubChapters(epubBlob, chapters);
-  setView('reader');
+  cloudLibrary.readerChapters = preparedChapters;
+  setView('reader', navigation);
   renderReaderShell();
   await waitForReaderLayout();
   const savedProgress = getValidReaderProgress(book);
@@ -12235,7 +12521,8 @@ async function loadSystemLibraryEpub(book) {
   return blob;
 }
 
-async function openSystemLibraryBook(bookId) {
+async function openSystemLibraryBook(bookId, navigation) {
+  const generation = state.workspaceOwnerGeneration;
   const book = getSystemLibraryBook(bookId);
   if (!book) throw new Error('找不到這本系統預設書籍。');
   const epubBlob = await loadSystemLibraryEpub(book);
@@ -12251,11 +12538,13 @@ async function openSystemLibraryBook(bookId) {
     totalChapters: chapters.length,
     source: 'system',
   };
+  const preparedChapters = await readEpubChapters(epubBlob, chapters, { source: 'system' });
+  if (generation !== state.workspaceOwnerGeneration || navigation?.isCurrent?.() === false) return;
   resetReaderPaginationCache();
   cloudLibrary.selectedBookId = book.id;
   cloudLibrary.readerBook = readerBook;
-  cloudLibrary.readerChapters = await readEpubChapters(epubBlob, chapters, { source: 'system' });
-  setView('reader');
+  cloudLibrary.readerChapters = preparedChapters;
+  setView('reader', navigation);
   renderReaderShell();
   await waitForReaderLayout();
   const savedProgress = getValidReaderProgress(readerBook);
@@ -12264,17 +12553,20 @@ async function openSystemLibraryBook(bookId) {
   await stabilizeReaderAfterOpen();
 }
 
-async function openImportedLibraryBook(bookId) {
+async function openImportedLibraryBook(bookId, navigation) {
+  const generation = state.workspaceOwnerGeneration;
   const book = getImportedBook(bookId);
   if (!book) throw new Error('找不到這本外部 EPUB。');
   if (!book.chapters?.length) throw new Error('這本 EPUB 沒有可讀章節，可能是格式不支援。');
   const stored = await getImportedBookBlob(bookId);
   if (!stored?.epubBlob) throw new Error('找不到這本 EPUB 檔案，請重新匯入。');
+  const preparedChapters = await readEpubChapters(stored.epubBlob, book.chapters, { source: 'imported_epub' });
+  if (generation !== state.workspaceOwnerGeneration || navigation?.isCurrent?.() === false) return;
   resetReaderPaginationCache();
   cloudLibrary.selectedBookId = book.id;
   cloudLibrary.readerBook = { ...book, source: 'imported_epub' };
-  cloudLibrary.readerChapters = await readEpubChapters(stored.epubBlob, book.chapters, { source: 'imported_epub' });
-  setView('reader');
+  cloudLibrary.readerChapters = preparedChapters;
+  setView('reader', navigation);
   renderReaderShell();
   await waitForReaderLayout();
   const savedProgress = getValidReaderProgress(cloudLibrary.readerBook);
@@ -14108,10 +14400,10 @@ function isReaderControlEvent(event) {
   return target instanceof Element && !!target.closest(READER_CONTROL_TARGET_SELECTOR);
 }
 
-async function openLibraryBookBySource(bookId, source = 'generated') {
-  if (source === 'system') return openSystemLibraryBook(bookId);
-  if (source === 'imported_epub') return openImportedLibraryBook(bookId);
-  return openLibraryBook(bookId);
+async function openLibraryBookBySource(bookId, source = 'generated', navigation) {
+  if (source === 'system') return openSystemLibraryBook(bookId, navigation);
+  if (source === 'imported_epub') return openImportedLibraryBook(bookId, navigation);
+  return openLibraryBook(bookId, navigation);
 }
 
 async function downloadLibraryBookBySource(bookId, source = 'generated') {
