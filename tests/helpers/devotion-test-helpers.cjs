@@ -387,7 +387,28 @@ async function exportEpubAndCaptureDownload(page, buttonSelector = '[data-testid
   return { download, filename, filePath, size };
 }
 
+async function selectNoteEditorText(editor, text, { collapse = false } = {}) {
+  await editor.evaluate((element, { text, collapse }) => {
+    element.focus({ preventScroll: true });
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      const start = node.data.indexOf(text);
+      if (start < 0) continue;
+      const range = new Range();
+      range.setStart(node, collapse === 'end' ? start + text.length : start);
+      range.setEnd(node, collapse === true ? start : start + text.length);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      return;
+    }
+    throw new Error('Could not find editor text: ' + text);
+  }, { text, collapse });
+}
+
 module.exports = {
+  selectNoteEditorText,
   STORAGE_KEYS,
   NOTE_STATUS_DRAFT,
   NOTE_STATUS_PUBLISHED,

@@ -66,7 +66,7 @@ body.reading-workspace[data-current-view=dashboard] .main{max-width:none;padding
 .reading-workspace .markdown-toolbar button:first-child{padding-left:0}
 .reading-workspace .note-content-field{display:block;border:0;border-radius:0;background:none;min-height:0}
 .reading-workspace .note-content-field::before,.reading-workspace .note-content-field::after{content:none!important;display:none!important}
-.reading-workspace #note-content{width:100%;min-height:230px;height:auto;border:0;border-radius:0;background:transparent;box-shadow:none;padding:16px 0 20px;font:18px/2 -apple-system,BlinkMacSystemFont,"PingFang TC","Microsoft JhengHei",sans-serif;color:var(--folio-ink);resize:vertical;text-align:left;word-break:normal;overflow-wrap:anywhere}
+.reading-workspace #note-rich-content{width:100%;min-height:230px;height:auto;border:0;border-radius:0;background:transparent;box-shadow:none;padding:16px 0 20px;font:18px/2 -apple-system,BlinkMacSystemFont,"PingFang TC","Microsoft JhengHei",sans-serif;color:var(--folio-ink);resize:vertical;text-align:left;word-break:normal;overflow-wrap:anywhere}
 .writing-details{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;column-gap:40px;align-items:start}
 .writing-details>details{border-top:1px solid var(--folio-line);min-width:0}
 .writing-details>details>summary{min-height:56px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px;cursor:pointer;list-style:none}
@@ -499,7 +499,7 @@ body.reading-workspace:has(dialog[open]){overflow:hidden}
 @media(max-width:600px){
  .devotion-masthead{height:72px;padding:0 18px;gap:10px}.devotion-name span{font-size:20px;letter-spacing:.05em}.devotion-name small{font-size:9px;letter-spacing:.12em}.devotion-masthead nav{gap:5px}.devotion-masthead nav button{font-size:12px;min-width:44px}.devotion-masthead .masthead-write{padding:8px 12px;min-width:60px}
  body.reading-workspace .main{padding:28px 22px 0!important}.workspace-preview-label{font-size:11px;gap:24px;min-height:28px}
- .writing-dateline{font-size:12px;padding-bottom:10px}.reading-workspace .note-title-field{margin:10px 0 16px}.reading-workspace #note-title{font-size:27px;min-height:58px}.reading-workspace .note-scripture-control-row{gap:5px}.reading-workspace .note-scripture-status-row{display:none}.reading-workspace #note-scripture{font-size:16px}.reading-workspace #fetch-scripture-btn{font-size:12px;padding:8px 4px}.reading-workspace .markdown-toolbar button{font-size:12px;padding:6px 8px;min-width:44px}.reading-workspace #note-content{min-height:230px;font-size:17px;line-height:1.95;padding-top:22px}.writing-details{display:block}.writing-details>details>summary{min-height:54px}.reading-workspace .writing-savebar{margin-top:18px;padding:12px 0 calc(12px + env(safe-area-inset-bottom))}.reading-workspace .note-save-actions{gap:7px}.reading-workspace .note-save-actions button{font-size:12px;padding:8px 13px}.reading-workspace #new-note-btn{display:none}.reading-workspace #delete-note-btn{margin-left:auto}.reading-workspace .note-reader-shell{display:flex;flex-direction:column;gap:45px}.reading-workspace .note-reader-search-panel{padding:0 0 20px}.reading-workspace .note-reader-note-main h3{font-size:27px}.reading-workspace .note-reader-summary{font-size:16px}.reading-workspace .note-preview-content{font-size:17px;line-height:1.95}.reading-workspace .note-reader-reading-modal-card{padding:25px 22px}.workspace-menu,.workspace-reading-shelf{padding:24px;max-height:calc(100dvh - 28px)}.workspace-dialog-heading h2{font-size:26px}.workspace-menu-group button{font-size:18px;min-height:44px}
+ .writing-dateline{font-size:12px;padding-bottom:10px}.reading-workspace .note-title-field{margin:10px 0 16px}.reading-workspace #note-title{font-size:27px;min-height:58px}.reading-workspace .note-scripture-control-row{gap:5px}.reading-workspace .note-scripture-status-row{display:none}.reading-workspace #note-scripture{font-size:16px}.reading-workspace #fetch-scripture-btn{font-size:12px;padding:8px 4px}.reading-workspace .markdown-toolbar button{font-size:12px;padding:6px 8px;min-width:44px}.reading-workspace #note-rich-content{min-height:230px;font-size:17px;line-height:1.95;padding-top:22px}.writing-details{display:block}.writing-details>details>summary{min-height:54px}.reading-workspace .writing-savebar{margin-top:18px;padding:12px 0 calc(12px + env(safe-area-inset-bottom))}.reading-workspace .note-save-actions{gap:7px}.reading-workspace .note-save-actions button{font-size:12px;padding:8px 13px}.reading-workspace #new-note-btn{display:none}.reading-workspace #delete-note-btn{margin-left:auto}.reading-workspace .note-reader-shell{display:flex;flex-direction:column;gap:45px}.reading-workspace .note-reader-search-panel{padding:0 0 20px}.reading-workspace .note-reader-note-main h3{font-size:27px}.reading-workspace .note-reader-summary{font-size:16px}.reading-workspace .note-preview-content{font-size:17px;line-height:1.95}.reading-workspace .note-reader-reading-modal-card{padding:25px 22px}.workspace-menu,.workspace-reading-shelf{padding:24px;max-height:calc(100dvh - 28px)}.workspace-dialog-heading h2{font-size:26px}.workspace-menu-group button{font-size:18px;min-height:44px}
 }
 @media(max-width:360px){.devotion-masthead{padding:0 14px;gap:4px}.devotion-name span{font-size:18px}.devotion-masthead nav{gap:0}.devotion-masthead .masthead-write{padding:8px 9px;min-width:55px}.reading-workspace .note-save-actions button{font-size:12px;padding:8px 11px}}
 
@@ -1167,9 +1167,9 @@ body.reading-workspace[data-current-view=notes] .main { padding-top: 24px !impor
 #workspace-writing-status:empty { display: none; }
 .reading-workspace .note-title-field { margin: 0 0 8px; }
 .reading-workspace #note-title { min-height: 56px; padding: 6px 0; color: #252f2d; }
-.reading-workspace #view-notes :is(#note-title, #note-content)::placeholder { color: #60665f; opacity: 1; }
+.reading-workspace #view-notes :is(#note-title, #note-rich-content)::placeholder { color: #60665f; opacity: 1; }
 .reading-workspace .note-content-field { margin: 0; }
-.reading-workspace #view-notes #note-content {
+.reading-workspace #view-notes #note-rich-content {
   min-height: clamp(345px, 43svh, 530px);
   margin-block-start: 7px;
   padding: 16px clamp(13px, 1.7vw, 23px);
@@ -1177,13 +1177,13 @@ body.reading-workspace[data-current-view=notes] .main { padding-top: 24px !impor
   border-radius: 9px;
   background-color: #fafbf7;
 }
-.reading-workspace #view-notes #note-content:focus {
+.reading-workspace #view-notes #note-rich-content:focus {
   outline: none;
   border-color: #507766;
   caret-color: #214a3d;
 }
 @media (forced-colors: active) {
-  .reading-workspace #view-notes #note-content:focus-visible { outline: 2px solid Highlight; }
+  .reading-workspace #view-notes #note-rich-content:focus-visible { outline: 2px solid Highlight; }
 }
 .reading-workspace #view-notes .markdown-toolbar { display: flex; flex-wrap: wrap; overflow: visible; gap: 0 3px; padding: 0; margin: 0; border-block: 1px solid #dae2d9; }
 .reading-workspace #view-notes .markdown-toolbar-btn { min-height: 44px; min-width: 44px; flex: 0 0 auto; padding: 6px; }
@@ -1280,14 +1280,14 @@ body.reading-workspace[data-current-view=notes] .main { padding-top: 24px !impor
   overflow: hidden;
   isolation: isolate;
   width: 100%;
-  min-height: 188px;
-  margin: 0 0 21px;
-  padding: 20px;
+  min-height: 112px;
+  margin: 0 0 14px;
+  padding: 12px 15px;
   border: 0;
   border-radius: 7px 36px 7px 7px;
   background: #203a3a;
   color: #fffefa;
-  font: 600 21px/1.45 var(--folio-serif);
+  font: 600 19px/1.45 var(--folio-serif);
   text-align: start;
   text-decoration: none;
 }
@@ -1297,7 +1297,7 @@ body.reading-workspace[data-current-view=notes] .main { padding-top: 24px !impor
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 50% 35%;
+  object-position: 50% 32%;
   pointer-events: none;
   z-index: -2;
 }
@@ -1321,12 +1321,12 @@ body.reading-workspace[data-current-view=notes] .main { padding-top: 24px !impor
 @media (max-width: 800px) {
   body.reading-workspace[data-current-view=notes] .main { padding: 18px 14px 28px !important; }
   .reading-workspace .note-writing-form { row-gap: 20px; }
-  .reading-workspace #view-notes #note-content { min-height: clamp(300px, 44svh, 450px); }
+  .reading-workspace #view-notes #note-rich-content { min-height: clamp(300px, 44svh, 450px); }
   .reading-workspace .writing-reference { padding-inline: 3px; }
   .reading-workspace .note-main-writing { padding: 13px 13px 16px; border-radius: 12px; }
   .reading-workspace .writing-dateline { width: 100%; }
   .writing-document-top { margin-bottom: 8px; }
-  .reading-workspace :not(.writing-focus-reference) > .note-scripture-section > .writing-reading-link { min-height: 136px; font-size: 20px; }
+  .reading-workspace :not(.writing-focus-reference) > .note-scripture-section > .writing-reading-link { min-height: 78px; font-size: 18px; }
   .reading-workspace #view-notes .markdown-toolbar-btn { min-height: 44px; }
   .note-editor-menu { display: block; position: relative; }
   .reading-workspace .note-editor-menu-toggle {
@@ -1433,7 +1433,7 @@ html:has(body.writing-expanded) { overflow: hidden; }
 .writing-expanded .note-content-section .markdown-syntax-hint:not(.hidden) { margin: 4px 0 0; }
 .writing-expanded .writing-focus-compact .markdown-syntax-hint { display: none; }
 .writing-expanded .note-content-field { grid-area: body; }
-.reading-workspace.writing-expanded #view-notes #note-content {
+.reading-workspace.writing-expanded #view-notes #note-rich-content {
   display: block;
   height: 100%;
   min-height: 0;
@@ -1999,4 +1999,50 @@ body.reading-workspace #view-reader:not(.reader-dark) .reader-flow .title-page {
 @media (max-width: 600px) {
   .reading-workspace .note-reader-search-panel { padding: 12px 13px; }
   .reading-workspace #view-prayer > .workspace-page-heading { min-height: 126px; }
+}
+
+/* The note and its reading preview share the same document hierarchy. */
+.reading-workspace #note-rich-content {
+  box-sizing: border-box;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+#note-rich-content:has(> p:only-child > .ProseMirror-trailingBreak:only-child):not(:focus)::before {
+  display: block;
+  float: inline-start;
+  height: 0;
+  color: #60665f;
+  content: attr(data-placeholder);
+  pointer-events: none;
+}
+#note-rich-content .ProseMirror-widget { user-select: none; }
+#note-rich-content.ProseMirror-hideselection *::selection { background: transparent; }
+#note-rich-content .ProseMirror-selectednode { outline: 2px solid #507766; }
+#note-rich-content :is(p, h2, ul, blockquote, hr) { margin: 0; }
+#note-rich-content.ProseMirror > * + * { margin-block-start: .68em; }
+#note-rich-content h2 {
+  color: #234a3d;
+  font: 700 clamp(21px, 2.4vw, 27px)/1.4 var(--folio-serif);
+}
+#note-rich-content blockquote {
+  padding: clamp(13px, 3vw, 24px);
+  border-radius: 10px;
+  background: #f4f0e8;
+  color: #43392f;
+}
+#note-rich-content .note-scripture-quotation { background: #edf1e6; color: #283a33; }
+#note-rich-content .note-scripture-quotation > p { margin-block-start: .55em; }
+#note-rich-content ul { padding-inline-start: 1.4em; }
+#note-rich-content hr { border: 0; border-block-start: 1px solid #aebfb3; }
+#note-rich-content.ProseMirror > .markdown-spacer { min-height: .52em; margin: 0; }
+#note-rich-content.ProseMirror > .markdown-spacer-2 { min-height: 1em; }
+
+.note-edit-history {
+  display: flex;
+  gap: 2px;
+  margin-inline-start: auto;
+}
+.reading-workspace .note-edit-history button:disabled {
+  opacity: .48;
 }

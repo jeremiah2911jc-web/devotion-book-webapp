@@ -4,10 +4,12 @@ import {
   parseScriptureReference,
   splitScriptureReferences,
 } from './assets/js/scripture-reference-utils.js';
+import { createNoteEditor } from './assets/vendor/note-editor.js';
 import { createReaderPageCurl, createReadingWorkspace, normalizeNoteConnections } from './assets/js/reading-workspace.js';
 import {readOfflineNotes,readPendingNotes,cacheOfflineNotes,queueOfflineNote,mergeOfflineNotes,clearOfflineCache,syncOfflineNotes,forkPendingNote} from './assets/js/offline-notes.js';
 
 let readingWorkspace;
+let noteEditor;
 
 const STORAGE_KEYS = {
   config: 'devotion-app-config',
@@ -24,8 +26,8 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.2.15';
-const APP_RELEASE_DATE = '2026/11/19';
+const APP_VERSION = '1.2.16';
+const APP_RELEASE_DATE = '2026/11/20';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
 const DEFAULT_BIBLE_ASSET_VERSION = '2026.11.19-proofread-v1.2.14';
@@ -1205,7 +1207,6 @@ const state = {
   scriptureBibleEntriesPromise: null,
   scriptureFetchTimer: null,
   scriptureAbortController: null,
-  noteContentLastSelection: null,
   authInlineMode: 'register',
   authInlineSubmitting: false,
   authVerificationMode: '',
@@ -2518,7 +2519,7 @@ function getOperationManualHtml() {
             <ol>
               <li>點「寫札記」。</li>
               <li>輸入標題。草稿可以先沒有標題，正式札記建議補上清楚主題。</li>
-              <li>在「經文出處」輸入經文範圍，需要時點「查經文」。</li>
+              <li>在「經文出處」輸入經文範圍，或點「選擇經文」選取章節。</li>
               <li>選擇分類，並用標籤補充主題。</li>
               <li>在「我的札記」中寫下今天的內容。</li>
               <li>需要時使用工具列加入小標題、粗體、引用、清單、分隔線或重點色。</li>
@@ -2529,7 +2530,7 @@ function getOperationManualHtml() {
             <ul>
               <li>多處經文請用分號分隔，例如「希伯來4:11；詩篇106:32-33」。</li>
               <li>章節可以寫成「詩篇90:9-10」，也可以寫成「詩篇90篇9-10」或「詩篇90章9-10」。</li>
-              <li>勾選「查詢後將經文加入札記」再點「查經文」，經文會加在原文後面。</li>
+              <li>勾選「將經文加入札記正文」再點「帶入經文」，游標會移到經文下方。取消勾選時可預覽經文。</li>
               <li>如果想把經文移到別的位置，可以在「我的札記」中手動剪下、貼上或調整段落順序。</li>
             </ul>
             <h3>使用文字工具</h3>
@@ -2538,9 +2539,9 @@ function getOperationManualHtml() {
               <li>先在「我的札記」中輸入文字。</li>
               <li>選取想調整的文字，或把游標放在想加入內容的位置。</li>
               <li>點選上方小工具，例如「小標題」「粗體」「引用」或顏色按鈕。</li>
-              <li>有選取文字時，網站會把樣式套用到你選取的內容；沒有選取文字時，多數工具會在游標位置放入範例文字，方便你直接改寫。</li>
+              <li>粗體與重點色可套用到選取的文字，或套用到接下來輸入的文字。小標題與引用會調整所在的段落。</li>
               <li>「分隔線」會插入在游標附近，用來分開前後段落。</li>
-              <li>你會在編輯區看到網站自動加上的小記號，這是為了記住樣式；在預覽與閱讀時會變成好讀的樣式。</li>
+              <li>編輯時即可看到排版。要取消帶入經文或套用格式，可點「復原」，也可點「重做」取回剛撤回的內容。</li>
               <li>完成後可以點「預覽札記」，或先儲存草稿，確認顯示效果是否符合預期。</li>
             </ol>
             <h3>文字工具用途</h3>
@@ -2548,7 +2549,7 @@ function getOperationManualHtml() {
               <li>小標題：用來標出段落標題，例如「經文觀察」「我的反思」「今日禱告」。建議用在一整行短句，不要只套在半句話上。</li>
               <li>粗體：用來強調重要詞句。適合用在一句話中的重點，不建議整篇都使用粗體。</li>
               <li>引用：用來標示經文、書中摘錄或想特別保留的一段話。如果是引用聖經，建議同時寫清楚經文出處。</li>
-              <li>經文：用來標示經文內容或經文段落。如果已經用「查經文」帶入全文，可以在札記中引用重要經文時使用。</li>
+              <li>經文：用來標示手動輸入的經文段落，並可另填經文出處。</li>
               <li>清單：用來整理多個重點，例如今天的提醒、需要禱告的事、可以實踐的行動。</li>
               <li>分隔線：用來分開不同段落，例如在「經文觀察」「我的反思」「禱告」中間加上分隔線。不要連續插入太多分隔線，以免文章變得零碎。</li>
               <li>紅字：用來提醒警醒、悔改、特別重要的地方。不要整篇都用紅字。</li>
@@ -2562,11 +2563,10 @@ function getOperationManualHtml() {
               <li>先輸入一行標題，例如「我的反思」。</li>
               <li>選取這一整行文字，或把游標放在要新增小標題的位置。</li>
               <li>先點「小標題」。</li>
-              <li>接著重新選取標題文字本身。請不要把小標題前面自動加上的開頭記號一起選進去。</li>
+              <li>接著選取要上色的標題文字。</li>
               <li>再點想要的顏色，例如「藍字」或「金字」。</li>
-              <li>點「預覽札記」或儲存草稿，確認標題大小與顏色都正確。</li>
+              <li>在正文確認標題大小與顏色，需要時可再開文章預覽。</li>
             </ol>
-            <p>提醒：小標題比較適合用在短句或段落名稱。不要一次選取太長的段落來套小標題。如果預覽時看到開頭記號沒有變成標題，可以重新選取標題文字，再依順序套用一次。</p>
             <h3>小工具搭配範例</h3>
             <ul>
               <li>小標題：經文觀察</li>
@@ -3957,12 +3957,6 @@ const JOURNAL_INLINE_COLOR_MARKS = Object.freeze({
 const JOURNAL_INLINE_COLOR_NAMES = Object.freeze(Object.keys(JOURNAL_INLINE_COLOR_MARKS));
 const JOURNAL_INLINE_COLOR_NAME_PATTERN = JOURNAL_INLINE_COLOR_NAMES.join('|');
 const JOURNAL_INLINE_COLOR_TAG_RE = new RegExp(`\\{(\\/?)(${JOURNAL_INLINE_COLOR_NAME_PATTERN})\\}`, 'g');
-const JOURNAL_INLINE_COLOR_TAG_TEST_RE = new RegExp(`\\{\\/?(?:${JOURNAL_INLINE_COLOR_NAME_PATTERN})\\}`);
-
-function hasJournalInlineMarks(text = '') {
-  return JOURNAL_INLINE_COLOR_TAG_TEST_RE.test(String(text || ''));
-}
-
 function stripJournalInlineMarks(text = '') {
   return String(text || '').replace(JOURNAL_INLINE_COLOR_TAG_RE, '');
 }
@@ -5314,7 +5308,24 @@ async function bootstrap() {
   ensureAppUpdatePromptUi();
   ensureInstallAppPromptUi();
   ensureWritingWorkspaceUi();
-  readingWorkspace = createReadingWorkspace({state, els, setView, clearNoteForm, populateNoteForm,
+  const undoButton = document.getElementById('note-undo-btn');
+  const redoButton = document.getElementById('note-redo-btn');
+  noteEditor = createNoteEditor({
+    mount: document.getElementById('note-editor-mount'),
+    renderMarkdown: renderMarkdownContent,
+    onChange(markdown) {
+      els.noteContent.value = markdown;
+      renderNotePreview();
+      scheduleCurrentNoteDraftSave();
+    },
+    onHistoryChange(canUndo, canRedo) {
+      undoButton.disabled = !canUndo;
+      redoButton.disabled = !canRedo;
+    },
+  });
+  undoButton.addEventListener('click', () => noteEditor.apply('undo'));
+  redoButton.addEventListener('click', () => noteEditor.apply('redo'));
+  readingWorkspace = createReadingWorkspace({state, els, noteEditor, setView, clearNoteForm, populateNoteForm,
     persistDraft: () => persistCurrentNoteDraft({immediate:true}),
     listVerseNumbers: async (book, chapter) => {
       const entries = await loadScriptureBibleEntries();
@@ -5601,16 +5612,13 @@ function bindEvents() {
   els.viewAllNotesBtn?.addEventListener('click', () => setView('notes'));
   els.newNoteBtn.addEventListener('click', clearNoteForm);
   els.newBookBtn.addEventListener('click', clearBookForm);
-  els.markdownHeadingBtn?.addEventListener('click', () => applyMarkdownHeading());
-  els.markdownBoldBtn?.addEventListener('click', () => applyMarkdownBold());
-  els.markdownQuoteBtn?.addEventListener('click', () => applyMarkdownQuote());
-  els.markdownScriptureBtn?.addEventListener('click', () => applyMarkdownScripture());
-  els.markdownListBtn?.addEventListener('click', () => applyMarkdownList());
-  els.markdownDividerBtn?.addEventListener('click', () => applyMarkdownDivider());
-  els.markdownRedBtn?.addEventListener('click', () => applyMarkdownRedText());
-  els.markdownBlueBtn?.addEventListener('click', () => applyMarkdownBlueText());
-  els.markdownGoldBtn?.addEventListener('click', () => applyMarkdownGoldText());
-  els.markdownPurpleBtn?.addEventListener('click', () => applyMarkdownPurpleText());
+  for (const [button, format] of [
+    [els.markdownHeadingBtn, 'heading'], [els.markdownBoldBtn, 'bold'],
+    [els.markdownQuoteBtn, 'quote'], [els.markdownScriptureBtn, 'scripture'],
+    [els.markdownListBtn, 'list'], [els.markdownDividerBtn, 'divider'],
+    [els.markdownRedBtn, 'red'], [els.markdownBlueBtn, 'blue'],
+    [els.markdownGoldBtn, 'gold'], [els.markdownPurpleBtn, 'purple'],
+  ]) button?.addEventListener('click', () => noteEditor.apply(format));
   els.noteForm.addEventListener('submit', event => { event.preventDefault(); saveNote({ status: NOTE_STATUS_PUBLISHED }).catch(handleNoteSaveError); });
   els.saveNoteDraftBtn?.addEventListener('click', () => saveNote({ status: NOTE_STATUS_DRAFT }).catch(handleNoteSaveError));
   els.publishNoteBtn?.addEventListener('click', () => saveNote({ status: NOTE_STATUS_PUBLISHED }).catch(handleNoteSaveError));
@@ -5640,9 +5648,6 @@ function bindEvents() {
   els.deleteBookBtn.addEventListener('click', () => deleteBook().catch(handleError));
   els.noteSearch.addEventListener('input', () => { state.noteSearch = els.noteSearch.value.trim().toLowerCase(); renderNotes(); });
   els.noteScripture.addEventListener('input', handleScriptureInput);
-  ['focus', 'click', 'keyup', 'select', 'input'].forEach(eventName => {
-    els.noteContent.addEventListener(eventName, rememberNoteContentSelection);
-  });
   els.fetchScriptureBtn.addEventListener('click', () => {
     clearTimeout(state.scriptureFetchTimer);
     fetchAndRenderScriptures({ force: true, syncToContent: true }).catch(handleError);
@@ -8702,7 +8707,8 @@ function appendReferencesToNoteScripture(readings = []) {
   const current = els.noteScripture.value.trim();
   const addition = nextReadings.join('; ');
   els.noteScripture.value = current ? `${current}; ${addition}` : addition;
-  resetScripturePreview({ clearApplied: !document.body.classList.contains('writing-expanded') });
+  resetScripturePreview();
+  if (!document.body.classList.contains('writing-expanded')) noteEditor?.moveToEnd();
   return true;
 }
 
@@ -8712,7 +8718,7 @@ function insertTodayReadingIntoNote() {
   setView('notes');
   if (appendReferencesToNoteScripture(entry.readings)) {
     els.noteScripture?.focus();
-    showToast('已帶入今日讀經，可按「查經文」查看全文。');
+    showToast('已填入今日讀經出處，可帶入或預覽經文。');
   }
 }
 
@@ -8817,13 +8823,6 @@ function normalizeScriptureReferences(raw = '') {
   return splitScriptureReferences(raw);
 }
 
-function rememberNoteContentSelection() {
-  if (!els.noteContent) return;
-  const start = Number.isInteger(els.noteContent.selectionStart) ? els.noteContent.selectionStart : els.noteContent.value.length;
-  const end = Number.isInteger(els.noteContent.selectionEnd) ? els.noteContent.selectionEnd : start;
-  state.noteContentLastSelection = { start, end };
-}
-
 function handleScriptureInput() {
   clearTimeout(state.scriptureFetchTimer);
   const refs = normalizeScriptureReferences(els.noteScripture.value);
@@ -8852,12 +8851,11 @@ function setScriptureStatus(message = '', isError = false) {
   els.scriptureFetchStatus.classList.toggle('error-text', !!isError);
 }
 
-function resetScripturePreview({ clearApplied = false } = {}) {
+function resetScripturePreview() {
   if (state.scriptureAbortController) {
     state.scriptureAbortController.abort();
     state.scriptureAbortController = null;
   }
-  if (clearApplied) state.noteContentLastSelection = null;
   els.scripturePreview.innerHTML = '';
   els.scripturePreview.classList.add('hidden');
   delete els.scripturePreview.dataset.lastRefs;
@@ -9059,40 +9057,8 @@ function buildScriptureBlock(items) {
   }).join('\n\n');
 }
 
-function getScriptureInsertionIndex(contentLength = 0) {
-  const selection = state.noteContentLastSelection;
-  if (!selection || !Number.isInteger(selection.start)) return contentLength;
-  return Math.max(0, Math.min(contentLength, selection.start));
-}
-
-function insertScriptureBlockIntoContent(content = '', scriptureBlock = '', index = 0) {
-  const source = String(content || '');
-  const block = String(scriptureBlock || '').trim();
-  if (!block) return { value: source, cursor: source.length };
-
-  const safeIndex = Math.max(0, Math.min(source.length, index));
-  const before = source.slice(0, safeIndex);
-  const after = source.slice(safeIndex);
-  const prefix = before
-    ? (before.endsWith('\n\n') ? '' : (before.endsWith('\n') ? '\n' : '\n\n'))
-    : '';
-  const followingGap = after
-    ? (after.startsWith('\n\n') ? '' : (after.startsWith('\n') ? '\n' : '\n\n'))
-    : '';
-  const throughWritingPosition = `${before}${prefix}${block}\n\n`;
-  return {
-    value: `${throughWritingPosition}${followingGap}${after}`,
-    cursor: throughWritingPosition.length,
-  };
-}
-
 function applyScriptureBlockToNoteContent(items) {
-  const scriptureBlock = buildScriptureBlock(items);
-  const content = els.noteContent.value || '';
-  const insertionIndex = getScriptureInsertionIndex(content.length);
-  const next = insertScriptureBlockIntoContent(content, scriptureBlock, insertionIndex);
-  updateNoteContentSelection(next.value, next.cursor);
-  state.noteContentLastSelection = { start: next.cursor, end: next.cursor };
+  noteEditor.insertScripture(buildScriptureBlock(items));
 }
 
 function renderNotes() {
@@ -9803,170 +9769,8 @@ function renderMarkdownContent(text = '') {
   return blocks.join('');
 }
 
-function getNoteContentTextarea() {
-  if (!els.noteContent || els.noteContent.tagName !== 'TEXTAREA') {
-    throw new Error('找不到札記內容輸入框。');
-  }
-  return els.noteContent;
-}
-
 function isNoteFormField(target) {
   return !!target?.matches?.('input, textarea');
-}
-
-function getNoteContentSelection() {
-  const textarea = getNoteContentTextarea();
-  const value = textarea.value || '';
-  const start = typeof textarea.selectionStart === 'number' ? textarea.selectionStart : value.length;
-  const end = typeof textarea.selectionEnd === 'number' ? textarea.selectionEnd : start;
-  return {
-    textarea,
-    value,
-    start,
-    end,
-    selectedText: value.slice(start, end),
-    hasSelection: end > start,
-  };
-}
-
-function updateNoteContentSelection(nextValue, selectionStart, selectionEnd = selectionStart) {
-  const textarea = getNoteContentTextarea();
-  textarea.value = nextValue;
-  textarea.focus();
-  textarea.setSelectionRange(selectionStart, selectionEnd);
-  renderNotePreview();
-  scheduleCurrentNoteDraftSave();
-}
-
-function replaceNoteContentSelection(replacement, options = {}) {
-  const {
-    selectionStartOffset = replacement.length,
-    selectionEndOffset = selectionStartOffset,
-  } = options;
-  const { value, start, end } = getNoteContentSelection();
-  const nextValue = `${value.slice(0, start)}${replacement}${value.slice(end)}`;
-  updateNoteContentSelection(nextValue, start + selectionStartOffset, start + selectionEndOffset);
-}
-
-function prefixSelectedLines(text, prefix) {
-  return String(text || '')
-    .replace(/\r\n/g, '\n')
-    .split('\n')
-    .map(line => `${prefix}${line}`)
-    .join('\n');
-}
-
-function applyMarkdownHeading() {
-  const { hasSelection, selectedText } = getNoteContentSelection();
-  const headingText = (hasSelection ? selectedText : '小標題').trim() || '小標題';
-  const replacement = `## ${headingText}`;
-  replaceNoteContentSelection(replacement, hasSelection
-    ? {}
-    : {
-        selectionStartOffset: 3,
-        selectionEndOffset: replacement.length,
-      });
-}
-
-function applyMarkdownBold() {
-  const { hasSelection, selectedText } = getNoteContentSelection();
-  const content = hasSelection ? selectedText : '文字';
-  const replacement = `**${content}**`;
-  replaceNoteContentSelection(replacement, hasSelection
-    ? {}
-    : {
-        selectionStartOffset: 2,
-        selectionEndOffset: replacement.length - 2,
-      });
-}
-
-function applyMarkdownQuote() {
-  const { hasSelection, selectedText } = getNoteContentSelection();
-  const replacement = hasSelection ? prefixSelectedLines(selectedText, '> ') : '> 引用內容';
-  replaceNoteContentSelection(replacement, hasSelection
-    ? {}
-    : {
-        selectionStartOffset: 2,
-        selectionEndOffset: replacement.length,
-      });
-}
-
-function applyMarkdownScripture() {
-  const { hasSelection, selectedText } = getNoteContentSelection();
-  const replacement = hasSelection ? prefixSelectedLines(selectedText, '> ') : '> 經文內容';
-  replaceNoteContentSelection(replacement, hasSelection
-    ? {}
-    : {
-        selectionStartOffset: 2,
-        selectionEndOffset: replacement.length,
-      });
-}
-
-function applyMarkdownList() {
-  const { hasSelection, selectedText } = getNoteContentSelection();
-  const replacement = hasSelection ? prefixSelectedLines(selectedText, '- ') : '- 項目';
-  replaceNoteContentSelection(replacement, hasSelection
-    ? {}
-    : {
-        selectionStartOffset: 2,
-        selectionEndOffset: replacement.length,
-      });
-}
-
-function applyMarkdownDivider() {
-  const { value, start } = getNoteContentSelection();
-  const before = value.slice(0, start);
-  const after = value.slice(start);
-  const prefix = !before
-    ? ''
-    : before.endsWith('\n\n')
-      ? ''
-      : before.endsWith('\n')
-        ? '\n'
-        : '\n\n';
-  const suffix = !after
-    ? '\n\n'
-    : after.startsWith('\n\n')
-      ? ''
-      : after.startsWith('\n')
-        ? '\n'
-        : '\n\n';
-  const replacement = `${prefix}---${suffix}`;
-  const nextValue = `${before}${replacement}${after}`;
-  const cursorOffset = replacement.length;
-  updateNoteContentSelection(nextValue, before.length + cursorOffset);
-}
-
-function applyMarkdownColorTag(colorName, placeholderText) {
-  const normalizedColor = String(colorName || '').trim().toLowerCase();
-  if (!JOURNAL_INLINE_COLOR_MARKS[normalizedColor]) return;
-  const { hasSelection, selectedText } = getNoteContentSelection();
-  const content = hasSelection && hasJournalInlineMarks(selectedText)
-    ? stripJournalInlineMarks(selectedText)
-    : (hasSelection ? selectedText : placeholderText);
-  const replacement = `{${normalizedColor}}${content}{/${normalizedColor}}`;
-  replaceNoteContentSelection(replacement, hasSelection
-    ? {}
-    : {
-        selectionStartOffset: normalizedColor.length + 2,
-        selectionEndOffset: replacement.length - (normalizedColor.length + 3),
-      });
-}
-
-function applyMarkdownRedText() {
-  applyMarkdownColorTag('red', '紅色重點');
-}
-
-function applyMarkdownBlueText() {
-  applyMarkdownColorTag('blue', '藍色重點');
-}
-
-function applyMarkdownGoldText() {
-  applyMarkdownColorTag('gold', '金色重點');
-}
-
-function applyMarkdownPurpleText() {
-  applyMarkdownColorTag('purple', '紫色重點');
 }
 
 function openNotePreview() {
@@ -10207,14 +10011,14 @@ function restoreCurrentNoteDraft() {
     ? draft.prayerVisibilityTouched
     : !!draftPrayerText || getDraftShowPrayer(draft);
   els.noteContent.value = draft.content || '';
+  noteEditor?.load(els.noteContent.value);
   readingWorkspace?.loadConnections(draft);
-  state.noteContentLastSelection = null;
   if (draft.editingNoteId) els.deleteNoteBtn.classList.remove('hidden');
   else els.deleteNoteBtn.classList.add('hidden');
   if (draft.scripture) {
     fetchAndRenderScriptures({ force: true, syncToContent: false }).catch(() => setScriptureStatus('經文預覽暫時無法載入。', true));
   } else {
-    resetScripturePreview({ clearApplied: true });
+    resetScripturePreview();
   }
   renderNotePreview();
   syncNoteStatusUi();
@@ -10236,12 +10040,7 @@ function focusNoteEditorSection() {
     inline: 'nearest',
   });
   window.setTimeout(() => {
-    if (!els.noteContent || document.body.classList.contains('writing-expanded')) return;
-    els.noteContent.focus({ preventScroll: true });
-    const position = els.noteContent.value.length;
-    if (typeof els.noteContent.setSelectionRange === 'function') {
-      els.noteContent.setSelectionRange(position, position);
-    }
+    if (!document.body.classList.contains('writing-expanded')) noteEditor?.focusEnd();
   }, 180);
 }
 
@@ -10265,8 +10064,8 @@ function populateNoteForm(noteId, options = {}) {
   if (els.notePrayer) els.notePrayer.value = prayerText;
   if (els.noteShowPrayer) els.noteShowPrayer.checked = showPrayer;
   state.notePrayerVisibilityTouched = !!prayerText || showPrayer;
-  state.noteContentLastSelection = null;
   els.noteContent.value = stripScriptureMarkers(note.content || '');
+  noteEditor?.load(els.noteContent.value);
   readingWorkspace?.loadConnections(note);
   els.deleteNoteBtn.classList.remove('hidden');
   if (note.scripture_reference) {
@@ -10285,6 +10084,7 @@ function populateNoteForm(noteId, options = {}) {
 function clearNoteForm({ clearDraft = false } = {}) {
   state.noteEditorGeneration++;
   els.noteForm.reset();
+  noteEditor?.load(els.noteContent.value);
   els.noteId.value = '';
   readingWorkspace?.loadConnections({});
   state.currentNoteStatus = NOTE_STATUS_PUBLISHED;
@@ -10293,7 +10093,7 @@ function clearNoteForm({ clearDraft = false } = {}) {
   if (els.noteShowPrayer) els.noteShowPrayer.checked = false;
   state.notePrayerVisibilityTouched = false;
   els.deleteNoteBtn.classList.add('hidden');
-  resetScripturePreview({ clearApplied: true });
+  resetScripturePreview();
   els.scriptureAppendToContent.checked = true;
   syncScriptureActionLabel();
   renderNotePreview();
