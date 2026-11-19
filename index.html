@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-title" content="DEVOTION" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>DEVOTION｜靈修札記</title>
-  <link rel="stylesheet" href="./styles.css?v=1.2.6" />
-  <link rel="stylesheet" href="./assets/css/reading-workspace.css?v=1.2.6" />
+  <link rel="stylesheet" href="./styles.css?v=1.2.7" />
+  <link rel="stylesheet" href="./assets/css/reading-workspace.css?v=1.2.7" />
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png" />
@@ -18,87 +18,78 @@
 <body class="auth-locked">
   <div id="auth-gate" class="auth-gate" aria-hidden="false">
     <div class="auth-gate-shell">
-      <div class="auth-gate-body">
+      <header class="auth-gate-header">
+        <p class="auth-brand-name">DEVOTION</p>
+      </header>
+      <section class="auth-gate-body" aria-labelledby="auth-gate-title">
+        <div class="auth-gate-landscape" aria-hidden="true"></div>
         <div class="auth-gate-welcome">
-          <div class="auth-gate-copy-wrap">
-            <div class="auth-brand-lockup" aria-label="DEVOTION 與神更親近的每一天">
-              <span class="auth-brand-mark" aria-hidden="true"></span>
-              <p class="auth-brand-name">DEVOTION</p>
-              <p class="auth-brand-tagline">與神更親近的每一天</p>
-            </div>
-            <h2 class="auth-gate-title">靈修札記</h2>
-            <div class="auth-gate-divider" aria-hidden="true">
-              <span></span>
-              <i class="asset-icon auth-divider-icon"></i>
-              <span></span>
-            </div>
-            <div class="auth-gate-copy">
-              <p>記錄經文、個人思想與禱告。</p>
-              <p>依札記選稿、編排章節，匯出 EPUB。</p>
-            </div>
-            <p class="auth-sync-hint">建立免費帳戶後，可在手機與桌機間同步資料。</p>
+          <h1 id="auth-gate-title" class="auth-gate-title">靈修札記</h1>
+          <p class="auth-gate-copy">
+            把經文、心得與禱告寫在一起。<br />
+            找回過往札記，選稿編成電子書。
+          </p>
+          <div class="auth-gate-actions">
+            <button id="open-register-btn" class="auth-cta auth-cta-primary" type="button" data-testid="auth-open-register">建立帳戶</button>
+            <button id="open-login-btn" class="auth-cta auth-cta-secondary" type="button" data-testid="auth-open-login">登入</button>
           </div>
+          <p class="auth-sync-hint">建立免費帳戶後，可在手機與桌機間同步資料。</p>
         </div>
 
-        <aside class="auth-reading-specimen" aria-label="經文閱讀示例">
-          <p class="specimen-label">經文閱讀</p>
-          <blockquote>你的話是我腳前的燈，<br />是我路上的光。</blockquote>
-          <cite>詩篇 119:105</cite>
-        </aside>
-        <div class="auth-gate-actions">
-          <button id="open-register-btn" class="auth-cta auth-cta-primary" type="button" data-testid="auth-open-register">建立帳戶</button>
-          <button id="open-login-btn" class="auth-cta auth-cta-secondary" type="button" data-testid="auth-open-login">登入</button>
+        <div class="auth-gate-visual" aria-hidden="true">
+          <img class="auth-gate-photo" src="./assets/editorial/open-journal.jpg" alt="" fetchpriority="high" />
+          <img class="auth-gate-linework" src="./assets/editorial/journal-linework.png" alt="" />
         </div>
+      </section>
 
-        <div id="auth-inline-panel" class="modal auth-input-modal hidden" aria-hidden="true" aria-live="polite" data-testid="auth-inline-panel">
-          <div id="auth-inline-backdrop" class="modal-backdrop" data-testid="auth-inline-backdrop"></div>
-          <div class="modal-card auth-input-modal-card" role="dialog" aria-modal="true" aria-labelledby="auth-inline-title" data-testid="auth-modal">
-            <div class="panel-header auth-modal-header">
-              <h3 id="auth-inline-title" data-testid="auth-inline-title">建立帳戶</h3>
-              <button id="close-auth-inline-btn" class="ghost-btn small" type="button" data-testid="auth-inline-close">關閉</button>
-            </div>
-            <p id="auth-inline-intro" class="modal-intro">輸入 Email 與密碼後即可建立帳戶或登入。</p>
-            <section id="auth-pending-verification-reminder" class="auth-pending-verification-reminder hidden" aria-live="polite" data-testid="auth-pending-verification-reminder">
-              <p id="gate-resend-verification-hint" class="caption auth-verification-hint">你剛建立的帳號還需要完成信箱驗證。請到信箱尋找「【Devotion 靈修札記】請完成信箱驗證」。</p>
-              <button id="gate-resend-verification-btn" class="ghost-btn subtle-action small" type="button" data-testid="auth-resend-verification">重新寄送驗證信</button>
-            </section>
-            <form id="auth-inline-form" class="form-stack">
-              <label>Email
-                <input id="gate-auth-email" type="email" placeholder="name@example.com" data-testid="auth-email-input" />
-              </label>
-              <label>密碼
-                <input id="gate-auth-password" type="password" placeholder="至少 6 碼" data-testid="auth-password-input" />
-              </label>
-              <label id="gate-auth-password-confirm-label" class="hidden">確認新密碼
-                <input id="gate-auth-password-confirm" type="password" placeholder="再次輸入新密碼" autocomplete="new-password" data-testid="auth-password-confirm-input" />
-              </label>
-              <div class="auth-modal-actions">
-                <button id="gate-submit-btn" class="primary-btn" type="submit" data-testid="auth-register-submit">建立帳戶</button>
-                <button id="gate-reset-password-btn" class="ghost-btn subtle-action hidden" type="button" data-testid="auth-forgot-password">忘記密碼</button>
-              </div>
-            </form>
-            <div id="auth-google-section" class="auth-google-section" data-testid="auth-google-section">
-              <div class="auth-divider" aria-hidden="true"><span>或</span></div>
-              <button id="gate-google-login-btn" class="google-login-btn" type="button" data-testid="auth-google-register">
-                <span class="google-login-mark" aria-hidden="true">G</span>
-                <span>使用 Google 建立帳戶</span>
-              </button>
-            </div>
-            <section id="auth-verification-panel" class="auth-verification-panel hidden" aria-hidden="true" aria-live="polite" data-testid="auth-verification-panel">
-              <h4 id="auth-verification-title">帳號已建立，請到信箱完成驗證</h4>
-              <p id="auth-verification-body">我們已寄出一封驗證信到你的 Email。請打開信件並點選「完成信箱驗證」，完成後就可以登入使用。</p>
-              <div class="auth-verification-subject">
-                <span>信件主旨：</span>
-                <strong id="auth-verification-subject">【Devotion 靈修札記】請完成信箱驗證</strong>
-              </div>
-              <p id="auth-verification-folder-hint" class="auth-verification-note">如果收件匣找不到，請到垃圾郵件、促銷內容或垃圾信箱找看看。</p>
-              <p id="auth-verification-help" class="auth-verification-note">如果你不熟悉信箱操作，或一直找不到驗證信，可以聯絡管理員協助開通帳號。</p>
-              <div class="auth-verification-actions">
-                <button id="auth-verification-resend-btn" class="secondary-btn small" type="button" data-testid="auth-verification-resend">重新寄送驗證信</button>
-                <button id="auth-verification-login-btn" class="ghost-btn small" type="button" data-testid="auth-verification-login">我已完成驗證，前往登入</button>
-              </div>
-            </section>
+      <div id="auth-inline-panel" class="modal auth-input-modal hidden" aria-hidden="true" aria-live="polite" data-testid="auth-inline-panel">
+        <div id="auth-inline-backdrop" class="modal-backdrop" data-testid="auth-inline-backdrop"></div>
+        <div class="modal-card auth-input-modal-card" role="dialog" aria-modal="true" aria-labelledby="auth-inline-title" data-testid="auth-modal">
+          <div class="panel-header auth-modal-header">
+            <h3 id="auth-inline-title" data-testid="auth-inline-title">建立帳戶</h3>
+            <button id="close-auth-inline-btn" class="ghost-btn small" type="button" data-testid="auth-inline-close">關閉</button>
           </div>
+          <p id="auth-inline-intro" class="modal-intro">輸入 Email 與密碼後即可建立帳戶或登入。</p>
+          <section id="auth-pending-verification-reminder" class="auth-pending-verification-reminder hidden" aria-live="polite" data-testid="auth-pending-verification-reminder">
+            <p id="gate-resend-verification-hint" class="caption auth-verification-hint">你剛建立的帳號還需要完成信箱驗證。請到信箱尋找「【Devotion 靈修札記】請完成信箱驗證」。</p>
+            <button id="gate-resend-verification-btn" class="ghost-btn subtle-action small" type="button" data-testid="auth-resend-verification">重新寄送驗證信</button>
+          </section>
+          <form id="auth-inline-form" class="form-stack">
+            <label>Email
+              <input id="gate-auth-email" type="email" placeholder="name@example.com" data-testid="auth-email-input" />
+            </label>
+            <label>密碼
+              <input id="gate-auth-password" type="password" placeholder="至少 6 碼" data-testid="auth-password-input" />
+            </label>
+            <label id="gate-auth-password-confirm-label" class="hidden">確認新密碼
+              <input id="gate-auth-password-confirm" type="password" placeholder="再次輸入新密碼" autocomplete="new-password" data-testid="auth-password-confirm-input" />
+            </label>
+            <div class="auth-modal-actions">
+              <button id="gate-submit-btn" class="primary-btn" type="submit" data-testid="auth-register-submit">建立帳戶</button>
+              <button id="gate-reset-password-btn" class="ghost-btn subtle-action hidden" type="button" data-testid="auth-forgot-password">忘記密碼</button>
+            </div>
+          </form>
+          <div id="auth-google-section" class="auth-google-section" data-testid="auth-google-section">
+            <div class="auth-divider" aria-hidden="true"><span>或</span></div>
+            <button id="gate-google-login-btn" class="google-login-btn" type="button" data-testid="auth-google-register">
+              <span class="google-login-mark" aria-hidden="true">G</span>
+              <span>使用 Google 建立帳戶</span>
+            </button>
+          </div>
+          <section id="auth-verification-panel" class="auth-verification-panel hidden" aria-hidden="true" aria-live="polite" data-testid="auth-verification-panel">
+            <h4 id="auth-verification-title">帳號已建立，請到信箱完成驗證</h4>
+            <p id="auth-verification-body">我們已寄出一封驗證信到你的 Email。請打開信件並點選「完成信箱驗證」，完成後就可以登入使用。</p>
+            <div class="auth-verification-subject">
+              <span>信件主旨：</span>
+              <strong id="auth-verification-subject">【Devotion 靈修札記】請完成信箱驗證</strong>
+            </div>
+            <p id="auth-verification-folder-hint" class="auth-verification-note">如果收件匣找不到，請到垃圾郵件、促銷內容或垃圾信箱找看看。</p>
+            <p id="auth-verification-help" class="auth-verification-note">如果你不熟悉信箱操作，或一直找不到驗證信，可以聯絡管理員協助開通帳號。</p>
+            <div class="auth-verification-actions">
+              <button id="auth-verification-resend-btn" class="secondary-btn small" type="button" data-testid="auth-verification-resend">重新寄送驗證信</button>
+              <button id="auth-verification-login-btn" class="ghost-btn small" type="button" data-testid="auth-verification-login">我已完成驗證，前往登入</button>
+            </div>
+          </section>
         </div>
       </div>
 
@@ -1023,7 +1014,7 @@
         </div>
         <div class="account-settings-section account-version-section">
           <span class="account-settings-label">版本資訊</span>
-          <p class="caption account-settings-version-text" data-app-version-label data-testid="version-display">版本：v1.2.6｜更新：2026/11/19</p>
+          <p class="caption account-settings-version-text" data-app-version-label data-testid="version-display">版本：v1.2.7｜更新：2026/11/19</p>
         </div>
         <div class="account-settings-section account-settings-signout-section">
           <span class="account-settings-label">登出</span>
@@ -1080,6 +1071,6 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./app.js?v=1.2.6"></script>
+  <script type="module" src="./app.js?v=1.2.7"></script>
 </body>
 </html>
