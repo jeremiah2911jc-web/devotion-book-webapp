@@ -291,14 +291,7 @@ export function createReadingWorkspace(api) {
     date.textContent = refs.length ? selectedDate : '';
   }
 
-  function resume() {
-    if(!state.currentUser)return;
-    const draft=api.getCurrentDraft();
-    if(draft&&draft.userId===state.currentUser.id&&draft.content){api.setView('notes');api.restoreDraft();loadConnections(draft);return;}
-    api.setView('dashboard');
-    refresh();
-  }
-  return {refresh,resume,refreshEditorStatus,closePanel:motion.closePanel,cancelPanelClose:motion.cancelPanelClose,loadConnections,getConnections:()=>normalizeNoteConnections(editorConnections),renderConnections(note){
+  return {refresh,refreshEditorStatus,closePanel:motion.closePanel,cancelPanelClose:motion.cancelPanelClose,loadConnections,getConnections:()=>normalizeNoteConnections(editorConnections),renderConnections(note){
     const connections=normalizeNoteConnections(note);
     const backwards=state.notes.filter(item=>item.id!==note.id&&normalizeNoteConnections(item).related_notes.includes(note.id)&&item.status!=='draft');
     const ids=[...new Set([...connections.related_notes,...backwards.map(item=>item.id)])];

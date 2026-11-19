@@ -1,7 +1,7 @@
 {
   "name": "devotion-book-webapp",
   "private": true,
-  "version": "1.2.4",
+  "version": "1.2.5",
   "type": "module",
   "scripts": {
     "start": "npm run serve:local",
@@ -22,7 +22,8 @@
     "test:workspace-flow": "node tests/workspace-flow.cjs",
     "test:editorial": "node tests/editorial-preview.cjs",
     "verify:design": "node scripts/verify-design.mjs",
-    "test:audit": "node tests/audit-regressions.cjs"
+    "test:audit": "node tests/audit-regressions.cjs",
+    "test:session-stability": "node tests/session-stability.cjs"
   },
   "devDependencies": {
     "playwright": "^1.59.1"
