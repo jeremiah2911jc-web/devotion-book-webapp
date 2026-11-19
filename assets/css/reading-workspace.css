@@ -444,7 +444,9 @@ body.reading-workspace[data-current-view=notes] .main { padding-top: 26px !impor
   backdrop-filter: none;
 }
 .reading-workspace .note-save-actions { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; gap: 7px; }
-.reading-workspace .note-save-actions > button { width: auto; min-width: 0; flex: 0 1 auto; margin: 0; padding-inline: 13px; }
+.reading-workspace .note-save-actions button { width: auto; min-width: 0; flex: 0 1 auto; margin: 0; padding-inline: 13px; }
+.note-editor-menu, .note-editor-menu-options { display: contents; }
+.note-editor-menu-toggle { display: none; }
 .reading-workspace #publish-note-btn { order: -3; }
 .reading-workspace #save-note-draft-btn { order: -2; }
 .reading-workspace #note-preview-btn { order: -1; border-color: transparent; }
@@ -469,6 +471,44 @@ body.reading-workspace[data-current-view=notes] .main { padding-top: 26px !impor
   .reading-workspace .writing-reference { padding-inline: 5px; }
   .reading-workspace .note-main-writing { margin-inline: 0; padding: 15px 14px 16px; border-start-end-radius: 30px; }
   .reading-workspace #view-notes .markdown-toolbar-btn { min-height: 44px; }
+  .note-editor-menu { display: block; position: relative; }
+  .reading-workspace .note-editor-menu-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    border-color: transparent;
+    white-space: nowrap;
+  }
+  .note-editor-menu-options {
+    display: none;
+    position: absolute;
+    inset-inline-end: 0;
+    z-index: 20;
+    min-width: 144px;
+    padding: 5px;
+    border: 1px solid var(--folio-line);
+    border-radius: 10px;
+    background: var(--folio-paper);
+    box-shadow: 0 5px 18px #241c3324;
+  }
+  .note-editor-menu-toggle[aria-expanded="true"] + .note-editor-menu-options { display: grid; }
+  .note-format-menu .note-editor-menu-options {
+    inset-block-start: calc(100% + 4px);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .note-actions-menu .note-editor-menu-options { inset-block-end: calc(100% + 4px); }
+  .reading-workspace .note-actions-menu .note-editor-menu-options button {
+    display: flex;
+    width: 100%;
+    justify-content: flex-start;
+    text-align: start;
+    border-color: transparent;
+  }
+  .reading-workspace .note-save-actions > button { white-space: nowrap; }
+}
+@media (max-width: 360px) {
+  .reading-workspace #view-notes .markdown-toolbar { column-gap: 0; }
 }
 
 /* Reading layers reuse the same sheet edge, backdrop, and close position. */

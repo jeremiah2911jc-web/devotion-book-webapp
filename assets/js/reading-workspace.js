@@ -116,6 +116,34 @@ export function createReadingWorkspace(api) {
   writingSurface.prepend(top, title);
   writingSurface.append(tools);
   form.append(writingAside);
+
+  let openEditorMenu;
+  const closeEditorMenu = () => {
+    if (!openEditorMenu) return;
+    const panel = document.getElementById(openEditorMenu.getAttribute('aria-controls'));
+    const restoreFocus = panel.contains(document.activeElement);
+    openEditorMenu.setAttribute('aria-expanded', 'false');
+    if (restoreFocus) openEditorMenu.focus({preventScroll: true});
+    openEditorMenu = null;
+  };
+  document.addEventListener('click', event => {
+    const toggle = event.target instanceof Element && event.target.closest('.note-editor-menu-toggle');
+    const openNext = toggle && form.contains(toggle) && toggle !== openEditorMenu;
+    closeEditorMenu();
+    if (openNext) {
+      openEditorMenu = toggle;
+      toggle.setAttribute('aria-expanded', 'true');
+    }
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && openEditorMenu) closeEditorMenu();
+  });
+  form.querySelector('.markdown-toolbar').addEventListener('pointerdown', event => {
+    if (document.activeElement === els.noteContent && event.target instanceof Element && event.target.closest('button')) {
+      event.preventDefault();
+    }
+  });
+
   const connectionDetail=document.createElement('details');
   connectionDetail.className='writing-connections';
   connectionDetail.innerHTML=`<summary>關聯札記與來源<span aria-hidden="true">＋</span></summary><div class="connection-body"><label>關聯札記<select id="workspace-related-select"><option value="">選擇一篇札記</option></select></label><div id="workspace-related-list"></div><fieldset><legend>引用來源</legend><label>名稱<input id="workspace-source-title" placeholder="講道、書籍或文章名稱"></label><label>網址<input id="workspace-source-url" type="url" placeholder="https://"></label><label>位置<input id="workspace-source-position" placeholder="頁碼或影片時間"></label><button type="button" id="workspace-add-source">加入來源</button><p id="workspace-source-message" role="status"></p></fieldset><div id="workspace-source-list"></div></div>`;
