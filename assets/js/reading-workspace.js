@@ -282,7 +282,7 @@ export function createReadingWorkspace(api) {
             ${lead ? `<p class="folio-lead-excerpt">${escape(api.getPreview(lead, 100).replace(/(?:^|\s)#{1,6}\s+/g, ' '))}</p>` : ''}
             <button class="folio-text-action folio-primary-action" type="button" ${lead ? `data-resume-note="${escape(lead.id)}"` : 'data-review-new'}>${lead ? '繼續編輯' : '寫札記'}</button>
           </div>
-          <figure class="folio-portrait" aria-hidden="true"><img src="./assets/editorial/coast-study.jpg" width="1280" height="853" alt="" fetchpriority="high" decoding="async"></figure>
+          <figure class="folio-portrait" aria-hidden="true"><img src="./assets/editorial/rocky-surf.jpg" width="1600" height="900" alt="" fetchpriority="high" decoding="async"></figure>
           <section class="folio-reading" aria-labelledby="folio-reading-title">
             <div class="folio-reading-header">
               <h2 id="folio-reading-title">麥琴讀經進度</h2>
@@ -334,7 +334,7 @@ export function createReadingWorkspace(api) {
     date.textContent = refs.length ? selectedDate : '';
   }
 
-  return {refresh,refreshEditorStatus,closePanel:motion.closePanel,cancelPanelClose:motion.cancelPanelClose,loadConnections,getConnections:()=>normalizeNoteConnections(editorConnections),renderConnections(note){
+  return {refresh,refreshEditorStatus,closePanel:motion.closePanel,cancelPanelClose:motion.cancelPanelClose,turnPage:motion.turnPage,loadConnections,getConnections:()=>normalizeNoteConnections(editorConnections),renderConnections(note){
     const connections=normalizeNoteConnections(note);
     const backwards=state.notes.filter(item=>item.id!==note.id&&normalizeNoteConnections(item).related_notes.includes(note.id)&&item.status!=='draft');
     const ids=[...new Set([...connections.related_notes,...backwards.map(item=>item.id)])];
@@ -348,6 +348,9 @@ export function createReadingWorkspace(api) {
 function createEditorialMotion(review,header){
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
   const closing=new WeakMap();
+  const entrances = new WeakMap();
+  const welcome = document.querySelector('.auth-gate-body');
+  const gate = welcome?.closest('#auth-gate');
   let scheduled=0,lastView=document.body.dataset.currentView,visiblePanels=new Set();
   const clamp=value=>Math.max(0,Math.min(1,value));
   const panelFor=element=>element?.matches('dialog,.book-draft-modal-shell')?element:element?.querySelector('.modal-card');
@@ -355,9 +358,75 @@ function createEditorialMotion(review,header){
     if(!element||reduced.matches||document.hidden)return null;
     return element.animate(frames,{duration:520,easing:'cubic-bezier(.22,.8,.22,1)',...options});
   }
+  function animateEntrance(element, frames, options) {
+    if (!element) return;
+    entrances.get(element)?.cancel();
+    const animation = animate(element, frames, options);
+    if (animation) {
+      entrances.set(element, animation);
+      animation.finished.then(() => {
+        if (entrances.get(element) === animation) entrances.delete(element);
+      }, () => {});
+    }
+  }
+  const motionFrames = {
+    leading: [{ transform: 'translateX(-13px)', opacity: .65 }, { transform: 'none', opacity: 1 }],
+    rising: [{ transform: 'translateY(11px)', opacity: .72 }, { transform: 'none', opacity: 1 }],
+    gathering: [{ transform: 'translateX(13px)', opacity: .67 }, { transform: 'none', opacity: 1 }],
+    reading: [{ opacity: .78 }, { opacity: 1 }],
+    cover: [{ transform: 'scale(1.09)' }, { transform: 'none' }],
+  };
+  const viewEntrances = {
+    dashboard: [['.folio-portrait img', 'cover', 460]],
+    notes: [['.workspace-page-heading h1', 'leading', 300]],
+    prayer: [['.workspace-page-heading h1', 'rising', 340], ['.prayer-workspace', 'reading', 330, 55]],
+    'note-reader': [['#note-reader-search-title', 'leading', 340], ['.note-reader-shell', 'reading', 360, 65]],
+    'content-library': [['.workspace-page-heading h1', 'gathering', 360], ['#content-library-book-hint', 'reading', 320, 55]],
+    books: [['.workspace-page-heading h1', 'gathering', 380], ['#books-list', 'reading', 320, 85]],
+    library: [['.workspace-page-heading h1', 'rising', 380], ['#library-list .library-cover', 'cover', 420, 75], ['#library-list', 'reading', 400, 45]],
+    reader: [['#reader-content', 'reading', 420]],
+    manual: [['.manual-hero h1', 'leading', 340], ['.manual-toc', 'reading', 380, 65]],
+    'admin-dashboard': [['.admin-dashboard-panel h2', 'leading', 300], ['#admin-summary-cards', 'reading', 350, 65]],
+  };
+  function openView(view) {
+    const section = document.getElementById(`view-${view}`);
+    for (const [selector, effect, duration, delay = 0] of viewEntrances[view] || []) {
+      animateEntrance(section?.querySelector(selector), motionFrames[effect], { duration, delay, fill: 'backwards' });
+    }
+  }
+  function turnPage(direction) {
+    const page = document.getElementById('reader-content');
+    const edge = direction > 0 ? 'inset(0 0 0 5%)' : 'inset(0 5% 0 0)';
+    animateEntrance(page, [{ clipPath: edge, opacity: .72 }, { clipPath: 'inset(0)', opacity: 1 }], { duration: 230 });
+  }
+  function openPanel(element) {
+    cancelPanelClose(element);
+    const panel = panelFor(element);
+    const readingPanel = element.matches('#today-reading-dialog,#note-reader-reading-modal,#workspace-reading-shelf');
+    const menuPanel = element.matches('#workspace-menu');
+    const bookPanel = element.matches('.book-draft-modal-shell,#book-draft-settings-modal,#book-export-settings-modal');
+    const heading = panel?.querySelector('h2,h3');
+    const backdrop = element.querySelector('.modal-backdrop');
+    animateEntrance(panel, [{ opacity: .62 }, { opacity: 1 }], { duration: readingPanel ? 380 : 260 });
+    animateEntrance(backdrop, [{ opacity: .2 }, { opacity: 1 }], { duration: 280 });
+    const effect = readingPanel || bookPanel ? 'gathering' : 'rising';
+    animateEntrance(heading, motionFrames[effect], { duration: 355 });
+    if (menuPanel) {
+      const headings = panel.querySelectorAll('.workspace-menu-group h3');
+      for (const [index, title] of [...headings].entries()) {
+        animateEntrance(title, motionFrames[index === 0 ? 'leading' : 'gathering'], { duration: 320, delay: index * 55, fill: 'backwards' });
+      }
+    }
+  }
   function draw(){
     scheduled=0;
-    if(document.hidden||document.body.dataset.currentView!=='dashboard')return;
+    if (document.hidden) return;
+    if (gate && !gate.classList.contains('hidden')) {
+      const traveled = reduced.matches ? 0 : Math.min(scrollY, 320);
+      welcome.style.setProperty('--welcome-scroll', `${traveled}px`);
+      return;
+    }
+    if (document.body.dataset.currentView !== 'dashboard') return;
     const opening=review.querySelector('.folio-opening');
     if(opening){
       const rect=opening.getBoundingClientRect();
@@ -388,30 +457,16 @@ function createEditorialMotion(review,header){
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&scheduled){cancelAnimationFrame(scheduled);scheduled=0;}else schedule();});
   new MutationObserver(()=>{
     const view=document.body.dataset.currentView;
-    if(view!==lastView){
-      const section=document.getElementById(`view-${view}`);
-      if (view !== 'notes' && view !== 'dashboard') animate(section,[{opacity:.72},{opacity:1}],{duration:240});
-      lastView=view;
+    if (view !== lastView) {
+      openView(view);
+      lastView = view;
     }
-    const panels=new Set([...document.querySelectorAll('dialog[open],.modal:not(.hidden),.book-draft-modal-shell.is-open')].filter(el=>el.getClientRects().length));
-    for(const element of panels)if(!visiblePanels.has(element)){
-      cancelPanelClose(element);
-      const panel=panelFor(element);
-      const readingPanel = element.matches('#today-reading-dialog,#note-reader-reading-modal,#workspace-reading-shelf');
-      animate(panel,[{opacity:.55},{opacity:1}],{duration:readingPanel ? 380 : 220});
-      if (readingPanel) {
-        const backdrop = element.querySelector('.modal-backdrop');
-        animate(backdrop,[{opacity:0},{opacity:1}],{duration:290});
-        animate(panel?.querySelector('h2'),[
-          {clipPath:'inset(0 100% 0 0)', transform:'translateX(10px)'},
-          {clipPath:'inset(0)', transform:'translateX(0)'},
-        ],{duration:350});
-      }
-    }
+    const panels = new Set([...document.querySelectorAll('dialog[open],.modal:not(.hidden),.book-draft-modal-shell.is-open')].filter(el => el.getClientRects().length));
+    for (const element of panels) if (!visiblePanels.has(element)) openPanel(element);
     visiblePanels=panels;schedule();
   }).observe(document.body,{subtree:true,attributes:true,attributeFilter:['data-current-view','class','open']});
   reduced.addEventListener('change',schedule);
-  return {refresh:schedule,closePanel,cancelPanelClose};
+  return {refresh:schedule,closePanel,cancelPanelClose,turnPage};
 }
 
 // Existing modal views keep keyboard focus inside the active dialog.

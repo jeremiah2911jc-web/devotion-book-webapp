@@ -24,7 +24,7 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.2.6';
+const APP_VERSION = '1.2.7';
 const APP_RELEASE_DATE = '2026/11/19';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
@@ -9454,7 +9454,7 @@ function openNoteReaderReadingModal(note, trigger = null) {
   els.noteReaderReadingModal?.classList.remove('hidden');
   els.noteReaderReadingModal?.setAttribute('aria-hidden', 'false');
   syncNoteReaderModalLock();
-  requestAnimationFrame(() => els.noteReaderReadingClose?.focus({ preventScroll: true }));
+  els.noteReaderReadingClose?.focus({ preventScroll: true });
 }
 
 function closeNoteReaderReadingModal({ restoreSearch = false } = {}) {
@@ -13862,6 +13862,7 @@ async function turnReaderPage(direction) {
   if (nextPage >= 0 && nextPage < cloudLibrary.readerPageCount) {
     cloudLibrary.readerPageIndex = normalizeReaderPageIndex(nextPage);
     applyReaderPagePosition();
+    readingWorkspace?.turnPage(direction);
     await persistCurrentReaderProgress();
     return;
   }
@@ -13873,6 +13874,7 @@ async function turnReaderPage(direction) {
     applyReaderPagePosition();
     await persistCurrentReaderProgress();
   }
+  readingWorkspace?.turnPage(direction);
 }
 
 async function persistCurrentReaderProgress() {

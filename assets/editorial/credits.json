@@ -1,22 +1,20 @@
 {
-  "created": "2026-11-13",
-  "tool": "imagegen (built-in)",
-  "usage": "Original illustrative imagery for the Devotion design preview. These scenes do not depict an actual user, property or testimony.",
   "assets": [
     {
-      "file": "reading-alcove.png",
-      "source": "Original generated architectural reading scene, 1024 × 1536",
-      "review": "Rear view of one reader; face and book text not presented as identifiable or authoritative content."
+      "file": "rocky-surf.jpg",
+      "source": "Frame from Volkan Yılmaz, Pexels",
+      "url": "https://www.pexels.com/video/aerial-view-of-the-sea-and-rocks-19245374/",
+      "license": "https://www.pexels.com/license/"
     },
     {
-      "file": "sea-light.png",
-      "source": "Original generated architectural light study, 1536 × 1024",
-      "review": "Architecture, sunlight and sea detail; no scripture rendered in the image."
+      "file": "open-journal.jpg",
+      "source": "Open Notebook with Pen on Wooden Desk, Pexels",
+      "url": "https://www.pexels.com/photo/open-notebook-with-pen-on-wooden-desk-33887246/",
+      "license": "https://www.pexels.com/license/"
     },
     {
-      "file": "coast-study.jpg",
-      "source": "Original image generation, overhead study of dark basalt and surf inspired by the east coast of Taiwan, 1280 × 853",
-      "review": "Illustrative coastal scene. No identified location, person or text."
+      "file": "journal-linework.png",
+      "source": "Original path drawing for Devotion, rasterized from Canvas."
     }
   ]
 }
