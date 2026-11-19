@@ -162,6 +162,10 @@ async function run(browser, width) {
     await page.goto(`${origin}/index.html`);
     await login(owner);
     await visible('[data-review-book]');
+    await click('[data-workspace-menu]');
+    await page.keyboard.press('Escape');
+    await wait(() => !document.getElementById('workspace-menu').open);
+    assert(await page.locator('[data-workspace-menu]').evaluate(button => document.activeElement === button));
     await click('[data-workspace-new]');
     const draftText = '重新開啟時應保留的原稿。'.repeat(40);
     await input.fill(draftText);

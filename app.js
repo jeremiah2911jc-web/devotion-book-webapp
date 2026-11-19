@@ -24,7 +24,7 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.2.5';
+const APP_VERSION = '1.2.6';
 const APP_RELEASE_DATE = '2026/11/19';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
@@ -2758,15 +2758,13 @@ function getOperationManualHtml() {
 }
 
 function ensureOperationManualUi() {
-  const siteFooter = document.querySelector('.site-footer');
-  if (siteFooter && !document.getElementById('footer-feedback-contact')) {
+  const siteFooter = document.querySelector('.site-footer-content');
+  if (siteFooter && !siteFooter.querySelector('.footer-feedback-text')) {
     const contact = document.createElement('p');
-    contact.id = 'footer-feedback-contact';
     contact.className = 'footer-feedback-text';
-    contact.innerHTML = `使用問題與意見回饋：<button class="footer-email-copy" type="button" data-copy-feedback-email>${FEEDBACK_EMAIL}</button>`;
-    const copyright = siteFooter.querySelector('.footer-copyright');
-    if (copyright) siteFooter.insertBefore(contact, copyright);
-    else siteFooter.appendChild(contact);
+    contact.innerHTML = `<span>聯絡與意見回饋</span>
+      <button class="footer-email-copy" type="button" title="複製信箱" data-copy-feedback-email>${FEEDBACK_EMAIL}</button>`;
+    siteFooter.prepend(contact);
   }
 
   const desktopNav = document.querySelector('.desktop-sidebar-nav');
@@ -4207,16 +4205,20 @@ function copyTextFallback(text) {
   return copied;
 }
 
-async function copyFeedbackEmail() {
+async function copyFeedbackEmail(button) {
+  const status = button.closest('.workspace-menu-site-info')?.querySelector('[data-feedback-copy-status]');
   try {
     if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(FEEDBACK_EMAIL);
     } else if (!copyTextFallback(FEEDBACK_EMAIL)) {
       throw new Error('Clipboard fallback failed');
     }
-    showToast(`已複製信箱：${FEEDBACK_EMAIL}`);
+    if (status) status.textContent = '已複製信箱。';
+    else showToast('已複製信箱。');
   } catch (error) {
-    showToast('無法自動複製，請手動複製信箱');
+    const message = '無法自動複製，請手動複製信箱。';
+    if (status) status.textContent = message;
+    else showToast(message);
   }
 }
 
@@ -5639,9 +5641,8 @@ function bindEvents() {
   els.importEpubBtn?.addEventListener('click', () => handleImportEpubClick());
   els.importEpubInput?.addEventListener('change', event => handleImportEpubSelection(event).catch(handleError));
   document.addEventListener('click', event => {
-    if (event.target instanceof Element && event.target.closest('[data-copy-feedback-email]')) {
-      copyFeedbackEmail().catch(handleError);
-    }
+    const copyButton = event.target instanceof Element && event.target.closest('[data-copy-feedback-email]');
+    if (copyButton) copyFeedbackEmail(copyButton).catch(handleError);
   });
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape' || document.body.classList.contains('confirm-dialog-open')) return;

@@ -43,9 +43,39 @@ export function createReadingWorkspace(api) {
   menu.id = 'workspace-menu';
   menu.className = 'workspace-menu';
   menu.setAttribute('aria-label', '選單');
-  menu.innerHTML = `<div class="workspace-dialog-heading"><h2>選單</h2><button type="button" data-workspace-close>關閉</button></div><nav aria-label="全部操作">${[
-    ['dashboard','首頁'],['notes','接續書寫'],['note-reader','找札記'],['prayer','禱告紀錄'],['content-library','選取札記'],['books','選稿編排'],['library','電子書櫃'],['manual','操作手冊']
-  ].map(([view,label])=>`<button type="button" data-workspace-view="${view}">${label}</button>`).join('')}</nav><div class="workspace-menu-account"><button type="button" data-workspace-account>帳號設定</button><button type="button" data-workspace-sync-pending>同步</button><button type="button" data-workspace-signout>登出</button></div><p data-workspace-sync></p><div data-workspace-pending></div><p class="workspace-offline-help">離線可編輯已載入的札記。禱告、編書及書櫃的雲端功能需連線。</p>`;
+  const menuGroups = [
+    { title: '札記', items: [['dashboard', '首頁'], ['notes', '接續書寫'], ['note-reader', '找札記'], ['prayer', '禱告紀錄']] },
+    { title: '書稿與書櫃', items: [['content-library', '選取札記'], ['books', '選稿編排'], ['library', '電子書櫃']] },
+  ];
+  menu.innerHTML = `<div class="workspace-dialog-heading"><h2>選單</h2><button type="button" data-workspace-close>關閉</button></div>
+    <nav class="workspace-menu-groups" aria-label="全部操作">
+      ${menuGroups.map(({ title, items }) => `<section class="workspace-menu-group">
+        <h3>${title}</h3>
+        ${items.map(([view, label]) => `<button type="button" data-workspace-view="${view}">${label}</button>`).join('')}
+      </section>`).join('')}
+    </nav>
+    <div class="workspace-menu-account">
+      <div class="workspace-menu-utilities">
+        <button type="button" data-workspace-account>帳號設定</button>
+        <button type="button" data-workspace-view="manual">操作手冊</button>
+      </div>
+      <div class="workspace-menu-utilities">
+        <button type="button" data-workspace-sync-pending>同步</button>
+        <button type="button" data-workspace-signout>登出</button>
+      </div>
+    </div>
+    <p class="workspace-menu-status" data-workspace-sync role="status"></p>
+    <div data-workspace-pending></div>
+    <p class="workspace-offline-help">離線可編輯已載入的札記。禱告、編書及書櫃的雲端功能需連線。</p>`;
+  const footerContent = root.querySelector('.site-footer-content');
+  if (footerContent) {
+    const siteInfo = document.createElement('details');
+    siteInfo.className = 'workspace-menu-site-info';
+    siteInfo.innerHTML = '<summary>聯絡與版權<span aria-hidden="true">＋</span></summary>';
+    siteInfo.append(footerContent.cloneNode(true));
+    siteInfo.insertAdjacentHTML('beforeend', '<p class="workspace-menu-status" data-feedback-copy-status role="status"></p>');
+    menu.append(siteInfo);
+  }
   document.body.append(menu);
   const shelf = document.createElement('dialog');
   shelf.className = 'workspace-reading-shelf';
@@ -58,10 +88,22 @@ export function createReadingWorkspace(api) {
   const today = document.querySelector('.home-today-reading-card');
   if (today) shelf.append(today);
   document.body.append(shelf);
-  masthead.querySelector('[data-workspace-menu]').addEventListener('click', () => {menu.showModal(); masthead.querySelector('[data-workspace-menu]').setAttribute('aria-expanded','true');});
-  const closeMenu = () => {menu.close(); masthead.querySelector('[data-workspace-menu]').setAttribute('aria-expanded','false');};
-  menu.querySelector('[data-workspace-close]').addEventListener('click',closeMenu);
-  menu.addEventListener('close',()=>masthead.querySelector('[data-workspace-menu]').setAttribute('aria-expanded','false'));
+  const menuTrigger = masthead.querySelector('[data-workspace-menu]');
+  menuTrigger.addEventListener('click', () => {
+    menu.showModal();
+    menuTrigger.setAttribute('aria-expanded', 'true');
+  });
+  const closeMenu = () => {
+    menu.close();
+    menuTrigger.setAttribute('aria-expanded', 'false');
+    menuTrigger.focus({ preventScroll: true });
+  };
+  menu.querySelector('[data-workspace-close]').addEventListener('click', closeMenu);
+  menu.addEventListener('close', () => menuTrigger.setAttribute('aria-expanded', 'false'));
+  menu.addEventListener('cancel', event => {
+    event.preventDefault();
+    closeMenu();
+  });
   menu.querySelector('[data-workspace-account]').addEventListener('click',()=>{closeMenu();api.openAccountSettings();});
   menu.querySelector('[data-workspace-sync-pending]').addEventListener('click',()=>api.syncPending());
   menu.querySelector('[data-workspace-pending]').addEventListener('click',event=>{const button=event.target.closest('[data-pending-copy]');if(button)api.copyPending(button.dataset.pendingCopy).catch(api.onError);});
@@ -71,7 +113,8 @@ export function createReadingWorkspace(api) {
   masthead.querySelector('[data-workspace-reading]').addEventListener('click', openShelf);
   shelf.querySelector('[data-shelf-close]').addEventListener('click',()=>shelf.close());
   shelf.addEventListener('click',event=>{if(event.target.closest('[data-today-reading-index], #today-reading-note-btn'))shelf.close();});
-  [menu,shelf].forEach(dialog => dialog.addEventListener('click',event=>{if(event.target===dialog)dialog.close();}));
+  menu.addEventListener('click', event => { if (event.target === menu) closeMenu(); });
+  shelf.addEventListener('click', event => { if (event.target === shelf) shelf.close(); });
 
   // Keep the established editor and its event-bound controls as the document.
   const form = els.noteForm;
