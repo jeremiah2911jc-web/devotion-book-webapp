@@ -9454,7 +9454,7 @@ function openNoteReaderReadingModal(note, trigger = null) {
   els.noteReaderReadingModal?.classList.remove('hidden');
   els.noteReaderReadingModal?.setAttribute('aria-hidden', 'false');
   syncNoteReaderModalLock();
-  requestAnimationFrame(() => els.noteReaderReadingClose?.focus({ preventScroll: true }));
+  els.noteReaderReadingClose?.focus({ preventScroll: true });
 }
 
 function closeNoteReaderReadingModal({ restoreSearch = false } = {}) {
