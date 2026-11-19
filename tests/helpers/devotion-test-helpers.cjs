@@ -366,7 +366,8 @@ async function openReader(page, triggerSelector = '[data-testid="library-open-re
 
 async function closeReader(page) {
   const closeButton = await waitForVisibleSelector(page, '[data-testid="reader-close"]');
-  await closeButton.evaluate((button) => button.scrollIntoView({ block: 'center', inline: 'center' }));
+  const unobstructed=await closeButton.evaluate(button=>{const rect=button.getBoundingClientRect();const hit=document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2);return hit===button||button.contains(hit)});
+  if(!unobstructed)throw new Error('Reader close control is covered by another element');
   await closeButton.click({ force: false, timeout: 10000 });
   await page.locator('[data-testid="reader-view"].active, #view-reader.active').waitFor({ state: 'hidden', timeout: 10000 }).catch(async () => {
     await waitForVisibleSelector(page, '[data-testid="library-view"].active, #view-library.active');

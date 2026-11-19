@@ -78,7 +78,7 @@
 本輪前台固定或確認的重點 testid：
 
 - Auth：`auth-modal`、`auth-login-submit`、`auth-register-submit`、`auth-forgot-password`、`auth-google-login`、`auth-google-register`、`auth-resend-verification`。
-- Mobile nav：`mobile-bottom-nav`、`mobile-nav-overview`、`mobile-nav-prayer`、`mobile-nav-write-note`、`mobile-nav-note-reader`、`mobile-nav-note-library`、`mobile-nav-book-planner`。
+- 舊版 Mobile nav（本輪保留相容 DOM，隱藏於新介面）：`mobile-bottom-nav`、`mobile-nav-overview`、`mobile-nav-prayer`、`mobile-nav-write-note`、`mobile-nav-note-reader`、`mobile-nav-note-library`、`mobile-nav-book-planner`。
 - Note editor：`note-editor-section`、`note-editor-toolbar`、`note-editor-content`、`note-save-draft`、`note-save-published`。
 - Note toolbar：`note-format-heading`、`note-format-bold`、`note-format-quote`、`note-format-scripture`、`note-format-list`、`note-format-divider`、`note-format-red`、`note-format-blue`、`note-format-gold`、`note-format-purple`。
 - Drafts：`draft-card`、`draft-continue-edit`。
@@ -172,3 +172,9 @@ Production 驗收必須確認：
 - 不把 mock 結果說成真實 Supabase 結果。
 - 不因 selector 卡住就重構產品。
 - 不 push，除非本輪修正完成且驗收通過，且使用者要進入發布流程。
+
+## 2026-11-13 候選版
+
+常用操作以 `data-workspace-view`、`data-workspace-new`、`data-workspace-reading` 及 `data-workspace-menu` 定位；完整功能按選單實際開啟。不得點擊已隱藏的舊導覽。展開的內容使用 `.writing-details summary` 語意及其容器定位。
+
+新增 `test:workspace` 驗證來源網址、離線身分範圍、重試、同步版本衝突及 API 拒絕；`test:workspace-flow` 驗證真實本機保存、重新開啟、來源、反向連結、EPUB、離線重開與登出。後者預設自行啟動 dist 隔離服務，完成後關閉；未覆蓋正式雲端登入與寫入。

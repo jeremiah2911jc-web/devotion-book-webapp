@@ -1,0 +1,3 @@
+# Reviewed public Supabase publishable identifier in one historical commit.
+# This fingerprint grants no server role and does not ignore any path or rule.
+7c1ed52656ea33d1bfd6097e98b3bfe42eabdf08:app.js:generic-api-key:21

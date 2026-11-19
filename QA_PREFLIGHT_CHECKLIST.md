@@ -4,8 +4,8 @@
 
 ## 基本環境
 
-- [ ] Repo path 是 `/Users/jeremiah/src/devotion-book-webapp`。
-- [ ] `pwd` 輸出正確 repo path。
+- [ ] Repo path 指向本輪已查核遠端與基底的隔離工作分支；記錄實際路徑。
+- [ ] `pwd` 與本輪候選路徑一致。
 - [ ] `git status --short --branch` 乾淨，或已明確列出本輪會處理的既有差異。
 - [ ] 已確認目前版本號：`package.json`、`version.json`、`app.js` 的 `APP_VERSION`、`index.html` cache query。
 - [ ] 已執行 `npm run verify`，且語法檢查、M'Cheyne 讀經計畫驗證與 smoke test 通過。
@@ -47,3 +47,11 @@
 - [ ] 本地驗收是否通過。
 - [ ] production 是否已驗；若未部署，需明確寫未驗 production。
 - [ ] 是否 commit、push、部署 production。
+
+## 操作盤查補充
+
+- [ ] 主要控制項中心點可接收點擊，沒有被頁首或其他元件遮住。
+- [ ] 視窗開啟時第一次點擊可用，動畫不會移動已按下的按鈕。
+- [ ] 前台所有頁面均有可辨識頁名，模態開啟時背景停止捲動。
+- [ ] 本機保存、離線待同步、雲端同步各自驗證，不以本機重新載入顯示同步成功。
+- [ ] 功能、文案、視覺及動態的驗收結論分開記錄。

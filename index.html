@@ -2,17 +2,18 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0F5C5C" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="DEVOTION" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>DEVOTION｜與神更親近的每一天</title>
-  <link rel="stylesheet" href="./styles.css?v=1.1.14" />
+  <title>DEVOTION｜靈修札記</title>
+  <link rel="stylesheet" href="./styles.css?v=1.2.0" />
+  <link rel="stylesheet" href="./assets/css/reading-workspace.css?v=1.2.0" />
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./assets/vendor/supabase.js"></script>
 </head>
 <body class="auth-locked">
   <div id="auth-gate" class="auth-gate" aria-hidden="false">
@@ -25,28 +26,33 @@
               <p class="auth-brand-name">DEVOTION</p>
               <p class="auth-brand-tagline">與神更親近的每一天</p>
             </div>
-            <h2 class="auth-gate-title">讓你的靈修<br />不再只是零散筆記</h2>
+            <h2 class="auth-gate-title">靈修札記</h2>
             <div class="auth-gate-divider" aria-hidden="true">
               <span></span>
               <i class="asset-icon auth-divider-icon"></i>
               <span></span>
             </div>
             <div class="auth-gate-copy">
-              <p>每天的領受與記錄，<br />慢慢整理成一本屬於你的書。</p>
-              <p>留下你與神同行的軌跡，<br />也成為日後回顧的恩典記號。</p>
+              <p>記錄經文、個人思想與禱告。</p>
+              <p>依札記選稿、編排章節，匯出 EPUB。</p>
             </div>
             <p class="auth-sync-hint">建立免費帳戶後，可在手機與桌機間同步資料。</p>
           </div>
         </div>
 
+        <aside class="auth-reading-specimen" aria-label="經文閱讀示例">
+          <p class="specimen-label">經文閱讀</p>
+          <blockquote>你的話是我腳前的燈，<br />是我路上的光。</blockquote>
+          <cite>詩篇 119:105</cite>
+        </aside>
         <div class="auth-gate-actions">
-          <button id="open-register-btn" class="auth-cta auth-cta-primary" type="button" data-testid="auth-open-register">開始寫我的第一篇靈修</button>
-          <button id="open-login-btn" class="auth-cta auth-cta-secondary" type="button" data-testid="auth-open-login">我已經有帳戶了</button>
+          <button id="open-register-btn" class="auth-cta auth-cta-primary" type="button" data-testid="auth-open-register">建立帳戶</button>
+          <button id="open-login-btn" class="auth-cta auth-cta-secondary" type="button" data-testid="auth-open-login">登入</button>
         </div>
 
         <div id="auth-inline-panel" class="modal auth-input-modal hidden" aria-hidden="true" aria-live="polite" data-testid="auth-inline-panel">
           <div id="auth-inline-backdrop" class="modal-backdrop" data-testid="auth-inline-backdrop"></div>
-          <div class="modal-card auth-input-modal-card" data-testid="auth-modal">
+          <div class="modal-card auth-input-modal-card" role="dialog" aria-modal="true" aria-labelledby="auth-inline-title" data-testid="auth-modal">
             <div class="panel-header auth-modal-header">
               <h3 id="auth-inline-title" data-testid="auth-inline-title">建立帳戶</h3>
               <button id="close-auth-inline-btn" class="ghost-btn small" type="button" data-testid="auth-inline-close">關閉</button>
@@ -327,8 +333,7 @@
               <section class="panel home-today-reading-card" data-testid="today-reading-card">
                 <div class="panel-header today-reading-header">
                   <div class="today-reading-title-stack">
-                    <h2>今日讀經</h2>
-                    <p class="today-reading-subtitle">麥琴讀經進度</p>
+                    <h2>麥琴讀經進度</h2>
                   </div>
                   <div class="today-reading-progress-row">
                     <span id="today-reading-label" class="today-reading-label">載入中</span>
@@ -490,15 +495,14 @@
           <section class="panel note-reader-search-panel" aria-labelledby="note-reader-search-title" data-testid="note-reader-search-card">
             <div class="panel-header note-reader-header">
               <div>
-                <h2 id="note-reader-search-title">搜尋札記</h2>
-                <p class="caption">依標題、經文、分類或標籤找到想閱讀的札記。</p>
+                <h1 id="note-reader-search-title">找札記</h1>
               </div>
             </div>
             <div class="note-reader-tools" aria-label="札記閱讀搜尋與篩選">
               <div class="note-reader-search-row">
                 <label class="note-reader-search-field">
                   <span class="caption">關鍵字</span>
-                  <input id="note-reader-search" class="search" type="search" placeholder="搜尋標題、經文、分類、標籤、摘要、內容" autocomplete="off" data-testid="note-reader-search" />
+                  <input id="note-reader-search" class="search" type="search" placeholder="輸入關鍵字" autocomplete="off" data-testid="note-reader-search" />
                 </label>
                 <label class="compact-control note-reader-filter-control">
                   <span class="caption">搜尋範圍</span>
@@ -545,7 +549,6 @@
             <div class="panel-header note-reader-recent-header">
               <div>
                 <h2 id="note-reader-recent-title">最近編輯</h2>
-                <p class="caption">最近整理過的札記，可以直接點選閱讀。</p>
               </div>
             </div>
             <div id="note-reader-list" class="note-reader-recent-list" data-testid="note-reader-list"></div>
@@ -628,7 +631,7 @@
                   <p id="markdown-syntax-hint" class="caption markdown-syntax-hint hidden" aria-live="polite"></p>
                   <label class="note-content-field">
                     <span class="visually-hidden">內容</span>
-                    <textarea id="note-content" rows="20" placeholder="在這裡寫下今天的札記..." data-testid="note-editor-content"></textarea>
+                    <textarea id="note-content" rows="6" placeholder="輸入札記內容" data-testid="note-editor-content"></textarea>
                   </label>
                 </section>
               </section>
@@ -638,10 +641,10 @@
                   <h3 id="note-actions-title">工具</h3>
                 </div>
                 <div class="note-save-actions">
-                  <button id="new-note-btn" class="ghost-btn" type="button">清空重填</button>
+                  <button id="new-note-btn" class="ghost-btn" type="button">清空內容</button>
                   <button type="button" id="save-note-draft-btn" class="ghost-btn" data-testid="note-save-draft">儲存草稿</button>
-                  <button type="button" id="publish-note-btn" class="primary-btn" data-testid="note-save-published">儲存為正式札記</button>
-                  <button type="button" id="note-preview-btn" class="ghost-btn" data-testid="note-preview-open">預覽文章</button>
+                  <button type="button" id="publish-note-btn" class="primary-btn" data-testid="note-save-published">儲存札記</button>
+                  <button type="button" id="note-preview-btn" class="ghost-btn" data-testid="note-preview-open">預覽札記</button>
                   <button type="button" id="delete-note-btn" class="danger-btn hidden">刪除札記</button>
                 </div>
               </section>
@@ -710,7 +713,7 @@
           <section class="panel">
             <div class="panel-header">
               <h2>書籍編排</h2>
-              <button id="new-book-btn" class="ghost-btn" type="button">清空重填</button>
+              <button id="new-book-btn" class="ghost-btn" type="button">清空內容</button>
             </div>
             <form id="book-form" class="form-stack" data-testid="book-form">
               <input type="hidden" id="book-id" />
@@ -881,7 +884,6 @@
       </section>
 
       <footer class="site-footer">
-        <button id="support-btn" class="support-btn" type="button">支持平台／支持事工</button>
         <p class="footer-copyright">© 2026 <a href="https://sanzepm.com.tw" target="_blank" rel="noopener noreferrer">三策專案管理顧問有限公司</a>. All rights reserved.</p>
       </footer>
 
@@ -904,7 +906,7 @@
         </button>
         <button class="nav-link mobile-bottom-link" data-view="content-library" type="button" data-testid="mobile-nav-note-library">
           <span class="nav-icon asset-icon asset-sprite-system icon-note" aria-hidden="true"></span>
-          <span>札記庫</span>
+          <span>選取札記</span>
         </button>
         <button class="nav-link mobile-bottom-link" data-view="books" type="button" data-testid="mobile-nav-book-planner">
           <span class="nav-icon asset-icon asset-sprite-system icon-book" aria-hidden="true"></span>
@@ -1000,7 +1002,7 @@
         </div>
         <div class="account-settings-section account-version-section">
           <span class="account-settings-label">版本資訊</span>
-          <p class="caption account-settings-version-text" data-app-version-label data-testid="version-display">版本：v1.1.14｜更新：2026/07/21</p>
+          <p class="caption account-settings-version-text" data-app-version-label data-testid="version-display">版本：v1.2.0｜更新：2026/11/19</p>
         </div>
         <div class="account-settings-section account-settings-signout-section">
           <span class="account-settings-label">登出</span>
@@ -1055,72 +1057,8 @@
     </div>
   </div>
 
-  <div id="support-modal" class="modal hidden" aria-hidden="true">
-    <div id="support-modal-backdrop" class="modal-backdrop"></div>
-    <div class="modal-card support-modal-card" role="dialog" aria-modal="true" aria-labelledby="support-modal-title">
-      <div class="panel-header">
-        <h2 id="support-modal-title">支持平台／支持事工</h2>
-        <button id="close-support-modal" class="ghost-btn small" type="button">關閉</button>
-      </div>
-      <section id="support-payment-section" class="support-modal-section">
-        <p class="modal-intro">您所提供之支持款項，將用於內容製作、系統維護、雲端服務與出版功能優化。</p>
-        <div class="support-info" aria-label="轉帳資訊">
-          <div class="support-info-row">
-            <span>轉帳銀行</span>
-            <strong>台北富邦銀行</strong>
-          </div>
-          <button class="support-info-row support-copy-row" type="button" data-copy-support-payment="012" data-copy-label="銀行代碼">
-            <span>銀行代碼</span>
-            <strong>012</strong>
-          </button>
-          <button class="support-info-row support-copy-row" type="button" data-copy-support-payment="82110000769095" data-copy-label="轉帳帳號">
-            <span>轉帳帳號</span>
-            <strong>82110000769095</strong>
-          </button>
-        </div>
-        <p class="support-receipt-note">完成轉帳後，可申請支持款項收款證明。</p>
-        <div class="support-modal-actions">
-          <button id="open-support-receipt-form-btn" class="secondary-btn" type="button">申請收款證明</button>
-          <button class="ghost-btn" type="button" data-copy-support-payment="82110000769095" data-copy-label="轉帳帳號">複製帳號</button>
-        </div>
-      </section>
-      <section id="support-receipt-section" class="support-modal-section hidden">
-        <h3>申請支持款項收款證明</h3>
-        <p class="modal-intro">請填寫轉帳資訊，平台確認後會依 Email 聯繫。</p>
-        <form id="support-receipt-form" class="support-receipt-form" novalidate>
-          <div class="support-receipt-grid">
-            <label>姓名或收據抬頭
-              <input id="support-receipt-name" name="name" autocomplete="name" placeholder="例：王小明／某某小組／某某教會" />
-            </label>
-            <label>Email
-              <input id="support-receipt-email" name="email" type="email" autocomplete="email" placeholder="例：name@example.com" />
-            </label>
-            <label>支持金額
-              <input id="support-receipt-amount" name="amount" type="number" inputmode="decimal" min="1" step="1" placeholder="例：500" />
-            </label>
-            <label>轉帳日期
-              <input id="support-receipt-transfer-date" name="transfer_date" type="date" />
-            </label>
-            <label>匯款帳號後五碼
-              <input id="support-receipt-bank-last5" name="bank_last5" inputmode="numeric" maxlength="5" placeholder="例：12345" />
-            </label>
-            <label class="support-receipt-span-2">備註
-              <textarea id="support-receipt-note" name="note" maxlength="1000" placeholder="若有需要補充的資訊，可填寫在這裡"></textarea>
-            </label>
-          </div>
-          <p class="support-receipt-tax-note">本證明為支持款項收款紀錄，不作為稅務扣抵憑證。</p>
-          <p id="support-receipt-message" class="support-receipt-message hidden" role="status"></p>
-          <div class="support-modal-actions">
-            <button id="back-support-payment-btn" class="ghost-btn" type="button">返回轉帳資訊</button>
-            <button class="secondary-btn" type="submit">送出申請</button>
-          </div>
-        </form>
-      </section>
-    </div>
-  </div>
-
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./app.js?v=1.1.14"></script>
+  <script type="module" src="./app.js?v=1.2.0"></script>
 </body>
 </html>

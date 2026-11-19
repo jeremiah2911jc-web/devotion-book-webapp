@@ -1,0 +1,4 @@
+[
+  {"file":"admin-usage.js","path":"/api/admin-usage","methods":["GET"],"authorization":"server-verified administrator","effects":"read-only usage summary"},
+  {"file":"system-backup.js","path":"/api/system-backup","methods":["GET"],"authorization":"server-verified administrator","effects":"read-only backup download"}
+]

@@ -1,0 +1,6 @@
+{
+  "package": "@supabase/supabase-js",
+  "version": "2.119.0",
+  "source": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.0",
+  "sha256": "71e670ca67ad5df7fe3d919f119f30267b44df80df27ac3ac63254a0ba2319df"
+}

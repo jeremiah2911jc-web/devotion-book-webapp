@@ -451,7 +451,7 @@ input:focus, textarea:focus, select:focus {
   border: 0;
 }
 .search { max-width: 220px; }
-.primary-btn, .secondary-btn, .ghost-btn, .danger-btn, .support-btn {
+.primary-btn, .secondary-btn, .ghost-btn, .danger-btn {
   border: none; border-radius: 14px; padding: 10px 16px; font-weight: 700; transition: .2s ease;
 }
 .primary-btn { background: linear-gradient(135deg, var(--primary), #7cc6c2); color: #fff; }
@@ -470,12 +470,6 @@ input:focus, textarea:focus, select:focus {
   box-shadow: none;
 }
 .danger-btn { background: linear-gradient(135deg, #d9787f, var(--danger)); color: #fff; }
-.support-btn {
-  background: linear-gradient(135deg, var(--accent), #f7b8c6);
-  color: #fff;
-  box-shadow: 0 10px 24px rgba(246, 166, 178, 0.28);
-}
-.support-btn:hover { transform: translateY(-1px); background: linear-gradient(135deg, #ec90a0, #f6a6b2); }
 .small { padding: 6px 10px; font-size: 13px; }
 .subtle-action { color: var(--muted); font-weight: 600; }
 .form-stack { display: grid; gap: 12px; }
@@ -1309,7 +1303,7 @@ input:focus, textarea:focus, select:focus {
   white-space: nowrap;
 }
 .book-draft-flow-step + .book-draft-flow-step::before {
-  content: "›";
+  content: "";
   margin: 0 5px 0 0;
   color: #b0bfc0;
   font-weight: 900;
@@ -2122,8 +2116,7 @@ input:focus, textarea:focus, select:focus {
   text-align: center;
   color: var(--muted);
 }
-.site-footer .support-btn { margin-bottom: 10px; }
-.footer-support-text {
+.footer-feedback-text {
   margin: 0 0 12px;
   font-size: 13px;
   line-height: 1.7;
@@ -2397,101 +2390,6 @@ body.account-settings-open {
   overflow: hidden;
   overscroll-behavior: contain;
 }
-.support-info {
-  display: grid; gap: 10px; padding: 16px; border-radius: 18px; background: linear-gradient(180deg, #fff7fa, #f5fcfb);
-  border: 1px solid rgba(191,211,208,0.75);
-}
-.support-info p { margin: 0; }
-.support-modal-card {
-  width: min(92vw, 640px);
-  max-height: calc(100dvh - 40px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-.support-modal-section {
-  display: grid;
-  gap: 14px;
-}
-.support-info-row {
-  display: grid;
-  grid-template-columns: minmax(96px, auto) minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  color: var(--text);
-  text-align: left;
-}
-.support-info-row span {
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 700;
-}
-.support-info-row strong {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.support-copy-row {
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-  border-radius: 12px;
-}
-.support-copy-row:hover {
-  color: var(--primary-dark);
-}
-.support-receipt-note,
-.support-receipt-tax-note,
-.support-receipt-message {
-  margin: 0;
-  color: var(--muted);
-  line-height: 1.7;
-}
-.support-receipt-tax-note {
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: rgba(246, 166, 178, 0.12);
-}
-.support-receipt-message {
-  padding: 10px 12px;
-  border-radius: 14px;
-}
-.support-receipt-message.is-error {
-  color: #a9444f;
-  background: rgba(217, 120, 127, 0.12);
-}
-.support-receipt-message.is-success {
-  color: var(--primary-dark);
-  background: rgba(75, 150, 139, 0.12);
-}
-.support-modal-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 10px;
-}
-.support-receipt-form {
-  display: grid;
-  gap: 14px;
-}
-.support-receipt-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px 16px;
-}
-.support-receipt-grid input,
-.support-receipt-grid textarea {
-  min-width: 0;
-}
-.support-receipt-grid textarea {
-  min-height: 108px;
-  resize: vertical;
-}
-.support-receipt-span-2 {
-  grid-column: 1 / -1;
-}
 @media (max-width: 1180px) {
   .app-shell { grid-template-columns: 1fr; }
   .sidebar { position: static; height: auto; border-right: none; border-bottom: 1px solid rgba(191,211,208,0.55); }
@@ -2624,34 +2522,6 @@ body.account-settings-open {
   .prayer-filter-tabs .small { flex: 0 0 auto; }
   .prayer-card-header { display: grid; }
   .prayer-card-actions > * { flex: 1 1 140px; }
-
-  .support-modal-card {
-    width: min(100vw - 28px, 640px);
-    max-height: calc(100dvh - 28px);
-    padding: 18px 16px max(18px, calc(16px + env(safe-area-inset-bottom)));
-  }
-
-  .support-info-row {
-    grid-template-columns: 1fr;
-    gap: 3px;
-  }
-
-  .support-receipt-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .support-receipt-span-2 {
-    grid-column: auto;
-  }
-
-  .support-modal-actions {
-    justify-content: stretch;
-  }
-
-  .support-modal-actions .secondary-btn,
-  .support-modal-actions .ghost-btn {
-    width: 100%;
-  }
 
   .main { padding: 18px; }
   .topbar { flex-direction: column; align-items: flex-start; }
@@ -4949,21 +4819,7 @@ body:not(.auth-locked) .note-writing-form-panel {
   padding: 6px 0 112px;
 }
 
-.site-footer .support-btn {
-  margin-bottom: 8px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(240, 197, 190, 0.34);
-  color: #866862;
-  box-shadow: none;
-  font-size: 11px;
-  font-weight: 500;
-}
 
-.site-footer .support-btn:hover {
-  transform: none;
-  background: rgba(240, 197, 190, 0.72);
-}
 
 .footer-copyright {
   margin-top: 10px;
@@ -4981,7 +4837,7 @@ body.auth-locked .bottom-nav {
 }
 
 @media (max-width: 720px) {
-  .footer-support-text {
+  .footer-feedback-text {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -6430,12 +6286,6 @@ body:not(.auth-locked) .main {
   min-width: 0;
 }
 
-.today-reading-subtitle {
-  margin: 4px 0 0;
-  color: #667b78;
-  font-size: 13px;
-  line-height: 1.45;
-}
 
 .today-reading-date {
   margin-left: auto;
@@ -7765,12 +7615,6 @@ body:not(.auth-locked)[data-current-view="dashboard"] .topbar {
     gap: 12px;
   }
 
-  .today-reading-subtitle {
-    margin: 4px 0 0;
-    color: #667b78;
-    font-size: 13px;
-    line-height: 1.45;
-  }
 
   .today-reading-date {
     margin-left: auto;
@@ -9170,7 +9014,7 @@ body:not(.auth-locked) .manual-feedback-email {
   display: block;
 }
 
-body:not(.auth-locked) .footer-support-text {
+body:not(.auth-locked) .footer-feedback-text {
   display: flex;
   align-items: center;
   justify-content: center;
