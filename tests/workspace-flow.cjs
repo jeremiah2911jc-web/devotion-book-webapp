@@ -4,9 +4,9 @@ const fs=require('node:fs');
 const path=require('node:path');
 const {seedLocalUserState,createNote,STORAGE_KEYS,exportEpubAndCaptureDownload}=require('./helpers/devotion-test-helpers.cjs');
 const {spawn}=require('node:child_process');
-const url=process.env.WORKSPACE_TEST_URL||'http://127.0.0.1:4195/index.html';
+const url=process.env.WORKSPACE_TEST_URL||'http://127.0.0.1:4195/';
 let ownedServer;
-async function ensureServer(){if(process.env.WORKSPACE_TEST_URL)return;ownedServer=spawn(process.execPath,['static-server.cjs'],{env:{...process.env,PORT:'4195',DEVOTION_ISOLATED_PREVIEW:'1',DEVOTION_SERVE_DIST:'1'},stdio:['ignore','pipe','pipe']});await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Preview server unavailable')),10000);ownedServer.once('exit',code=>{clearTimeout(timer);reject(new Error(`Preview server exited ${code}`));});ownedServer.stdout.on('data',chunk=>{if(String(chunk).includes('static server running')){clearTimeout(timer);resolve();}});});}
+async function ensureServer(){if(process.env.WORKSPACE_TEST_URL)return;ownedServer=spawn(process.execPath,['static-server.cjs'],{env:{...process.env,PORT:'4195',DEVOTION_ISOLATED_PREVIEW:'1',DEVOTION_SERVE_DIST:'1',DEVOTION_TEST_CLEAN_URLS:'1'},stdio:['ignore','pipe','pipe']});await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Preview server unavailable')),10000);ownedServer.once('exit',code=>{clearTimeout(timer);reject(new Error(`Preview server exited ${code}`));});ownedServer.stdout.on('data',chunk=>{if(String(chunk).includes('static server running')){clearTimeout(timer);resolve();}});});}
 const user={id:'workspace-reader-a',email:'preview@example.invalid'};
 const notes=['first','second'].map((id,i)=>createNote({id,userId:user.id,title:i?'另一篇閱讀紀錄':'來源與閱讀紀錄',content:'這是供操作驗收使用的合成文字。',status:'published'}));
 const book={id:'workspace-book',user_id:user.id,title:'閱讀紀錄選集',author_name:'預覽作者',description:'合成書稿。',template_code:'devotion',language:'zh-TW',toc_enabled:true,chapters:[{id:'chapter-first',note_id:'first',chapter_title:'來源與閱讀紀錄',chapter_order:0,include_in_toc:true}],created_at:new Date().toISOString(),updated_at:new Date().toISOString()};
@@ -16,7 +16,16 @@ async function read(page,title){await view(page,'note-reader');await page.locato
 context.on('request',request=>requests.push(request.url()));
 try{
  await ensureServer();
- await page.goto(url);await page.locator('#auth-gate').waitFor();await seedLocalUserState(page,{user,notes,books:[book],snapshots:[]});await page.reload();
+ if (!process.env.WORKSPACE_TEST_URL) {
+   const redirect = await fetch(new URL('/index.html', url), {redirect:'manual'});
+   assert.equal(redirect.status, 308);
+   assert.equal(redirect.headers.get('location'), '/');
+ }
+ await page.goto(url);await page.locator('#auth-gate').waitFor();
+ await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, {timeout:15000});
+ assert.equal(await page.evaluate(async () => (await caches.match('/'))?.redirected), false);
+ await seedLocalUserState(page,{user,notes,books:[book],snapshots:[]});await page.reload();
+ results.push('首頁在正式轉址條件下，受離線功能接管後仍可重新開啟。');
  await page.locator('.devotion-masthead').waitFor();await page.locator('[data-workspace-menu]').click();await page.keyboard.press('Escape');await page.locator('#workspace-menu').waitFor({state:'hidden'});await page.waitForFunction(()=>document.querySelector('[data-workspace-menu]')?.getAttribute('aria-expanded')==='false');assert.equal(await page.locator('[data-workspace-menu]').getAttribute('aria-expanded'),'false');assert.equal(await page.locator('[data-workspace-menu]').evaluate(el=>document.activeElement===el),true);results.push('選單可用 Escape 關閉，焦點回到入口。');
  await read(page,'來源與閱讀紀錄');await page.locator('[data-testid="note-reader-reading-edit"]').click();await page.locator('.writing-connections summary').click();
  await page.locator('#workspace-related-select').selectOption('second');await page.locator('#workspace-source-title').fill('參考文章');await page.locator('#workspace-source-url').fill('javascript:alert(1)');await page.locator('#workspace-add-source').click();assert.match(await page.locator('#workspace-source-message').innerText(),/完整/);
