@@ -789,36 +789,45 @@
 
           <section class="panel">
             <div class="panel-header">
-              <h2>章節編排與匯出</h2>
+              <div class="book-arrangement-heading">
+                <h2>章節編排</h2>
+                <p id="book-arrangement-count" class="caption"></p>
+              </div>
             </div>
             <div id="selected-book-empty" class="empty-state">請先選取一本書。</div>
             <div id="selected-book-panel" class="hidden" data-testid="selected-book-panel">
-              <div id="book-cover-preview" class="cover-preview"></div>
-              <div class="chapter-picker mt-md">
+              <div class="chapter-picker mt-md hidden">
                 <label for="chapter-source-note">選擇一篇札記作為新章節</label>
                 <select id="chapter-source-note" data-testid="chapter-source-note"></select>
                 <div id="selected-note-preview" class="selected-note-preview" data-testid="selected-note-preview">請先選擇一篇札記</div>
                 <button id="add-chapter-btn" class="secondary-btn" type="button" data-testid="add-chapter">加入這篇札記到書中</button>
               </div>
-              <section class="toc-preview mt-md">
-                <h3>目錄預覽</h3>
-                <div id="toc-preview-list" class="toc-preview-list empty-state">尚未有列入目錄的章節。</div>
-              </section>
-              <div class="chapter-list-heading mt-md">
-                <h3>目前章節順序</h3>
+              <div class="book-arrangement-toolbar">
+                <div class="book-arrangement-actions">
+                  <button id="go-content-library-btn" class="ghost-btn" type="button">加入札記</button>
+                  <button id="book-arrangement-settings-btn" class="ghost-btn" type="button">書籍資料</button>
+                  <button id="open-book-export-settings-btn" class="ghost-btn" type="button" data-testid="book-export-settings-open">匯出 EPUB</button>
+                  <button id="modal-start-current-book-btn" class="ghost-btn hidden" type="button">設為目前書稿</button>
+                </div>
+                <div class="book-arrangement-save">
+                  <p id="book-arrangement-status" role="status"></p>
+                  <button id="save-book-arrangement-btn" class="primary-btn" type="button" disabled>儲存編排</button>
+                </div>
               </div>
-              <div id="chapters-list" class="list-stack mt-md empty-state">尚未加入任何章節。</div>
-              <div class="row gap-sm wrap mt-lg">
+              <div id="book-draft-modal-right-body" class="book-arrangement-scroll">
+                <div id="export-success-actions" class="export-success-actions hidden" data-testid="export-success-actions">
+                  <p id="export-success-message">EPUB 已完成，並已加入書櫃。</p>
+                  <div class="row gap-sm wrap">
+                    <button id="read-exported-book-btn" class="primary-btn" type="button" data-testid="read-exported-book">立即閱讀</button>
+                    <button id="download-exported-book-btn" class="ghost-btn" type="button" data-testid="download-exported-book">下載 EPUB</button>
+                    <button id="go-library-btn" class="secondary-btn" type="button">前往書櫃</button>
+                  </div>
+                </div>
+                <div id="chapters-list" class="book-draft-chapters-list" role="list" aria-label="章節順序"></div>
+              </div>
+              <div class="row gap-sm wrap mt-lg hidden">
                 <button id="create-snapshot-btn" class="secondary-btn" type="button">建立快照</button>
                 <button id="export-epub-btn" class="primary-btn" type="button" data-testid="export-epub">匯出 EPUB</button>
-              </div>
-              <div id="export-success-actions" class="export-success-actions hidden" data-testid="export-success-actions">
-                <p id="export-success-message">EPUB 已完成，並已加入書櫃。</p>
-                <div class="row gap-sm wrap">
-                  <button id="read-exported-book-btn" class="primary-btn" type="button" data-testid="read-exported-book">立即閱讀</button>
-                  <button id="download-exported-book-btn" class="ghost-btn" type="button" data-testid="download-exported-book">下載 EPUB</button>
-                  <button id="go-library-btn" class="secondary-btn" type="button">前往書櫃</button>
-                </div>
               </div>
             </div>
           </section>
