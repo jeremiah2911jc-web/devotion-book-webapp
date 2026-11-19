@@ -4,6 +4,7 @@ const path = require('path');
 
 const root = process.env.DEVOTION_SERVE_DIST === '1' ? path.join(process.cwd(),'dist') : process.cwd();
 const isolated = process.env.DEVOTION_ISOLATED_PREVIEW === '1';
+const testCleanUrls = isolated && process.env.DEVOTION_TEST_CLEAN_URLS === '1';
 function previewHeaders(res){
   res.setHeader('Cache-Control','no-store');
   if(isolated)res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; media-src 'self' blob:; worker-src 'self' blob:; frame-src 'self' blob:; object-src 'none'");
@@ -32,6 +33,11 @@ function send(res, status, body, type = 'text/plain; charset=utf-8') {
 
 const server = http.createServer((req, res) => {
   const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
+  if(testCleanUrls && (urlPath === '/index.html' || urlPath === '/index')){
+    res.writeHead(308,{Location:'/'});
+    res.end();
+    return;
+  }
   if(isolated && urlPath.startsWith('/api/'))return send(res,404,'Not Found');
   const targetPath = path.join(root, urlPath === '/' ? 'index.html' : urlPath.replace(/^\/+/, ''));
   const resolvedPath = path.resolve(targetPath);

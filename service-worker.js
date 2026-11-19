@@ -1,6 +1,11 @@
-const CACHE='devotion-public-1.2.0';
-const CORE=['/index.html','/app.js','/styles.css','/assets/css/reading-workspace.css','/assets/js/reading-workspace.js','/assets/js/offline-notes.js','/assets/js/scripture-reference-utils.js','/assets/vendor/supabase.js','/assets/editorial/coast-study.jpg','/assets/data/mcheyne-reading-plan.json','/manifest.webmanifest','/version.json','/favicon.ico'];
-self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE))));
+const CACHE='devotion-public-1.2.1';
+// The production host redirects /index.html to /. Cache the direct response.
+const HOME='/';
+const CORE=[HOME,'/app.js','/styles.css','/assets/css/reading-workspace.css','/assets/js/reading-workspace.js','/assets/js/offline-notes.js','/assets/js/scripture-reference-utils.js','/assets/vendor/supabase.js','/assets/editorial/coast-study.jpg','/assets/data/mcheyne-reading-plan.json','/manifest.webmanifest','/version.json','/favicon.ico'];
+self.addEventListener('install',event=>{
+  // A page blocked by the old worker cannot ask the replacement to activate.
+  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting()));
+});
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('devotion-public-')&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
 self.addEventListener('message',event=>{if(event.data?.type==='DEVOTION_ACTIVATE')self.skipWaiting();});
 self.addEventListener('fetch',event=>{
@@ -12,8 +17,12 @@ self.addEventListener('fetch',event=>{
     event.respondWith(fetch(request,{cache:'no-store'}).catch(()=>caches.match('/version.json')));return;
   }
   if(request.mode==='navigate'){
-    if(!['/','/index.html'].includes(url.pathname))return;
-    event.respondWith(caches.match('/index.html').then(cached=>cached||fetch(request)));return;
+    if(![HOME,'/index.html'].includes(url.pathname))return;
+    event.respondWith(caches.open(CACHE).then(cache=>cache.match(HOME)).then(cached=>{
+      if(cached && !cached.redirected)return cached;
+      return fetch(request);
+    }));
+    return;
   }
   if(!known)return;
   event.respondWith(caches.open(CACHE).then(async cache=>{
