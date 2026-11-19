@@ -8,8 +8,8 @@
   <meta name="apple-mobile-web-app-title" content="DEVOTION" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>DEVOTION｜靈修札記</title>
-  <link rel="stylesheet" href="./styles.css?v=1.2.9" />
-  <link rel="stylesheet" href="./assets/css/reading-workspace.css?v=1.2.9" />
+  <link rel="stylesheet" href="./styles.css?v=1.2.10" />
+  <link rel="stylesheet" href="./assets/css/reading-workspace.css?v=1.2.10" />
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png" />
@@ -326,13 +326,13 @@
                   <div class="today-reading-title-stack">
                     <h2>麥琴讀經進度</h2>
                   </div>
-                  <div class="today-reading-progress-row">
+                  <div class="today-reading-progress-row" aria-live="polite" aria-atomic="true">
                     <span id="today-reading-label" class="today-reading-label">載入中</span>
                     <span id="today-reading-day" class="today-reading-day">第 - 日</span>
                   </div>
                 </div>
                 <div class="today-reading-copy">
-                  <div id="today-reading-list" class="today-reading-list" aria-label="今日讀經經文">正在載入麥琴讀經進度。</div>
+                  <div id="today-reading-list" class="today-reading-list" aria-label="讀經經文">正在載入麥琴讀經進度。</div>
                 </div>
                 <div class="today-reading-actions" role="group" aria-label="今日讀經操作">
                   <button id="today-reading-prev-btn" class="ghost-btn small" type="button">前一天</button>
@@ -1017,7 +1017,7 @@
         </div>
         <div class="account-settings-section account-version-section">
           <span class="account-settings-label">版本資訊</span>
-          <p class="caption account-settings-version-text" data-app-version-label data-testid="version-display">版本：v1.2.9｜更新：2026/11/19</p>
+          <p class="caption account-settings-version-text" data-app-version-label data-testid="version-display">版本：v1.2.10｜更新：2026/11/19</p>
         </div>
         <div class="account-settings-section account-settings-signout-section">
           <span class="account-settings-label">登出</span>
@@ -1074,6 +1074,6 @@
 
   <div id="toast" class="toast hidden"></div>
 
-  <script type="module" src="./app.js?v=1.2.9"></script>
+  <script type="module" src="./app.js?v=1.2.10"></script>
 </body>
 </html>

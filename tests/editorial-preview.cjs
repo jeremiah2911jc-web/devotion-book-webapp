@@ -145,14 +145,41 @@ async function launchServer(){server=spawn(process.execPath,['static-server.cjs'
    await writing.getByRole('button',{name:'重設篩選',exact:true}).tap();
    assert.equal(await filters.textContent(),'篩選');
    assert.equal(await scope.inputValue(),'all');
-   await writing.getByTestId('note-reader-list').getByText(published.title,{exact:true}).first().tap();
-   await writing.getByTestId('note-reader-reading-edit').tap();
-   await writing.getByTestId('note-reader-reading-modal').waitFor({state:'hidden'});
-   assert.equal(await writing.getByTestId('note-title').inputValue(),published.title);
-   assert(await writing.getByRole('heading',{name:'寫札記'}).evaluate(element=>element===document.activeElement));
+   for (const useSearch of [false, true]) {
+     const list = writing.getByTestId(useSearch ? 'note-reader-search-results' : 'note-reader-list');
+     if (useSearch) {
+       await writing.locator('.devotion-masthead [data-workspace-view="note-reader"]').tap();
+       await writing.getByTestId('note-reader-search').fill(published.title);
+       await writing.getByTestId('note-reader-search-submit').tap();
+     }
+     await list.getByText(published.title,{exact:true}).tap();
+     const heading = writing.locator('#view-notes .workspace-page-heading h1');
+     await heading.evaluate(element => element.addEventListener('focus', () => {
+       element.dataset.readerHiddenAtFocus = document.getElementById('note-reader-reading-modal').getAttribute('aria-hidden');
+     }, { once: true }));
+     await writing.getByTestId('note-reader-reading-edit').tap();
+     await writing.getByTestId('note-reader-reading-modal').waitFor({state:'hidden'});
+     assert.equal(await writing.getByTestId('note-title').inputValue(),published.title);
+     assert.equal(await heading.getAttribute('data-reader-hidden-at-focus'),'true');
+     assert(await heading.evaluate(element=>element===document.activeElement));
+     await heading.evaluate(element=>delete element.dataset.readerHiddenAtFocus);
+   }
+   await writing.getByRole('navigation',{name:'常用操作'}).getByRole('button',{name:'讀經',exact:true}).tap();
+   const readingShelf = writing.getByRole('dialog',{name:'讀經',exact:true});
+   const readingRefs = readingShelf.locator('.today-reading-ref strong');
+   await readingRefs.last().waitFor();
+   const references = await readingRefs.allTextContents();
+   assert.equal(references.length,4);
+   await readingShelf.getByRole('button',{name:'帶入寫札記',exact:true}).tap();
+   await readingShelf.waitFor({state:'hidden'});
+   const scriptureField = writing.locator('#note-scripture');
+   assert(await scriptureField.evaluate(element=>element===document.activeElement));
+   const scriptureValue = await scriptureField.inputValue();
+   assert(references.every(reference=>scriptureValue.includes(reference)));
  } finally { await mobile.close(); }
  results.push('手機全螢幕讀寫保留正文與游標，可查經、插入經文並儲存；縮小可用高度時儲存鍵仍可操作。');
  results.push('手機搜尋可展開、保留及重設篩選，從閱讀轉入編輯時焦點進入寫札記。');
+ results.push('讀經面板可帶入四段經文並將焦點交給札記的經文出處。');
  const longTitle='詩篇一一九篇閱讀筆記：經文出處、前後段落，以及尚待補寫的觀察與閱讀紀錄';await seedLocalUserState(page,{...data,notes:[{...draft,title:longTitle},published]});await page.reload();await page.locator('.devotion-masthead').waitFor();await home(page);await assertNoHorizontalScroll(page,{label:'long title'});const layout=await page.evaluate(()=>({title:document.querySelector('.folio-opening h1').getBoundingClientRect().top,action:document.querySelector('[data-resume-note]').getBoundingClientRect().bottom}));assert(layout.action<=layout.title);results.push('手機顯示完整長題名，右上方的繼續編輯按鈕與標題分開。');
  const reduced=await browser.newContext({viewport:{width:1280,height:900},reducedMotion:'reduce'});await installLocalUserState(reduced,data);const reducedPage=await reduced.newPage();await reducedPage.goto(url);await reducedPage.locator('.folio-opening h1').waitFor();await reducedPage.mouse.wheel(0,125);assert.equal(await reducedPage.locator('.folio-portrait').evaluate(el=>getComputedStyle(el).transform),'none');await reduced.close();results.push('減少動態偏好會停止影像縮放、位移與進場動畫。');
  assert.deepEqual(errors,[]);fs.writeFileSync('artifacts/editorial-preview-results.json',JSON.stringify({passed:true,results},null,2));console.log(results.join('\n'));
