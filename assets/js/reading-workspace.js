@@ -214,7 +214,7 @@ export function createReadingWorkspace(api) {
           <figure class="folio-portrait" aria-hidden="true"><img src="./assets/editorial/coast-study.jpg" width="1280" height="853" alt="" fetchpriority="high" decoding="async"></figure>
           <section class="folio-reading" aria-labelledby="folio-reading-title">
             <div class="folio-reading-header">
-              <h2 id="folio-reading-title">今日讀經</h2>
+              <h2 id="folio-reading-title">麥琴讀經進度</h2>
               <button type="button" class="folio-text-action" data-review-shelf>選擇日期</button>
             </div>
             <p class="folio-reading-date" data-review-reading-date></p>
@@ -260,11 +260,7 @@ export function createReadingWorkspace(api) {
     if (list.innerHTML !== next) list.innerHTML = next;
     const date = review.querySelector('[data-review-reading-date]');
     const selectedDate = document.getElementById('today-reading-label')?.textContent || '';
-    const heading = review.querySelector('#folio-reading-title');
-    const isToday = !refs.length || selectedDate.includes('今天');
-    heading.textContent = isToday ? '今日讀經' : '讀經進度';
-    date.textContent = isToday ? '' : selectedDate;
-
+    date.textContent = refs.length ? selectedDate : '';
   }
 
   function resume() {

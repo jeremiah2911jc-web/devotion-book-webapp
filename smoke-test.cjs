@@ -890,9 +890,18 @@ async function run() {
     await expectNoVisibleLocator(page.locator('#cloud-sync-panel'), 'Dashboard 不應顯示舊的同步長條');
     await expectNoVisibleLocator(page.locator('[data-testid="account-sync"]'), '手機 Dashboard 不應顯示桌機帳號卡同步列');
     await expectNoVisibleLocator(page.locator(`text=${['今日', '默想'].join('')}`), 'Dashboard 不應顯示舊版每日卡片標題');
+    const readingHeading = page.locator('#folio-reading-title');
+    const readingDate = page.locator('[data-review-reading-date]');
+    const assertReadingTitle = async () => {
+      const title = (await readingHeading.textContent()).trim();
+      if (title !== '麥琴讀經進度') throw new Error(`首頁讀經標題錯誤：${title}`);
+    };
+    await assertReadingTitle();
     await clickElement(page, '[data-workspace-reading]');
     await expectVisible(page, '[data-testid="today-reading-card"]', '今日讀經卡已顯示');
     await page.waitForFunction(() => document.querySelectorAll('#today-reading-list [data-today-reading-index]').length === 4, { timeout: 10000 });
+    const initialReadingDate = (await readingDate.textContent()).trim();
+    if (!initialReadingDate.includes('今天')) throw new Error('首頁讀經應標示正在查看今天');
     const todayReadingRefs = (await page.locator('#today-reading-list [data-today-reading-index] strong').allTextContents())
       .map((text) => text.trim())
       .filter(Boolean);
@@ -902,12 +911,16 @@ async function run() {
     const todayReadingOriginalDay = (await page.locator('#today-reading-day').textContent() || '').trim();
     await clickElement(page, '#today-reading-next-btn');
     await page.waitForFunction((original) => document.querySelector('#today-reading-day')?.textContent.trim() !== original, todayReadingOriginalDay, { timeout: 10000 });
+    await assertReadingTitle();
+    if ((await readingDate.textContent()).trim() === initialReadingDate) throw new Error('切換日期後，首頁讀經日期應同步更新');
     await clickElement(page, '#today-reading-prev-btn');
     await page.waitForFunction((original) => document.querySelector('#today-reading-day')?.textContent.trim() === original, todayReadingOriginalDay, { timeout: 10000 });
     await clickElement(page, '#today-reading-prev-btn');
     await page.waitForFunction((original) => document.querySelector('#today-reading-day')?.textContent.trim() !== original, todayReadingOriginalDay, { timeout: 10000 });
     await clickElement(page, '#today-reading-today-btn');
     await page.waitForFunction((original) => document.querySelector('#today-reading-day')?.textContent.trim() === original, todayReadingOriginalDay, { timeout: 10000 });
+    await assertReadingTitle();
+    if ((await readingDate.textContent()).trim() !== initialReadingDate) throw new Error('回到今天後，首頁讀經日期應回復');
     await clickElement(page, '#today-reading-list [data-today-reading-index="0"]');
     await expectVisible(page, '#today-reading-dialog:not(.hidden)', '單段經文閱讀視窗已開啟');
     await expectVisible(page, '#today-reading-dialog-insert', '閱讀視窗顯示帶入這段');

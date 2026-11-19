@@ -24,7 +24,7 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.2.0-preview.6';
+const APP_VERSION = '1.2.0-preview.7';
 const APP_RELEASE_DATE = '2026/11/19';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
@@ -53,7 +53,7 @@ const PROFILE_AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 const PROFILE_AVATAR_SIZE = 512;
 const PROFILE_AVATAR_BUCKET = 'library-books';
 const PROFILE_AVATAR_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
-const SUPPORT_EMAIL = 'devotionbook.tw@gmail.com';
+const FEEDBACK_EMAIL = 'devotionbook.tw@gmail.com';
 const AUTH_CONFIRMATION_EMAIL_SUBJECT = '【Devotion 靈修札記】請完成信箱驗證';
 const AUTH_VERIFICATION_FOLDER_HINT = '如果收件匣找不到，請到垃圾郵件、促銷內容或垃圾信箱找看看。';
 const AUTH_VERIFICATION_HELP = '如果你不熟悉信箱操作，或一直找不到驗證信，可以聯絡管理員協助開通帳號。';
@@ -76,11 +76,6 @@ function syncAppVersionLabels(root = document) {
 }
 const GOOGLE_LOGIN_FAILURE_MESSAGE = 'Google 登入沒有完成，請再試一次，或改用 Email 登入。';
 const GOOGLE_LOGIN_UNAVAILABLE_MESSAGE = 'Google 登入暫時無法使用，請改用 Email 登入。';
-const SUPPORT_PAYMENT_INFO = {
-  bank: '台北富邦銀行',
-  code: '012',
-  account: '82110000769095',
-};
 const CURRENT_NOTE_DRAFT_KEY = 'devotion-current-note-draft';
 const CURRENT_NOTE_DRAFT_DEBOUNCE_MS = 700;
 const NOTE_STATUS_DRAFT = 'draft';
@@ -598,13 +593,12 @@ function isInstallPromptBlockedByUi() {
   const authOpen = !!els.authInlinePanel && !els.authInlinePanel.classList.contains('hidden');
   const accountOpen = !!els.accountSettingsModal && !els.accountSettingsModal.classList.contains('hidden');
   const notePreviewOpen = !!els.notePreviewModal && !els.notePreviewModal.classList.contains('hidden');
-  const supportOpen = !!els.supportModal && !els.supportModal.classList.contains('hidden');
   const updateOpen = !!els.appUpdatePrompt && !els.appUpdatePrompt.classList.contains('hidden');
   const bookDraftOpen = document.body.classList.contains('book-draft-modal-open');
   const bookExportOpen = document.body.classList.contains('book-export-settings-open');
   const modalOpen = !!document.querySelector('.modal:not(.hidden)[aria-hidden="false"]');
   const currentView = document.body.dataset.currentView || '';
-  return authOpen || accountOpen || notePreviewOpen || supportOpen || updateOpen || bookDraftOpen || bookExportOpen || modalOpen || currentView === 'reader';
+  return authOpen || accountOpen || notePreviewOpen || updateOpen || bookDraftOpen || bookExportOpen || modalOpen || currentView === 'reader';
 }
 
 function shouldAutoShowInstallPrompt() {
@@ -910,10 +904,6 @@ const els = {
   pushLocalToCloudBtn: document.getElementById('push-local-to-cloud-btn'),
   downloadBackupBtn: document.getElementById('download-backup-btn'),
   toast: document.getElementById('toast'),
-  supportBtn: document.getElementById('support-btn'),
-  supportModal: document.getElementById('support-modal'),
-  supportModalBackdrop: document.getElementById('support-modal-backdrop'),
-  closeSupportModal: document.getElementById('close-support-modal'),
   authGate: document.getElementById('auth-gate'),
   openRegisterBtn: document.getElementById('open-register-btn'),
   openLoginBtn: document.getElementById('open-login-btn'),
@@ -2735,7 +2725,6 @@ function getOperationManualHtml() {
               <div class="manual-faq-item"><h3>常用操作與完整選單</h3><p>頁首提供「讀經」「找札記」與「寫札記」。選單可開啟禱告紀錄、選稿編排、電子書櫃與操作手冊。</p></div>
               <div class="manual-faq-item"><h3>查看資料保存狀態</h3><p>請看畫面上的保存提示或帳號設定中的資料保存狀態。如果看到尚未保存提醒，請先不要關閉頁面。</p></div>
               <div class="manual-faq-item"><h3>閱讀與選稿用途</h3><p>用「找札記」搜尋與閱讀。用「選取札記」勾選要加入書稿的篇章。</p></div>
-              <div class="manual-faq-item"><h3>申請支持款項收款證明</h3><p>頁面下方有「支持平台／支持事工」入口。完成支持後，可在那裡點「申請收款證明」並填寫資料。收款證明是支持款項紀錄，不作為稅務扣抵憑證。</p></div>
               <div class="manual-faq-item"><h3>刪除前的確認</h3><p>會。刪除札記、書稿、書櫃書籍或頭像前，畫面會先詢問確認。若不確定，請先取消。</p></div>
             </div>
           </section>
@@ -2744,7 +2733,7 @@ function getOperationManualHtml() {
             <h2>十七、版本資訊</h2>
             <p class="manual-app-version" data-app-version-label data-testid="version-display">${getAppVersionLabel()}</p>
             <p>如果你在使用時遇到問題，歡迎來信：</p>
-            <p class="manual-feedback-email"><button class="footer-email-copy" type="button" data-copy-support-email>${SUPPORT_EMAIL}</button></p>
+            <p class="manual-feedback-email"><button class="footer-email-copy" type="button" data-copy-feedback-email>${FEEDBACK_EMAIL}</button></p>
           </section>
         </article>
       </section>
@@ -2753,11 +2742,11 @@ function getOperationManualHtml() {
 
 function ensureOperationManualUi() {
   const siteFooter = document.querySelector('.site-footer');
-  if (siteFooter && !document.getElementById('footer-support-contact')) {
+  if (siteFooter && !document.getElementById('footer-feedback-contact')) {
     const contact = document.createElement('p');
-    contact.id = 'footer-support-contact';
-    contact.className = 'footer-support-text';
-    contact.innerHTML = `使用問題與意見回饋：<button class="footer-email-copy" type="button" data-copy-support-email>${SUPPORT_EMAIL}</button>`;
+    contact.id = 'footer-feedback-contact';
+    contact.className = 'footer-feedback-text';
+    contact.innerHTML = `使用問題與意見回饋：<button class="footer-email-copy" type="button" data-copy-feedback-email>${FEEDBACK_EMAIL}</button>`;
     const copyright = siteFooter.querySelector('.footer-copyright');
     if (copyright) siteFooter.insertBefore(contact, copyright);
     else siteFooter.appendChild(contact);
@@ -4198,140 +4187,16 @@ function copyTextFallback(text) {
   return copied;
 }
 
-async function copySupportEmail() {
+async function copyFeedbackEmail() {
   try {
     if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(SUPPORT_EMAIL);
-    } else if (!copyTextFallback(SUPPORT_EMAIL)) {
+      await navigator.clipboard.writeText(FEEDBACK_EMAIL);
+    } else if (!copyTextFallback(FEEDBACK_EMAIL)) {
       throw new Error('Clipboard fallback failed');
     }
-    showToast(`已複製信箱：${SUPPORT_EMAIL}`);
+    showToast(`已複製信箱：${FEEDBACK_EMAIL}`);
   } catch (error) {
     showToast('無法自動複製，請手動複製信箱');
-  }
-}
-
-async function copySupportPaymentValue(value, label = '轉帳資訊') {
-  const text = String(value || '').trim();
-  if (!text) return;
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-    } else if (!copyTextFallback(text)) {
-      throw new Error('Clipboard fallback failed');
-    }
-    showToast(`已複製${label}：${text}`);
-  } catch (error) {
-    showToast(`無法自動複製，請手動複製${label}`);
-  }
-}
-
-function setSupportReceiptView(view = 'payment') {
-  const isReceipt = view === 'receipt';
-  document.getElementById('support-payment-section')?.classList.toggle('hidden', isReceipt);
-  document.getElementById('support-receipt-section')?.classList.toggle('hidden', !isReceipt);
-  if (!isReceipt) clearSupportReceiptMessage();
-}
-
-function clearSupportReceiptMessage() {
-  const message = document.getElementById('support-receipt-message');
-  if (!message) return;
-  message.textContent = '';
-  message.classList.add('hidden');
-  message.classList.remove('is-error', 'is-success');
-}
-
-function setSupportReceiptMessage(text, type = 'error') {
-  const message = document.getElementById('support-receipt-message');
-  if (!message) return;
-  message.textContent = text;
-  message.classList.remove('hidden', 'is-error', 'is-success');
-  message.classList.add(type === 'success' ? 'is-success' : 'is-error');
-}
-
-function readSupportReceiptRequestForm() {
-  const name = document.getElementById('support-receipt-name')?.value.trim() || '';
-  const email = document.getElementById('support-receipt-email')?.value.trim() || '';
-  const amountInput = document.getElementById('support-receipt-amount')?.value.trim() || '';
-  const transferDate = document.getElementById('support-receipt-transfer-date')?.value || '';
-  const bankLast5 = document.getElementById('support-receipt-bank-last5')?.value.trim() || '';
-  const note = document.getElementById('support-receipt-note')?.value.trim() || '';
-  const amount = Number(amountInput);
-  return { name, email, amountInput, amount, transfer_date: transferDate, bank_last5: bankLast5, note };
-}
-
-function validateSupportReceiptRequest(input) {
-  if (!input.name) return '請填寫姓名或收據抬頭。';
-  if (!input.email) return '請填寫 Email。';
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) return 'Email 格式不正確，請再確認一次。';
-  if (!input.amountInput) return '請填寫支持金額。';
-  if (!Number.isFinite(input.amount) || input.amount <= 0) return '支持金額必須是正數。';
-  if (!input.transfer_date) return '請選擇轉帳日期。';
-  if (!/^\d{5}$/.test(input.bank_last5)) return '匯款帳號後五碼請填寫 5 碼數字。';
-  return '';
-}
-
-function buildSupportReceiptRequestPayload(input) {
-  return {
-    name: input.name,
-    email: input.email,
-    amount: input.amount,
-    transferDate: input.transfer_date,
-    bankLast5: input.bank_last5,
-    note: input.note,
-  };
-}
-
-async function submitSupportReceiptRequest(payload) {
-  const response = await fetch('/api/support-receipt-request', {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok || !data.ok) {
-    const message = String(data.message || data.error || '').trim();
-    throw new Error(message || '收款證明申請送出失敗，請稍後再試，或聯絡 devotionbook.tw@gmail.com。');
-  }
-  return data;
-}
-
-async function handleSupportReceiptSubmit(event) {
-  event.preventDefault();
-  const form = event.currentTarget;
-  clearSupportReceiptMessage();
-  const input = readSupportReceiptRequestForm();
-  const validationError = validateSupportReceiptRequest(input);
-  if (validationError) {
-    setSupportReceiptMessage(validationError, 'error');
-    return;
-  }
-  const payload = buildSupportReceiptRequestPayload(input);
-  const submitButton = form.querySelector('button[type="submit"]');
-  const originalText = submitButton?.textContent || '';
-  if (submitButton) {
-    submitButton.disabled = true;
-    submitButton.textContent = '送出中...';
-  }
-  try {
-    await submitSupportReceiptRequest(payload);
-    form.reset();
-    const successMessage = '收款證明申請已送出。我們確認入帳後，會依您填寫的 Email 聯繫並寄送支持款項收款證明。';
-    setSupportReceiptMessage(successMessage, 'success');
-    showToast(successMessage);
-  } catch (error) {
-    const failureMessage = '收款證明申請送出失敗，請稍後再試，或聯絡 devotionbook.tw@gmail.com。';
-    setSupportReceiptMessage(failureMessage, 'error');
-    showToast(failureMessage);
-    console.warn('support receipt request failed', error);
-  } finally {
-    if (submitButton) {
-      submitButton.disabled = false;
-      submitButton.textContent = originalText || '送出申請';
-    }
   }
 }
 
@@ -5625,23 +5490,11 @@ function bindEvents() {
   els.exportEpubBtn.addEventListener('click', () => exportSelectedBookEpub().catch(handleError));
   els.importEpubBtn?.addEventListener('click', () => handleImportEpubClick());
   els.importEpubInput?.addEventListener('change', event => handleImportEpubSelection(event).catch(handleError));
-  els.supportBtn?.addEventListener('click', openSupportModal);
-  document.addEventListener('click', (event) => {
-    const target = event.target instanceof Element ? event.target : null;
-    if (target?.closest('[data-copy-support-email]')) copySupportEmail().catch(handleError);
-    const supportCopyTarget = target?.closest('[data-copy-support-payment]');
-    if (supportCopyTarget) {
-      copySupportPaymentValue(
-        supportCopyTarget.dataset.copySupportPayment,
-        supportCopyTarget.dataset.copyLabel || '轉帳資訊',
-      ).catch(handleError);
+  document.addEventListener('click', event => {
+    if (event.target instanceof Element && event.target.closest('[data-copy-feedback-email]')) {
+      copyFeedbackEmail().catch(handleError);
     }
   });
-  document.getElementById('open-support-receipt-form-btn')?.addEventListener('click', () => setSupportReceiptView('receipt'));
-  document.getElementById('back-support-payment-btn')?.addEventListener('click', () => setSupportReceiptView('payment'));
-  document.getElementById('support-receipt-form')?.addEventListener('submit', handleSupportReceiptSubmit);
-  els.closeSupportModal?.addEventListener('click', closeSupportModal);
-  els.supportModalBackdrop?.addEventListener('click', closeSupportModal);
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
     if (state.bookDraftSettingsModalOpen) {
@@ -5652,7 +5505,6 @@ function bindEvents() {
       closeBookExportSettingsModal();
       return;
     }
-    if (event.key === 'Escape' && !els.supportModal?.classList.contains('hidden')) closeSupportModal();
     if (event.key === 'Escape' && !els.authSettingsSheet?.classList.contains('hidden')) closeAuthSettings();
     if (event.key === 'Escape' && !els.authInlinePanel?.classList.contains('hidden')) closeAuthInline();
     if (event.key === 'Escape' && !els.accountSettingsModal?.classList.contains('hidden')) closeAccountSettingsModal();
@@ -5688,16 +5540,6 @@ function bindEvents() {
     event.preventDefault();
     event.returnValue = '';
   });
-}
-
-function openSupportModal() {
-  setSupportReceiptView('payment');
-  els.supportModal?.classList.remove('hidden');
-  els.supportModal?.setAttribute('aria-hidden', 'false');
-}
-function closeSupportModal() {
-  els.supportModal?.classList.add('hidden');
-  els.supportModal?.setAttribute('aria-hidden', 'true');
 }
 
 function isDuplicateRegistrationError(error) {
@@ -7201,7 +7043,6 @@ function syncDesktopDashboardStaticCopy() {
   document.querySelector('.home-recent-panel .panel-header h2')?.replaceChildren(document.createTextNode('最近編輯札記'));
   document.querySelector('#recent-books-heading')?.replaceChildren(document.createTextNode('最近編輯書冊'));
   document.querySelector('#dashboard-bookshelf-card .panel-header h2')?.replaceChildren(document.createTextNode('書櫃'));
-  document.querySelector('.home-today-reading-card .panel-header h2')?.replaceChildren(document.createTextNode('今日讀經'));
   document.querySelector('.account-settings-sync-section .account-settings-label')?.replaceChildren(document.createTextNode('同步狀態'));
 }
 

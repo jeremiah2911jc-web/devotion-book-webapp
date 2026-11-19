@@ -1,11 +1,11 @@
 {
   "name": "devotion-book-webapp",
   "private": true,
-  "version": "1.2.0-preview.6",
+  "version": "1.2.0-preview.7",
   "type": "module",
   "scripts": {
     "start": "npm run serve:local",
-    "check": "node --check assets/js/reading-workspace.js && node --check assets/js/offline-notes.js && node --check service-worker.js && node --check assets/js/scripture-reference-utils.js && node --check app.js && node --check api/admin-usage.js && node --check api/system-backup.js && node --check api/support-receipt-request.js",
+    "check": "node --check assets/js/reading-workspace.js && node --check assets/js/offline-notes.js && node --check service-worker.js && node --check assets/js/scripture-reference-utils.js && node --check app.js && node --check api/admin-usage.js && node --check api/system-backup.js",
     "serve:local": "node static-server.cjs",
     "smoke": "node smoke-test.cjs",
     "keepalive": "node scripts/supabase-keepalive.mjs",

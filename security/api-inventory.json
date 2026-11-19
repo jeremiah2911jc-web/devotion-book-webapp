@@ -1,5 +1,4 @@
 [
   {"file":"admin-usage.js","path":"/api/admin-usage","methods":["GET"],"authorization":"server-verified administrator","effects":"read-only usage summary"},
-  {"file":"system-backup.js","path":"/api/system-backup","methods":["GET"],"authorization":"server-verified administrator","effects":"read-only backup download"},
-  {"file":"support-receipt-request.js","path":"/api/support-receipt-request","methods":["POST"],"authorization":"public validated request","effects":"email to fixed recipient; no preview submission"}
+  {"file":"system-backup.js","path":"/api/system-backup","methods":["GET"],"authorization":"server-verified administrator","effects":"read-only backup download"}
 ]

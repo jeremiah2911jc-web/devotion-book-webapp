@@ -163,7 +163,7 @@ function buildManualChecks() {
         label: 'Function Usage',
         dashboardPath: 'Vercel Dashboard -> Usage / Functions',
         reason: 'Function usage 屬帳務用量，需 Dashboard 或 usage 匯出檢查；目前管理後台僅自動讀 deployment 狀態。',
-        warning: '若 /api/admin-usage 或收款證明 API 頻率升高，再人工查看 Function usage。',
+        warning: '若 /api/admin-usage 請求增加，可到 Vercel 查看 Function usage。',
       },
     ],
   };

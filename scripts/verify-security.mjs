@@ -5,6 +5,7 @@ const built=process.argv.includes('--built');
 const inventory=JSON.parse(await readFile('security/api-inventory.json','utf8'));
 const api=(await readdir('api')).filter(file=>file.endsWith('.js')).sort();
 assert.deepEqual(inventory.map(item=>item.file).sort(),api,'API inventory must match deployable functions');
+assert(!api.includes('support-receipt-request.js'),'The retired receipt endpoint must not be deployed');
 const settings=JSON.parse(await readFile('vercel.json','utf8'));
 const headers=settings.headers.flatMap(entry=>entry.headers);
 for(const key of ['Content-Security-Policy','X-Content-Type-Options','X-Frame-Options'])assert(headers.some(h=>h.key===key),`Missing ${key}`);
@@ -23,6 +24,7 @@ if(built){
  for(const required of ['index.html','app.js','styles.css','version.json','manifest.webmanifest','assets/js/reading-workspace.js','assets/js/offline-notes.js','service-worker.js','assets/vendor/supabase.js','assets/css/reading-workspace.css'])assert(files.includes(required),`Missing public asset ${required}`);
  for(const file of files.filter(file=>/\.(?:js|html|css|json|webmanifest)$/.test(file))){
   const text=await readFile(path.join('dist',file),'utf8');
+  assert(!/support-receipt-request|support-payment-section|support-receipt-form|支持平台／支持事工/.test(text),`Retired support feature in ${file}`);
   assert(!/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----|sb_secret_[A-Za-z0-9_-]+|gh[pousr]_[A-Za-z0-9]{20,}|(?:postgres|postgresql):\/\/[^\s"']+/.test(text),`Secret material in public asset ${file}`);
   for(const match of text.matchAll(/eyJ[A-Za-z0-9_-]+\.([A-Za-z0-9_-]+)\.[A-Za-z0-9_-]+/g)){
    let payload;try{payload=JSON.parse(Buffer.from(match[1],'base64url'));}catch{continue;}

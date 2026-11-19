@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {normalizeNoteConnections} from '../assets/js/reading-workspace.js';
 import admin from '../api/admin-usage.js';
 import backup from '../api/system-backup.js';
-import receipt from '../api/support-receipt-request.js';
 test('note references reject executable URLs and preserve page/timestamp labels',()=>{
  const normalized=normalizeNoteConnections({related_notes:['one','one',null,4],sources:[{url:'javascript:alert(1)'},{url:'data:text/html,x'},{url:'https://example.org/reading',title:'讀經材料',position:'第 8 頁'}]});
  assert.deepEqual(normalized.related_notes,['one']);assert.equal(normalized.sources.length,1);assert.equal(normalized.sources[0].position,'第 8 頁');
@@ -14,7 +13,6 @@ for(const [name,handler] of [['admin',admin],['backup',backup]])test(`${name} re
  const old=globalThis.fetch;globalThis.fetch=()=>{throw new Error('Unexpected external call');};
  try{const res=response();await handler({method:'GET',headers:{}},res);assert.equal(res.code,401);assert.equal(res.headers['Cache-Control'],'no-store');}finally{globalThis.fetch=old;}
 });
-test('receipt endpoint rejects the unsupported read method without sending email',async()=>{const res=response();await receipt({method:'GET',headers:{}},res);assert.equal(res.code,405);assert.equal(res.headers['Cache-Control'],'no-store');});
 import {readOfflineNotes,readPendingNotes,cacheOfflineNotes,queueOfflineNote,mergeOfflineNotes,clearOfflineCache,syncOfflineNotes} from '../assets/js/offline-notes.js';
 function memoryStorage(){const data=new Map();return {getItem:k=>data.get(k),setItem:(k,v)=>data.set(k,v),removeItem:k=>data.delete(k)};}
 function cloudDouble(rows,{race=false,fail=false,onWrite}={}){return {from(table){assert.equal(table,'devotion_notes');let action='read',note,filters=[];const q={select(){return q},eq(k,v){filters.push([k,v]);return q},limit(){return q},update(v){action='update';note=v;return q},insert(v){action='insert';note=v;return q},then(resolve,reject){try{if(fail)throw new Error('Connection interrupted');let data=rows.filter(row=>filters.every(([k,v])=>row[k]===v));if(action==='update'){if(race)data=[];else data.forEach(row=>Object.assign(row,note));}if(action==='insert'){rows.push({...note});data=[note];}if(action!=='read')onWrite?.();resolve({data,error:null});}catch(error){reject(error)}}};return q}};}
