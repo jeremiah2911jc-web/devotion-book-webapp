@@ -1,4 +1,4 @@
-const CACHE='devotion-public-1.2.13';
+const CACHE='devotion-public-1.2.14';
 // The production host redirects /index.html to /. Cache the direct response.
 const HOME='/';
 const CORE=[HOME,'/app.js','/styles.css','/assets/css/reading-workspace.css','/assets/js/reading-workspace.js','/assets/js/offline-notes.js','/assets/js/scripture-reference-utils.js','/assets/vendor/supabase.js','/assets/editorial/rocky-surf.jpg','/assets/editorial/open-journal.jpg','/assets/editorial/journal-linework.png','/assets/editorial/mountain-dawn.jpg','/assets/data/mcheyne-reading-plan.json','/manifest.webmanifest','/version.json','/favicon.ico'];
@@ -26,7 +26,8 @@ self.addEventListener('fetch',event=>{
   }
   if(!known)return;
   event.respondWith(caches.open(CACHE).then(async cache=>{
-    const existing=await cache.match(request,{ignoreSearch:true});if(existing)return existing;
+    const ignoreSearch=url.pathname!=='/assets/default-books/bible.epub';
+    const existing=await cache.match(request,{ignoreSearch});if(existing)return existing;
     const response=await fetch(request);if(response.ok)await cache.put(request,response.clone());return response;
   }));
 });
