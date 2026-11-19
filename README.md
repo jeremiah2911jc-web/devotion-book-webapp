@@ -4,8 +4,7 @@ Devotion 是可部署到 Vercel 的前台靈修札記網站，協助使用者記
 
 ## 目前版本
 
-- 候選版本：v1.2.0-preview.7（尚未發布）
-- 候選日期：2026/11/19
+- 此版：v1.2.0（2026/11/19）
 - 正式站：https://www.devotionbook.com.tw
 - 版本紀錄：請見 `CHANGELOG.md`
 
