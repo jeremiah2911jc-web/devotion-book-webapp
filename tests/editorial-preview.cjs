@@ -169,7 +169,8 @@ async function checkBiblePageCurl(context) {
    const regular = await body.boundingBox();
    await expand.tap();
    const expanded = await body.boundingBox();
-   assert(expanded.height >= regular.height * 2);
+   assert(expanded.height >= regular.height + 160);
+   assert(expanded.height >= writing.viewportSize().height * .7);
    assert(await writing.locator('.devotion-masthead').evaluate(element=>element.inert));
    await body.fill('前段。\n\n選取這段\n\n後段。');
    assert(await body.evaluate(element=>element===document.activeElement && getComputedStyle(element).backgroundImage==='none'));
@@ -179,11 +180,14 @@ async function checkBiblePageCurl(context) {
    await body.evaluate(element=>element.setSelectionRange(5,5));
    await dialog.getByRole('button',{name:'查經',exact:true}).tap();
    await dialog.getByTestId('note-scripture').fill('詩篇 23:1');
-   await dialog.getByRole('button',{name:'查經文',exact:true}).tap();
+   await dialog.getByRole('button',{name:'帶入經文',exact:true}).tap();
    await dialog.getByRole('button',{name:'返回正文',exact:true}).waitFor({state:'hidden'});
+   const inserted = await body.inputValue();
+   assert.match(inserted,/^前段。\n\n> \*\*詩篇 23:1\*\*\n> 1\u202f/);
+   assert(await body.evaluate(element=>element===document.activeElement));
+   await writing.keyboard.insertText('接續寫下心得。');
    const text = await body.inputValue();
-   assert.match(text,/^前段。\n\n詩篇\s*23:1/);
-   assert.match(text,/\*\*選取這段\*\*\n\n後段。$/);
+   assert.match(text,/\n\n接續寫下心得。\n\n\*\*選取這段\*\*\n\n後段。$/);
    const caret = await body.evaluate(element=>element.selectionStart);
    assert(caret>5 && caret<text.length);
    await writing.setViewportSize({width:390,height:355});

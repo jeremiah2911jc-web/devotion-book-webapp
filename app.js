@@ -24,7 +24,7 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.2.14';
+const APP_VERSION = '1.2.15';
 const APP_RELEASE_DATE = '2026/11/19';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
@@ -127,6 +127,7 @@ const GENERATED_EPUB_SAFE_CLASSES = new Set([
   'chapter-head',
   'chapter-kicker',
   'scripture',
+  'note-scripture-quotation',
   'chapter-summary',
   'chapter-prayer',
   'kicker',
@@ -5315,6 +5316,11 @@ async function bootstrap() {
   ensureWritingWorkspaceUi();
   readingWorkspace = createReadingWorkspace({state, els, setView, clearNoteForm, populateNoteForm,
     persistDraft: () => persistCurrentNoteDraft({immediate:true}),
+    listVerseNumbers: async (book, chapter) => {
+      const entries = await loadScriptureBibleEntries();
+      const entry = entries.get(`OEBPS/text/${book}.xhtml`);
+      return extractBibleChapterVerses(entry?.text, chapter).map(verse => verse.verse);
+    },
     openReading:index=>openTodayReadingDialog(index).catch(handleError),
     openBible: navigation => openSystemLibraryBook(systemLibrary.bible.id, navigation),
     openBook:id=>{setView('books');return openBookDraftModal(id).catch(handleError);},
@@ -5642,6 +5648,7 @@ function bindEvents() {
     fetchAndRenderScriptures({ force: true, syncToContent: true }).catch(handleError);
   });
   els.scriptureAppendToContent.addEventListener('change', () => {
+    syncScriptureActionLabel();
     renderNotePreview();
   });
   els.addChapterBtn.addEventListener('click', () => addChapterFromSelectedNote().catch(handleError));
@@ -6465,7 +6472,12 @@ function getRenderableNotePrayer(note = {}) {
 
 function getNotePreviewText(note = {}, maxLength = 140) {
   const summary = getRenderableNoteSummary(note);
-  const fallback = sanitizeDisplayText(stripJournalInlineMarks(stripScriptureMarkers(note.content || '')), '');
+  const content = stripScriptureMarkers(note.content || '').replace(/^(?:>[^\n]*(?:\n|$))+/gm, quote => {
+    const [heading, ...verses] = quote.split('\n');
+    const reference = getScriptureQuotationReference(heading.replace(/^>\s?/, ''));
+    return reference ? [reference, ...verses.map(line => line.replace(/^>\s?/, ''))].join('\n') : quote;
+  });
+  const fallback = sanitizeDisplayText(stripJournalInlineMarks(content), '');
   return (summary || fallback).slice(0, maxLength);
 }
 
@@ -8824,6 +8836,10 @@ function handleScriptureInput() {
   }, 650);
 }
 
+function syncScriptureActionLabel() {
+  els.fetchScriptureBtn.textContent = els.scriptureAppendToContent.checked ? '帶入經文' : '預覽經文';
+}
+
 function setScriptureStatus(message = '', isError = false) {
   if (!message) {
     els.scriptureFetchStatus.textContent = '';
@@ -8844,7 +8860,6 @@ function resetScripturePreview({ clearApplied = false } = {}) {
   if (clearApplied) state.noteContentLastSelection = null;
   els.scripturePreview.innerHTML = '';
   els.scripturePreview.classList.add('hidden');
-  delete els.scripturePreview.dataset.serialized;
   delete els.scripturePreview.dataset.lastRefs;
   setScriptureStatus('');
 }
@@ -8982,6 +8997,7 @@ async function fetchScriptureReference(reference, signal) {
     query: reference,
     normalizedQuery: queryReference,
     text,
+    chapterGroups,
   };
   state.scriptureCache.set(cacheKey, result);
   return result;
@@ -9010,7 +9026,6 @@ async function fetchAndRenderScriptures({ force = false, syncToContent = false }
       fetched.push(await fetchScriptureReference(reference, controller.signal));
     }
     els.scripturePreview.dataset.lastRefs = references.join('|');
-    els.scripturePreview.dataset.serialized = JSON.stringify(fetched);
     els.scripturePreview.classList.remove('hidden');
     els.scripturePreview.innerHTML = fetched.map(item => `
       <article class="scripture-card">
@@ -9033,7 +9048,15 @@ async function fetchAndRenderScriptures({ force = false, syncToContent = false }
 }
 
 function buildScriptureBlock(items) {
-  return items.map(item => `${item.query}\n${item.text}`).join('\n\n');
+  return items.map(({ normalizedQuery, chapterGroups }) => {
+    const showChapterLabels = new Set(chapterGroups.map(group => group.chapter)).size > 1;
+    const passages = chapterGroups.map(({ chapter, verses }) => {
+      // Keep each verse number with the first word when the text wraps.
+      const text = verses.map(verse => `${verse.verse}\u202f${verse.text}`).join(' ');
+      return showChapterLabels ? `第 ${chapter} 章 ${text}` : text;
+    });
+    return `> **${normalizedQuery}**\n> ${passages.join(' ')}`;
+  }).join('\n\n');
 }
 
 function getScriptureInsertionIndex(contentLength = 0) {
@@ -9046,7 +9069,6 @@ function insertScriptureBlockIntoContent(content = '', scriptureBlock = '', inde
   const source = String(content || '');
   const block = String(scriptureBlock || '').trim();
   if (!block) return { value: source, cursor: source.length };
-  if (!source.trim()) return { value: block, cursor: block.length };
 
   const safeIndex = Math.max(0, Math.min(source.length, index));
   const before = source.slice(0, safeIndex);
@@ -9054,13 +9076,13 @@ function insertScriptureBlockIntoContent(content = '', scriptureBlock = '', inde
   const prefix = before
     ? (before.endsWith('\n\n') ? '' : (before.endsWith('\n') ? '\n' : '\n\n'))
     : '';
-  const suffix = after
+  const followingGap = after
     ? (after.startsWith('\n\n') ? '' : (after.startsWith('\n') ? '\n' : '\n\n'))
     : '';
-  const cursor = before.length + prefix.length + block.length;
+  const throughWritingPosition = `${before}${prefix}${block}\n\n`;
   return {
-    value: `${before}${prefix}${block}${suffix}${after}`,
-    cursor,
+    value: `${throughWritingPosition}${followingGap}${after}`,
+    cursor: throughWritingPosition.length,
   };
 }
 
@@ -9069,14 +9091,8 @@ function applyScriptureBlockToNoteContent(items) {
   const content = els.noteContent.value || '';
   const insertionIndex = getScriptureInsertionIndex(content.length);
   const next = insertScriptureBlockIntoContent(content, scriptureBlock, insertionIndex);
-  els.noteContent.value = next.value;
+  updateNoteContentSelection(next.value, next.cursor);
   state.noteContentLastSelection = { start: next.cursor, end: next.cursor };
-  els.noteContent.focus();
-  if (typeof els.noteContent.setSelectionRange === 'function') {
-    els.noteContent.setSelectionRange(next.cursor, next.cursor);
-  }
-  renderNotePreview();
-  scheduleCurrentNoteDraftSave();
 }
 
 function renderNotes() {
@@ -9688,6 +9704,22 @@ function renderMarkdownSpacer(blankLineCount = 0) {
   return `<div class="markdown-spacer markdown-spacer-${level}" aria-hidden="true"></div>`;
 }
 
+function getScriptureQuotationReference(heading = '') {
+  const reference = heading.match(/^\*\*(.+)\*\*$/)?.[1];
+  return reference && parseScriptureReference(reference) ? reference : '';
+}
+
+function renderScriptureQuotation([heading, ...lines]) {
+  const reference = getScriptureQuotationReference(heading);
+  if (!reference) return '';
+  const text = lines.map(line => line.replace(/^(\d+) +/, '$1\u202f')).join(' ');
+  if (!/(?:^| )\d+\u202f/.test(text)) return '';
+  const verses = escapeHtml(text)
+    .replace(/(^| )(\d+)\u202f/g, '$1<sup>$2</sup>\u202f')
+    .replace(/(^| )(第 \d+ 章)(?= )/g, '$1<strong>$2</strong>');
+  return `<blockquote class="note-scripture-quotation"><strong>${escapeHtml(reference)}</strong><p>${verses}</p></blockquote>`;
+}
+
 function renderMarkdownContent(text = '') {
   const normalized = String(text || '').replace(/\r\n/g, '\n');
   if (!normalized.trim()) return '';
@@ -9733,7 +9765,8 @@ function renderMarkdownContent(text = '') {
         quoteLines.push(currentTrimmed.replace(/^>\s?/, ''));
         index += 1;
       }
-      blocks.push(`<blockquote>${renderMarkdownInline(quoteLines.join('\n'), inlineColorStack).replaceAll('\n', '<br/>')}</blockquote>`);
+      blocks.push(renderScriptureQuotation(quoteLines)
+        || `<blockquote>${renderMarkdownInline(quoteLines.join('\n'), inlineColorStack).replaceAll('\n', '<br/>')}</blockquote>`);
       continue;
     }
 
@@ -10262,6 +10295,7 @@ function clearNoteForm({ clearDraft = false } = {}) {
   els.deleteNoteBtn.classList.add('hidden');
   resetScripturePreview({ clearApplied: true });
   els.scriptureAppendToContent.checked = true;
+  syncScriptureActionLabel();
   renderNotePreview();
   syncNoteStatusUi();
   state.noteDraftDirty = false;
@@ -11543,7 +11577,11 @@ nav ol{padding-left:1.3em;}
 .chapter-prayer .kicker{color:#52746e;}
 .chapter-summary p,.chapter-prayer p{margin:0 0 .8em;line-height:1.86;color:#4d4339;}
 .chapter-summary p:last-child,.chapter-prayer p:last-child{margin-bottom:0;}
-blockquote{margin:1.35em 0 1.55em;padding:1.02em 1.12em 1.02em 1.25em;border-left:4px solid rgba(155,122,72,.42);border-radius:0 16px 16px 0;background:#f7f2ea;color:#4a4034;line-height:1.92;}
+blockquote{margin:1.35em 0 1.55em;padding:1.02em 1.12em;border-radius:10px;background:#f7f2ea;color:#4a4034;line-height:1.92;}
+.note-scripture-quotation{padding:1.15em 1.35em;background:#f0f2e8;color:#283a33;}
+.note-scripture-quotation>strong{display:block;font-size:1.22em;line-height:1.4;}
+.note-scripture-quotation>p{margin:.75em 0 0;}
+.note-scripture-quotation sup{font-size:.74em;line-height:0;}
 hr{width:38%;margin:2em auto 1.9em;border:0;border-top:1px solid rgba(155,122,72,.34);}
 ul{margin:0 0 1.45em;padding-left:1.5em;}
 li{margin:.45em 0;line-height:1.86;padding-left:.12em;}
@@ -12880,7 +12918,10 @@ function injectReaderViewStyles() {
       #view-reader .reader-flow .chapter-head h1 { margin: 0; font-size: 1.28em; line-height: 1.54; letter-spacing: .01em; text-align: left; }
       #view-reader .reader-flow .chapter-head .scripture { margin: .92em 0 0; }
       #view-reader .reader-flow .scripture { color: #736453; font-size: .95em; line-height: 1.78; letter-spacing: .04em; font-style: italic; }
-      #view-reader .reader-flow blockquote { margin: 1.32em 0 1.52em; padding: 1.02em 1.12em 1.02em 1.22em; border-left: 4px solid rgba(155,122,72,.4); border-radius: 0 18px 18px 0; background: linear-gradient(180deg, rgba(247,242,234,.92), rgba(243,236,226,.68)); color: inherit; line-height: 1.9; }
+      #view-reader .reader-flow blockquote { margin: 1.32em 0 1.52em; padding: 1.02em 1.12em; border-radius: 10px; background: #f7f2ea; color: inherit; line-height: 1.9; }
+      #view-reader .reader-flow .note-scripture-quotation { padding: 1.15em 1.35em; background: #f0f2e8; }
+      #view-reader .reader-flow .note-scripture-quotation > strong { color: inherit; font-size: 1.22em; }
+      #view-reader.reader-dark .reader-flow blockquote { background: #2a302c; }
       #view-reader .reader-flow .chapter-summary, #view-reader .reader-flow .chapter-prayer { margin: 1.18em 0 1.8em; padding: 1.12em 1.15em 1.05em; border-radius: 18px; border: 1px solid rgba(160,142,112,.22); background: linear-gradient(180deg, rgba(248,244,237,.96), rgba(243,236,226,.82)); box-shadow: 0 10px 24px rgba(94,76,54,.06); }
       #view-reader .reader-flow .chapter-prayer { margin-top: 2em; background: linear-gradient(180deg, rgba(239,247,245,.96), rgba(232,242,239,.84)); border-color: rgba(126,166,158,.24); }
       #view-reader .reader-flow .chapter-summary .kicker, #view-reader .reader-flow .chapter-prayer .kicker { display: block; margin-bottom: .45em; color: #7a6753; font-size: .82em; font-weight: 700; letter-spacing: .06em; }

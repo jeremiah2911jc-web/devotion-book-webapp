@@ -700,7 +700,7 @@ async function verifyScriptureFetchAppendFlow(page, results) {
   await clickPrimaryViewNav(page, 'notes');
   await clickElement(page, '[data-workspace-new]');
   if(await page.locator('#confirm-dialog:not(.hidden)').count())await clickElement(page,'#confirm-dialog-confirm-btn');
-  const append = page.getByRole('checkbox', {name:'查詢後將經文加入札記', exact:true});
+  const append = page.getByRole('checkbox', {name:'將經文加入札記正文', exact:true});
   if (!await append.isVisible() || !await append.isChecked()) {
     throw new Error('經文加入選項應可見並預設勾選');
   }
@@ -711,22 +711,22 @@ async function verifyScriptureFetchAppendFlow(page, results) {
   const fiveReferenceInput = '希伯來4:11；詩篇106:32-33；希伯來4:1；創世記2:1；詩篇90篇9-10';
   const fiveFetch = await fetchScripturesIntoNote(page, fiveReferenceInput, 5);
   assertTextIncludesAll(fiveFetch.cardTitles.join('\n'), ['希伯來4:11', '詩篇106:32-33', '希伯來4:1', '創世記2:1', '詩篇90篇9-10'], '五段經文預覽');
-  assertTextIncludesAll(fiveFetch.content, ['希伯來4:11', '詩篇106:32-33', '希伯來4:1', '創世記2:1', '詩篇90篇9-10'], '五段經文內容');
+  assertTextIncludesAll(fiveFetch.content, ['> **希伯來書 4:11**', '> **詩篇 106:32-33**', '> **希伯來書 4:1**', '> **創世記 2:1**', '> **詩篇 90:9-10**'], '五段經文內容');
 
   const englishSemicolonFetch = await fetchScripturesIntoNote(page, '創2章1;希伯來書4章11', 2);
-  assertTextIncludesAll(englishSemicolonFetch.content, ['希伯來4:11', '詩篇90篇9-10', '創2章1', '希伯來書4章11'], '英文分號追加後內容');
+  assertTextIncludesAll(englishSemicolonFetch.content, ['詩篇 90:9-10', '創世記 2:1', '希伯來書 4:11'], '英文分號追加後內容');
 
   await page.fill('#note-scripture', '');
   await page.fill('[data-testid="note-editor-content"]', '');
   const threeFetch = await fetchScripturesIntoNote(page, '希伯來4:11；詩篇106:32-33；希伯來4:1', 3);
-  assertTextIncludesAll(threeFetch.content, ['希伯來4:11', '詩篇106:32-33', '希伯來4:1'], '三段經文內容');
+  assertTextIncludesAll(threeFetch.content, ['希伯來書 4:11', '詩篇 106:32-33', '希伯來書 4:1'], '三段經文內容');
   const afterGenesisFetch = await fetchScripturesIntoNote(page, '創世記2:1', 1);
-  assertTextIncludesAll(afterGenesisFetch.content, ['希伯來4:11', '詩篇106:32-33', '希伯來4:1', '創世記2:1'], '再次抓取追加內容');
+  assertTextIncludesAll(afterGenesisFetch.content, ['希伯來書 4:11', '詩篇 106:32-33', '希伯來書 4:1', '創世記 2:1'], '再次抓取追加內容');
 
   await page.fill('#note-scripture', '');
   await page.fill('[data-testid="note-editor-content"]', '今天我默想這段經文。');
   const handwrittenFetch = await fetchScripturesIntoNote(page, '詩篇90章9-10', 1);
-  assertTextIncludesAll(handwrittenFetch.content, ['今天我默想這段經文。', '詩篇90章9-10'], '手寫內容保護');
+  assertTextIncludesAll(handwrittenFetch.content, ['今天我默想這段經文。', '詩篇 90:9-10'], '手寫內容保護');
 
   const draftTitle = '經文抓取追加草稿';
   await page.fill('#note-title', draftTitle);
@@ -737,7 +737,7 @@ async function verifyScriptureFetchAppendFlow(page, results) {
   await page.waitForFunction(() => document.querySelector('#toast')?.textContent.includes('草稿已儲存'), undefined, { timeout: 10000 });
   const savedDraft = await getSavedNoteByTitle(page, draftTitle);
   if (!savedDraft) throw new Error('找不到已儲存的經文抓取追加草稿');
-  assertTextIncludesAll(savedDraft.content, ['今天我默想這段經文。', '詩篇90章9-10'], '草稿儲存內容');
+  assertTextIncludesAll(savedDraft.content, ['今天我默想這段經文。', '詩篇 90:9-10'], '草稿儲存內容');
 
   const publishedTitle = '經文抓取追加正式札記';
   await page.fill('#note-title', publishedTitle);
@@ -748,12 +748,12 @@ async function verifyScriptureFetchAppendFlow(page, results) {
   await page.fill('#note-summary', '抓取經文追加後的摘要');
   await page.fill('[data-testid="note-editor-content"]', '正式札記手寫內容');
   const publishedFetch = await fetchScripturesIntoNote(page, '希伯來4:11；創世記2篇1', 2);
-  assertTextIncludesAll(publishedFetch.content, ['正式札記手寫內容', '希伯來4:11', '創世記2篇1'], '正式札記送出前內容');
+  assertTextIncludesAll(publishedFetch.content, ['正式札記手寫內容', '希伯來書 4:11', '創世記 2:1'], '正式札記送出前內容');
   await clickElement(page, '#publish-note-btn');
   await page.waitForFunction(() => document.querySelector('#toast')?.textContent.includes('札記已儲存'), undefined, { timeout: 10000 });
   const savedPublished = await getSavedNoteByTitle(page, publishedTitle);
   if (!savedPublished) throw new Error('找不到已儲存的經文抓取追加正式札記');
-  assertTextIncludesAll(savedPublished.content, ['正式札記手寫內容', '希伯來4:11', '創世記2篇1'], '正式札記儲存內容');
+  assertTextIncludesAll(savedPublished.content, ['正式札記手寫內容', '希伯來書 4:11', '創世記 2:1'], '正式札記儲存內容');
 
   await clickPrimaryViewNav(page, 'note-reader', 'mobile-nav-note-reader');
   await page.fill('[data-testid="note-reader-search"]', publishedTitle);
@@ -762,7 +762,7 @@ async function verifyScriptureFetchAppendFlow(page, results) {
   await clickElement(page, '[data-testid="note-reader-search-result"]');
   await expectVisible(page, '[data-testid="note-reader-reading-modal"]:not(.hidden)', '追加後札記可開啟閱讀');
   const readingText = await page.locator('[data-testid="note-reader-reading-content"]').textContent();
-  assertTextIncludesAll(readingText, [publishedTitle, '正式札記手寫內容', '希伯來4:11', '創世記2篇1'], '札記閱讀內容');
+  assertTextIncludesAll(readingText, [publishedTitle, '正式札記手寫內容', '希伯來書 4:11', '創世記 2:1'], '札記閱讀內容');
   await clickElement(page, '[data-testid="note-reader-reading-close"]');
   await page.waitForFunction(() => document.querySelector('[data-testid="note-reader-reading-modal"]')?.classList.contains('hidden'), { timeout: 10000 });
 

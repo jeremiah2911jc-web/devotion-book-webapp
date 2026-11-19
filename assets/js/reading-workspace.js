@@ -1,3 +1,5 @@
+import { getScriptureBookAliasSummary } from './scripture-reference-utils.js';
+
 const escape = (value = '') => String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 
 function editorialTitle(value){
@@ -217,23 +219,26 @@ export function createReadingWorkspace(api) {
   writingAside.setAttribute('aria-label', '經文與札記設定');
   const scripture = form.querySelector('.note-scripture-section');
   scripture.querySelector('.note-scripture-label-text').textContent = '經文出處';
-  scripture.querySelector('#fetch-scripture-btn').textContent = '查經文';
+  scripture.querySelector('#fetch-scripture-btn').textContent = '帶入經文';
+  addScripturePicker(scripture, els.noteScripture, api.listVerseNumbers);
   const appendToggle = scripture.querySelector('.note-scripture-toggle');
   const appendLabel = appendToggle.querySelector('.note-helper-full');
   appendLabel.classList.remove('note-helper-full');
-  appendLabel.textContent = '查詢後將經文加入札記';
+  appendLabel.textContent = '將經文加入札記正文';
   appendToggle.querySelector('.note-helper-short').remove();
   appendToggle.classList.add('writing-append-toggle');
   scripture.querySelector('.note-scripture-control-row').after(appendToggle);
   const shelfButton = document.createElement('button');
   shelfButton.type = 'button';
   shelfButton.className = 'writing-reading-link';
-  shelfButton.textContent = '開啟今日讀經';
+  shelfButton.innerHTML = '<img src="./assets/editorial/mountain-dawn.jpg" alt="" width="600" height="800" decoding="async"><span>開啟今日讀經</span>';
   shelfButton.addEventListener('click', openShelf);
-  scripture.append(shelfButton);
+  scripture.prepend(shelfButton);
   writingAside.append(scripture, detailsWrap);
-  writingSurface.prepend(top, title);
-  writingSurface.append(tools);
+  const documentTop = document.createElement('div');
+  documentTop.className = 'writing-document-top';
+  documentTop.append(top, tools);
+  writingSurface.prepend(documentTop, title);
   form.append(writingAside);
 
   let openEditorMenu;
@@ -425,6 +430,91 @@ export function createReadingWorkspace(api) {
   }};
 }
 
+function addScripturePicker(section, input, listVerseNumbers) {
+  const books = getScriptureBookAliasSummary();
+  const options = list => list.map(book => `<option value="${book.code}">${book.canonical}</option>`).join('');
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'writing-scripture-picker-toggle';
+  trigger.textContent = '選擇經文';
+  trigger.setAttribute('aria-expanded', 'false');
+  trigger.setAttribute('aria-controls', 'writing-scripture-picker');
+  section.querySelector('.note-scripture-label-row').append(trigger);
+
+  const picker = document.createElement('div');
+  picker.id = 'writing-scripture-picker';
+  picker.hidden = true;
+  picker.innerHTML = `
+    <div class="writing-scripture-picker-fields">
+      <div><label for="writing-scripture-book">經卷</label><select id="writing-scripture-book"><optgroup label="舊約">${options(books.slice(0, 39))}</optgroup><optgroup label="新約">${options(books.slice(39))}</optgroup></select></div>
+      <div><label for="writing-scripture-chapter">章</label><select id="writing-scripture-chapter"></select></div>
+      <div><label for="writing-scripture-start">起始節</label><select id="writing-scripture-start"></select></div>
+      <div><label for="writing-scripture-end">結束節</label><select id="writing-scripture-end"></select></div>
+    </div>
+    <p class="caption" role="status"></p>
+    <button type="button" class="ghost-btn">套用出處</button>`;
+  section.querySelector('.note-scripture-control-row').after(picker);
+  const [book, chapter, start, end] = picker.querySelectorAll('select');
+  const message = picker.querySelector('[role="status"]');
+  const apply = picker.querySelector('button');
+  let request = 0;
+  let verses = [];
+
+  function setEndOptions() {
+    end.disabled = !start.value;
+    if (end.disabled) {
+      end.replaceChildren(new Option('—', ''));
+      return;
+    }
+    end.replaceChildren(...verses.filter(verse => verse >= Number(start.value)).map(verse => new Option(String(verse), String(verse))));
+  }
+
+  async function updateVerses() {
+    const run = ++request;
+    message.textContent = '';
+    verses = [];
+    start.disabled = true;
+    start.replaceChildren(new Option('整章', ''));
+    setEndOptions();
+    try {
+      const result = await listVerseNumbers(book.value, Number(chapter.value));
+      if (run !== request) return;
+      verses = result;
+      start.append(...verses.map(verse => new Option(String(verse), String(verse))));
+      start.disabled = verses.length === 0;
+    } catch {
+      if (run === request) message.textContent = '無法載入節號，可直接輸入經文出處。';
+    }
+  }
+
+  function updateChapters() {
+    const selected = books.find(item => item.code === book.value);
+    chapter.replaceChildren(...Array.from({length: selected.chapters}, (_, index) => new Option(String(index + 1))));
+    updateVerses();
+  }
+
+  function setOpen(open) {
+    picker.hidden = !open;
+    trigger.setAttribute('aria-expanded', String(open));
+  }
+
+  trigger.addEventListener('click', () => {
+    setOpen(picker.hidden);
+    if (!picker.hidden && !chapter.length) updateChapters();
+  });
+  book.addEventListener('change', updateChapters);
+  chapter.addEventListener('change', updateVerses);
+  start.addEventListener('change', setEndOptions);
+  apply.addEventListener('click', () => {
+    const selected = books.find(item => item.code === book.value);
+    const verse = start.value ? `:${start.value}${end.value !== start.value ? `-${end.value}` : ''}` : '';
+    input.value = `${selected.canonical} ${chapter.value}${verse}`;
+    input.dispatchEvent(new Event('input', {bubbles: true}));
+    setOpen(false);
+    section.querySelector('#fetch-scripture-btn').focus({preventScroll: true});
+  });
+}
+
 function createMobileWritingMode({surface, textarea, scriptureInput, scripture, tools, saveButton, dateline, persistDraft, closeEditorMenu}) {
   const editor = textarea.closest('.note-content-section');
   const toolbar = editor.querySelector('.markdown-toolbar');
@@ -608,10 +698,11 @@ function createEditorialMotion(review,header){
     gathering: [{ transform: 'translateX(13px)', opacity: .67 }, { transform: 'none', opacity: 1 }],
     reading: [{ opacity: .78 }, { opacity: 1 }],
     cover: [{ transform: 'scale(1.09)' }, { transform: 'none' }],
+    landscape: [{ transform: 'scale(1.14) translateY(5%)' }, { transform: 'none' }],
   };
   const viewEntrances = {
     dashboard: [['.folio-portrait img', 'cover', 460]],
-    notes: [['.workspace-page-heading h1', 'leading', 300]],
+    notes: [['.workspace-page-heading h1', 'leading', 300], ['.writing-reading-link img', 'landscape', 670]],
     prayer: [['.workspace-page-heading h1', 'rising', 340], ['.prayer-workspace', 'reading', 330, 55]],
     'note-reader': [['#note-reader-search-title', 'leading', 340], ['.note-reader-shell', 'reading', 360, 65]],
     'content-library': [['.workspace-page-heading h1', 'gathering', 360], ['#content-library-book-hint', 'reading', 320, 55]],

@@ -436,8 +436,6 @@ input:focus, textarea:focus, select:focus {
   display: inline-grid;
   gap: 2px;
   margin-top: 14px;
-  padding-left: 20px;
-  border-left: 3px solid rgba(101, 169, 164, 0.34);
   color: #436562;
   font-size: 14px;
   line-height: 1.55;
@@ -2608,11 +2606,31 @@ body.account-settings-open {
 .note-preview-prayer blockquote {
   margin: 0;
   padding: 14px 16px;
-  border-left: 4px solid rgba(136, 109, 89, 0.48);
-  border-radius: 0 16px 16px 0;
+  border-radius: 10px;
   background: rgba(244, 240, 232, 0.82);
   color: #4f4135;
   line-height: 1.9;
+}
+.note-preview-content .note-scripture-quotation {
+  padding: clamp(18px, 3.6vw, 33px);
+  border-radius: 10px;
+  background: #f0f2e8;
+  color: #283a33;
+  line-height: 1.85;
+}
+.note-scripture-quotation > strong {
+  display: block;
+  color: #234a3d;
+  font: 700 clamp(21px, 2.4vw, 26px)/1.35 var(--folio-serif, "Songti TC", serif);
+}
+.note-scripture-quotation > p {
+  margin: .75em 0 0;
+}
+.note-scripture-quotation sup {
+  color: #35604f;
+  font-size: .74em;
+  font-weight: 600;
+  line-height: 0;
 }
 .note-preview-content hr,
 .note-preview-prayer hr {
