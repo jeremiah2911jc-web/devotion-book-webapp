@@ -33,7 +33,7 @@ export function createReadingWorkspace(api) {
   const masthead = document.createElement('header');
   masthead.className = 'devotion-masthead';
   masthead.innerHTML = `<button class="devotion-name" type="button" data-workspace-view="dashboard"><span>DEVOTION</span><small>靈修札記</small></button>
-    <nav aria-label="常用操作"><button type="button" data-workspace-reading>讀經</button><button type="button" data-workspace-view="note-reader">找札記</button><button type="button" data-workspace-new class="masthead-write">寫札記</button><button type="button" data-workspace-menu aria-expanded="false" aria-controls="workspace-menu">選單</button></nav>`;
+    <nav aria-label="常用操作"><button type="button" data-workspace-reading aria-haspopup="dialog" aria-controls="workspace-reading-shelf">讀經</button><button type="button" data-workspace-view="note-reader">找札記</button><button type="button" data-workspace-new class="masthead-write">寫札記</button><button type="button" data-workspace-menu aria-expanded="false" aria-controls="workspace-menu">選單</button></nav>`;
   root.prepend(masthead);
   for(const [view,label] of [['prayer','禱告紀錄'],['notes','寫札記'],['content-library','選取札記'],['books','選稿編排'],['library','電子書櫃']]){
     const section=document.getElementById(`view-${view}`);if(!section)continue;
@@ -85,18 +85,83 @@ export function createReadingWorkspace(api) {
     <div class="workspace-reading-art" aria-hidden="true"></div>
     <div class="workspace-dialog-heading">
       <h2 id="workspace-reading-title" tabindex="-1" autofocus>讀經</h2>
-      <button type="button" data-shelf-close>關閉</button>
+      <div class="workspace-reading-header-actions">
+        <button type="button" class="hidden" data-reading-choices-back>讀經選項</button>
+        <button type="button" data-shelf-close>關閉</button>
+      </div>
     </div>
-  </header>`;
-  const openShelf = () => {
-    if (!shelf.open) shelf.showModal();
-  };
+  </header>
+  <div class="workspace-reading-destinations" data-reading-destinations>
+    <button type="button" data-reading-plan aria-labelledby="reading-choice-plan" aria-describedby="reading-choice-plan-details">
+      <span id="reading-choice-plan">麥琴讀經</span>
+      <small id="reading-choice-plan-details">查看每日的家庭與個人讀經進度</small>
+    </button>
+    <button type="button" data-reading-bible aria-labelledby="reading-choice-bible" aria-describedby="reading-choice-bible-details">
+      <span id="reading-choice-bible">整本聖經</span>
+      <small id="reading-choice-bible-details">開啟內建和合本</small>
+    </button>
+    <p role="status" data-reading-bible-status></p>
+  </div>`;
   const today = document.querySelector('.home-today-reading-card');
+  const todayHeader = today?.querySelector('.today-reading-header');
   if (today) {
-    shelf.querySelector('.workspace-reading-hero').append(today.querySelector('.today-reading-header'));
+    shelf.querySelector('.workspace-reading-hero').append(todayHeader);
     shelf.append(today);
   }
   document.body.append(shelf);
+  const readingHeading = shelf.querySelector('#workspace-reading-title');
+  const destinations = shelf.querySelector('[data-reading-destinations]');
+  const backToChoices = shelf.querySelector('[data-reading-choices-back]');
+  const planButton = shelf.querySelector('[data-reading-plan]');
+  const bibleButton = shelf.querySelector('[data-reading-bible]');
+  const bibleStatus = shelf.querySelector('[data-reading-bible-status]');
+  let bibleRequest = null;
+
+  const resetBibleOpening = () => {
+    bibleRequest = null;
+    bibleButton.removeAttribute('aria-disabled');
+    bibleStatus.textContent = '';
+  };
+  const showReadingContent = (mode, fromChoices = false) => {
+    const showPlan = mode === 'plan';
+    destinations.classList.toggle('hidden', showPlan);
+    today?.classList.toggle('hidden', !showPlan);
+    todayHeader?.classList.toggle('hidden', !showPlan);
+    backToChoices.classList.toggle('hidden', !showPlan || !fromChoices);
+    shelf.scrollTop = 0;
+  };
+  const openReadingShelf = (mode) => {
+    if (shelf.open) return;
+    showReadingContent(mode);
+    shelf.showModal();
+  };
+  const openShelf = () => openReadingShelf('plan');
+  planButton.addEventListener('click', () => {
+    resetBibleOpening();
+    showReadingContent('plan', true);
+    readingHeading.focus({ preventScroll: true });
+  });
+  backToChoices.addEventListener('click', () => {
+    showReadingContent('choices');
+    planButton.focus({ preventScroll: true });
+  });
+  bibleButton.addEventListener('click', async () => {
+    if (bibleRequest) return;
+    const request = {};
+    bibleRequest = request;
+    const returnView = document.body.dataset.currentView;
+    const isCurrent = () => shelf.open && bibleRequest === request && document.body.dataset.currentView === returnView;
+    bibleButton.setAttribute('aria-disabled', 'true');
+    bibleStatus.textContent = '正在開啟聖經…';
+    try {
+      await api.openBible({ isCurrent, returnView, beforeOpen: () => shelf.close() });
+    } catch {
+      if (!isCurrent()) return;
+      resetBibleOpening();
+      bibleStatus.textContent = '聖經載入失敗，請再點一次「整本聖經」。';
+    }
+  });
+  shelf.addEventListener('close', resetBibleOpening);
   const menuTrigger = masthead.querySelector('[data-workspace-menu]');
   menuTrigger.addEventListener('click', () => {
     menu.showModal();
@@ -119,7 +184,7 @@ export function createReadingWorkspace(api) {
   menu.querySelector('[data-workspace-signout]').addEventListener('click',()=>{closeMenu();api.signOut().catch(api.onError);});
   document.querySelectorAll('[data-workspace-view]').forEach(button => button.addEventListener('click',()=>{if(menu.open)closeMenu();api.setView(button.dataset.workspaceView);}));
   masthead.querySelector('[data-workspace-new]').addEventListener('click',async()=>{if(!await api.prepareNewNote())return;api.clearNoteForm({clearDraft:true});api.setView('notes');els.noteContent.focus();});
-  masthead.querySelector('[data-workspace-reading]').addEventListener('click', openShelf);
+  masthead.querySelector('[data-workspace-reading]').addEventListener('click', () => openReadingShelf('choices'));
   shelf.querySelector('[data-shelf-close]').addEventListener('click',()=>shelf.close());
   shelf.addEventListener('click', event => {
     if (event.target.closest('[data-today-reading-index], #today-reading-note-btn')) shelf.close();

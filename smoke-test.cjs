@@ -903,6 +903,7 @@ async function run() {
     };
     await assertReadingTitle();
     await clickElement(page, '[data-workspace-reading]');
+    await clickElement(page, '[data-reading-plan]');
     await expectVisible(page, '[data-testid="today-reading-card"]', '今日讀經卡已顯示');
     await page.waitForFunction(() => document.querySelectorAll('#today-reading-list [data-today-reading-index]').length === 4, { timeout: 10000 });
     const initialReadingDate = (await readingDate.textContent()).trim();
@@ -937,6 +938,7 @@ async function run() {
     await clickElement(page, '#today-reading-dialog button[data-today-reading-close]');
     await page.waitForFunction(() => document.querySelector('#today-reading-dialog')?.classList.contains('hidden'), { timeout: 10000 });
     await clickElement(page, '[data-workspace-reading]');
+    await clickElement(page, '[data-reading-plan]');
     await clickElement(page, '#today-reading-note-btn');
     await expectVisible(page, '#view-notes.view.active', '今日讀經可帶入寫札記頁');
     const insertedReadingRefs = (await page.inputValue('#note-scripture')).split(/[;；]+/).map((text) => text.trim()).filter(Boolean);
