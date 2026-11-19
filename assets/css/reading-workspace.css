@@ -147,8 +147,8 @@ body.reading-workspace:has(dialog[open]){overflow:hidden}
 .reading-workspace .auth-gate-title{font:400 clamp(36px,4.5vw,64px)/1.5 var(--folio-serif);letter-spacing:.03em;color:var(--folio-ink);margin:0 0 30px;text-align:left}
 .reading-workspace .auth-gate-copy p{font-size:17px;line-height:1.95;margin:12px 0;color:var(--folio-muted)}
 .reading-workspace .auth-sync-hint{font-size:13px;color:var(--folio-muted);margin-top:25px}
-.reading-workspace .auth-gate-actions{max-width:none;align-self:flex-start;width:100%;grid-column:1;margin:26px 0 0;display:flex;gap:15px}
-.reading-workspace .auth-cta{border-radius:30px;min-height:48px;font-size:15px;font-weight:500;padding:12px 26px;width:auto;box-shadow:none}
+.reading-workspace .auth-gate-actions{max-width:none;align-self:flex-start;width:100%;grid-column:1;margin:26px 0 0;display:flex;flex-wrap:wrap;gap:15px}
+.reading-workspace .auth-cta{border-radius:30px;min-height:48px;font-size:15px;font-weight:500;padding:12px clamp(12px,8%,26px);width:auto;white-space:nowrap;box-shadow:none}
 .reading-workspace .auth-cta-primary{background:var(--folio-ink);color:white;border-color:var(--folio-ink)}
 .reading-workspace .auth-cta-secondary{color:var(--folio-ink);border:1px solid var(--folio-line);background:transparent}
 .auth-reading-specimen{grid-column:2;grid-row:1 / span 2;padding:0;background:url('../editorial/coast-study.jpg') 62% 50%/cover;min-height:530px;border-radius:55% 0 0 0 / 48% 0 0 0;display:flex;flex-direction:column;justify-content:end;overflow:hidden;position:relative}
