@@ -959,9 +959,11 @@ async function run() {
     results.push(`今日讀經顯示 4 段、可切換日期、可開閱讀視窗並帶入經文欄：${todayReadingRefs.join(' / ')}`);
 
     await clickElement(page,'[data-workspace-menu]');
-    const navTexts=await page.locator('#workspace-menu nav button').allTextContents();
-    for(const label of ['首頁','接續書寫','找札記','禱告紀錄','選取札記','選稿編排','電子書櫃','操作手冊']) {
-      if(!navTexts.includes(label))throw new Error(`選單缺少 ${label}`);
+    const workspaceMenu = page.locator('#workspace-menu');
+    for (const label of ['首頁', '接續書寫', '找札記', '禱告紀錄', '選取札記', '選稿編排', '電子書櫃', '操作手冊']) {
+      if (!await workspaceMenu.getByRole('button', { name: label, exact: true }).isVisible()) {
+        throw new Error(`選單缺少 ${label}`);
+      }
     }
     await clickElement(page,'[data-workspace-close]');
     results.push('完整選單可到達全部既有功能');
