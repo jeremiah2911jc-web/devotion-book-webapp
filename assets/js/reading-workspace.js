@@ -44,7 +44,7 @@ export function createReadingWorkspace(api) {
   menu.className = 'workspace-menu';
   menu.setAttribute('aria-label', '選單');
   const menuGroups = [
-    { title: '札記', items: [['dashboard', '首頁'], ['notes', '接續書寫'], ['note-reader', '找札記'], ['prayer', '禱告紀錄']] },
+    { title: '札記', items: [['dashboard', '首頁'], ['notes', '寫札記'], ['note-reader', '找札記'], ['prayer', '禱告紀錄']] },
     { title: '書稿與書櫃', items: [['content-library', '選取札記'], ['books', '選稿編排'], ['library', '電子書櫃']] },
   ];
   menu.innerHTML = `<div class="workspace-dialog-heading"><h2>選單</h2><button type="button" data-workspace-close>關閉</button></div>

@@ -14,7 +14,8 @@ body.reading-workspace[data-current-view=dashboard] .main{max-width:none;padding
 .devotion-name span{font:27px Georgia,serif;letter-spacing:.1em}
 .devotion-name small{font-size:13px;letter-spacing:.16em;font-weight:400}
 .devotion-masthead nav{display:flex;align-items:center;gap:26px}
-.devotion-masthead nav button{font-size:14px;min-width:44px;padding:8px 0}
+.devotion-masthead nav button{font-size:14px;min-width:44px;padding:8px 0;border-radius:8px}
+.reading-workspace .devotion-masthead nav button:focus-visible{outline-offset:2px}
 .devotion-masthead .masthead-write{padding:10px 23px;border-radius:28px;background:var(--folio-ink);color:#fff}
 .devotion-masthead nav [aria-current=page]{text-decoration:underline;text-underline-offset:7px;text-decoration-thickness:1px}
 .reading-workspace :is(button,input,select,textarea,a,summary):focus-visible{outline:2px solid var(--folio-accent);outline-offset:5px}
@@ -936,6 +937,28 @@ body.reading-workspace.book-draft-modal-open .devotion-masthead {
   .folio-opening .folio-opening-copy h1.folio-title-long { font-size: 27px; }
   .folio-date { margin-bottom: 12px; }
   .folio-lead-excerpt { font-size: 16px; margin-bottom: 12px; }
+  .folio-opening-copy:has([data-resume-note]) {
+    display: grid;
+    grid-template: 'date edit' auto 'meta edit' auto 'title title' auto 'excerpt excerpt' auto / minmax(0, 1fr) auto;
+    column-gap: 12px;
+  }
+  .folio-opening-copy:has([data-resume-note]) .folio-date { grid-area: date; margin-bottom: 3px; }
+  .folio-opening-copy:has([data-resume-note]) .review-lead-meta { grid-area: meta; }
+  .folio-opening-copy:has([data-resume-note]) h1 { grid-area: title; }
+  .folio-opening-copy:has([data-resume-note]) .folio-lead-excerpt { grid-area: excerpt; margin-bottom: 0; }
+  .folio-opening .folio-primary-action[data-resume-note] {
+    grid-area: edit;
+    align-self: start;
+    min-height: 44px;
+    margin: 0;
+    padding: 5px 11px;
+    border: 1px solid #b7a5cf;
+    border-radius: 11px;
+    background: #2d2344;
+    color: #f8f5ff;
+    font-size: 13px;
+    white-space: nowrap;
+  }
   .folio-portrait { transform: translateY(calc(var(--journey) * 15px)); clip-path: inset(calc(var(--journey) * 15%) 0 0 0); }
   .folio-reading { padding-top: 0; }
   .folio-journal, .folio-bookroom { grid-template-columns: minmax(0, 1fr); gap: 14px; }
@@ -956,6 +979,7 @@ body.reading-workspace[data-current-view=notes] .main { padding-top: 26px !impor
   max-width: none;
 }
 .reading-workspace #view-notes .workspace-page-heading { margin: 0 auto 16px; max-width: 1200px; }
+.reading-workspace #view-notes .workspace-page-heading h1:focus { outline: none; }
 .reading-workspace .note-main-writing {
   padding: clamp(18px, 2.6vw, 38px);
   background: #f5f1fb;
@@ -1278,9 +1302,71 @@ body.reading-workspace:has(:is(#workspace-reading-shelf[open],#today-reading-dia
 .reading-workspace :is(.modal-card,dialog){overscroll-behavior:contain}
 .workspace-page-heading{margin:0 0 24px;padding:0}
 .workspace-page-heading h1{font:600 30px/1.5 -apple-system,BlinkMacSystemFont,"PingFang TC",sans-serif;margin:0;color:var(--folio-ink)}
-.reading-workspace .note-reader-search-row{grid-template-columns:minmax(0,1fr);display:grid;gap:12px}
 .reading-workspace .note-reader-search-field .search{width:100%;max-width:none}
 .reading-workspace .note-reader-tools{background:none;border:0;border-radius:0;padding:0}
+.reading-workspace .note-reader-tools {
+  grid-template: 'keyword' auto 'filters' auto 'submit' auto 'actions' auto 'status' auto / minmax(0, 1fr);
+}
+.reading-workspace :is(.note-reader-search-row, .note-reader-filter-bar, .note-reader-extra-filters) { display: contents; }
+.reading-workspace .note-reader-search-field { grid-area: keyword; }
+.reading-workspace #note-reader-search-btn { grid-area: submit; }
+.reading-workspace .note-reader-filter-grid { grid-area: filters; }
+.reading-workspace .note-reader-filter-grid > :first-child { grid-column: 1 / -1; }
+.reading-workspace .note-reader-filter-actions { grid-area: actions; }
+.reading-workspace .note-reader-filter-status { grid-area: status; }
+.reading-workspace #note-reader-filters-toggle { display: none; }
+@media (max-width: 760px) {
+  .reading-workspace .note-reader-shell { display: grid; grid-template-columns: minmax(0, 1fr); gap: 27px; }
+  .reading-workspace .note-reader-search-panel { padding: 0; }
+  .reading-workspace .note-reader-tools {
+    grid-template: 'query' auto 'status' auto 'filters' auto / minmax(0, 1fr);
+    gap: 6px;
+  }
+  .reading-workspace .note-reader-search-row {
+    grid-area: query;
+    display: grid;
+    grid-template: 'keyword submit' auto / minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 8px;
+  }
+  .reading-workspace #note-reader-search-btn { min-height: 44px; min-width: 64px; padding-inline: 12px; }
+  .reading-workspace .note-reader-filter-bar {
+    grid-area: status;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .reading-workspace #note-reader-filters-toggle { display: inline-flex; min-height: 44px; min-width: 52px; }
+  .reading-workspace #note-reader-filters-toggle[aria-expanded='true'] { background: #eee6f8; color: var(--folio-accent); }
+  .reading-workspace .note-reader-extra-filters { display: grid; grid-area: filters; gap: 8px; padding-block: 8px 2px; border-top: 1px solid var(--folio-line); }
+  .reading-workspace .note-reader-tools:not(:has(#note-reader-filters-toggle[aria-expanded='true'])) .note-reader-extra-filters { display: none; }
+  .reading-workspace .note-reader-extra-filters > * { grid-area: auto; }
+  .reading-workspace .note-reader-filter-grid > :is(:first-child, :last-child) { grid-column: auto; }
+  .reading-workspace .note-reader-filter-control { position: relative; }
+  .reading-workspace .note-reader-filter-control select {
+    appearance: none;
+    min-height: 44px;
+    padding: 6px 26px 6px 10px;
+    border: 1px solid #b8b5c3;
+    border-radius: 6px;
+    background: white;
+    color: var(--folio-ink);
+    font-size: 16px;
+  }
+  .reading-workspace .note-reader-filter-control::after {
+    content: '';
+    position: absolute;
+    inset-inline-end: 13px;
+    inset-block-end: 19px;
+    width: 7px;
+    height: 7px;
+    border: solid currentColor;
+    border-width: 0 1.5px 1.5px 0;
+    transform: rotate(45deg);
+    pointer-events: none;
+  }
+}
 .reading-workspace .note-reader-note-card{margin-bottom:10px}
 .reading-workspace .note-reader-note-card .note-reader-scripture{color:var(--folio-accent)}
 .reading-workspace :is(.manual-hero,.manual-toc,.manual-card,.manual-callout,.manual-faq-item){background:none;border:0;border-radius:0;box-shadow:none}

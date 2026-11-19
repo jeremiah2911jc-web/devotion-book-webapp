@@ -960,7 +960,7 @@ async function run() {
 
     await clickElement(page,'[data-workspace-menu]');
     const workspaceMenu = page.locator('#workspace-menu');
-    for (const label of ['首頁', '接續書寫', '找札記', '禱告紀錄', '選取札記', '選稿編排', '電子書櫃', '操作手冊']) {
+    for (const label of ['首頁', '寫札記', '找札記', '禱告紀錄', '選取札記', '選稿編排', '電子書櫃', '操作手冊']) {
       if (!await workspaceMenu.getByRole('button', { name: label, exact: true }).isVisible()) {
         throw new Error(`選單缺少 ${label}`);
       }
