@@ -1507,6 +1507,37 @@ body.reading-workspace #view-reader:not(.reader-dark) :is(.reader-page-viewport,
 body.reading-workspace #view-reader:not(.reader-dark) .reader-flow .title-page{background:#f4effa}
 body.reading-workspace #view-reader:not(.reader-dark) .reader-flow .title-page h1{color:var(--folio-ink)}
 
+@media (max-width: 1023px) {
+  #view-reader .reader-stage { touch-action: pan-y pinch-zoom; }
+  #view-reader .reader-page-clip { position: relative; }
+  #view-reader .reader-curl-front { position: relative; z-index: 1; background: var(--reader-curl-paper); }
+  #view-reader :is(.reader-curl-under, .reader-curl-back) {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  #view-reader .reader-curl-under { z-index: 0; }
+  #view-reader .reader-curl-back { z-index: 2; }
+  #view-reader .reader-curl-back .reader-flow { opacity: .16; transform-origin: 0 0; }
+  #view-reader :is(.reader-curl-cast, .reader-curl-shading) {
+    position: absolute;
+    transform-origin: left center;
+  }
+  #view-reader .reader-curl-cast {
+    background: linear-gradient(90deg, #2d21325c 0%, #2d213225 34%, transparent 100%);
+  }
+  #view-reader .reader-curl-shading {
+    background: linear-gradient(90deg, #40324737 0%, #40324719 12%, #ffffff8c 38%, #ffffff24 67%, transparent 100%);
+  }
+  #view-reader.reader-dark .reader-curl-cast {
+    background: linear-gradient(90deg, #0009, #0004 35%, transparent);
+  }
+  #view-reader.reader-dark .reader-curl-shading {
+    background: linear-gradient(90deg, #0007, #0003 12%, #ffffff2c 38%, #ffffff12 67%, transparent);
+  }
+}
+
 .reading-workspace #view-books { max-width: 1200px; margin-inline: auto; }
 .reading-workspace #view-books .layout-books { gap: 24px clamp(26px, 5vw, 70px); }
 .reading-workspace #view-books .layout-books > :is(.book-draft-current-panel,.book-draft-list-panel,.book-draft-form-panel) { padding: 0; }

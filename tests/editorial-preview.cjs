@@ -13,6 +13,48 @@ const port='4197',url=`http://127.0.0.1:${port}/index.html`;
 const results=[];let server;
 async function home(page){await page.locator('.devotion-name').click();await page.locator('.folio-opening h1').waitFor({state:'visible'});await page.waitForFunction(()=>scrollY===0);}
 async function launchServer(){server=spawn(process.execPath,['static-server.cjs'],{env:{...process.env,PORT:port,DEVOTION_ISOLATED_PREVIEW:'1',DEVOTION_SERVE_DIST:'1'},stdio:['ignore','pipe','pipe']});await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Server timeout')),10000);server.once('exit',code=>{clearTimeout(timer);reject(new Error(`Server exited ${code}`))});server.stdout.on('data',chunk=>{if(String(chunk).includes('static server running')){clearTimeout(timer);resolve()}})});}
+
+async function checkBiblePageCurl(context) {
+ const page = await context.newPage();
+ await page.goto(url);
+ await page.locator('[data-workspace-menu]').tap();
+ await page.locator('#workspace-menu [data-workspace-view="library"]').tap();
+ const bible = page.locator('[data-open-library-book="system-bible"]');
+ await bible.tap();
+ await page.waitForFunction(() => (document.querySelector('#reader-page-text')?.textContent.match(/\/ (\d+) 頁/)?.[1] || 0) > 1000);
+ const viewport = await page.locator('#reader-page-viewport').boundingBox();
+ const x = Math.round(viewport.x + viewport.width - 12);
+ const y = Math.round(viewport.y + viewport.height * .77);
+ const browserInput = await context.newCDPSession(page);
+ const touch = (type, offset, rise) => browserInput.send('Input.dispatchTouchEvent', {
+   type,
+   touchPoints: type === 'touchEnd' ? [] : [{ x: x - offset, y: y - rise }],
+ });
+ const paperBack = page.locator('.reader-curl-back');
+ const startPage = await page.locator('#reader-page-text').textContent();
+ await touch('touchStart', 0, 0);
+ await touch('touchMove', 32, 6);
+ await paperBack.waitFor();
+ await touch('touchEnd');
+ await paperBack.waitFor({state:'detached'});
+ assert.equal(await page.locator('#reader-page-text').textContent(), startPage);
+
+ await touch('touchStart', 0, 0);
+ await touch('touchMove', 146, 30);
+ await paperBack.waitFor();
+ const fold = await paperBack.evaluate(element => getComputedStyle(element).clipPath);
+ await touch('touchMove', 228, 56);
+ await page.waitForFunction(previous => getComputedStyle(document.querySelector('.reader-curl-back')).clipPath !== previous, fold);
+ assert.equal(await page.locator('#reader-page-text').textContent(), startPage);
+ await touch('touchEnd');
+ await page.waitForFunction(previous => document.querySelector('#reader-page-text').textContent !== previous, startPage);
+ const flippedPage = await page.locator('#reader-page-text').textContent();
+ await page.getByTestId('reader-close').tap();
+ await bible.tap();
+ await page.waitForFunction(expected => document.querySelector('#reader-page-text').textContent === expected, flippedPage);
+ await page.close();
+}
+
 (async()=>{const browser=await chromium.launch({headless:true});const context=await browser.newContext({viewport:{width:1280,height:900}});const page=await context.newPage();const errors=[];page.on('pageerror',error=>errors.push(error.message));try{
  await launchServer();await page.goto(url);await seedLocalUserState(page,data);await page.reload();await page.locator('.folio-opening h1').waitFor();assert.equal((await page.locator('.folio-opening h1').textContent()).trim(),draft.title);assert(!await page.getByRole('heading',{name:'讀到這裡， 接著寫。'}).count());
  await page.waitForFunction(()=>[...document.querySelectorAll('.folio-portrait img,.folio-light-image img')].every(img=>img.complete&&img.naturalWidth>0));
@@ -194,11 +236,13 @@ async function launchServer(){server=spawn(process.execPath,['static-server.cjs'
    assert(await scriptureField.evaluate(element=>element===document.activeElement));
    const scriptureValue = await scriptureField.inputValue();
    assert(references.every(reference=>scriptureValue.includes(reference)));
+   await checkBiblePageCurl(mobile);
  } finally { await mobile.close(); }
  results.push('手機全螢幕讀寫保留正文與游標，可查經、插入經文並儲存；縮小可用高度時儲存鍵仍可操作。');
  results.push('手機搜尋可展開、保留及重設篩選，從閱讀轉入編輯時焦點進入寫札記。');
  results.push('讀經面板可帶入四段經文並將焦點交給札記的經文出處。');
  results.push('首頁、讀經面板、閱讀視窗與帶入札記皆使用完整經卷名稱，觸碰讀經列後無白底殘留。');
+ results.push('手機聖經可以拖動紙頁，半途放手會回到原頁，翻頁完成後重開保留位置。');
  const longTitle='詩篇一一九篇閱讀筆記：經文出處、前後段落，以及尚待補寫的觀察與閱讀紀錄';await seedLocalUserState(page,{...data,notes:[{...draft,title:longTitle},published]});await page.reload();await page.locator('.devotion-masthead').waitFor();await home(page);await assertNoHorizontalScroll(page,{label:'long title'});const layout=await page.evaluate(()=>({title:document.querySelector('.folio-opening h1').getBoundingClientRect().top,action:document.querySelector('[data-resume-note]').getBoundingClientRect().bottom}));assert(layout.action<=layout.title);results.push('手機顯示完整長題名，右上方的繼續編輯按鈕與標題分開。');
  const reduced=await browser.newContext({viewport:{width:1280,height:900},reducedMotion:'reduce'});await installLocalUserState(reduced,data);const reducedPage=await reduced.newPage();await reducedPage.goto(url);await reducedPage.locator('.folio-opening h1').waitFor();await reducedPage.mouse.wheel(0,125);assert.equal(await reducedPage.locator('.folio-portrait').evaluate(el=>getComputedStyle(el).transform),'none');await reduced.close();results.push('減少動態偏好會停止影像縮放、位移與進場動畫。');
  assert.deepEqual(errors,[]);fs.writeFileSync('artifacts/editorial-preview-results.json',JSON.stringify({passed:true,results},null,2));console.log(results.join('\n'));
