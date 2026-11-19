@@ -230,14 +230,36 @@ body.reading-workspace[data-current-view=dashboard] .main{max-width:none;padding
   border: 0;
   border-radius: 0;
   background: transparent;
+  box-shadow: none;
   padding: 7px 0;
   color: var(--folio-ink);
+  -webkit-tap-highlight-color: transparent;
 }
 .workspace-reading-shelf .today-reading-ref + .today-reading-ref { border-top: 1px solid var(--reading-group-rule); }
-.workspace-reading-shelf .today-reading-ref:is(:hover, :active, :focus-visible) { background: #ffffff83; box-shadow: none; }
-.reading-workspace .workspace-reading-shelf .today-reading-ref:focus-visible { outline-offset: 1px; }
+.reading-workspace .workspace-reading-shelf .today-reading-ref:focus-visible {
+  outline-color: var(--reading-group-ink);
+  outline-offset: 2px;
+}
 .workspace-reading-shelf .today-reading-ref strong { font: 600 clamp(19px, 5vw, 26px)/1.4 var(--folio-serif); color: var(--folio-ink); }
-.workspace-reading-shelf .today-reading-ref-action { min-width: 0; padding: 0; border: 0; color: var(--reading-group-ink); }
+.workspace-reading-shelf .today-reading-ref-action {
+  align-self: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--reading-group-rule);
+  border-radius: 999px;
+  color: var(--reading-group-ink);
+}
+.workspace-reading-shelf .today-reading-ref:is(:active, :focus-visible) .today-reading-ref-action {
+  background: var(--reading-group-ink);
+  border-color: var(--reading-group-ink);
+  color: var(--reading-group-fill);
+}
+@media (hover: hover) and (pointer: fine) {
+  .workspace-reading-shelf .today-reading-ref:hover .today-reading-ref-action {
+    border-color: var(--reading-group-ink);
+  }
+}
 .workspace-reading-shelf .today-reading-actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1098,10 +1120,6 @@ body.reading-workspace[data-current-view=notes] .main { padding-top: 26px !impor
   outline: none;
   border-color: #8d76a6;
   caret-color: var(--folio-accent);
-  background-image: linear-gradient(var(--folio-accent), var(--folio-accent));
-  background-repeat: no-repeat;
-  background-position: left top 8px;
-  background-size: 2px 18px;
 }
 @media (forced-colors: active) {
   .reading-workspace #view-notes #note-content:focus-visible { outline: 2px solid Highlight; }

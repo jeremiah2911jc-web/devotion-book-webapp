@@ -24,7 +24,7 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.2.10';
+const APP_VERSION = '1.2.11';
 const APP_RELEASE_DATE = '2026/11/19';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
@@ -1253,6 +1253,8 @@ const state = {
   bookChapterDrag: null,
   bookProjectDetailVersions: new Map(),
   bookProjectDetailPromises: new Map(),
+  contentLibraryDetailTask: null,
+  contentLibraryDetailError: null,
   bookDraftModalOpen: false,
   bookDraftModalBookId: null,
   bookDraftSettingsModalOpen: false,
@@ -6074,6 +6076,8 @@ function normalizeBookProjectRow(book = {}, { detailLoaded = false } = {}) {
 function forgetBookProjectDetails() {
   state.bookProjectDetailVersions.clear();
   state.bookProjectDetailPromises.clear();
+  state.contentLibraryDetailTask = null;
+  state.contentLibraryDetailError = null;
 }
 
 function hasBookProjectDetail(bookId = '') {
@@ -7723,6 +7727,7 @@ function renderContentLibrary() {
   }
 
   const selectedBook = getSelectedBook();
+  const waitingForChapters = !!selectedBook && !hasBookProjectDetail(selectedBook.id);
   const displayChapters = getBookDisplayChapters(selectedBook);
   const chapterSourceIds = new Set(displayChapters.map(chapter => getChapterSourceNoteId(chapter)).filter(Boolean));
   const filteredNotes = getContentLibraryFilteredNotes();
@@ -7738,16 +7743,31 @@ function renderContentLibrary() {
   const activeFilters = [state.contentLibraryDateFrom, state.contentLibraryDateTo, state.contentLibraryCategory, state.contentLibraryTag].filter(Boolean).length;
   document.getElementById('content-library-filter-status').textContent = activeFilters ? `（${activeFilters} 項）` : '';
   els.contentLibraryBookHint.textContent = selectedBook
-    ? `${getBookDraftLabel(selectedBook)} · ${displayChapters.length} 章`
+    ? waitingForChapters ? getBookDraftLabel(selectedBook) : `${getBookDraftLabel(selectedBook)} · ${displayChapters.length} 章`
     : '請先建立或選擇書稿。';
   els.contentLibraryGoWorkbench.textContent = selectedBook ? '返回編排' : '選擇書稿';
   updateContentLibrarySelection(selectedBook);
 
   const list = els.contentLibraryList;
-  const waitingForChapters = selectedBook && !hasBookProjectDetail(selectedBook.id);
   if (waitingForChapters) {
     list.classList.add('empty-state');
-    list.textContent = state.bookProjectDetailPromises.has(selectedBook.id) ? '載入章節中…' : '請先開啟書稿以讀取章節。';
+    list.textContent = '載入章節中…';
+    if (document.body.dataset.currentView !== 'content-library') return;
+    if (!navigator.onLine || cloudAuthRefreshPaused()) {
+      list.textContent = navigator.onLine ? '登入更新暫停，恢復後會載入章節。' : '目前離線，連線後會載入章節。';
+    } else if (state.contentLibraryDetailError === selectedBook.id) {
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.className = 'ghost-btn';
+      retry.textContent = '重試載入';
+      retry.addEventListener('click', () => {
+        state.contentLibraryDetailError = null;
+        renderContentLibrary();
+      });
+      list.replaceChildren(document.createTextNode('章節載入失敗。 '), retry);
+    } else if (state.contentLibraryDetailTask?.bookId !== selectedBook.id) {
+      loadContentLibraryChapters(selectedBook.id);
+    }
     return;
   }
   list.classList.toggle('empty-state', !visibleNotes.length);
@@ -7813,11 +7833,27 @@ function renderContentLibrary() {
   list.querySelectorAll('[data-content-library-edit-note]').forEach(btn => btn.addEventListener('click', () => populateNoteForm(btn.dataset.contentLibraryEditNote)));
 }
 
+async function loadContentLibraryChapters(bookId) {
+  const generation = state.workspaceOwnerGeneration;
+  const task = { bookId };
+  state.contentLibraryDetailTask = task;
+  try {
+    await loadBookProjectDetail(bookId);
+  } catch {
+    // Keep the selection page open so the user can retry the read.
+  }
+  if (state.contentLibraryDetailTask !== task) return;
+  state.contentLibraryDetailTask = null;
+  if (generation !== state.workspaceOwnerGeneration || getSelectedBook()?.id !== bookId) return;
+  if (!hasBookProjectDetail(bookId)) state.contentLibraryDetailError = bookId;
+  if (document.body.dataset.currentView === 'content-library') refreshUi();
+}
+
 function updateContentLibrarySelection(book) {
   const count = state.contentLibrarySelectedNoteIds.length;
   const message = `已選 ${count} 篇`;
   if (els.contentLibrarySelectionCount.textContent !== message) els.contentLibrarySelectionCount.textContent = message;
-  els.contentLibraryAddSelected.disabled = !book || !count || state.bookArrangementSaving;
+  els.contentLibraryAddSelected.disabled = !hasBookProjectDetail(book?.id) || !count || state.bookArrangementSaving;
   els.contentLibraryClearSelection.classList.toggle('hidden', !count);
 }
 
@@ -8280,7 +8316,6 @@ function setCurrentBookDraft(bookId = '') {
 
 async function goToContentLibraryForBookDraft(bookId = '') {
   if (bookId) state.selectedBookId = bookId;
-  if (state.selectedBookId) await loadBookProjectDetail(state.selectedBookId);
   state.contentLibraryScope = 'available';
   state.bookDraftModalOpen = false;
   setView('content-library');
@@ -8545,9 +8580,7 @@ function normalizeMcheynePlanRecord(entry) {
     day,
     dayOfYear: Number.parseInt(entry.dayOfYear, 10) || 0,
     label: String(entry.label || '').trim() || `${month}/${day}`,
-    readings,
-    sourceReadings: sourceReadings.length === 4 ? sourceReadings : readings,
-    normalizedReadings: normalizedReadings.length === 4 ? normalizedReadings : sourceReadings.map(normalizeScriptureReferenceForFetch),
+    readings: normalizedReadings.length === 4 ? normalizedReadings : readings.map(normalizeScriptureReferenceForFetch),
   };
 }
 
@@ -8683,8 +8716,7 @@ function getTodayReadingByIndex(index = 0) {
   const safeIndex = Number.parseInt(index, 10);
   if (!entry || !Number.isInteger(safeIndex) || safeIndex < 0 || safeIndex > 3) return null;
   return {
-    source: entry.readings[safeIndex],
-    normalized: entry.normalizedReadings?.[safeIndex] || normalizeScriptureReferenceForFetch(entry.readings[safeIndex]),
+    reference: entry.readings[safeIndex],
     entry,
   };
 }
@@ -8715,7 +8747,7 @@ function ensureTodayReadingDialogUi() {
     button.addEventListener('click', closeTodayReadingDialog);
   });
   modal.querySelector('#today-reading-dialog-insert')?.addEventListener('click', () => {
-    const reading = modal.dataset.sourceReading || '';
+    const reading = modal.dataset.readingReference || '';
     closeTodayReadingDialog();
     insertSingleTodayReadingIntoNote(reading);
   });
@@ -8738,8 +8770,8 @@ async function openTodayReadingDialog(index = 0) {
   const title = modal.querySelector('#today-reading-dialog-title');
   const kicker = modal.querySelector('#today-reading-dialog-kicker');
   const body = modal.querySelector('#today-reading-dialog-body');
-  modal.dataset.sourceReading = reading.source;
-  if (title) title.textContent = reading.source;
+  modal.dataset.readingReference = reading.reference;
+  if (title) title.textContent = reading.reference;
   if (kicker) kicker.textContent = `${reading.entry.label}｜麥琴讀經進度`;
   if (body) {
     body.classList.remove('error-text');
@@ -8751,10 +8783,10 @@ async function openTodayReadingDialog(index = 0) {
   const controller = new AbortController();
   state.todayReadingDialogAbortController = controller;
   try {
-    const result = await fetchScriptureReference(reading.normalized, controller.signal);
+    const result = await fetchScriptureReference(reading.reference, controller.signal);
     if (body) {
       body.classList.remove('error-text');
-      body.innerHTML = `<article class="scripture-card"><h4>${escapeHtml(reading.source)}</h4><div class="scripture-text">${escapeHtml(result.text)}</div></article>`;
+      body.innerHTML = `<article class="scripture-card"><h4>${escapeHtml(reading.reference)}</h4><div class="scripture-text">${escapeHtml(result.text)}</div></article>`;
     }
   } catch (error) {
     if (error.name === 'AbortError') return;
@@ -10387,7 +10419,7 @@ function renderBookDraftCard(book, { current = false } = {}) {
         <span>${escapeHtml(chapterLabel)}</span>
         <span>更新於 ${escapeHtml(formatDate(book.updated_at || book.created_at))}</span>
       </div>
-      <div class="book-draft-scope">${escapeHtml(getBookDraftScopeSummary(book))}</div>
+      ${detailLoaded ? `<div class="book-draft-scope">${escapeHtml(getBookDraftScopeSummary(book))}</div>` : ''}
       <div class="card-actions book-draft-actions">
         ${current
           ? `
@@ -11216,8 +11248,6 @@ function restoreWorkspace(entry = history.state?.devotionWorkspace, historyMode 
   }
   if (view === 'content-library') {
     if (allowed && state.books.some(book => book.id === entry.selectedBookId)) state.selectedBookId = entry.selectedBookId;
-    const book = getSelectedBook();
-    if (book && !hasBookProjectDetail(book.id)) loadBookProjectDetail(book.id).then(refreshUi).catch(console.warn);
   }
   setView(view, {
     historyMode,
@@ -11283,6 +11313,10 @@ function setView(viewName, { historyMode = 'push', scrollY } = {}) {
   }
   if (viewName === 'note-reader') {
     renderNoteReader();
+  }
+  if (viewName === 'content-library') {
+    if (previousView !== viewName) state.contentLibraryDetailError = null;
+    renderContentLibrary();
   }
   if (isReaderView) {
     document.body.dataset.readerScrollY = String(window.scrollY || 0);
