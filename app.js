@@ -26,8 +26,8 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.2.16';
-const APP_RELEASE_DATE = '2026/11/20';
+const APP_VERSION = '1.2.17';
+const APP_RELEASE_DATE = '2026/11/21';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
 const DEFAULT_BIBLE_ASSET_VERSION = '2026.11.19-proofread-v1.2.14';

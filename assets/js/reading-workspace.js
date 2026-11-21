@@ -295,6 +295,7 @@ export function createReadingWorkspace(api) {
   const review=document.createElement('section');
   review.className='personal-review';
   document.getElementById('view-dashboard').append(review);
+  const noteCalendar = createNoteCalendar(api.openNote);
   review.addEventListener('click',async event=>{
     const edit=event.target.closest('[data-resume-note]');
     if(edit){
@@ -343,7 +344,8 @@ export function createReadingWorkspace(api) {
   }
   function refresh() {
     const owner=state.currentUser?.id||'';
-    if(owner!==activeOwner){writingMode.close({restoreFocus:false, saveDraft:false});activeOwner=owner;api.clearNoteForm({clearDraft:false});loadedNoteId=null;reviewSignature='';}
+    const ownerChanged = owner !== activeOwner;
+    if(ownerChanged){writingMode.close({restoreFocus:false, saveDraft:false});activeOwner=owner;api.clearNoteForm({clearDraft:false});loadedNoteId=null;reviewSignature='';}
     const current=state.notes.find(note=>note.id===els.noteId.value);
     if(loadedNoteId!==(els.noteId.value||''))loadConnections(current||{});
     refreshEditorStatus();
@@ -351,11 +353,11 @@ export function createReadingWorkspace(api) {
     menu.querySelector('[data-workspace-pending]').innerHTML=pending?`<p class="workspace-offline-help">其他裝置已有變更時，可將離線內容另存一則，再同步。</p>${api.pendingNotes().map(item=>`<div class="connection-row"><span>${escape(item.note.title)}</span><button type="button" data-pending-copy="${escape(item.note.id)}">另存一則</button></div>`).join('')}`:'';
     menu.querySelector('[data-workspace-sync]').textContent=pending?`${pending} 篇離線札記尚待同步`:state.supabase?state.syncStatus:'此裝置保存';
     menu.querySelector('[data-workspace-sync-pending]').disabled=!state.supabase||!navigator.onLine;
-    const signature=JSON.stringify({notes:state.notes.map(note=>[note.id,note.updated_at,note.title,note.status]),books:state.books.map(book=>[book.id,book.updated_at,book.title,book.author_name])});
+    const signature=JSON.stringify({notes:state.notes.map(note=>[note.id,note.created_at,note.updated_at,note.title,note.status]),books:state.books.map(book=>[book.id,book.updated_at,book.title,book.author_name])});
     if(signature===reviewSignature)return;reviewSignature=signature;
     const notes=[...state.notes].sort((a,b)=>String(b.updated_at).localeCompare(String(a.updated_at)));
     const lead=notes.find(note=>note.status==='draft')||notes[0];
-    const published=notes.filter(note=>note.status!=='draft').slice(0,4);
+    const published=notes.filter(note=>note.status!=='draft');
     const book=[...state.books].sort((a,b)=>String(b.updated_at).localeCompare(String(a.updated_at)))[0];
     const fullDate=new Intl.DateTimeFormat('zh-TW',{month:'long',day:'numeric',weekday:'long'}).format(new Date());
     review.innerHTML = `
@@ -380,11 +382,13 @@ export function createReadingWorkspace(api) {
         </div>
       </section>
       <section class="folio-journal" data-editorial-section aria-labelledby="folio-journal-title">
-        <header class="folio-section-heading">
-          <h2 id="folio-journal-title">近期札記</h2>
-          <button type="button" class="folio-text-action" data-review-view="note-reader">查看全部札記</button>
-        </header>
-        <div class="review-entries">${published.length ? published.map(note => `
+        <div class="folio-journal-sidebar">
+          <header class="folio-section-heading">
+            <h2 id="folio-journal-title">近期札記</h2>
+            <button type="button" class="folio-text-action" data-review-view="note-reader">查看全部札記</button>
+          </header>
+        </div>
+        <div class="review-entries">${published.length ? published.slice(0, 4).map(note => `
           <article class="folio-entry">
             <p class="review-entry-meta"><time>${escape(dateLabel(note.created_at))}</time>${note.scripture_reference ? `<span>${escape(note.scripture_reference)}</span>` : ''}</p>
             <h3><button type="button" data-review-note="${escape(note.id)}">${escape(note.title || '未命名札記')}</button></h3>
@@ -400,6 +404,8 @@ export function createReadingWorkspace(api) {
           <button class="folio-text-action" type="button" data-review-view="library">開啟電子書櫃</button>
         </div>
       </section>`;
+    review.querySelector('.folio-journal-sidebar').append(noteCalendar.element);
+    noteCalendar.update(published, ownerChanged);
     review.querySelector('[data-review-shelf]').addEventListener('click', openShelf);
     renderReadingLinks();motion.refresh();
   }
@@ -428,6 +434,130 @@ export function createReadingWorkspace(api) {
     const unavailable=connections.related_notes.filter(id=>!related.some(item=>item.id===id));
     return `${related.length||unavailable.length?`<section class="note-connections-reading"><h3>關聯札記</h3>${related.map(item=>`<button type="button" data-open-related-note="${escape(item.id)}">${escape(item.title)}</button>`).join('')}${unavailable.map(id=>{const draft=state.notes.find(item=>item.id===id);return `<p>${draft?`${escape(draft.title||'關聯札記')}仍為草稿。`:'一篇關聯札記已移除。'}</p>`;}).join('')}</section>`:''}${connections.sources.length?`<section class="note-connections-reading"><h3>引用來源</h3>${connections.sources.map(source=>`<p><a href="${escape(source.url)}" target="_blank" rel="noopener noreferrer">${escape(source.title||new URL(source.url).hostname)}</a>${source.position?` · ${escape(source.position)}`:''}</p>`).join('')}</section>`:''}`;
   }};
+}
+
+function createNoteCalendar(openNote) {
+  const element = document.createElement('section');
+  element.className = 'note-calendar';
+  element.setAttribute('aria-labelledby', 'note-calendar-title');
+  element.innerHTML = `
+    <h3 id="note-calendar-title">札記月曆</h3>
+    <div class="note-calendar-header">
+      <p id="note-calendar-month" aria-live="polite" aria-atomic="true"></p>
+      <div class="note-calendar-navigation">
+        <button type="button" data-calendar-month="-1">上個月</button>
+        <button type="button" data-calendar-month="0">本月</button>
+        <button type="button" data-calendar-month="1">下個月</button>
+      </div>
+    </div>
+    <div class="note-calendar-weekdays" aria-hidden="true">
+      ${['日', '一', '二', '三', '四', '五', '六'].map(day => `<span>${day}</span>`).join('')}
+    </div>
+    <div class="note-calendar-days" role="group" aria-labelledby="note-calendar-month"></div>
+    <p class="note-calendar-summary" role="status"></p>
+    <ul class="note-calendar-notes" hidden></ul>`;
+
+  const monthLabel = element.querySelector('#note-calendar-month');
+  const days = element.querySelector('.note-calendar-days');
+  const summary = element.querySelector('.note-calendar-summary');
+  const noteList = element.querySelector('.note-calendar-notes');
+  const dateKey = (date, day = date.getDate()) => `${date.getFullYear()}-${date.getMonth() + 1}-${day}`;
+  const dayButton = day => days.querySelector(`[data-calendar-day="${day}"]`);
+  let month = new Date();
+  let selectedDay = null;
+  let notesByDate = new Map();
+
+  function renderSelection() {
+    const notes = notesByDate.get(dateKey(month, selectedDay)) || [];
+    const dateLabel = `${month.getMonth() + 1}月${selectedDay}日`;
+    summary.textContent = selectedDay
+      ? notes.length ? `${dateLabel} · ${notes.length} 篇札記` : `${dateLabel}沒有已儲存的札記。`
+      : '';
+    noteList.hidden = notes.length === 0;
+    noteList.innerHTML = notes.map(note => `<li><button type="button" data-review-note="${escape(note.id)}">${escape(note.title || '未命名札記')}</button></li>`).join('');
+    return notes;
+  }
+
+  function renderMonth() {
+    const today = new Date();
+    const year = month.getFullYear();
+    const monthIndex = month.getMonth();
+    const monthStart = new Date(year, monthIndex, 1);
+    const dayCount = new Date(year, monthIndex + 1, 0).getDate();
+    const tabDay = selectedDay || (dateKey(month, 1) === dateKey(today, 1) ? today.getDate() : 1);
+    monthLabel.textContent = `${year} 年 ${monthIndex + 1} 月`;
+    days.innerHTML = '<span aria-hidden="true"></span>'.repeat(monthStart.getDay()) +
+      Array.from({ length: dayCount }, (_, index) => {
+        const day = index + 1;
+        const key = dateKey(month, day);
+        const count = notesByDate.get(key)?.length || 0;
+        const isToday = key === dateKey(today);
+        return `<button type="button" class="note-calendar-day${count ? ' has-notes' : ''}"
+          data-calendar-day="${day}" tabindex="${day === tabDay ? 0 : -1}"
+          aria-label="${monthIndex + 1}月${day}日，${count ? `${count} 篇札記` : '無札記'}"
+          aria-pressed="${day === selectedDay}"${isToday ? ' aria-current="date"' : ''}>
+          <span>${day}</span>${count ? `<small>${count} 篇</small>` : ''}
+        </button>`;
+      }).join('');
+    renderSelection();
+  }
+
+  function setTabDay(button) {
+    const current = days.querySelector('[tabindex="0"]');
+    if (current) current.tabIndex = -1;
+    button.tabIndex = 0;
+  }
+
+  element.addEventListener('click', event => {
+    const monthButton = event.target.closest('[data-calendar-month]');
+    if (monthButton) {
+      const offset = Number(monthButton.dataset.calendarMonth);
+      month = offset ? new Date(month.getFullYear(), month.getMonth() + offset, 1) : new Date();
+      selectedDay = null;
+      renderMonth();
+      return;
+    }
+
+    const button = event.target.closest('[data-calendar-day]');
+    if (!button) return;
+    dayButton(selectedDay)?.setAttribute('aria-pressed', 'false');
+    selectedDay = Number(button.dataset.calendarDay);
+    button.setAttribute('aria-pressed', 'true');
+    setTabDay(button);
+    const notes = renderSelection();
+    if (notes.length === 1) openNote(notes[0].id);
+  });
+
+  days.addEventListener('keydown', event => {
+    const offset = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[event.key];
+    if (!offset || !event.target.matches('[data-calendar-day]')) return;
+    event.preventDefault();
+    const next = dayButton(Number(event.target.dataset.calendarDay) + offset);
+    if (!next) return;
+    setTabDay(next);
+    next.focus({ preventScroll: true });
+  });
+
+  return {
+    element,
+    update(notes, reset) {
+      if (reset) {
+        month = new Date();
+        selectedDay = null;
+      }
+      notesByDate = new Map();
+      for (const note of notes) {
+        const created = note.created_at;
+        if (!created) continue;
+        const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(created) ? `${created}T00:00:00` : created);
+        if (!Number.isFinite(date.getTime())) continue;
+        const key = dateKey(date);
+        if (!notesByDate.has(key)) notesByDate.set(key, []);
+        notesByDate.get(key).push(note);
+      }
+      renderMonth();
+    },
+  };
 }
 
 function addScripturePicker(section, input, listVerseNumbers) {
