@@ -14,6 +14,52 @@ const results=[];let server;
 async function home(page){await page.locator('.devotion-name').click();await page.locator('.folio-opening h1').waitFor({state:'visible'});await page.waitForFunction(()=>scrollY===0);}
 async function launchServer(){server=spawn(process.execPath,['static-server.cjs'],{env:{...process.env,PORT:port,DEVOTION_ISOLATED_PREVIEW:'1',DEVOTION_SERVE_DIST:'1'},stdio:['ignore','pipe','pipe']});await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Server timeout')),10000);server.once('exit',code=>{clearTimeout(timer);reject(new Error(`Server exited ${code}`))});server.stdout.on('data',chunk=>{if(String(chunk).includes('static server running')){clearTimeout(timer);resolve()}})});}
 
+async function checkNoteCalendar(browser) {
+ const context = await browser.newContext({ timezoneId: 'Asia/Taipei', viewport: { width: 390, height: 844 } });
+ try {
+   const calendarNotes = [
+     createNote({ id: 'first', userId: user.id, title: '札記一', content: '測試正文一', createdAt: '2026-11-17T16:01:00Z' }),
+     createNote({ id: 'second', userId: user.id, title: '札記二', content: '測試正文二', createdAt: '2026-11-18T01:00:00Z' }),
+     createNote({ id: 'old', userId: user.id, title: '上月札記', content: '測試正文三', createdAt: '2026-10-01', updatedAt: '2026-11-20T01:00:00Z' }),
+     createNote({ id: 'draft-calendar', userId: user.id, title: '未完成草稿', content: '測試草稿', status: 'draft', createdAt: '2026-11-20T01:00:00Z' }),
+   ];
+   await installLocalUserState(context, { user, notes: calendarNotes });
+   const page = await context.newPage();
+   await page.clock.setFixedTime(new Date('2026-11-21T04:00:00Z'));
+   await page.goto(url);
+   const calendar = page.getByRole('region', { name: '札記月曆' });
+   const reader = page.getByTestId('note-reader-reading-modal');
+   const busyDay = calendar.getByRole('button', { name: '11月18日，2 篇札記' });
+   await busyDay.click();
+   assert.equal(await busyDay.getAttribute('aria-pressed'), 'true');
+   await calendar.getByRole('button', { name: '札記一', exact: true }).click();
+   await reader.waitFor();
+   assert((await reader.textContent()).includes('測試正文一'));
+   await page.keyboard.press('Escape');
+   await reader.waitFor({ state: 'hidden' });
+   assert(await calendar.getByRole('button', { name: '札記一', exact: true }).evaluate(button => button === document.activeElement));
+   assert.equal(await page.locator('body').getAttribute('data-current-view'), 'dashboard');
+   await calendar.getByRole('button', { name: '11月20日，無札記' }).click();
+   assert((await calendar.getByRole('status').textContent()).includes('11月20日沒有已儲存的札記'));
+   await calendar.getByRole('button', { name: '上個月', exact: true }).click();
+   const oldDay = calendar.getByRole('button', { name: '10月1日，1 篇札記' });
+   await oldDay.click();
+   await reader.waitFor();
+   assert((await reader.textContent()).includes('測試正文三'));
+   await reader.getByTestId('note-reader-reading-close').click();
+   await reader.waitFor({ state: 'hidden' });
+   assert.equal(await oldDay.getAttribute('aria-pressed'), 'true');
+   assert(await oldDay.evaluate(button => button === document.activeElement));
+   await page.keyboard.press('ArrowRight');
+   assert(await calendar.getByRole('button', { name: '10月2日，無札記' }).evaluate(button => button === document.activeElement));
+   await calendar.getByRole('button', { name: '本月', exact: true }).click();
+   assert.equal(await calendar.getByRole('button', { name: '11月21日，無札記' }).getAttribute('aria-current'), 'date');
+   await assertNoHorizontalScroll(page, { label: '札記月曆 390px' });
+ } finally {
+   await context.close();
+ }
+}
+
 async function checkBiblePageCurl(context) {
  const page = await context.newPage();
  await page.goto(url);
@@ -292,5 +338,7 @@ async function checkBiblePageCurl(context) {
  results.push('聖經可直接標記目前頁面，翻頁後可從書籤跳回，重開仍可讀取及移除書籤。');
  const longTitle='詩篇一一九篇閱讀筆記：經文出處、前後段落，以及尚待補寫的觀察與閱讀紀錄';await seedLocalUserState(page,{...data,notes:[{...draft,title:longTitle},published]});await page.reload();await page.locator('.devotion-masthead').waitFor();await home(page);await assertNoHorizontalScroll(page,{label:'long title'});const layout=await page.evaluate(()=>({title:document.querySelector('.folio-opening h1').getBoundingClientRect().top,action:document.querySelector('[data-resume-note]').getBoundingClientRect().bottom}));assert(layout.action<=layout.title);results.push('手機顯示完整長題名，右上方的繼續編輯按鈕與標題分開。');
  const reduced=await browser.newContext({viewport:{width:1280,height:900},reducedMotion:'reduce'});await installLocalUserState(reduced,data);const reducedPage=await reduced.newPage();await reducedPage.goto(url);await reducedPage.locator('.folio-opening h1').waitFor();await reducedPage.mouse.wheel(0,125);assert.equal(await reducedPage.locator('.folio-portrait').evaluate(el=>getComputedStyle(el).transform),'none');await reduced.close();results.push('減少動態偏好會停止影像縮放、位移與進場動畫。');
+ await checkNoteCalendar(browser);
+ results.push('札記月曆按建立日期顯示篇數，可換月、讀取當日札記，並在關閉後保留日期和焦點。');
  assert.deepEqual(errors,[]);fs.writeFileSync('artifacts/editorial-preview-results.json',JSON.stringify({passed:true,results},null,2));console.log(results.join('\n'));
 }catch(error){console.error(await page.evaluate(()=>({view:document.body.dataset.currentView,scrollY,progress:document.querySelector('.folio-opening')?.dataset.motionProgress,bodyClasses:document.body.className,overflow:getComputedStyle(document.body).overflow,htmlOverflow:getComputedStyle(document.documentElement).overflow,panels:[...document.querySelectorAll('dialog[open],.modal:not(.hidden),.book-draft-modal-shell.is-open')].map(el=>({id:el.id,rect:el.getBoundingClientRect().toJSON()})),opening:document.querySelector('.folio-opening')?.getBoundingClientRect().toJSON(),viewport:{width:innerWidth,height:innerHeight},scrollHeight:document.documentElement.scrollHeight})));await page.screenshot({path:'artifacts/editorial-preview-failure.png',fullPage:true});throw error}finally{await browser.close();server?.kill('SIGTERM')}})().catch(error=>{console.error(error);process.exit(1)});
