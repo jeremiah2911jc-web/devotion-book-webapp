@@ -22,6 +22,10 @@ async function checkNoteCalendar(browser) {
      createNote({ id: 'second', userId: user.id, title: '札記二', content: '測試正文二', createdAt: '2026-11-18T01:00:00Z' }),
      createNote({ id: 'old', userId: user.id, title: '上月札記', content: '測試正文三', createdAt: '2026-10-01', updatedAt: '2026-11-20T01:00:00Z' }),
      createNote({ id: 'draft-calendar', userId: user.id, title: '未完成草稿', content: '測試草稿', status: 'draft', createdAt: '2026-11-20T01:00:00Z' }),
+     ...Array.from({ length: 24 }, (_, index) => createNote({
+       id: `calendar-note-${index + 3}`, userId: user.id, title: `札記 ${index + 3}`,
+       content: '同日清單測試正文', createdAt: '2026-11-18T00:10:00+08:00',
+     })),
    ];
    await installLocalUserState(context, { user, notes: calendarNotes });
    const page = await context.newPage();
@@ -29,9 +33,13 @@ async function checkNoteCalendar(browser) {
    await page.goto(url);
    const calendar = page.getByRole('region', { name: '札記月曆' });
    const reader = page.getByTestId('note-reader-reading-modal');
-   const busyDay = calendar.getByRole('button', { name: '11月18日，2 篇札記' });
+   const busyDay = calendar.getByRole('button', { name: '11月18日，26 篇札記' });
    await busyDay.click();
    assert.equal(await busyDay.getAttribute('aria-pressed'), 'true');
+   const list = calendar.getByRole('list');
+   assert.equal(await list.getByRole('listitem').count(), 26);
+   const listSize = await list.evaluate(element => ({ height: element.clientHeight, content: element.scrollHeight }));
+   assert(listSize.height <= 256 && listSize.content > listSize.height);
    await calendar.getByRole('button', { name: '札記一', exact: true }).click();
    await reader.waitFor();
    assert((await reader.textContent()).includes('測試正文一'));
@@ -39,6 +47,26 @@ async function checkNoteCalendar(browser) {
    await reader.waitFor({ state: 'hidden' });
    assert(await calendar.getByRole('button', { name: '札記一', exact: true }).evaluate(button => button === document.activeElement));
    assert.equal(await page.locator('body').getAttribute('data-current-view'), 'dashboard');
+   const lastNote = list.getByRole('button', { name: '札記 26', exact: true });
+   await lastNote.scrollIntoViewIfNeeded();
+   const scrollBeforeReading = await list.evaluate(element => element.scrollTop);
+   assert(scrollBeforeReading > 0);
+   await lastNote.click();
+   await reader.waitFor();
+   assert((await reader.textContent()).includes('同日清單測試正文'));
+   await reader.getByTestId('note-reader-reading-close').click();
+   await reader.waitFor({ state: 'hidden' });
+   assert.equal(await list.evaluate(element => element.scrollTop), scrollBeforeReading);
+   assert(await lastNote.evaluate(button => button === document.activeElement));
+
+   await page.setViewportSize({ width: 1280, height: 844 });
+   const articleGap = await page.locator('.review-entries article').evaluateAll(([first, second]) => {
+     const excerpt = first.querySelector('.folio-entry-excerpt').getBoundingClientRect();
+     const nextDate = second.querySelector('.review-entry-meta').getBoundingClientRect();
+     return nextDate.top - excerpt.bottom;
+   });
+   assert.equal(articleGap, 20);
+   await page.setViewportSize({ width: 390, height: 844 });
    await calendar.getByRole('button', { name: '11月20日，無札記' }).click();
    assert((await calendar.getByRole('status').textContent()).includes('11月20日沒有已儲存的札記'));
    await calendar.getByRole('button', { name: '上個月', exact: true }).click();

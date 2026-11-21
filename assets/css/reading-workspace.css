@@ -1180,6 +1180,12 @@ body.reading-workspace.book-draft-modal-open .devotion-masthead {
   list-style: none;
   margin: 0;
   padding: 0;
+  max-block-size: min(16rem, 40dvh);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+.note-calendar-notes:has(> li:nth-child(6)) {
+  border-block-end: 1px solid var(--folio-line);
 }
 .note-calendar-notes li + li {
   border-top: 1px solid var(--folio-line);
@@ -1194,7 +1200,12 @@ body.reading-workspace.book-draft-modal-open .devotion-masthead {
   text-align: left;
   overflow-wrap: anywhere;
 }
-.review-entries { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px clamp(22px, 4vw, 56px); }
+.review-entries {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 20px clamp(22px, 4vw, 56px);
+}
 .folio-entry { min-width: 0; }
 .folio-entry:first-child { grid-column: 1 / -1; }
 .review-entry-meta { display: flex; flex-wrap: wrap; gap: 5px 14px; margin: 0; font-size: 13px; color: var(--folio-muted); }
