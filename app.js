@@ -26,7 +26,7 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.2.20';
+const APP_VERSION = '1.2.21';
 const APP_RELEASE_DATE = '2026/11/21';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
@@ -5673,7 +5673,8 @@ function bindEvents() {
     if (copyButton) copyFeedbackEmail(copyButton).catch(handleError);
   });
   document.addEventListener('keydown', (event) => {
-    if (event.key !== 'Escape' || document.body.classList.contains('confirm-dialog-open')) return;
+    if (event.key !== 'Escape' || document.body.classList.contains('confirm-dialog-open')
+        || document.getElementById('workspace-reading-shelf')?.open) return;
     if (state.bookDraftSettingsModalOpen) {
       closeBookDraftSettingsModal();
       return;
@@ -6406,7 +6407,8 @@ function normalizeNoteRecord(note = {}) {
     show_prayer: resolveNoteShowPrayer(note),
     ...normalizeNoteConnections({...splitNoteSummary(note.summary || '').settings,
       ...(Array.isArray(note.related_notes) ? {related_notes:note.related_notes} : {}),
-      ...(Array.isArray(note.sources) ? {sources:note.sources} : {})}),
+      ...(Array.isArray(note.sources) ? {sources:note.sources} : {}),
+      ...(Object.hasOwn(note, 'daily_reflection_date') ? {daily_reflection_date:note.daily_reflection_date} : {})}),
   };
 }
 
@@ -6425,7 +6427,8 @@ function buildNoteSummaryValue(
   const showPrayerInOutput = !!showPrayer;
   const hasPrayerSettings = !!prayer || showPrayerInOutput;
   const normalizedConnections = normalizeNoteConnections(connections);
-  const hasConnections = !!(normalizedConnections.related_notes.length || normalizedConnections.sources.length);
+  const hasConnections = !!(normalizedConnections.related_notes.length || normalizedConnections.sources.length
+    || normalizedConnections.daily_reflection_date);
   if (normalizedStatus === NOTE_STATUS_PUBLISHED && !visible && !show && !hasPrayerSettings && !hasConnections) return '';
   if (normalizedStatus === NOTE_STATUS_PUBLISHED && visible && show && !hasPrayerSettings && !hasConnections) return visible;
   const encoded = encodeNoteSummarySettings({
@@ -6452,6 +6455,7 @@ function buildNotePersistencePayload(note = {}) {
   delete rest.showPrayer;
   delete rest.related_notes;
   delete rest.sources;
+  delete rest.daily_reflection_date;
   return {
     ...rest,
     summary: buildNoteSummaryValue(
@@ -9084,16 +9088,22 @@ function getDailyReflectionPassages(scripture, selectedVerses) {
   });
 }
 
-function startDailyReflection(reading, scripture, selectedVerses) {
-  const passages = getDailyReflectionPassages(scripture, selectedVerses);
-  const content = buildScriptureBlock(passages);
+function startDailyReflection(reading, scripture, selectedVerses, { date, referenceOnly }) {
+  const passages = scripture ? getDailyReflectionPassages(scripture, selectedVerses) : [];
+  if (!els.noteReaderReadingModal.classList.contains('hidden')) closeNoteReaderReadingModal({ immediate: true });
   clearNoteForm({ clearDraft: true });
   setView('notes');
   els.noteTitle.value = `${reading.reference} 的靈修默想`;
-  appendReferencesToNoteScripture(passages.map(item => item.normalizedQuery));
-  noteEditor.insertScripture(content);
+  readingWorkspace.loadConnections({ daily_reflection_date: date });
+  appendReferencesToNoteScripture(passages.length ? passages.map(item => item.normalizedQuery) : [reading.reference]);
+  if (referenceOnly) {
+    noteEditor.focusEnd();
+  } else {
+    noteEditor.insertScripture(buildScriptureBlock(passages));
+  }
+  state.noteDraftDirty = true;
   persistCurrentNoteDraft({ immediate: true });
-  showToast('在經文下方寫下今天的心得、感動或提醒。');
+  if (!referenceOnly) showToast('在經文下方寫下今天的心得、感動或提醒。');
 }
 
 function renderNotes() {
@@ -9466,6 +9476,7 @@ function renderNoteReaderReadingContent(note) {
     <header class="note-preview-header note-reader-modal-title-block">
       <h2 id="note-reader-reading-title">${escapeHtml(title)}</h2>
       ${renderNoteReaderMeta(note, { includeCreated: true })}
+      ${readingWorkspace?.renderReflectionLink(note) || ''}
     </header>
     ${visibleSummary ? `<section class="note-preview-summary">
       <span class="note-preview-kicker">摘要</span>

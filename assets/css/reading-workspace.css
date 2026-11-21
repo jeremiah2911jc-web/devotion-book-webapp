@@ -332,7 +332,8 @@ body.reading-workspace[data-current-view=dashboard] .main{max-width:none;padding
   color: var(--folio-muted);
   font-size: 13px;
 }
-.daily-explanation-range {
+.daily-explanation-range,
+.daily-response-reference {
   margin: 0 0 3px;
   color: var(--folio-accent);
   font: 600 14px/1.5 system-ui, sans-serif;
@@ -401,7 +402,8 @@ body.reading-workspace[data-current-view=dashboard] .main{max-width:none;padding
   padding: 20px 22px;
   border-radius: 5px 22px 5px 5px;
 }
-.daily-reading-explanation {
+.daily-reading-explanation,
+.daily-reading-response {
   margin-top: 26px;
   padding-top: 20px;
   border-top: 1px solid var(--folio-line);
@@ -419,8 +421,20 @@ body.reading-workspace[data-current-view=dashboard] .main{max-width:none;padding
 }
 .daily-explanation-section + .daily-explanation-section { margin-top: 26px; }
 .daily-explanation-copy p + p { margin-top: 12px; }
+.daily-reading-response [data-daily-response-text] {
+  max-width: 40em;
+  margin-top: 8px;
+}
+.daily-reading-response [data-daily-response-text] p + p { margin-top: 12px; }
+.reading-workspace button.daily-reading-return {
+  min-height: 44px;
+  color: var(--folio-accent);
+}
+
 .daily-reading-actions {
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
   justify-content: flex-end;
   padding: 9px var(--shelf-gutter) max(12px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--folio-line);
