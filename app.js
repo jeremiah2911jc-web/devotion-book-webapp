@@ -26,7 +26,7 @@ const STORAGE_KEYS = {
   pendingEmailVerification: 'devotion-auth-pending-email-verification',
 };
 
-const APP_VERSION = '1.2.18';
+const APP_VERSION = '1.2.19';
 const APP_RELEASE_DATE = '2026/11/21';
 const APP_VERSION_CHECK_MIN_INTERVAL_MS = 30 * 60 * 1000;
 const INSTALL_PROMPT_MAX_AUTO_SHOWS = 3;
@@ -5333,6 +5333,8 @@ async function bootstrap() {
       return extractBibleChapterVerses(entry?.text, chapter).map(verse => verse.verse);
     },
     openReading:index=>openTodayReadingDialog(index).catch(handleError),
+    readScripture: fetchScriptureReference,
+    startDailyReflection,
     openBible: navigation => openSystemLibraryBook(systemLibrary.bible.id, navigation),
     openBook:id=>{setView('books');return openBookDraftModal(id).catch(handleError);},
     openNote: openNoteFromWorkspace, getPreview: getNotePreviewText, openAccountSettings: openAccountSettingsModal, onError:handleError,
@@ -9059,6 +9061,39 @@ function buildScriptureBlock(items) {
 
 function applyScriptureBlockToNoteContent(items) {
   noteEditor.insertScripture(buildScriptureBlock(items));
+}
+
+function getDailyReflectionPassages(scripture, selectedVerses) {
+  const verseCount = scripture.chapterGroups.reduce((total, group) => total + group.verses.length, 0);
+  if (!selectedVerses.size || selectedVerses.size === verseCount) return [scripture];
+  const { book } = parseScriptureReference(scripture.normalizedQuery);
+  return scripture.chapterGroups.flatMap(({ chapter, verses }) => {
+    const ranges = [];
+    for (const verse of verses) {
+      if (!selectedVerses.has(`${chapter}:${verse.verse}`)) continue;
+      const previous = ranges.at(-1);
+      if (previous?.at(-1).verse === verse.verse - 1) previous.push(verse);
+      else ranges.push([verse]);
+    }
+    return ranges.map(verses => {
+      const start = verses[0].verse;
+      const end = verses.at(-1).verse;
+      const range = start === end ? String(start) : `${start}-${end}`;
+      return { normalizedQuery: `${book.canonical} ${chapter}:${range}`, chapterGroups: [{ chapter, verses }] };
+    });
+  });
+}
+
+function startDailyReflection(reading, scripture, selectedVerses) {
+  const passages = getDailyReflectionPassages(scripture, selectedVerses);
+  const content = buildScriptureBlock(passages);
+  clearNoteForm({ clearDraft: true });
+  setView('notes');
+  els.noteTitle.value = `${reading.reference} 的靈修默想`;
+  appendReferencesToNoteScripture(passages.map(item => item.normalizedQuery));
+  noteEditor.insertScripture(content);
+  persistCurrentNoteDraft({ immediate: true });
+  showToast('在經文下方寫下今天的心得、感動或提醒。');
 }
 
 function renderNotes() {

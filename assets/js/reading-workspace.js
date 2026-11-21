@@ -1,3 +1,4 @@
+import { dailyReadingMonth, dailyReadings } from './daily-readings.js';
 import { getScriptureBookAliasSummary } from './scripture-reference-utils.js';
 
 const escape = (value = '') => String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -83,6 +84,18 @@ export function createReadingWorkspace(api) {
   shelf.className = 'workspace-reading-shelf';
   shelf.id = 'workspace-reading-shelf';
   shelf.setAttribute('aria-labelledby', 'workspace-reading-title');
+  const { year, month } = dailyReadingMonth;
+  const readingsByDay = new Map(dailyReadings.map(reading => [reading.day, reading]));
+  const monthStart = new Date(year, month - 1, 1);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const calendarDays = '<span aria-hidden="true"></span>'.repeat(monthStart.getDay()) +
+    Array.from({ length: daysInMonth }, (_, index) => {
+      const day = index + 1;
+      const reading = readingsByDay.get(day);
+      return reading
+        ? `<button type="button" class="note-calendar-day daily-calendar-day" data-daily-day="${day}" aria-pressed="false" aria-label="${month} 月 ${day} 日，${escape(reading.reference)}">${day}</button>`
+        : `<span class="daily-calendar-empty" aria-hidden="true">${day}</span>`;
+    }).join('');
   shelf.innerHTML = `<header class="workspace-reading-hero">
     <div class="workspace-reading-art" aria-hidden="true"></div>
     <div class="workspace-dialog-heading">
@@ -94,6 +107,10 @@ export function createReadingWorkspace(api) {
     </div>
   </header>
   <div class="workspace-reading-destinations" data-reading-destinations>
+    <button type="button" data-reading-daily aria-labelledby="reading-choice-daily" aria-describedby="reading-choice-daily-details">
+      <span id="reading-choice-daily">每日默想</span>
+      <small id="reading-choice-daily-details">讀當日經文與釋經，寫下心得</small>
+    </button>
     <button type="button" data-reading-plan aria-labelledby="reading-choice-plan" aria-describedby="reading-choice-plan-details">
       <span id="reading-choice-plan">麥琴讀經</span>
       <small id="reading-choice-plan-details">查看每日的家庭與個人讀經進度</small>
@@ -103,6 +120,51 @@ export function createReadingWorkspace(api) {
       <small id="reading-choice-bible-details">開啟內建和合本</small>
     </button>
     <p role="status" data-reading-bible-status></p>
+  </div>
+  <div class="daily-reading hidden" data-daily-reading-view>
+    <article class="daily-reading-content" aria-labelledby="daily-reading-theme">
+      <div class="daily-reading-intro">
+        <details class="daily-calendar" open>
+          <summary><span>靈修月曆</span><span id="daily-calendar-month">${year} 年 ${month} 月</span></summary>
+          <div class="note-calendar-weekdays" aria-hidden="true">
+            ${['日', '一', '二', '三', '四', '五', '六'].map(day => `<span>${day}</span>`).join('')}
+          </div>
+          <div class="note-calendar-days" role="group" aria-labelledby="daily-calendar-month">${calendarDays}</div>
+        </details>
+        <header class="daily-reading-heading">
+          <p data-daily-date></p>
+          <h3 id="daily-reading-theme" tabindex="-1"></h3>
+          <p data-daily-reference></p>
+        </header>
+      </div>
+      <div class="daily-reading-columns">
+        <section aria-labelledby="daily-passage-heading">
+          <div class="daily-passage-heading">
+            <h4 id="daily-passage-heading">經文</h4>
+            <span>網站內建和合本</span>
+          </div>
+          <details class="daily-verse-picker hidden" data-daily-verse-picker>
+            <summary>選擇經節<span data-daily-verse-count role="status">整段經文</span></summary>
+            <div data-daily-verse-options></div>
+            <button type="button" class="ghost-btn hidden" data-daily-use-full>使用整段</button>
+          </details>
+          <div data-daily-passage></div>
+          <p data-daily-passage-status role="status"></p>
+          <button class="ghost-btn hidden" type="button" data-daily-retry>重新載入經文</button>
+        </section>
+        <aside class="daily-reading-summary" aria-labelledby="daily-summary-heading">
+          <h4 id="daily-summary-heading">今日經文摘要</h4>
+          <p data-daily-summary></p>
+        </aside>
+      </div>
+      <section class="daily-reading-explanation" aria-labelledby="daily-explanation-heading">
+        <h4 id="daily-explanation-heading">經文解釋</h4>
+        <div data-daily-explanation></div>
+      </section>
+    </article>
+    <div class="daily-reading-actions">
+      <button type="button" class="primary-btn" data-daily-reflect disabled>默想感動</button>
+    </div>
   </div>`;
   const today = document.querySelector('.home-today-reading-card');
   const todayHeader = today?.querySelector('.today-reading-header');
@@ -114,10 +176,32 @@ export function createReadingWorkspace(api) {
   const readingHeading = shelf.querySelector('#workspace-reading-title');
   const destinations = shelf.querySelector('[data-reading-destinations]');
   const backToChoices = shelf.querySelector('[data-reading-choices-back]');
+  const dailyButton = shelf.querySelector('[data-reading-daily]');
+  const dailyView = shelf.querySelector('[data-daily-reading-view]');
+  const dailyCalendar = dailyView.querySelector('.daily-calendar');
+  const dailyContent = dailyView.querySelector('.daily-reading-content');
+  const dailyTheme = dailyView.querySelector('#daily-reading-theme');
+  const dailyDate = dailyView.querySelector('[data-daily-date]');
+  const dailyReference = dailyView.querySelector('[data-daily-reference]');
+  const dailySummary = dailyView.querySelector('[data-daily-summary]');
+  const dailyExplanation = dailyView.querySelector('[data-daily-explanation]');
+  const dailyVersePicker = dailyView.querySelector('[data-daily-verse-picker]');
+  const dailyVerseOptions = dailyVersePicker.querySelector('[data-daily-verse-options]');
+  const dailyVerseCount = dailyVersePicker.querySelector('[data-daily-verse-count]');
+  const dailyUseFull = dailyVersePicker.querySelector('[data-daily-use-full]');
+  const dailyPassage = dailyView.querySelector('[data-daily-passage]');
+  const dailyStatus = dailyView.querySelector('[data-daily-passage-status]');
+  const dailyRetry = dailyView.querySelector('[data-daily-retry]');
+  const dailyReflect = dailyView.querySelector('[data-daily-reflect]');
   const planButton = shelf.querySelector('[data-reading-plan]');
   const bibleButton = shelf.querySelector('[data-reading-bible]');
   const bibleStatus = shelf.querySelector('[data-reading-bible-status]');
   let bibleRequest = null;
+  let dailyReading = null;
+  let dailyScripture = null;
+  let dailyRequest = null;
+  let openingReflection = false;
+  const selectedVerses = new Set();
 
   const resetBibleOpening = () => {
     bibleRequest = null;
@@ -126,10 +210,14 @@ export function createReadingWorkspace(api) {
   };
   const showReadingContent = (mode, fromChoices = false) => {
     const showPlan = mode === 'plan';
-    destinations.classList.toggle('hidden', showPlan);
+    const showDaily = mode === 'daily';
+    shelf.dataset.readingMode = mode;
+    readingHeading.textContent = showDaily ? '每日默想' : '讀經';
+    destinations.classList.toggle('hidden', mode !== 'choices');
+    dailyView.classList.toggle('hidden', !showDaily);
     today?.classList.toggle('hidden', !showPlan);
     todayHeader?.classList.toggle('hidden', !showPlan);
-    backToChoices.classList.toggle('hidden', !showPlan || !fromChoices);
+    backToChoices.classList.toggle('hidden', !showDaily && (!showPlan || !fromChoices));
     shelf.scrollTop = 0;
   };
   const openReadingShelf = (mode) => {
@@ -138,14 +226,144 @@ export function createReadingWorkspace(api) {
     shelf.showModal();
   };
   const openShelf = () => openReadingShelf('plan');
+  const updateDailySelection = () => {
+    dailyVerseCount.textContent = selectedVerses.size ? `已選 ${selectedVerses.size} 節` : '整段經文';
+    dailyUseFull.classList.toggle('hidden', !selectedVerses.size);
+    for (const button of dailyVerseOptions.querySelectorAll('[data-daily-select-verse]')) {
+      button.setAttribute('aria-pressed', String(selectedVerses.has(button.dataset.dailySelectVerse)));
+    }
+    for (const verse of dailyPassage.querySelectorAll('[data-daily-verse-text]')) {
+      verse.classList.toggle('is-selected', selectedVerses.has(verse.dataset.dailyVerseText));
+    }
+  };
+  const updateDailyReflect = () => { dailyReflect.disabled = !dailyScripture || openingReflection; };
+  const loadDailyPassage = async () => {
+    if (!dailyReading || dailyRequest || dailyScripture) return;
+    const request = new AbortController();
+    dailyRequest = request;
+    dailyStatus.textContent = '經文載入中…';
+    dailyRetry.classList.add('hidden');
+    try {
+      const passage = await api.readScripture(dailyReading.reference, request.signal);
+      if (dailyRequest !== request) return;
+      const showChapters = passage.chapterGroups.length > 1;
+      const text = passage.chapterGroups.map(group => {
+        const verses = group.verses.map(verse =>
+          `<span data-daily-verse-text="${group.chapter}:${verse.verse}"><span class="daily-verse-number">${verse.verse}</span>&#8239;${escape(verse.text)}</span>`).join(' ');
+        return showChapters ? `<span class="daily-chapter-number">第 ${group.chapter} 章</span> ${verses}` : verses;
+      }).join(' ');
+      dailyPassage.innerHTML = `<p class="daily-passage-text">${text}</p>`;
+      dailyVerseOptions.innerHTML = passage.chapterGroups.map(({chapter, verses}) => `
+        <div class="daily-verse-group" role="group" aria-label="第 ${chapter} 章">
+          ${showChapters ? `<span>第 ${chapter} 章</span>` : ''}
+          ${verses.map(({verse}) => `<button type="button" aria-label="第 ${chapter} 章第 ${verse} 節" data-daily-select-verse="${chapter}:${verse}">${verse}</button>`).join('')}
+        </div>`).join('');
+      dailyScripture = passage;
+      updateDailySelection();
+      dailyVersePicker.classList.remove('hidden');
+      dailyStatus.textContent = '';
+    } catch {
+      if (dailyRequest !== request) return;
+      dailyStatus.textContent = '經文暫時無法載入。';
+      dailyRetry.classList.remove('hidden');
+    } finally {
+      if (dailyRequest === request) {
+        dailyRequest = null;
+        updateDailyReflect();
+      }
+    }
+  };
+  const selectDailyReading = reading => {
+    if (dailyReading === reading) return;
+    dailyRequest?.abort();
+    dailyRequest = null;
+    dailyReading = reading;
+    dailyScripture = null;
+    selectedVerses.clear();
+    dailyVerseOptions.replaceChildren();
+    dailyVersePicker.open = false;
+    dailyVersePicker.classList.add('hidden');
+    dailyPassage.replaceChildren();
+    dailyDate.textContent = `${month} 月 ${reading.day} 日`;
+    dailyTheme.textContent = reading.title;
+    dailyReference.textContent = reading.reference;
+    dailySummary.textContent = reading.summary;
+    dailyExplanation.innerHTML = reading.sections.map(section => `
+      <section class="daily-explanation-section">
+        <div><p class="daily-explanation-range">${escape(section.range)}</p><h5>${escape(section.title)}</h5></div>
+        <div class="daily-explanation-copy">
+          ${section.paragraphs.map(paragraph => `<p>${escape(paragraph)}</p>`).join('')}
+        </div>
+      </section>`).join('');
+    dailyCalendar.querySelector('[aria-pressed="true"]')?.setAttribute('aria-pressed', 'false');
+    dailyCalendar.querySelector(`[data-daily-day="${reading.day}"]`).setAttribute('aria-pressed', 'true');
+    updateDailySelection();
+    updateDailyReflect();
+  };
+  dailyButton.addEventListener('click', () => {
+    resetBibleOpening();
+    if (!dailyReading) {
+      const today = new Date();
+      const isReadingMonth = today.getFullYear() === year && today.getMonth() + 1 === month;
+      selectDailyReading((isReadingMonth && readingsByDay.get(today.getDate())) || dailyReadings[0]);
+    }
+    dailyCalendar.open = true;
+    dailyContent.scrollTop = 0;
+    showReadingContent('daily');
+    readingHeading.focus({ preventScroll: true });
+    loadDailyPassage();
+  });
+  dailyCalendar.addEventListener('click', event => {
+    const day = event.target.closest('[data-daily-day]')?.dataset.dailyDay;
+    if (!day) return;
+    selectDailyReading(readingsByDay.get(Number(day)));
+    dailyCalendar.open = false;
+    dailyContent.scrollTop = 0;
+    dailyTheme.focus({ preventScroll: true });
+    loadDailyPassage();
+  });
+  dailyRetry.addEventListener('click', loadDailyPassage);
+  dailyVerseOptions.addEventListener('click', event => {
+    const key = event.target.closest('[data-daily-select-verse]')?.dataset.dailySelectVerse;
+    if (key && !selectedVerses.delete(key)) selectedVerses.add(key);
+    updateDailySelection();
+  });
+  dailyUseFull.addEventListener('click', () => {
+    selectedVerses.clear();
+    dailyVersePicker.querySelector('summary').focus({ preventScroll: true });
+    updateDailySelection();
+  });
+  dailyReflect.addEventListener('click', async () => {
+    if (!dailyScripture || openingReflection) return;
+    const reading = dailyReading;
+    const scripture = dailyScripture;
+    const verses = new Set(selectedVerses);
+    const scrollTop = dailyContent.scrollTop;
+    openingReflection = true;
+    updateDailyReflect();
+    shelf.close();
+    try {
+      if (await api.prepareNewNote()) {
+        api.startDailyReflection(reading, scripture, verses);
+      } else {
+        shelf.showModal();
+        dailyContent.scrollTop = scrollTop;
+      }
+    } finally {
+      openingReflection = false;
+      updateDailyReflect();
+      if (shelf.open) dailyReflect.focus({ preventScroll: true });
+    }
+  });
   planButton.addEventListener('click', () => {
     resetBibleOpening();
     showReadingContent('plan', true);
     readingHeading.focus({ preventScroll: true });
   });
   backToChoices.addEventListener('click', () => {
+    const returnButton = shelf.dataset.readingMode === 'daily' ? dailyButton : planButton;
     showReadingContent('choices');
-    planButton.focus({ preventScroll: true });
+    returnButton.focus({ preventScroll: true });
   });
   bibleButton.addEventListener('click', async () => {
     if (bibleRequest) return;
@@ -228,12 +446,6 @@ export function createReadingWorkspace(api) {
   appendToggle.querySelector('.note-helper-short').remove();
   appendToggle.classList.add('writing-append-toggle');
   scripture.querySelector('.note-scripture-control-row').after(appendToggle);
-  const shelfButton = document.createElement('button');
-  shelfButton.type = 'button';
-  shelfButton.className = 'writing-reading-link';
-  shelfButton.innerHTML = '<img src="./assets/editorial/mountain-dawn.jpg" alt="" width="600" height="800" decoding="async"><span>開啟今日讀經</span>';
-  shelfButton.addEventListener('click', openShelf);
-  scripture.prepend(shelfButton);
   writingAside.append(scripture, detailsWrap);
   const documentTop = document.createElement('div');
   documentTop.className = 'writing-document-top';
@@ -828,11 +1040,10 @@ function createEditorialMotion(review,header){
     gathering: [{ transform: 'translateX(13px)', opacity: .67 }, { transform: 'none', opacity: 1 }],
     reading: [{ opacity: .78 }, { opacity: 1 }],
     cover: [{ transform: 'scale(1.09)' }, { transform: 'none' }],
-    landscape: [{ transform: 'scale(1.14) translateY(5%)' }, { transform: 'none' }],
   };
   const viewEntrances = {
     dashboard: [['.folio-portrait img', 'cover', 460]],
-    notes: [['.workspace-page-heading h1', 'leading', 300], ['.writing-reading-link img', 'landscape', 670]],
+    notes: [['.workspace-page-heading h1', 'leading', 300]],
     prayer: [['.workspace-page-heading h1', 'rising', 340], ['.prayer-workspace', 'reading', 330, 55]],
     'note-reader': [['#note-reader-search-title', 'leading', 340], ['.note-reader-shell', 'reading', 360, 65]],
     'content-library': [['.workspace-page-heading h1', 'gathering', 360], ['#content-library-book-hint', 'reading', 320, 55]],

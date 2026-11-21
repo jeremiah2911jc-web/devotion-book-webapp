@@ -192,7 +192,13 @@ async function checkBiblePageCurl(context) {
  await page.locator('#note-title').fill('本機讀寫測試');
  await page.getByTestId('note-editor-content').fill('查經視窗關閉後，保留這行文字。');
  await selectNoteEditorText(page.getByTestId('note-editor-content'),'視窗關');
- await page.locator('.writing-reading-link').click();
+ assert.equal(await page.getByRole('button',{name:'開啟今日讀經',exact:true}).count(),0);
+ await page.getByRole('navigation',{name:'常用操作'}).getByRole('button',{name:'讀經',exact:true}).click();
+ const readingChoices = page.getByRole('dialog',{name:'讀經',exact:true});
+ await readingChoices.getByRole('button',{name:'每日默想',exact:true}).click();
+ const dailyReflection = page.getByRole('dialog',{name:'每日默想',exact:true});
+ await dailyReflection.getByRole('button',{name:'讀經選項',exact:true}).click();
+ await readingChoices.getByRole('button',{name:'麥琴讀經',exact:true}).click();
  await page.locator('#workspace-reading-shelf [data-today-reading-index="1"]').click();
  await page.locator('#today-reading-dialog:not(.hidden)').waitFor();
  await page.keyboard.press('Escape');
