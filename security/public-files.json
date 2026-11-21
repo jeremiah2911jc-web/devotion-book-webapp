@@ -17,6 +17,7 @@
   "assets/icons/icon-192.png",
   "assets/icons/icon-512-maskable.png",
   "assets/icons/icon-512.png",
+  "assets/js/daily-readings.js",
   "assets/js/offline-notes.js",
   "assets/js/reading-workspace.js",
   "assets/js/scripture-reference-utils.js",
