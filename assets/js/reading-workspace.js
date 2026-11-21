@@ -1,4 +1,4 @@
-import { dailyReadingMonth, dailyReadings } from './daily-readings.js';
+import { dailyReadings } from './daily-readings.js';
 import { getScriptureBookAliasSummary } from './scripture-reference-utils.js';
 
 const escape = (value = '') => String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -87,26 +87,15 @@ export function createReadingWorkspace(api) {
   shelf.className = 'workspace-reading-shelf';
   shelf.id = 'workspace-reading-shelf';
   shelf.setAttribute('aria-labelledby', 'workspace-reading-title');
-  const { year, month } = dailyReadingMonth;
-  const readingsByDay = new Map(dailyReadings.map(reading => [reading.day, reading]));
-  const dateForDay = day => `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  const readingsByDate = new Map(dailyReadings.map(reading => [dateForDay(reading.day), reading]));
+  const dateKey = (date, day = date.getDate()) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  const readingsByDate = new Map(dailyReadings.map(reading => [reading.date, reading]));
   const noteReflectionDate = note => {
     if (note.daily_reflection_date) return note.daily_reflection_date;
     if (!note.scripture_reference && !note.scripture) return undefined;
     const reading = dailyReadings.find(item => note.title === `${item.reference} 的靈修默想`);
-    return reading ? dateForDay(reading.day) : undefined;
+    return reading?.date;
   };
-  const monthStart = new Date(year, month - 1, 1);
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const calendarDays = '<span aria-hidden="true"></span>'.repeat(monthStart.getDay()) +
-    Array.from({ length: daysInMonth }, (_, index) => {
-      const day = index + 1;
-      const reading = readingsByDay.get(day);
-      return reading
-        ? `<button type="button" class="note-calendar-day daily-calendar-day" data-daily-day="${day}" aria-pressed="false" aria-label="${month} 月 ${day} 日，${escape(reading.reference)}">${day}</button>`
-        : `<span class="daily-calendar-empty" aria-hidden="true">${day}</span>`;
-    }).join('');
   shelf.innerHTML = `<header class="workspace-reading-hero">
     <div class="workspace-reading-art" aria-hidden="true"></div>
     <div class="workspace-dialog-heading">
@@ -136,11 +125,16 @@ export function createReadingWorkspace(api) {
     <article class="daily-reading-content" aria-labelledby="daily-reading-theme">
       <div class="daily-reading-intro">
         <details class="daily-calendar" open>
-          <summary><span>靈修月曆</span><span id="daily-calendar-month">${year} 年 ${month} 月</span></summary>
+          <summary><span>靈修月曆</span><span id="daily-calendar-month" aria-live="polite"></span></summary>
+          <div class="note-calendar-navigation daily-calendar-navigation" aria-label="切換靈修月曆月份" role="group">
+            <button type="button" data-daily-month="-1">上個月</button>
+            <button type="button" data-daily-month="1">下個月</button>
+          </div>
           <div class="note-calendar-weekdays" aria-hidden="true">
             ${['日', '一', '二', '三', '四', '五', '六'].map(day => `<span>${day}</span>`).join('')}
           </div>
-          <div class="note-calendar-days" role="group" aria-labelledby="daily-calendar-month">${calendarDays}</div>
+          <div class="note-calendar-days" role="group" aria-labelledby="daily-calendar-month"></div>
+          <p class="daily-calendar-status" role="status" hidden>這個月尚無每日默想。</p>
         </details>
         <header class="daily-reading-heading">
           <p data-daily-date></p>
@@ -196,6 +190,9 @@ export function createReadingWorkspace(api) {
   const dailyButton = shelf.querySelector('[data-reading-daily]');
   const dailyView = shelf.querySelector('[data-daily-reading-view]');
   const dailyCalendar = dailyView.querySelector('.daily-calendar');
+  const dailyCalendarMonth = dailyCalendar.querySelector('#daily-calendar-month');
+  const dailyCalendarDays = dailyCalendar.querySelector('.note-calendar-days');
+  const dailyCalendarStatus = dailyCalendar.querySelector('.daily-calendar-status');
   const dailyContent = dailyView.querySelector('.daily-reading-content');
   const dailyTheme = dailyView.querySelector('#daily-reading-theme');
   const dailyDate = dailyView.querySelector('[data-daily-date]');
@@ -219,6 +216,7 @@ export function createReadingWorkspace(api) {
   const bibleStatus = shelf.querySelector('[data-reading-bible-status]');
   let bibleRequest = null;
   let dailyReading = null;
+  let viewingMonth;
   let dailyScripture = null;
   let dailyRequest = null;
   let openingReflection = false;
@@ -297,6 +295,28 @@ export function createReadingWorkspace(api) {
       }
     }
   };
+  const renderDailyCalendar = () => {
+    const year = viewingMonth.getFullYear();
+    const monthIndex = viewingMonth.getMonth();
+    const month = monthIndex + 1;
+    const today = dateKey(new Date());
+    const dayCount = new Date(year, month, 0).getDate();
+    dailyCalendarMonth.textContent = `${year} 年 ${month} 月`;
+    let hasReading = false;
+    dailyCalendarDays.innerHTML = '<span aria-hidden="true"></span>'.repeat(viewingMonth.getDay()) +
+      Array.from({ length: dayCount }, (_, index) => {
+        const day = index + 1;
+        const date = dateKey(viewingMonth, day);
+        const reading = readingsByDate.get(date);
+        if (!reading) return `<span class="daily-calendar-empty" aria-hidden="true">${day}</span>`;
+        hasReading = true;
+        return `<button type="button" class="note-calendar-day daily-calendar-day"
+          data-daily-day="${date}" aria-pressed="${date === dailyReading?.date}"
+          ${date === today ? 'aria-current="date"' : ''}
+          aria-label="${month} 月 ${day} 日，${escape(reading.reference)}">${day}</button>`;
+      }).join('');
+    dailyCalendarStatus.hidden = hasReading;
+  };
   const selectDailyReading = reading => {
     if (dailyReading === reading) return;
     dailyRequest?.abort();
@@ -308,7 +328,7 @@ export function createReadingWorkspace(api) {
     dailyVersePicker.open = false;
     dailyVersePicker.classList.add('hidden');
     dailyPassage.replaceChildren();
-    dailyDate.textContent = `${month} 月 ${reading.day} 日`;
+    dailyDate.textContent = `${Number(reading.date.slice(5, 7))} 月 ${reading.day} 日`;
     dailyTheme.textContent = reading.title;
     dailyReference.textContent = reading.reference;
     dailySummary.textContent = reading.summary;
@@ -324,14 +344,15 @@ export function createReadingWorkspace(api) {
           ${section.paragraphs.map(paragraph => `<p>${escape(paragraph)}</p>`).join('')}
         </div>
       </section>`).join('');
-    dailyCalendar.querySelector('[aria-pressed="true"]')?.setAttribute('aria-pressed', 'false');
-    dailyCalendar.querySelector(`[data-daily-day="${reading.day}"]`).setAttribute('aria-pressed', 'true');
     updateDailySelection();
     updateDailyReflect();
   };
   const openDailyReading = (reading, showCalendar) => {
     resetBibleOpening();
     selectDailyReading(reading);
+    const [year, month] = reading.date.split('-').map(Number);
+    viewingMonth = new Date(year, month - 1, 1);
+    renderDailyCalendar();
     dailyCalendar.open = showCalendar;
     showReadingContent('daily');
     if (!shelf.open) shelf.showModal();
@@ -340,14 +361,23 @@ export function createReadingWorkspace(api) {
     loadDailyPassage();
   };
   dailyButton.addEventListener('click', () => {
-    const today = new Date();
-    const isReadingMonth = today.getFullYear() === year && today.getMonth() + 1 === month;
-    openDailyReading(dailyReading || (isReadingMonth && readingsByDay.get(today.getDate())) || dailyReadings[0], true);
+    const today = dateKey(new Date());
+    const reading = dailyReadings.findLast(item => item.date <= today) || dailyReadings[0];
+    openDailyReading(dailyReading || reading, true);
   });
   dailyCalendar.addEventListener('click', event => {
-    const day = event.target.closest('[data-daily-day]')?.dataset.dailyDay;
-    if (!day) return;
-    selectDailyReading(readingsByDay.get(Number(day)));
+    const monthButton = event.target.closest('[data-daily-month]');
+    if (monthButton) {
+      const offset = Number(monthButton.dataset.dailyMonth);
+      viewingMonth = new Date(viewingMonth.getFullYear(), viewingMonth.getMonth() + offset, 1);
+      renderDailyCalendar();
+      return;
+    }
+    const button = event.target.closest('[data-daily-day]');
+    if (!button) return;
+    selectDailyReading(readingsByDate.get(button.dataset.dailyDay));
+    dailyCalendarDays.querySelector('[aria-pressed="true"]')?.setAttribute('aria-pressed', 'false');
+    button.setAttribute('aria-pressed', 'true');
     dailyCalendar.open = false;
     dailyContent.scrollTop = 0;
     dailyTheme.focus({ preventScroll: true });
@@ -377,7 +407,7 @@ export function createReadingWorkspace(api) {
     try {
       if (await api.prepareNewNote()) {
         api.startDailyReflection(reading, scripture, verses, {
-          date: dateForDay(reading.day),
+          date: reading.date,
           referenceOnly,
         });
       } else {
