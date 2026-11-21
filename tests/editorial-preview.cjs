@@ -103,19 +103,43 @@ async function checkDailyReflectionReturn(browser) {
    const daily = page.getByRole('dialog', { name: '每日默想', exact: true });
    const calendar = daily.locator('details.daily-calendar');
    const response = daily.getByRole('region', { name: '默想與回應', exact: true });
-   const openDay = async day => {
+   const expandCalendar = async () => {
      if (await calendar.getAttribute('open') === null) await calendar.locator('summary').click();
-     await calendar.getByRole('button', { name: new RegExp(`^12 月 ${day} 日，`) }).click();
    };
+   const openDay = async (month, day) => {
+     await expandCalendar();
+     await calendar.getByRole('button', { name: new RegExp(`^${month} 月 ${day} 日，`) }).click();
+   };
+   const monthLabel = calendar.locator('#daily-calendar-month');
+   const previousMonth = calendar.getByRole('button', { name: '上個月', exact: true });
+   const nextMonth = calendar.getByRole('button', { name: '下個月', exact: true });
+   assert.equal(await monthLabel.textContent(), '2026 年 11 月');
+   assert.equal(await daily.locator('[data-daily-date]').textContent(), '11 月 21 日');
+   assert.equal(await calendar.getByRole('button', { name: /^11 月 \d+ 日，/ }).count(), 11);
+   for (let day = 20; day <= 30; day++) {
+     await openDay(11, day);
+     assert.equal(await daily.locator('[data-daily-date]').textContent(), `11 月 ${day} 日`);
+     assert.equal(await response.locator('[data-daily-response-text] p').count(), 2);
+   }
+   await expandCalendar();
+   await nextMonth.click();
+   assert.equal(await monthLabel.textContent(), '2026 年 12 月');
+   assert.equal(await daily.locator('[data-daily-date]').textContent(), '11 月 30 日');
+   await nextMonth.click();
+   assert.equal(await monthLabel.textContent(), '2027 年 1 月');
+   assert(await calendar.getByText('這個月尚無每日默想。', { exact: true }).isVisible());
+   assert.equal(await calendar.getByRole('button', { name: /^1 月 \d+ 日，/ }).count(), 0);
+   await previousMonth.click();
+   assert.equal(await monthLabel.textContent(), '2026 年 12 月');
    for (let day = 1; day <= 31; day++) {
-     await openDay(day);
+     await openDay(12, day);
      assert.equal(await daily.locator('[data-daily-date]').textContent(), `12 月 ${day} 日`);
      assert((await response.locator('[data-daily-response-reference]').textContent()).trim(), `Day ${day} reference`);
      const paragraphs = await response.locator('[data-daily-response-text] p').allTextContents();
      assert.equal(paragraphs.length, 2, `Day ${day} paragraph count`);
      assert(paragraphs.every(paragraph => paragraph.trim()), `Day ${day} response text`);
    }
-   await openDay(25);
+   await openDay(12, 25);
    assert.equal(await response.locator('[data-daily-response-reference]').textContent(), '約翰福音 1:12–13');
    await daily.getByRole('button', { name: '只帶入經文出處', exact: true }).click();
 
@@ -136,6 +160,7 @@ async function checkDailyReflectionReturn(browser) {
    const back = note.getByRole('button', { name: '回到當日默想', exact: true });
    await back.click();
    assert.equal(await daily.locator('[data-daily-date]').textContent(), '12 月 25 日');
+   assert.equal(await monthLabel.textContent(), '2026 年 12 月');
    await page.keyboard.press('Escape');
    await daily.waitFor({ state: 'hidden' });
    await note.getByText('這是保留在札記裡的範例文字。', { exact: true }).waitFor();

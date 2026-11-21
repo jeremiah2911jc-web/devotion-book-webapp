@@ -282,6 +282,12 @@ body.reading-workspace[data-current-view=dashboard] .main{max-width:none;padding
   color: var(--folio-muted);
   font-size: 14px;
 }
+.daily-calendar-navigation { justify-content: space-between; }
+.daily-calendar .daily-calendar-status {
+  margin-top: 8px;
+  color: var(--folio-muted);
+  font-size: 14px;
+}
 .daily-calendar .daily-calendar-day:not([aria-pressed="true"]) {
   background: #e6dbf5;
   color: var(--folio-accent);
