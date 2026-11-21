@@ -101,16 +101,21 @@ async function checkDailyReflectionReturn(browser) {
    await page.getByRole('navigation', { name: '常用操作' }).getByRole('button', { name: '讀經', exact: true }).click();
    await page.getByRole('button', { name: '每日默想', exact: true }).click();
    const daily = page.getByRole('dialog', { name: '每日默想', exact: true });
+   const calendar = daily.locator('details.daily-calendar');
    const response = daily.getByRole('region', { name: '默想與回應', exact: true });
+   const openDay = async day => {
+     if (await calendar.getAttribute('open') === null) await calendar.locator('summary').click();
+     await calendar.getByRole('button', { name: new RegExp(`^12 月 ${day} 日，`) }).click();
+   };
    for (let day = 1; day <= 31; day++) {
-     await daily.getByRole('button', { name: new RegExp(`^12 月 ${day} 日，`) }).click();
+     await openDay(day);
      assert.equal(await daily.locator('[data-daily-date]').textContent(), `12 月 ${day} 日`);
      assert((await response.locator('[data-daily-response-reference]').textContent()).trim(), `Day ${day} reference`);
      const paragraphs = await response.locator('[data-daily-response-text] p').allTextContents();
      assert.equal(paragraphs.length, 2, `Day ${day} paragraph count`);
      assert(paragraphs.every(paragraph => paragraph.trim()), `Day ${day} response text`);
    }
-   await daily.getByRole('button', { name: '12 月 25 日，約翰福音 1:9-18', exact: true }).click();
+   await openDay(25);
    assert.equal(await response.locator('[data-daily-response-reference]').textContent(), '約翰福音 1:12–13');
    await daily.getByRole('button', { name: '只帶入經文出處', exact: true }).click();
 
