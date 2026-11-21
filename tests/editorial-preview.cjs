@@ -88,6 +88,63 @@ async function checkNoteCalendar(browser) {
  }
 }
 
+async function checkDailyReflectionReturn(browser) {
+ const context = await browser.newContext({
+   viewport: { width: 390, height: 844 }, timezoneId: 'Asia/Taipei',
+ });
+ try {
+   const page = await context.newPage();
+   await page.clock.setFixedTime(new Date('2026-11-21T04:00:00Z'));
+   await page.goto(url);
+   await seedLocalUserState(page, { user });
+   await page.reload();
+   await page.getByRole('navigation', { name: '常用操作' }).getByRole('button', { name: '讀經', exact: true }).click();
+   await page.getByRole('button', { name: '每日默想', exact: true }).click();
+   const daily = page.getByRole('dialog', { name: '每日默想', exact: true });
+   const calendar = daily.locator('details.daily-calendar');
+   const response = daily.getByRole('region', { name: '默想與回應', exact: true });
+   const openDay = async day => {
+     if (await calendar.getAttribute('open') === null) await calendar.locator('summary').click();
+     await calendar.getByRole('button', { name: new RegExp(`^12 月 ${day} 日，`) }).click();
+   };
+   for (let day = 1; day <= 31; day++) {
+     await openDay(day);
+     assert.equal(await daily.locator('[data-daily-date]').textContent(), `12 月 ${day} 日`);
+     assert((await response.locator('[data-daily-response-reference]').textContent()).trim(), `Day ${day} reference`);
+     const paragraphs = await response.locator('[data-daily-response-text] p').allTextContents();
+     assert.equal(paragraphs.length, 2, `Day ${day} paragraph count`);
+     assert(paragraphs.every(paragraph => paragraph.trim()), `Day ${day} response text`);
+   }
+   await openDay(25);
+   assert.equal(await response.locator('[data-daily-response-reference]').textContent(), '約翰福音 1:12–13');
+   await daily.getByRole('button', { name: '只帶入經文出處', exact: true }).click();
+
+   const title = page.getByTestId('note-title');
+   const editor = page.getByTestId('note-editor-content');
+   assert.equal(await title.inputValue(), '約翰福音 1:9-18 的靈修默想');
+   assert.equal(await page.getByTestId('note-scripture').inputValue(), '約翰福音 1:9-18');
+   assert.equal((await editor.innerText()).trim(), '');
+   assert(await editor.evaluate(element => document.activeElement === element));
+   await title.fill('讀經心得');
+   await editor.fill('這是保留在札記裡的範例文字。');
+   await page.getByTestId('note-save-published').click();
+   await page.locator('#workspace-writing-status').getByText('札記已儲存', { exact: true }).waitFor();
+   await page.reload();
+   await home(page);
+   await page.locator('h3 [data-review-note]').filter({ hasText: '讀經心得' }).click();
+   const note = page.getByTestId('note-reader-reading-modal');
+   const back = note.getByRole('button', { name: '回到當日默想', exact: true });
+   await back.click();
+   assert.equal(await daily.locator('[data-daily-date]').textContent(), '12 月 25 日');
+   await page.keyboard.press('Escape');
+   await daily.waitFor({ state: 'hidden' });
+   await note.getByText('這是保留在札記裡的範例文字。', { exact: true }).waitFor();
+   assert(await back.evaluate(button => document.activeElement === button));
+ } finally {
+   await context.close();
+ }
+}
+
 async function checkBiblePageCurl(context) {
  const page = await context.newPage();
  await page.goto(url);
@@ -373,6 +430,8 @@ async function checkBiblePageCurl(context) {
  const longTitle='詩篇一一九篇閱讀筆記：經文出處、前後段落，以及尚待補寫的觀察與閱讀紀錄';await seedLocalUserState(page,{...data,notes:[{...draft,title:longTitle},published]});await page.reload();await page.locator('.devotion-masthead').waitFor();await home(page);await assertNoHorizontalScroll(page,{label:'long title'});const layout=await page.evaluate(()=>({title:document.querySelector('.folio-opening h1').getBoundingClientRect().top,action:document.querySelector('[data-resume-note]').getBoundingClientRect().bottom}));assert(layout.action<=layout.title);results.push('手機顯示完整長題名，右上方的繼續編輯按鈕與標題分開。');
  const reduced=await browser.newContext({viewport:{width:1280,height:900},reducedMotion:'reduce'});await installLocalUserState(reduced,data);const reducedPage=await reduced.newPage();await reducedPage.goto(url);await reducedPage.locator('.folio-opening h1').waitFor();await reducedPage.mouse.wheel(0,125);assert.equal(await reducedPage.locator('.folio-portrait').evaluate(el=>getComputedStyle(el).transform),'none');await reduced.close();results.push('減少動態偏好會停止影像縮放、位移與進場動畫。');
  await checkNoteCalendar(browser);
+ await checkDailyReflectionReturn(browser);
+ results.push('只帶入經文出處可從空白正文起筆。改名儲存並重開後，仍可回到當日默想。');
  results.push('札記月曆按建立日期顯示篇數，可換月、讀取當日札記，並在關閉後保留日期和焦點。');
  assert.deepEqual(errors,[]);fs.writeFileSync('artifacts/editorial-preview-results.json',JSON.stringify({passed:true,results},null,2));console.log(results.join('\n'));
 }catch(error){console.error(await page.evaluate(()=>({view:document.body.dataset.currentView,scrollY,progress:document.querySelector('.folio-opening')?.dataset.motionProgress,bodyClasses:document.body.className,overflow:getComputedStyle(document.body).overflow,htmlOverflow:getComputedStyle(document.documentElement).overflow,panels:[...document.querySelectorAll('dialog[open],.modal:not(.hidden),.book-draft-modal-shell.is-open')].map(el=>({id:el.id,rect:el.getBoundingClientRect().toJSON()})),opening:document.querySelector('.folio-opening')?.getBoundingClientRect().toJSON(),viewport:{width:innerWidth,height:innerHeight},scrollHeight:document.documentElement.scrollHeight})));await page.screenshot({path:'artifacts/editorial-preview-failure.png',fullPage:true});throw error}finally{await browser.close();server?.kill('SIGTERM')}})().catch(error=>{console.error(error);process.exit(1)});

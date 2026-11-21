@@ -16,7 +16,10 @@ function editorialTitle(value){
 }
 
 export function normalizeNoteConnections(value = {}) {
+  const date = value.daily_reflection_date;
   return {
+    ...(typeof date === 'string' && /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(date)
+      ? { daily_reflection_date: date } : {}),
     related_notes: [...new Set((Array.isArray(value.related_notes) ? value.related_notes : []).filter(id => typeof id === 'string' && id.length < 200))].slice(0, 30),
     sources: (Array.isArray(value.sources) ? value.sources : []).filter(item => {
       try { return ['https:', 'http:'].includes(new URL(item.url).protocol); } catch { return false; }
@@ -86,6 +89,14 @@ export function createReadingWorkspace(api) {
   shelf.setAttribute('aria-labelledby', 'workspace-reading-title');
   const { year, month } = dailyReadingMonth;
   const readingsByDay = new Map(dailyReadings.map(reading => [reading.day, reading]));
+  const dateForDay = day => `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  const readingsByDate = new Map(dailyReadings.map(reading => [dateForDay(reading.day), reading]));
+  const noteReflectionDate = note => {
+    if (note.daily_reflection_date) return note.daily_reflection_date;
+    if (!note.scripture_reference && !note.scripture) return undefined;
+    const reading = dailyReadings.find(item => note.title === `${item.reference} 的靈修默想`);
+    return reading ? dateForDay(reading.day) : undefined;
+  };
   const monthStart = new Date(year, month - 1, 1);
   const daysInMonth = new Date(year, month, 0).getDate();
   const calendarDays = '<span aria-hidden="true"></span>'.repeat(monthStart.getDay()) +
@@ -161,8 +172,14 @@ export function createReadingWorkspace(api) {
         <h4 id="daily-explanation-heading">經文解釋</h4>
         <div data-daily-explanation></div>
       </section>
+      <section class="daily-reading-response hidden" aria-labelledby="daily-response-heading">
+        <h4 id="daily-response-heading">默想與回應</h4>
+        <p class="daily-response-reference" data-daily-response-reference></p>
+        <div data-daily-response-text></div>
+      </section>
     </article>
     <div class="daily-reading-actions">
+      <button type="button" class="ghost-btn" data-daily-reference-only disabled>只帶入經文出處</button>
       <button type="button" class="primary-btn" data-daily-reflect disabled>默想感動</button>
     </div>
   </div>`;
@@ -185,6 +202,9 @@ export function createReadingWorkspace(api) {
   const dailyReference = dailyView.querySelector('[data-daily-reference]');
   const dailySummary = dailyView.querySelector('[data-daily-summary]');
   const dailyExplanation = dailyView.querySelector('[data-daily-explanation]');
+  const dailyResponse = dailyView.querySelector('.daily-reading-response');
+  const dailyResponseReference = dailyResponse.querySelector('[data-daily-response-reference]');
+  const dailyResponseText = dailyResponse.querySelector('[data-daily-response-text]');
   const dailyVersePicker = dailyView.querySelector('[data-daily-verse-picker]');
   const dailyVerseOptions = dailyVersePicker.querySelector('[data-daily-verse-options]');
   const dailyVerseCount = dailyVersePicker.querySelector('[data-daily-verse-count]');
@@ -193,6 +213,7 @@ export function createReadingWorkspace(api) {
   const dailyStatus = dailyView.querySelector('[data-daily-passage-status]');
   const dailyRetry = dailyView.querySelector('[data-daily-retry]');
   const dailyReflect = dailyView.querySelector('[data-daily-reflect]');
+  const dailyReferenceOnly = dailyView.querySelector('[data-daily-reference-only]');
   const planButton = shelf.querySelector('[data-reading-plan]');
   const bibleButton = shelf.querySelector('[data-reading-bible]');
   const bibleStatus = shelf.querySelector('[data-reading-bible-status]');
@@ -236,7 +257,10 @@ export function createReadingWorkspace(api) {
       verse.classList.toggle('is-selected', selectedVerses.has(verse.dataset.dailyVerseText));
     }
   };
-  const updateDailyReflect = () => { dailyReflect.disabled = !dailyScripture || openingReflection; };
+  const updateDailyReflect = () => {
+    dailyReflect.disabled = !dailyScripture || openingReflection;
+    dailyReferenceOnly.disabled = !dailyReading || openingReflection;
+  };
   const loadDailyPassage = async () => {
     if (!dailyReading || dailyRequest || dailyScripture) return;
     const request = new AbortController();
@@ -288,6 +312,11 @@ export function createReadingWorkspace(api) {
     dailyTheme.textContent = reading.title;
     dailyReference.textContent = reading.reference;
     dailySummary.textContent = reading.summary;
+    dailyResponse.classList.toggle('hidden', !reading.response);
+    dailyResponseReference.textContent = reading.response?.reference || '';
+    dailyResponseText.innerHTML = (reading.response?.paragraphs || [])
+      .map(paragraph => `<p>${escape(paragraph)}</p>`)
+      .join('');
     dailyExplanation.innerHTML = reading.sections.map(section => `
       <section class="daily-explanation-section">
         <div><p class="daily-explanation-range">${escape(section.range)}</p><h5>${escape(section.title)}</h5></div>
@@ -300,18 +329,20 @@ export function createReadingWorkspace(api) {
     updateDailySelection();
     updateDailyReflect();
   };
-  dailyButton.addEventListener('click', () => {
+  const openDailyReading = (reading, showCalendar) => {
     resetBibleOpening();
-    if (!dailyReading) {
-      const today = new Date();
-      const isReadingMonth = today.getFullYear() === year && today.getMonth() + 1 === month;
-      selectDailyReading((isReadingMonth && readingsByDay.get(today.getDate())) || dailyReadings[0]);
-    }
-    dailyCalendar.open = true;
-    dailyContent.scrollTop = 0;
+    selectDailyReading(reading);
+    dailyCalendar.open = showCalendar;
     showReadingContent('daily');
+    if (!shelf.open) shelf.showModal();
+    dailyContent.scrollTop = 0;
     readingHeading.focus({ preventScroll: true });
     loadDailyPassage();
+  };
+  dailyButton.addEventListener('click', () => {
+    const today = new Date();
+    const isReadingMonth = today.getFullYear() === year && today.getMonth() + 1 === month;
+    openDailyReading(dailyReading || (isReadingMonth && readingsByDay.get(today.getDate())) || dailyReadings[0], true);
   });
   dailyCalendar.addEventListener('click', event => {
     const day = event.target.closest('[data-daily-day]')?.dataset.dailyDay;
@@ -333,8 +364,9 @@ export function createReadingWorkspace(api) {
     dailyVersePicker.querySelector('summary').focus({ preventScroll: true });
     updateDailySelection();
   });
-  dailyReflect.addEventListener('click', async () => {
-    if (!dailyScripture || openingReflection) return;
+  const startReflection = async trigger => {
+    const referenceOnly = trigger === dailyReferenceOnly;
+    if (!dailyReading || (!referenceOnly && !dailyScripture) || openingReflection) return;
     const reading = dailyReading;
     const scripture = dailyScripture;
     const verses = new Set(selectedVerses);
@@ -344,7 +376,10 @@ export function createReadingWorkspace(api) {
     shelf.close();
     try {
       if (await api.prepareNewNote()) {
-        api.startDailyReflection(reading, scripture, verses);
+        api.startDailyReflection(reading, scripture, verses, {
+          date: dateForDay(reading.day),
+          referenceOnly,
+        });
       } else {
         shelf.showModal();
         dailyContent.scrollTop = scrollTop;
@@ -352,9 +387,12 @@ export function createReadingWorkspace(api) {
     } finally {
       openingReflection = false;
       updateDailyReflect();
-      if (shelf.open) dailyReflect.focus({ preventScroll: true });
+      if (shelf.open) trigger.focus({ preventScroll: true });
     }
-  });
+  };
+  for (const button of [dailyReflect, dailyReferenceOnly]) {
+    button.addEventListener('click', () => startReflection(button).catch(api.onError));
+  }
   planButton.addEventListener('click', () => {
     resetBibleOpening();
     showReadingContent('plan', true);
@@ -445,7 +483,8 @@ export function createReadingWorkspace(api) {
   appendLabel.textContent = '將經文加入札記正文';
   appendToggle.querySelector('.note-helper-short').remove();
   appendToggle.classList.add('writing-append-toggle');
-  scripture.querySelector('.note-scripture-control-row').after(appendToggle);
+  const reflectionReturn = document.createElement('div');
+  scripture.querySelector('.note-scripture-control-row').after(appendToggle, reflectionReturn);
   writingAside.append(scripture, detailsWrap);
   const documentTop = document.createElement('div');
   documentTop.className = 'writing-document-top';
@@ -527,13 +566,33 @@ export function createReadingWorkspace(api) {
   if(today)todayObserver.observe(today,{subtree:true,childList:true,characterData:true});
 
   document.body.addEventListener('click',event=>{
+    const reflection = event.target.closest('[data-open-daily-reflection]');
+    if (reflection) {
+      const reading = readingsByDate.get(reflection.dataset.openDailyReflection);
+      if (reading) {
+        reflection.focus({ preventScroll: true });
+        openDailyReading(reading, false);
+      }
+      return;
+    }
     const connection=event.target.closest('[data-open-related-note]');if(connection)api.openNote(connection.dataset.openRelatedNote);
   });
   if(sessionStorage.getItem('devotion-design-preview')==='1'){
     const banner=document.createElement('div');banner.className='workspace-preview-label';banner.innerHTML='<span>設計預覽・範例資料</span><a data-preview-enter href="/preview-start.html?enter=1">返回範例</a><a href="/preview-start.html?reset=1">重設範例</a>';document.body.prepend(banner);
   }
 
-  function loadConnections(note = {}) {loadedNoteId=els.noteId.value||'';editorConnections=normalizeNoteConnections(note);state.noteConnections=editorConnections;renderEditorConnections();}
+  function renderReflectionLink(note) {
+    const date = noteReflectionDate(note);
+    if (!readingsByDate.has(date)) return '';
+    return `<button type="button" class="text-link daily-reading-return" data-open-daily-reflection="${escape(date)}">回到當日默想</button>`;
+  }
+
+  function loadConnections(note = {}) {
+    loadedNoteId = els.noteId.value || '';
+    editorConnections = normalizeNoteConnections({ ...note, daily_reflection_date: noteReflectionDate(note) });
+    state.noteConnections = editorConnections;
+    renderEditorConnections();
+  }
   function refreshEditorStatus() {
     const current = state.notes.find(note => note.id === els.noteId.value);
     const date = document.getElementById('workspace-writing-date');
@@ -549,6 +608,9 @@ export function createReadingWorkspace(api) {
     if (status.textContent !== nextStatus) status.textContent = nextStatus;
   }
   function renderEditorConnections() {
+    const reflectionLink = renderReflectionLink(editorConnections);
+    reflectionReturn.hidden = !reflectionLink;
+    if (reflectionReturn.innerHTML !== reflectionLink) reflectionReturn.innerHTML = reflectionLink;
     const own=els.noteId.value;
     relatedSelect.innerHTML=`<option value="">選擇一篇札記</option>${state.notes.filter(note=>note.id!==own&&!editorConnections.related_notes.includes(note.id)).map(note=>`<option value="${escape(note.id)}">${escape(note.title||'未命名草稿')}</option>`).join('')}`;
     document.getElementById('workspace-related-list').innerHTML=editorConnections.related_notes.map((id,index)=>{const note=state.notes.find(item=>item.id===id);return `<div class="connection-row"><span>${escape(note?.title||'原札記已移除')}</span><button type="button" data-connection-kind="related_notes" data-remove-connection="${index}" aria-label="移除關聯札記">移除</button></div>`;}).join('');
@@ -638,7 +700,7 @@ export function createReadingWorkspace(api) {
     date.textContent = refs.length ? selectedDate : '';
   }
 
-  return {refresh,refreshEditorStatus,closeWritingMode:writingMode.close,closePanel:motion.closePanel,cancelPanelClose:motion.cancelPanelClose,turnPage:motion.turnPage,loadConnections,getConnections:()=>normalizeNoteConnections(editorConnections),renderConnections(note){
+  return {refresh,refreshEditorStatus,closeWritingMode:writingMode.close,closePanel:motion.closePanel,cancelPanelClose:motion.cancelPanelClose,turnPage:motion.turnPage,loadConnections,getConnections:()=>normalizeNoteConnections(editorConnections),renderReflectionLink,renderConnections(note){
     const connections=normalizeNoteConnections(note);
     const backwards=state.notes.filter(item=>item.id!==note.id&&normalizeNoteConnections(item).related_notes.includes(note.id)&&item.status!=='draft');
     const ids=[...new Set([...connections.related_notes,...backwards.map(item=>item.id)])];
